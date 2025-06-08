@@ -25,12 +25,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className} >
         <NextAuthSessionProvider >
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
             <AuthGuard>
-              <ClientLayout>{children}</ClientLayout>
+          <ClientLayout>{children}</ClientLayout>
             </AuthGuard>
             <Toaster position="top-right" richColors closeButton />
-          </ThemeProvider>
+        </ThemeProvider>
         </NextAuthSessionProvider>
       </body>
     </html>

@@ -15,6 +15,8 @@ import { getIcon } from "@/utils/icons"
 import { memo } from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useAuthStore } from "@/stores/auth-store"
+import type { NavigationItem, NavigationState } from "@/types/navigation"
 
 // Helper function to truncate text
 const truncateText = (text: string, maxLength: number) => {
@@ -28,6 +30,7 @@ export const AppSidebar = memo(function AppSidebar() {
   const pathname = usePathname()
   const { navigate, isRouteLoading, loadingRoute, isLoading } = useNavigation()
   const { getFullNavigation } = useNavigationStore()
+  const { user } = useAuthStore()
 
   // Get navigation including custom features
   const navigation = getFullNavigation()
@@ -63,11 +66,11 @@ export const AppSidebar = memo(function AppSidebar() {
             <div className="px-2 py-1">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Navigation</h3>
             </div>
-            {navigation.map((item) => {
+            {navigation.map((item: NavigationItem) => {
               const IconComponent = getIcon(item.iconName)
               const isParentActive = item.subItems ? pathname.startsWith(item.href) : pathname === item.href
               const isParentLoading = item.subItems
-                ? item.subItems.some((sub) => isRouteLoading(sub.href))
+                ? item.subItems.some((sub: NavigationItem) => isRouteLoading(sub.href))
                 : isRouteLoading(item.href)
 
               if (item.subItems) {
@@ -124,7 +127,7 @@ export const AppSidebar = memo(function AppSidebar() {
                       )}
                     </Tooltip>
                     <CollapsibleContent className="pl-4 pt-1 space-y-1">
-                      {item.subItems.map((subItem) => {
+                      {item.subItems.map((subItem: NavigationItem) => {
                         const isSubActive = pathname === subItem.href
                         const isSubLoading = isRouteLoading(subItem.href)
                         const SubIconComponent = getIcon(subItem.iconName)
@@ -238,12 +241,14 @@ export const AppSidebar = memo(function AppSidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-                <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
-                <AvatarFallback className="bg-primary/10 text-primary">JD</AvatarFallback>
+                <AvatarImage src={user?.avatar || "/placeholder.svg?height=32&width=32"} alt={user?.name || "User"} />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {user?.name?.split(" ").map(n => n[0]).join("").toUpperCase() || "U"}
+                </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-sm font-medium">John Doe</p>
-                <p className="text-xs text-muted-foreground">Administrator</p>
+                <p className="text-sm font-medium">{user?.name || "User"}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user?.role || "Guest"}</p>
               </div>
             </div>
             <div className="flex items-center space-x-1">

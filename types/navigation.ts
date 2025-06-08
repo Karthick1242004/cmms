@@ -17,4 +17,5 @@ export interface NavigationState {
   setLoadingRoute: (route: string | null) => void
   setBreadcrumbs: (breadcrumbs: Array<{ label: string; href: string }>) => void
   navigateWithLoading: (route: string) => void
+  getFullNavigation: () => NavigationItem[]
 }

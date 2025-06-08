@@ -558,7 +558,7 @@ function LoginPageContent() {
                           disabled={isLoading}
                         />
                       </div>
-                    </div>
+                  </div>
 
                     {error && (
                       <Alert variant="destructive" className="animate-fade-in">
