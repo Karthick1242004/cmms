@@ -3,6 +3,7 @@ export interface NavigationItem {
   href: string
   iconName: string
   subItems?: NavigationItem[]
+  isCustom?: boolean
 }
 
 export interface NavigationState {
@@ -10,6 +11,8 @@ export interface NavigationState {
   isLoading: boolean
   loadingRoute: string | null
   breadcrumbs: Array<{ label: string; href: string }>
+  customNavItems: NavigationItem[]
+  defaultNavItems: NavigationItem[]
 
   // Actions
   setCurrentPath: (path: string) => void
@@ -17,5 +20,6 @@ export interface NavigationState {
   setLoadingRoute: (route: string | null) => void
   setBreadcrumbs: (breadcrumbs: Array<{ label: string; href: string }>) => void
   navigateWithLoading: (route: string) => void
+  addCustomNavItem: (feature: any) => void
   getFullNavigation: () => NavigationItem[]
 }

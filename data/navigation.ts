@@ -17,6 +17,11 @@ export const navigation: NavigationItem[] = [
     iconName: "Users",
   },
   {
+    name: "Shift Details",
+    href: "/shift-details",
+    iconName: "Calendar",
+  },
+  {
     name: "Asset Types",
     href: "/asset-types",
     iconName: "Cog",

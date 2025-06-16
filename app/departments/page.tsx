@@ -17,9 +17,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Edit, Trash2, MoreVertical } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useDepartmentsStore } from "@/stores/departments-store"
+import { useAuthStore } from "@/stores/auth-store"
 import { useDebounce } from "@/hooks/use-debounce"
-import type { Department, DepartmentStatus } from "@/types/department"
+import type { Department } from "@/types/department"
+
+type DepartmentStatus = "active" | "inactive"
 
 export default function DepartmentsPage() {
   const {
@@ -37,6 +41,9 @@ export default function DepartmentsPage() {
     deleteDepartment,
   } = useDepartmentsStore()
 
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === "admin"
+
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [manager, setManager] = useState("")
@@ -47,8 +54,6 @@ export default function DepartmentsPage() {
   useEffect(() => {
     fetchDepartments()
   }, [fetchDepartments])
-
-  // Removed useEffect for debouncedSearchTerm to avoid loop, setSearchTerm in store handles filtering
 
   useEffect(() => {
     if (editingDepartment) {
@@ -72,7 +77,7 @@ export default function DepartmentsPage() {
     }
     const departmentData = { name, description, manager, status }
     if (editingDepartment) {
-      updateDepartment(editingDepartment.id, departmentData)
+      updateDepartment(String(editingDepartment.id), departmentData)
     } else {
       addDepartment(departmentData)
     }
@@ -81,6 +86,7 @@ export default function DepartmentsPage() {
   }
 
   const handleOpenDialog = (department: Department | null = null) => {
+    if (!isAdmin) return
     setEditingDepartment(department)
     setDialogOpen(true)
   }
@@ -90,6 +96,13 @@ export default function DepartmentsPage() {
       setEditingDepartment(null) // Clear editing state when dialog is closed
     }
     setDialogOpen(open)
+  }
+
+  const handleDelete = (id: number) => {
+    if (!isAdmin) return
+    if (window.confirm("Are you sure you want to delete this department?")) {
+      deleteDepartment(String(id))
+    }
   }
 
   if (isLoading) {
@@ -124,73 +137,82 @@ export default function DepartmentsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Departments</h1>
-          <p className="text-muted-foreground">Manage organizational departments and their responsibilities</p>
+          <p className="text-muted-foreground">
+            {isAdmin 
+              ? "Manage organizational departments and their responsibilities"
+              : "View organizational departments and their details"
+            }
+          </p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Department
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => handleOpenDialog()}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Department
+          </Button>
+        )}
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>{editingDepartment ? "Edit" : "Add New"} Department</DialogTitle>
-            <DialogDescription>
-              {editingDepartment
-                ? "Update the details of this department."
-                : "Create a new department for your organization."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name
-              </Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+      {isAdmin && (
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>{editingDepartment ? "Edit" : "Add New"} Department</DialogTitle>
+              <DialogDescription>
+                {editingDepartment
+                  ? "Update the details of this department."
+                  : "Create a new department for your organization."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Name
+                </Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="manager" className="text-right">
+                  Manager
+                </Label>
+                <Input id="manager" value={manager} onChange={(e) => setManager(e.target.value)} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="status" className="text-right">
+                  Status
+                </Label>
+                <Select value={status} onValueChange={(value: DepartmentStatus) => setStatus(value)}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="manager" className="text-right">
-                Manager
-              </Label>
-              <Input id="manager" value={manager} onChange={(e) => setManager(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
-                Status
-              </Label>
-              <select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as DepartmentStatus)}
-                className="col-span-3 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleDialogClose(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" onClick={handleSubmit}>
-              Save Department
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => handleDialogClose(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" onClick={handleSubmit}>
+                Save Department
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <div className="flex items-center space-x-2">
         <div className="relative flex-1 max-w-sm">
@@ -213,7 +235,7 @@ export default function DepartmentsPage() {
               <TableHead>Manager</TableHead>
               <TableHead>Employees</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              {isAdmin && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -226,29 +248,31 @@ export default function DepartmentsPage() {
                 <TableCell>
                   <Badge variant={department.status === "active" ? "default" : "secondary"}>{department.status}</Badge>
                 </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenDialog(department)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-red-600 hover:!text-red-600 hover:!bg-red-100"
-                        onClick={() => deleteDepartment(department.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                {isAdmin && (
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleOpenDialog(department)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600 hover:!text-red-600 hover:!bg-red-100"
+                          onClick={() => handleDelete(department.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
