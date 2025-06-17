@@ -1,10 +1,12 @@
 export interface Department {
-  id: number
+  id: string
   name: string
   description: string
   manager: string
   employeeCount: number
   status: "active" | "inactive"
+  createdAt?: Date | string
+  updatedAt?: Date | string
 }
 
 export interface DepartmentsState {
@@ -18,8 +20,8 @@ export interface DepartmentsState {
   // Actions
   setDepartments: (departments: Department[]) => void
   addDepartment: (department: Omit<Department, "id">) => void
-  updateDepartment: (id: number, updates: Partial<Department>) => void
-  deleteDepartment: (id: number) => void
+  updateDepartment: (id: string, updates: Partial<Department>) => void
+  deleteDepartment: (id: string) => void
   setSearchTerm: (term: string) => void
   setLoading: (loading: boolean) => void
   setDialogOpen: (open: boolean) => void

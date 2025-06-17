@@ -22,6 +22,7 @@ import { useDepartmentsStore } from "@/stores/departments-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { useDebounce } from "@/hooks/use-debounce"
 import type { Department } from "@/types/department"
+import { toast } from "sonner"
 
 type DepartmentStatus = "active" | "inactive"
 
@@ -48,6 +49,7 @@ export default function DepartmentsPage() {
   const [description, setDescription] = useState("")
   const [manager, setManager] = useState("")
   const [status, setStatus] = useState<DepartmentStatus>("active")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -70,19 +72,37 @@ export default function DepartmentsPage() {
     }
   }, [editingDepartment, isDialogOpen]) // Depend on isDialogOpen to reset form when dialog closes
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name || !manager) {
-      alert("Department Name and Manager are required.")
+      toast.error("Department Name and Manager are required.")
       return
     }
-    const departmentData = { name, description, manager, status }
-    if (editingDepartment) {
-      updateDepartment(String(editingDepartment.id), departmentData)
-    } else {
-      addDepartment(departmentData)
+    
+    if (description.length < 10) {
+      toast.error("Description must be at least 10 characters long.")
+      return
     }
-    setDialogOpen(false)
-    setEditingDepartment(null) // Clear editing state
+
+    setIsSubmitting(true)
+    try {
+      const departmentData = { name, description, manager, status }
+      
+      if (editingDepartment) {
+        await updateDepartment(editingDepartment.id, departmentData)
+        toast.success("Department updated successfully!")
+      } else {
+        await addDepartment(departmentData)
+        toast.success("Department created successfully!")
+      }
+      
+      setDialogOpen(false)
+      setEditingDepartment(null)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
+      toast.error(errorMessage)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleOpenDialog = (department: Department | null = null) => {
@@ -98,10 +118,17 @@ export default function DepartmentsPage() {
     setDialogOpen(open)
   }
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string, name: string) => {
     if (!isAdmin) return
-    if (window.confirm("Are you sure you want to delete this department?")) {
-      deleteDepartment(String(id))
+    
+    if (window.confirm(`Are you sure you want to delete the department "${name}"? This action cannot be undone.`)) {
+      try {
+        await deleteDepartment(id)
+        toast.success(`Department "${name}" deleted successfully!`)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to delete department"
+        toast.error(errorMessage)
+      }
     }
   }
 
@@ -166,32 +193,50 @@ export default function DepartmentsPage() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
-                  Name
+                  Name *
                 </Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+                <Input 
+                  id="name" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  className="col-span-3"
+                  disabled={isSubmitting}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="manager" className="text-right">
-                  Manager
+                  Manager *
                 </Label>
-                <Input id="manager" value={manager} onChange={(e) => setManager(e.target.value)} className="col-span-3" />
+                <Input 
+                  id="manager" 
+                  value={manager} 
+                  onChange={(e) => setManager(e.target.value)} 
+                  className="col-span-3"
+                  disabled={isSubmitting}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="description" className="text-right">
-                  Description
+                  Description *
                 </Label>
                 <Textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="col-span-3"
+                  placeholder="Minimum 10 characters"
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="status" className="text-right">
                   Status
                 </Label>
-                <Select value={status} onValueChange={(value: DepartmentStatus) => setStatus(value)}>
+                <Select 
+                  value={status} 
+                  onValueChange={(value: DepartmentStatus) => setStatus(value)}
+                  disabled={isSubmitting}
+                >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -203,11 +248,19 @@ export default function DepartmentsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => handleDialogClose(false)}>
+              <Button 
+                variant="outline" 
+                onClick={() => handleDialogClose(false)}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
-              <Button type="submit" onClick={handleSubmit}>
-                Save Department
+              <Button 
+                type="submit" 
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : "Save Department"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -264,7 +317,7 @@ export default function DepartmentsPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600 hover:!text-red-600 hover:!bg-red-100"
-                          onClick={() => handleDelete(department.id)}
+                          onClick={() => handleDelete(department.id, department.name)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
@@ -279,7 +332,9 @@ export default function DepartmentsPage() {
         </Table>
       </div>
       {filteredDepartments.length === 0 && !isLoading && (
-        <p className="text-center text-muted-foreground py-8">No departments found matching your search.</p>
+        <p className="text-center text-muted-foreground py-8">
+          {searchTerm ? "No departments found matching your search." : "No departments found. Create your first department to get started."}
+        </p>
       )}
     </div>
   )
