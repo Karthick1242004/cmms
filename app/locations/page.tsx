@@ -19,7 +19,7 @@ import { Plus, Search, Edit, Trash2, MapPin, Building } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 
-const locations = [
+const initialLocations = [
   {
     id: 1,
     name: "Building A - 1st Floor",
@@ -103,8 +103,18 @@ const locations = [
 ]
 
 export default function LocationsPage() {
+  const [locations, setLocations] = useState(initialLocations)
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingLocation, setEditingLocation] = useState<any>(null)
+  const [formData, setFormData] = useState({
+    name: "",
+    code: "",
+    type: "",
+    description: "",
+    parentLocation: "",
+    address: "",
+  })
 
   const filteredLocations = locations.filter(
     (location) =>
@@ -113,6 +123,82 @@ export default function LocationsPage() {
       location.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
       location.description.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      code: "",
+      type: "",
+      description: "",
+      parentLocation: "",
+      address: "",
+    })
+    setEditingLocation(null)
+  }
+
+  const handleAddNew = () => {
+    resetForm()
+    setIsDialogOpen(true)
+  }
+
+  const handleEdit = (location: any) => {
+    setEditingLocation(location)
+    setFormData({
+      name: location.name,
+      code: location.code,
+      type: location.type,
+      description: location.description,
+      parentLocation: location.parentLocation,
+      address: location.address,
+    })
+    setIsDialogOpen(true)
+  }
+
+  const handleSave = () => {
+    if (editingLocation) {
+      // Update existing location
+      setLocations(prev => prev.map(item => 
+        item.id === editingLocation.id 
+          ? {
+              ...item,
+              name: formData.name,
+              code: formData.code,
+              type: formData.type,
+              description: formData.description,
+              parentLocation: formData.parentLocation,
+              address: formData.address,
+            }
+          : item
+      ))
+    } else {
+      // Create new location
+      const newLocation = {
+        id: Math.max(...locations.map(l => l.id)) + 1,
+        name: formData.name,
+        code: formData.code,
+        type: formData.type,
+        description: formData.description,
+        parentLocation: formData.parentLocation,
+        address: formData.address,
+        assetCount: 0,
+      }
+      setLocations(prev => [...prev, newLocation])
+    }
+    
+    setIsDialogOpen(false)
+    resetForm()
+  }
+
+  const handleDelete = (locationId: number) => {
+    setLocations(prev => prev.filter(item => item.id !== locationId))
+  }
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
 
   return (
     <div className="space-y-6">
@@ -123,51 +209,89 @@ export default function LocationsPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={handleAddNew}>
               <Plus className="mr-2 h-4 w-4" />
               Add Location
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Add New Location</DialogTitle>
-              <DialogDescription>Create a new location for asset deployment.</DialogDescription>
+              <DialogTitle>{editingLocation ? "Edit Location" : "Add New Location"}</DialogTitle>
+              <DialogDescription>
+                {editingLocation ? "Update the location details." : "Create a new location for asset deployment."}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
                   Name
                 </Label>
-                <Input id="name" className="col-span-3" />
+                <Input 
+                  id="name" 
+                  className="col-span-3" 
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="code" className="text-right">
                   Code
                 </Label>
-                <Input id="code" className="col-span-3" />
+                <Input 
+                  id="code" 
+                  className="col-span-3" 
+                  value={formData.code}
+                  onChange={(e) => handleInputChange("code", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="type" className="text-right">
                   Type
                 </Label>
-                <Input id="type" className="col-span-3" />
+                <Input 
+                  id="type" 
+                  className="col-span-3" 
+                  value={formData.type}
+                  onChange={(e) => handleInputChange("type", e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="parentLocation" className="text-right">
+                  Parent Location
+                </Label>
+                <Input 
+                  id="parentLocation" 
+                  className="col-span-3" 
+                  value={formData.parentLocation}
+                  onChange={(e) => handleInputChange("parentLocation", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="address" className="text-right">
                   Address
                 </Label>
-                <Input id="address" className="col-span-3" />
+                <Input 
+                  id="address" 
+                  className="col-span-3" 
+                  value={formData.address}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="description" className="text-right">
                   Description
                 </Label>
-                <Textarea id="description" className="col-span-3" />
+                <Textarea 
+                  id="description" 
+                  className="col-span-3" 
+                  value={formData.description}
+                  onChange={(e) => handleInputChange("description", e.target.value)}
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" onClick={() => setIsDialogOpen(false)}>
-                Save Location
+              <Button type="submit" onClick={handleSave}>
+                {editingLocation ? "Update Location" : "Save Location"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -235,11 +359,14 @@ export default function LocationsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEdit(location)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={() => handleDelete(location.id)}
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
                       </DropdownMenuItem>

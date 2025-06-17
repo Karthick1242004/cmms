@@ -19,7 +19,7 @@ import { Plus, Search, Edit, Trash2, Cog, Calendar } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 
-const assetTypes = [
+const initialAssetTypes = [
   {
     id: 1,
     name: "HVAC System",
@@ -67,8 +67,18 @@ const assetTypes = [
 ]
 
 export default function AssetTypesPage() {
+  const [assetTypes, setAssetTypes] = useState(initialAssetTypes)
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingAssetType, setEditingAssetType] = useState<any>(null)
+  const [formData, setFormData] = useState({
+    name: "",
+    code: "",
+    category: "",
+    description: "",
+    maintenanceInterval: "",
+    avgLifespan: "",
+  })
 
   const filteredAssetTypes = assetTypes.filter(
     (assetType) =>
@@ -77,6 +87,83 @@ export default function AssetTypesPage() {
       assetType.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
       assetType.description.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      code: "",
+      category: "",
+      description: "",
+      maintenanceInterval: "",
+      avgLifespan: "",
+    })
+    setEditingAssetType(null)
+  }
+
+  const handleAddNew = () => {
+    resetForm()
+    setIsDialogOpen(true)
+  }
+
+  const handleEdit = (assetType: any) => {
+    setEditingAssetType(assetType)
+    setFormData({
+      name: assetType.name,
+      code: assetType.code,
+      category: assetType.category,
+      description: assetType.description,
+      maintenanceInterval: assetType.maintenanceInterval.toString(),
+      avgLifespan: assetType.avgLifespan.toString(),
+    })
+    setIsDialogOpen(true)
+  }
+
+  const handleSave = () => {
+    if (editingAssetType) {
+      // Update existing asset type
+      setAssetTypes(prev => prev.map(item => 
+        item.id === editingAssetType.id 
+          ? {
+              ...item,
+              name: formData.name,
+              code: formData.code,
+              category: formData.category,
+              description: formData.description,
+              maintenanceInterval: parseInt(formData.maintenanceInterval) || 0,
+              avgLifespan: parseInt(formData.avgLifespan) || 0,
+            }
+          : item
+      ))
+    } else {
+      // Create new asset type
+      const newAssetType = {
+        id: Math.max(...assetTypes.map(a => a.id)) + 1,
+        name: formData.name,
+        code: formData.code,
+        category: formData.category,
+        description: formData.description,
+        maintenanceInterval: parseInt(formData.maintenanceInterval) || 0,
+        avgLifespan: parseInt(formData.avgLifespan) || 0,
+        assetCount: 0,
+        status: "active",
+      }
+      setAssetTypes(prev => [...prev, newAssetType])
+    }
+    
+    setIsDialogOpen(false)
+    resetForm()
+  }
+
+  const handleDelete = (assetTypeId: number) => {
+    setAssetTypes(prev => prev.filter(item => item.id !== assetTypeId))
+  }
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
 
   return (
     <div className="space-y-6">
@@ -87,57 +174,91 @@ export default function AssetTypesPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={handleAddNew}>
               <Plus className="mr-2 h-4 w-4" />
               Add Asset Type
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Add New Asset Type</DialogTitle>
-              <DialogDescription>Create a new asset type category.</DialogDescription>
+              <DialogTitle>{editingAssetType ? "Edit Asset Type" : "Add New Asset Type"}</DialogTitle>
+              <DialogDescription>
+                {editingAssetType ? "Update the asset type details." : "Create a new asset type category."}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
                   Name
                 </Label>
-                <Input id="name" className="col-span-3" />
+                <Input 
+                  id="name" 
+                  className="col-span-3" 
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="code" className="text-right">
                   Code
                 </Label>
-                <Input id="code" className="col-span-3" />
+                <Input 
+                  id="code" 
+                  className="col-span-3" 
+                  value={formData.code}
+                  onChange={(e) => handleInputChange("code", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="category" className="text-right">
                   Category
                 </Label>
-                <Input id="category" className="col-span-3" />
+                <Input 
+                  id="category" 
+                  className="col-span-3" 
+                  value={formData.category}
+                  onChange={(e) => handleInputChange("category", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="maintenanceInterval" className="text-right">
                   Maintenance Interval (days)
                 </Label>
-                <Input id="maintenanceInterval" type="number" className="col-span-3" />
+                <Input 
+                  id="maintenanceInterval" 
+                  type="number" 
+                  className="col-span-3" 
+                  value={formData.maintenanceInterval}
+                  onChange={(e) => handleInputChange("maintenanceInterval", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="avgLifespan" className="text-right">
                   Avg Lifespan (years)
                 </Label>
-                <Input id="avgLifespan" type="number" className="col-span-3" />
+                <Input 
+                  id="avgLifespan" 
+                  type="number" 
+                  className="col-span-3" 
+                  value={formData.avgLifespan}
+                  onChange={(e) => handleInputChange("avgLifespan", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="description" className="text-right">
                   Description
                 </Label>
-                <Textarea id="description" className="col-span-3" />
+                <Textarea 
+                  id="description" 
+                  className="col-span-3" 
+                  value={formData.description}
+                  onChange={(e) => handleInputChange("description", e.target.value)}
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" onClick={() => setIsDialogOpen(false)}>
-                Save Asset Type
+              <Button type="submit" onClick={handleSave}>
+                {editingAssetType ? "Update Asset Type" : "Save Asset Type"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -209,11 +330,14 @@ export default function AssetTypesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEdit(assetType)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={() => handleDelete(assetType.id)}
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
                       </DropdownMenuItem>
