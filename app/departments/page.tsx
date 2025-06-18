@@ -117,7 +117,10 @@ export default function DepartmentsPage() {
         })
         toast.success("Department updated successfully!")
       } else {
-        await createDepartmentMutation.mutateAsync(departmentData)
+        await createDepartmentMutation.mutateAsync({ 
+          ...departmentData, 
+          employeeCount: 0 
+        })
         toast.success("Department created successfully!")
       }
       
