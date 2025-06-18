@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { ClientLayout } from "@/components/client-layout"
 import { NextAuthSessionProvider } from "@/components/session-provider"
 import { AuthGuard } from "@/components/auth-guard"
+import { QueryProvider } from "@/components/query-provider"
 import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -26,9 +27,11 @@ export default function RootLayout({
       <body className={inter.className} >
         <NextAuthSessionProvider >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+          <QueryProvider>
             <AuthGuard>
           <ClientLayout>{children}</ClientLayout>
             </AuthGuard>
+          </QueryProvider>
             <Toaster position="top-right" richColors closeButton />
         </ThemeProvider>
         </NextAuthSessionProvider>

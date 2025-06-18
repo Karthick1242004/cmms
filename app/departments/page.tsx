@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Edit, Trash2, MoreVertical } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useDepartmentsStore } from "@/stores/departments-store"
+import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment } from "@/hooks/use-departments"
 import { useAuthStore } from "@/stores/auth-store"
 import { useDebounce } from "@/hooks/use-debounce"
 import type { Department } from "@/types/department"
@@ -27,42 +27,52 @@ import { toast } from "sonner"
 type DepartmentStatus = "active" | "inactive"
 
 export default function DepartmentsPage() {
-  const {
-    filteredDepartments,
-    searchTerm,
-    isLoading,
-    isDialogOpen,
-    editingDepartment,
-    setSearchTerm,
-    setDialogOpen,
-    setEditingDepartment,
-    fetchDepartments,
-    addDepartment,
-    updateDepartment,
-    deleteDepartment,
-  } = useDepartmentsStore()
+  // TanStack Query hooks
+  const { data: departmentsData, isLoading, error } = useDepartments()
+  const createDepartmentMutation = useCreateDepartment()
+  const updateDepartmentMutation = useUpdateDepartment()
+  const deleteDepartmentMutation = useDeleteDepartment()
 
+  // Auth state
   const { user } = useAuthStore()
   const isAdmin = user?.role === "admin"
 
+  // Local state
+  const [searchTerm, setSearchTerm] = useState("")
+  const [isDialogOpen, setDialogOpen] = useState(false)
+  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [manager, setManager] = useState("")
   const [status, setStatus] = useState<DepartmentStatus>("active")
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
-  useEffect(() => {
-    fetchDepartments()
-  }, [fetchDepartments])
+  // Extract departments from API response
+  const departments = departmentsData?.data?.departments || []
 
-  useEffect(() => {
-    if (editingDepartment) {
-      setName(editingDepartment.name)
-      setDescription(editingDepartment.description)
-      setManager(editingDepartment.manager)
-      setStatus(editingDepartment.status)
+  // Filter departments based on search term
+  const filteredDepartments = useMemo(() => {
+    if (!debouncedSearchTerm) return departments
+    
+    return departments.filter((department) =>
+      department.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      department.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      department.manager.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+    )
+  }, [departments, debouncedSearchTerm])
+
+  // Handle dialog state
+  const handleOpenDialog = (department: Department | null = null) => {
+    if (!isAdmin) return
+    
+    setEditingDepartment(department)
+    
+    if (department) {
+      setName(department.name)
+      setDescription(department.description)
+      setManager(department.manager)
+      setStatus(department.status)
     } else {
       // Reset form for adding new
       setName("")
@@ -70,8 +80,22 @@ export default function DepartmentsPage() {
       setManager("")
       setStatus("active")
     }
-  }, [editingDepartment, isDialogOpen]) // Depend on isDialogOpen to reset form when dialog closes
+    
+    setDialogOpen(true)
+  }
 
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      setEditingDepartment(null)
+      setName("")
+      setDescription("")
+      setManager("")
+      setStatus("active")
+    }
+    setDialogOpen(open)
+  }
+
+  // Handle form submission
   const handleSubmit = async () => {
     if (!name || !manager) {
       toast.error("Department Name and Manager are required.")
@@ -83,15 +107,17 @@ export default function DepartmentsPage() {
       return
     }
 
-    setIsSubmitting(true)
     try {
       const departmentData = { name, description, manager, status }
       
       if (editingDepartment) {
-        await updateDepartment(editingDepartment.id, departmentData)
+        await updateDepartmentMutation.mutateAsync({ 
+          id: editingDepartment.id, 
+          updates: departmentData 
+        })
         toast.success("Department updated successfully!")
       } else {
-        await addDepartment(departmentData)
+        await createDepartmentMutation.mutateAsync(departmentData)
         toast.success("Department created successfully!")
       }
       
@@ -100,30 +126,16 @@ export default function DepartmentsPage() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
       toast.error(errorMessage)
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
-  const handleOpenDialog = (department: Department | null = null) => {
-    if (!isAdmin) return
-    setEditingDepartment(department)
-    setDialogOpen(true)
-  }
-
-  const handleDialogClose = (open: boolean) => {
-    if (!open) {
-      setEditingDepartment(null) // Clear editing state when dialog is closed
-    }
-    setDialogOpen(open)
-  }
-
+  // Handle department deletion
   const handleDelete = async (id: string, name: string) => {
     if (!isAdmin) return
     
     if (window.confirm(`Are you sure you want to delete the department "${name}"? This action cannot be undone.`)) {
       try {
-        await deleteDepartment(id)
+        await deleteDepartmentMutation.mutateAsync(id)
         toast.success(`Department "${name}" deleted successfully!`)
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Failed to delete department"
@@ -132,6 +144,7 @@ export default function DepartmentsPage() {
     }
   }
 
+  // Handle loading state
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in p-6">
@@ -158,6 +171,21 @@ export default function DepartmentsPage() {
       </div>
     )
   }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="space-y-6 animate-fade-in p-6">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">Error loading departments: {error.message}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Determine if any mutation is in progress
+  const isSubmitting = createDepartmentMutation.isPending || updateDepartmentMutation.isPending
 
   return (
     <div className="space-y-6 animate-fade-in p-6">
@@ -339,3 +367,4 @@ export default function DepartmentsPage() {
     </div>
   )
 }
+
