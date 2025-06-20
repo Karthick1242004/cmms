@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Base URL for the backend server
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5000';
+const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function PUT(
   request: NextRequest,

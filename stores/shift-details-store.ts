@@ -2,7 +2,7 @@ import { create } from "zustand"
 import { devtools } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
 import type { ShiftDetail, ShiftDetailsState } from "@/types/shift-detail"
-import { shiftDetailsSample } from "@/data/shift-details-sample"
+import { ShiftDetailsAPI } from "@/lib/shift-details-api"
 
 export const useShiftDetailsStore = create<ShiftDetailsState>()(
   devtools(
@@ -20,30 +20,77 @@ export const useShiftDetailsStore = create<ShiftDetailsState>()(
           state.filteredShiftDetails = shiftDetails
         }),
 
-      addShiftDetail: (shiftDetailData) =>
-        set((state) => {
-          const newShiftDetail: ShiftDetail = {
-            id: Math.max(...state.shiftDetails.map((s) => s.id), 0) + 1,
-            ...shiftDetailData,
-          }
-          state.shiftDetails.push(newShiftDetail)
-          get().filterShiftDetails()
-        }),
+      addShiftDetail: async (shiftDetailData) => {
+        try {
+          set((state) => {
+            state.isLoading = true
+          })
 
-      updateShiftDetail: (id, updates) =>
-        set((state) => {
-          const index = state.shiftDetails.findIndex((s) => s.id === id)
-          if (index !== -1) {
-            state.shiftDetails[index] = { ...state.shiftDetails[index], ...updates }
-            get().filterShiftDetails()
+          const response = await ShiftDetailsAPI.createShiftDetail(shiftDetailData)
+          if (response.success) {
+            set((state) => {
+              state.shiftDetails.push(response.data)
+              get().filterShiftDetails()
+            })
           }
-        }),
+        } catch (error) {
+          console.error('Error adding shift detail:', error)
+          throw error
+        } finally {
+          set((state) => {
+            state.isLoading = false
+          })
+        }
+      },
 
-      deleteShiftDetail: (id) =>
-        set((state) => {
-          state.shiftDetails = state.shiftDetails.filter((s) => s.id !== id)
-          get().filterShiftDetails()
-        }),
+      updateShiftDetail: async (id, updates) => {
+        try {
+          set((state) => {
+            state.isLoading = true
+          })
+
+          const response = await ShiftDetailsAPI.updateShiftDetail(id, updates)
+          if (response.success) {
+            set((state) => {
+              const index = state.shiftDetails.findIndex((s) => s.id === id)
+              if (index !== -1) {
+                state.shiftDetails[index] = response.data
+                get().filterShiftDetails()
+              }
+            })
+          }
+        } catch (error) {
+          console.error('Error updating shift detail:', error)
+          throw error
+        } finally {
+          set((state) => {
+            state.isLoading = false
+          })
+        }
+      },
+
+      deleteShiftDetail: async (id) => {
+        try {
+          set((state) => {
+            state.isLoading = true
+          })
+
+          const response = await ShiftDetailsAPI.deleteShiftDetail(id)
+          if (response.success) {
+            set((state) => {
+              state.shiftDetails = state.shiftDetails.filter((s) => s.id !== id)
+              get().filterShiftDetails()
+            })
+          }
+        } catch (error) {
+          console.error('Error deleting shift detail:', error)
+          throw error
+        } finally {
+          set((state) => {
+            state.isLoading = false
+          })
+        }
+      },
 
       setSearchTerm: (term) =>
         set((state) => {
@@ -90,18 +137,34 @@ export const useShiftDetailsStore = create<ShiftDetailsState>()(
         }),
 
       fetchShiftDetails: async () => {
-        set((state) => {
-          state.isLoading = true
-        })
-
-        // Simulate API call
-        setTimeout(() => {
+        try {
           set((state) => {
-            state.shiftDetails = shiftDetailsSample
-            state.filteredShiftDetails = shiftDetailsSample
+            state.isLoading = true
+          })
+
+          const response = await ShiftDetailsAPI.getAllShiftDetails({
+            limit: 100 // Get all shift details for now
+          })
+          
+          if (response.success) {
+            set((state) => {
+              state.shiftDetails = response.data.shiftDetails
+              state.filteredShiftDetails = response.data.shiftDetails
+            })
+            get().filterShiftDetails()
+          }
+        } catch (error) {
+          console.error('Error fetching shift details:', error)
+          // Fallback to empty array on error
+          set((state) => {
+            state.shiftDetails = []
+            state.filteredShiftDetails = []
+          })
+        } finally {
+          set((state) => {
             state.isLoading = false
           })
-        }, 1000)
+        }
       },
     })),
     { name: "shift-details-store" }

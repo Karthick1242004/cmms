@@ -95,7 +95,6 @@ export default function DepartmentsPage() {
     setDialogOpen(open)
   }
 
-  // Handle form submission
   const handleSubmit = async () => {
     if (!name || !manager) {
       toast.error("Department Name and Manager are required.")

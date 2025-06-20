@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -18,9 +18,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Plus, Search, Edit, Trash2, MoreVertical, Clock, Users, MapPin, Phone, Mail } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useShiftDetailsStore } from "@/stores/shift-details-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { useDebounce } from "@/hooks/use-debounce"
+import { useCommonQuery, useCreateMutation, useUpdateMutation, useDeleteMutation, queryKeys } from "@/hooks/use-query"
 import type { ShiftDetail } from "@/types/shift-detail"
 
 const DEPARTMENTS = ["Maintenance", "HVAC", "Electrical", "Plumbing", "Security", "Cleaning", "IT"]
@@ -34,23 +34,26 @@ const SHIFT_TYPES = [
 const WORK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 export default function ShiftDetailsPage() {
-  const {
-    filteredShiftDetails,
-    searchTerm,
-    isLoading,
-    isDialogOpen,
-    selectedShiftDetail,
-    setSearchTerm,
-    setDialogOpen,
-    setSelectedShiftDetail,
-    fetchShiftDetails,
-    addShiftDetail,
-    updateShiftDetail,
-    deleteShiftDetail,
-  } = useShiftDetailsStore()
-
   const { user } = useAuthStore()
   const isAdmin = user?.role === "admin"
+
+  // React Query for data fetching
+  const { data: shiftDetailsData, isLoading, error } = useCommonQuery<{
+    success: boolean;
+    data: {
+      shiftDetails: ShiftDetail[];
+      pagination: any;
+    };
+    message: string;
+  }>(
+    ['shift-details', 'list'],
+    '/shift-details?limit=100'
+  )
+
+  // Local state for UI
+  const [searchTerm, setSearchTerm] = useState("")
+  const [isDialogOpen, setDialogOpen] = useState(false)
+  const [selectedShiftDetail, setSelectedShiftDetail] = useState<ShiftDetail | null>(null)
 
   // Form state
   const [employeeName, setEmployeeName] = useState("")
@@ -69,9 +72,73 @@ export default function ShiftDetailsPage() {
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
-  useEffect(() => {
-    fetchShiftDetails()
-  }, [fetchShiftDetails])
+  // React Query mutations with automatic invalidation
+  const createMutation = useCreateMutation<
+    { success: boolean; data: ShiftDetail; message: string },
+    Omit<ShiftDetail, 'id'>
+  >(
+    '/shift-details',
+    [['shift-details', 'list'], ['shift-details', 'stats']],
+    {
+      onSuccess: () => {
+        setDialogOpen(false)
+        setSelectedShiftDetail(null)
+      },
+      onError: (error) => {
+        console.error('Error creating shift detail:', error)
+        alert('Failed to create shift detail. Please try again.')
+      }
+    }
+  )
+
+  const updateMutation = useUpdateMutation<
+    { success: boolean; data: ShiftDetail; message: string },
+    Partial<ShiftDetail>
+  >(
+    (id) => `/shift-details/${id}`,
+    [['shift-details', 'list'], ['shift-details', 'stats']],
+    {
+      onSuccess: () => {
+        setDialogOpen(false)
+        setSelectedShiftDetail(null)
+      },
+      onError: (error) => {
+        console.error('Error updating shift detail:', error)
+        alert('Failed to update shift detail. Please try again.')
+      }
+    }
+  )
+
+  const deleteMutation = useDeleteMutation(
+    (id) => `/shift-details/${id}`,
+    [['shift-details', 'list'], ['shift-details', 'stats']],
+    {
+      onError: (error) => {
+        console.error('Error deleting shift detail:', error)
+        alert('Failed to delete shift detail. Please try again.')
+      }
+    }
+  )
+
+  // Filter shift details based on search term
+  const filteredShiftDetails = useMemo(() => {
+    const shiftDetails = shiftDetailsData?.data?.shiftDetails || []
+    
+    if (!debouncedSearchTerm.trim()) {
+      return shiftDetails
+    }
+    
+    return shiftDetails.filter(
+      (shift) =>
+        shift.employeeName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        shift.email.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        shift.department.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        shift.role.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        shift.shiftType.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        shift.location.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        shift.supervisor.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+    )
+  }, [shiftDetailsData?.data?.shiftDetails, debouncedSearchTerm])
 
   useEffect(() => {
     if (selectedShiftDetail) {
@@ -110,7 +177,7 @@ export default function ShiftDetailsPage() {
     setJoinDate("")
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!employeeName || !email || !phone || !department || !shiftStartTime || !shiftEndTime) {
       alert("Please fill in all required fields.")
       return
@@ -134,12 +201,10 @@ export default function ShiftDetailsPage() {
     }
 
     if (selectedShiftDetail) {
-      updateShiftDetail(selectedShiftDetail.id, shiftDetailData)
+      updateMutation.mutate({ id: selectedShiftDetail.id, ...shiftDetailData })
     } else {
-      addShiftDetail(shiftDetailData)
+      createMutation.mutate(shiftDetailData)
     }
-    setDialogOpen(false)
-    setSelectedShiftDetail(null)
   }
 
   const handleOpenDialog = (shiftDetail: ShiftDetail | null = null) => {
@@ -199,6 +264,7 @@ export default function ShiftDetailsPage() {
     return `${displayHour}:${minutes} ${ampm}`
   }
 
+  // Handle loading and error states
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in p-6">
@@ -221,6 +287,17 @@ export default function ShiftDetailsPage() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 animate-fade-in p-6">
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-4">Error loading shift details: {error.message}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     )
@@ -423,8 +500,12 @@ export default function ShiftDetailsPage() {
               <Button variant="outline" onClick={() => handleDialogClose(false)}>
                 Cancel
               </Button>
-              <Button type="submit" onClick={handleSubmit}>
-                Save Shift Detail
+              <Button 
+                type="submit" 
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Shift Detail'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -546,10 +627,15 @@ export default function ShiftDetailsPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600 hover:!text-red-600 hover:!bg-red-100"
-                          onClick={() => deleteShiftDetail(shift.id)}
+                          disabled={deleteMutation.isPending}
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this shift detail?')) {
+                              deleteMutation.mutate({ id: shift.id })
+                            }
+                          }}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -27,9 +27,9 @@ export interface ShiftDetailsState {
 
   // Actions
   setShiftDetails: (shiftDetails: ShiftDetail[]) => void
-  addShiftDetail: (shiftDetail: Omit<ShiftDetail, "id">) => void
-  updateShiftDetail: (id: number, updates: Partial<ShiftDetail>) => void
-  deleteShiftDetail: (id: number) => void
+  addShiftDetail: (shiftDetail: Omit<ShiftDetail, "id">) => Promise<void>
+  updateShiftDetail: (id: number, updates: Partial<ShiftDetail>) => Promise<void>
+  deleteShiftDetail: (id: number) => Promise<void>
   setSearchTerm: (term: string) => void
   setLoading: (loading: boolean) => void
   setDialogOpen: (open: boolean) => void

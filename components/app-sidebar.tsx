@@ -85,12 +85,12 @@ export const AppSidebar = memo(function AppSidebar() {
                               "w-full justify-between h-10 transition-all duration-200 group relative overflow-hidden",
                               isParentActive && "bg-primary/10 text-primary border-primary/20 shadow-sm",
                               !isParentActive && "hover:bg-accent hover:text-accent-foreground hover:translate-x-1",
-                              (isLoading || isParentLoading) && "opacity-70",
+                              isParentLoading && "opacity-70",
                             )}
-                            disabled={isLoading || isParentLoading}
+                            disabled={isParentLoading}
                           >
                             <div className="flex items-center space-x-3 relative z-10">
-                              {(isLoading || isParentLoading) && item.href === loadingRoute ? (
+                              {isParentLoading ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <IconComponent

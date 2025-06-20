@@ -9,18 +9,16 @@ export function useNavigation() {
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
 
-  // Destructure all needed functions and state from the store
   const {
-    currentPath: storeCurrentPath, // Renamed to avoid conflict with pathname
+    currentPath: storeCurrentPath,
     isLoading: storeIsLoading,
     loadingRoute: storeLoadingRoute,
     setCurrentPath,
     setLoading,
     setLoadingRoute,
-    navigateWithLoading, // This is the function from the store
+    navigateWithLoading, 
   } = useNavigationStore()
 
-  // Debug: Log if navigateWithLoading is undefined
   useEffect(() => {
     if (typeof navigateWithLoading !== "function") {
       console.error("useNavigation: navigateWithLoading is not a function from store!", useNavigationStore.getState())
@@ -31,11 +29,9 @@ export function useNavigation() {
     (href: string, options?: { replace?: boolean }) => {
       if (href === pathname) return
 
-      // Call the store's function to update loading state
       if (typeof navigateWithLoading === "function") {
         navigateWithLoading(href)
       } else {
-        // Fallback if function is not available, though this indicates a deeper issue
         setLoadingRoute(href)
       }
 
@@ -55,21 +51,20 @@ export function useNavigation() {
         }, 300)
       })
     },
-    [pathname, router, navigateWithLoading, setCurrentPath, setLoadingRoute, startTransition], // Added startTransition
+    [pathname, router, navigateWithLoading, setCurrentPath, setLoadingRoute, startTransition], 
   )
 
   const isRouteLoading = useCallback(
     (route: string) => {
-      // Use storeLoadingRoute and storeIsLoading for consistency
-      return storeLoadingRoute === route || (isPending && storeCurrentPath !== route)
+      return storeLoadingRoute === route
     },
-    [storeLoadingRoute, isPending, storeCurrentPath],
+    [storeLoadingRoute],
   )
 
   return {
     navigate,
-    currentPath: pathname, // Use live pathname for currentPath
-    isLoading: isPending || storeIsLoading, // Combine transition pending with store loading
+    currentPath: pathname,
+    isLoading: isPending || storeIsLoading,
     isRouteLoading,
     loadingRoute: storeLoadingRoute,
   }
