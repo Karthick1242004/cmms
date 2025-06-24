@@ -49,6 +49,11 @@ export const navigation: NavigationItem[] = [
     iconName: "Wrench",
   },
   {
+    name: "Maintenance",
+    href: "/maintenance",
+    iconName: "Settings2",
+  },
+  {
     name: "Stock History",
     href: "/stock-history",
     iconName: "Archive",
