@@ -18,7 +18,7 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ children, className }: PageHeaderProps) {
-  return <div className={cn("flex-shrink-0 rounded-md space-y-6 pb-4 border-b ", className)}>{children}</div>
+  return <div className={cn("flex-shrink-0 rounded-md space-y-6 pb-4  ", className)}>{children}</div>
 }
 
 interface PageContentProps {
