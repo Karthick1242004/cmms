@@ -53,7 +53,7 @@ export interface MaintenanceRecord {
   actualDuration: number // in hours
   technician: string
   technicianId: string
-  status: "completed" | "partially_completed" | "failed"
+  status: "completed" | "partially_completed" | "failed" | "in_progress"
   overallCondition: "excellent" | "good" | "fair" | "poor"
   notes?: string
   partsStatus: MaintenancePartRecord[]
@@ -116,12 +116,12 @@ export interface MaintenanceState {
   // Actions
   setSchedules: (schedules: MaintenanceSchedule[]) => void
   setRecords: (records: MaintenanceRecord[]) => void
-  addSchedule: (schedule: Omit<MaintenanceSchedule, "id" | "createdAt" | "updatedAt">) => void
-  updateSchedule: (id: string, updates: Partial<MaintenanceSchedule>) => void
-  deleteSchedule: (id: string) => void
-  addRecord: (record: Omit<MaintenanceRecord, "id" | "createdAt" | "updatedAt">) => void
-  updateRecord: (id: string, updates: Partial<MaintenanceRecord>) => void
-  verifyRecord: (id: string, adminNotes?: string) => void
+  addSchedule: (schedule: Omit<MaintenanceSchedule, "id" | "createdAt" | "updatedAt" | "nextDueDate">) => Promise<void>
+  updateSchedule: (id: string, updates: Partial<MaintenanceSchedule>) => Promise<void>
+  deleteSchedule: (id: string) => Promise<void>
+  addRecord: (record: Omit<MaintenanceRecord, "id" | "createdAt" | "updatedAt">) => Promise<void>
+  updateRecord: (id: string, updates: Partial<MaintenanceRecord>) => Promise<void>
+  verifyRecord: (id: string, adminNotes?: string, adminVerifiedBy?: string) => Promise<void>
   setSearchTerm: (term: string) => void
   setStatusFilter: (status: string) => void
   setPriorityFilter: (priority: string) => void
@@ -135,5 +135,7 @@ export interface MaintenanceState {
   filterRecords: () => void
   fetchSchedules: () => Promise<void>
   fetchRecords: () => Promise<void>
+  fetchStats: () => Promise<void>
   calculateStats: () => void
+  initialize: () => Promise<void>
 } 

@@ -45,6 +45,31 @@ export default function MaintenancePage() {
     fetchRecords()
   }, [fetchSchedules, fetchRecords])
 
+  // Apply filters when tab changes
+  useEffect(() => {
+    if (activeTab === "schedules") {
+      // Reset record-specific filters when switching to schedules
+      if (statusFilter === "verified" || statusFilter === "pending" || statusFilter === "in_progress") {
+        setStatusFilter("all")
+      }
+    } else {
+      // Reset schedule-specific filters when switching to records
+      if (statusFilter === "active" || statusFilter === "overdue" || statusFilter === "paused") {
+        setStatusFilter("all")
+      }
+    }
+  }, [activeTab, statusFilter, setStatusFilter])
+
+  // Apply filters when filter values change
+  useEffect(() => {
+    const { filterSchedules, filterRecords } = useMaintenanceStore.getState()
+    if (activeTab === "schedules") {
+      filterSchedules()
+    } else {
+      filterRecords()
+    }
+  }, [searchTerm, statusFilter, priorityFilter, frequencyFilter, activeTab])
+
   const isAdmin = user?.role === "admin"
 
   return (
@@ -90,14 +115,19 @@ export default function MaintenancePage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              {activeTab === "records" && (
+              {activeTab === "schedules" ? (
                 <>
-                  <SelectItem value="verified">Verified</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                </>
+              ) : (
+                <>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="pending">Pending Verification</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
                 </>
               )}
             </SelectContent>
@@ -134,6 +164,19 @@ export default function MaintenancePage() {
               </Select>
             </>
           )}
+
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setSearchTerm("")
+              setStatusFilter("all")
+              setPriorityFilter("all")
+              setFrequencyFilter("all")
+            }}
+            className="ml-2"
+          >
+            Clear Filters
+          </Button>
         </div>
       </PageHeader>
 

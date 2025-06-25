@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { devtools, persist } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
 import type { MaintenanceSchedule, MaintenanceRecord, MaintenanceState, MaintenanceStats } from "@/types/maintenance"
+import { maintenanceApi } from "@/lib/maintenance-api"
 
 export const useMaintenanceStore = create<MaintenanceState>()(
   devtools(
@@ -44,95 +45,160 @@ export const useMaintenanceStore = create<MaintenanceState>()(
             get().calculateStats()
           }),
 
-        addSchedule: (schedule) =>
+        addSchedule: async (schedule) => {
           set((state) => {
-            const newSchedule: MaintenanceSchedule = {
-              ...schedule,
-              id: `schedule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-            state.schedules.push(newSchedule)
+            state.isLoading = true
+          })
+
+          try {
+            const response = await maintenanceApi.schedules.create(schedule)
+            
+            set((state) => {
+              state.schedules.push(response.data)
+              state.isLoading = false
+            })
+
             get().filterSchedules()
             get().calculateStats()
-          }),
+          } catch (error) {
+            console.error('Error creating schedule:', error)
+            set((state) => {
+              state.isLoading = false
+            })
+            throw error
+          }
+        },
 
-        updateSchedule: (id, updates) =>
+        updateSchedule: async (id, updates) => {
           set((state) => {
-            const index = state.schedules.findIndex((s) => s.id === id)
-            if (index !== -1) {
-              state.schedules[index] = {
-                ...state.schedules[index],
-                ...updates,
-                updatedAt: new Date().toISOString(),
+            state.isLoading = true
+          })
+
+          try {
+            const response = await maintenanceApi.schedules.update(id, updates)
+            
+            set((state) => {
+              const index = state.schedules.findIndex((s) => s.id === id)
+              if (index !== -1) {
+                state.schedules[index] = response.data
               }
-              get().filterSchedules()
-              get().calculateStats()
-            }
-          }),
+              state.isLoading = false
+            })
 
-        deleteSchedule: (id) =>
-          set((state) => {
-            state.schedules = state.schedules.filter((s) => s.id !== id)
             get().filterSchedules()
             get().calculateStats()
-          }),
+          } catch (error) {
+            console.error('Error updating schedule:', error)
+            set((state) => {
+              state.isLoading = false
+            })
+            throw error
+          }
+        },
 
-        addRecord: (record) =>
+        deleteSchedule: async (id) => {
           set((state) => {
-            const newRecord: MaintenanceRecord = {
-              ...record,
-              id: `record_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-            state.records.push(newRecord)
+            state.isLoading = true
+          })
+
+          try {
+            await maintenanceApi.schedules.delete(id)
             
-            // Update the corresponding schedule's last completed date and next due date
-            const scheduleIndex = state.schedules.findIndex((s) => s.id === record.scheduleId)
-            if (scheduleIndex !== -1) {
-              const schedule = state.schedules[scheduleIndex]
-              state.schedules[scheduleIndex] = {
-                ...schedule,
-                lastCompletedDate: record.completedDate,
-                nextDueDate: calculateNextDueDate(schedule.frequency, record.completedDate, schedule.customFrequencyDays),
-                updatedAt: new Date().toISOString(),
-              }
-            }
+            set((state) => {
+              state.schedules = state.schedules.filter((s) => s.id !== id)
+              state.isLoading = false
+            })
+
+            get().filterSchedules()
+            get().calculateStats()
+          } catch (error) {
+            console.error('Error deleting schedule:', error)
+            set((state) => {
+              state.isLoading = false
+            })
+            throw error
+          }
+        },
+
+        addRecord: async (record) => {
+          set((state) => {
+            state.isLoading = true
+          })
+
+          try {
+            const response = await maintenanceApi.records.create(record)
             
+            set((state) => {
+              state.records.push(response.data)
+              state.isLoading = false
+            })
+
+            // Refresh schedules to get updated next due dates
+            get().fetchSchedules()
             get().filterRecords()
             get().calculateStats()
-          }),
+          } catch (error) {
+            console.error('Error creating record:', error)
+            set((state) => {
+              state.isLoading = false
+            })
+            throw error
+          }
+        },
 
-        updateRecord: (id, updates) =>
+        updateRecord: async (id, updates) => {
           set((state) => {
-            const index = state.records.findIndex((r) => r.id === id)
-            if (index !== -1) {
-              state.records[index] = {
-                ...state.records[index],
-                ...updates,
-                updatedAt: new Date().toISOString(),
-              }
-              get().filterRecords()
-              get().calculateStats()
-            }
-          }),
+            state.isLoading = true
+          })
 
-        verifyRecord: (id, adminNotes) =>
-          set((state) => {
-            const index = state.records.findIndex((r) => r.id === id)
-            if (index !== -1) {
-              state.records[index] = {
-                ...state.records[index],
-                adminVerified: true,
-                adminVerifiedAt: new Date().toISOString(),
-                adminNotes: adminNotes || "",
-                updatedAt: new Date().toISOString(),
+          try {
+            const response = await maintenanceApi.records.update(id, updates)
+            
+            set((state) => {
+              const index = state.records.findIndex((r) => r.id === id)
+              if (index !== -1) {
+                state.records[index] = response.data
               }
-              get().filterRecords()
-              get().calculateStats()
-            }
-          }),
+              state.isLoading = false
+            })
+
+            get().filterRecords()
+            get().calculateStats()
+          } catch (error) {
+            console.error('Error updating record:', error)
+            set((state) => {
+              state.isLoading = false
+            })
+            throw error
+          }
+        },
+
+        verifyRecord: async (id, adminNotes, adminVerifiedBy) => {
+          set((state) => {
+            state.isLoading = true
+          })
+
+          try {
+            const response = await maintenanceApi.records.verify(id, adminNotes, adminVerifiedBy)
+            
+            set((state) => {
+              const index = state.records.findIndex((r) => r.id === id)
+              if (index !== -1) {
+                state.records[index] = response.data
+              }
+              state.isLoading = false
+            })
+
+            get().filterRecords()
+            get().calculateStats()
+          } catch (error) {
+            console.error('Error verifying record:', error)
+            set((state) => {
+              state.isLoading = false
+            })
+            throw error
+          }
+        },
 
         setSearchTerm: (term) =>
           set((state) => {
@@ -188,6 +254,8 @@ export const useMaintenanceStore = create<MaintenanceState>()(
         filterSchedules: () =>
           set((state) => {
             const term = state.searchTerm.toLowerCase()
+            const now = new Date()
+            
             let filtered = state.schedules.filter(
               (schedule) =>
                 schedule.title.toLowerCase().includes(term) ||
@@ -198,7 +266,13 @@ export const useMaintenanceStore = create<MaintenanceState>()(
             )
 
             if (state.statusFilter !== "all") {
-              filtered = filtered.filter((schedule) => schedule.status === state.statusFilter)
+              filtered = filtered.filter((schedule) => {
+                // Check if schedule is overdue based on due date
+                const isOverdue = new Date(schedule.nextDueDate) < now
+                const actualStatus = isOverdue && schedule.status === "active" ? "overdue" : schedule.status
+                
+                return actualStatus === state.statusFilter
+              })
             }
 
             if (state.priorityFilter !== "all") {
@@ -241,20 +315,21 @@ export const useMaintenanceStore = create<MaintenanceState>()(
           })
 
           try {
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 800))
-
-            // Import sample data dynamically to avoid circular dependencies
-            const { sampleMaintenanceSchedules } = await import("@/data/maintenance-sample")
+            const response = await maintenanceApi.schedules.getAll({
+              limit: 100, // Get more records for now
+              sortBy: 'nextDueDate',
+              sortOrder: 'asc'
+            })
 
             set((state) => {
-              state.schedules = sampleMaintenanceSchedules
-              state.filteredSchedules = sampleMaintenanceSchedules
+              state.schedules = response.data.schedules
               state.isLoading = false
             })
 
+            get().filterSchedules()
             get().calculateStats()
           } catch (error) {
+            console.error('Error fetching schedules:', error)
             set((state) => {
               state.isLoading = false
             })
@@ -267,23 +342,38 @@ export const useMaintenanceStore = create<MaintenanceState>()(
           })
 
           try {
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 800))
-
-            // Import sample data dynamically to avoid circular dependencies
-            const { sampleMaintenanceRecords } = await import("@/data/maintenance-sample")
+            const response = await maintenanceApi.records.getAll({
+              limit: 100, // Get more records for now
+              sortBy: 'completedDate',
+              sortOrder: 'desc'
+            })
 
             set((state) => {
-              state.records = sampleMaintenanceRecords
-              state.filteredRecords = sampleMaintenanceRecords
+              state.records = response.data.records
               state.isLoading = false
             })
 
+            get().filterRecords()
             get().calculateStats()
           } catch (error) {
+            console.error('Error fetching records:', error)
             set((state) => {
               state.isLoading = false
             })
+          }
+        },
+
+        fetchStats: async () => {
+          try {
+            const response = await maintenanceApi.stats.getStats()
+            
+            set((state) => {
+              state.stats = response.data
+            })
+          } catch (error) {
+            console.error('Error fetching stats:', error)
+            // Keep calculated stats if API fails
+            get().calculateStats()
           }
         },
 
@@ -294,10 +384,16 @@ export const useMaintenanceStore = create<MaintenanceState>()(
             const now = new Date()
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
+            // Calculate overdue schedules
+            const overdueCount = schedules.filter((s) => {
+              const isOverdue = new Date(s.nextDueDate) < now
+              return s.status === "overdue" || (s.status === "active" && isOverdue)
+            }).length
+
             const stats: MaintenanceStats = {
               totalSchedules: schedules.length,
               activeSchedules: schedules.filter((s) => s.status === "active").length,
-              overdueSchedules: schedules.filter((s) => s.status === "overdue").length,
+              overdueSchedules: overdueCount,
               completedThisMonth: records.filter(
                 (r) => new Date(r.completedDate) >= monthStart && r.status === "completed"
               ).length,
@@ -311,12 +407,28 @@ export const useMaintenanceStore = create<MaintenanceState>()(
 
             state.stats = stats
           }),
+
+        // Initialize data on store creation
+        initialize: async () => {
+          try {
+            await Promise.all([
+              get().fetchSchedules(),
+              get().fetchRecords(),
+              get().fetchStats()
+            ])
+          } catch (error) {
+            console.error('Error initializing maintenance store:', error)
+          }
+        },
       })),
       {
         name: "maintenance-storage",
         partialize: (state) => ({
-          schedules: state.schedules,
-          records: state.records,
+          // Don't persist API data, always fetch fresh
+          searchTerm: state.searchTerm,
+          statusFilter: state.statusFilter,
+          priorityFilter: state.priorityFilter,
+          frequencyFilter: state.frequencyFilter,
         }),
       }
     ),
