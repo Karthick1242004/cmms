@@ -55,6 +55,14 @@ export default function ShiftDetailsPage() {
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [selectedShiftDetail, setSelectedShiftDetail] = useState<ShiftDetail | null>(null)
 
+  // Filter state
+  const [filters, setFilters] = useState({
+    department: "all",
+    shiftType: "all",
+    status: "all",
+    location: "all",
+  })
+
   // Form state
   const [employeeName, setEmployeeName] = useState("")
   const [email, setEmail] = useState("")
@@ -120,25 +128,66 @@ export default function ShiftDetailsPage() {
     }
   )
 
-  // Filter shift details based on search term
+  // Filter shift details based on search term and filters
   const filteredShiftDetails = useMemo(() => {
     const shiftDetails = shiftDetailsData?.data?.shiftDetails || []
     
-    if (!debouncedSearchTerm.trim()) {
-      return shiftDetails
+    let filtered = shiftDetails
+
+    // Apply search filter
+    if (debouncedSearchTerm.trim()) {
+      filtered = filtered.filter(
+        (shift) =>
+          shift.employeeName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          shift.email.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          shift.department.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          shift.role.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          shift.shiftType.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          shift.location.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          shift.supervisor.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      )
+    }
+
+    // Apply filters
+    if (filters.department && filters.department !== "all") {
+      filtered = filtered.filter(shift => shift.department === filters.department)
+    }
+    if (filters.shiftType && filters.shiftType !== "all") {
+      filtered = filtered.filter(shift => shift.shiftType === filters.shiftType)
+    }
+    if (filters.status && filters.status !== "all") {
+      filtered = filtered.filter(shift => shift.status === filters.status)
+    }
+    if (filters.location && filters.location !== "all") {
+      filtered = filtered.filter(shift => shift.location === filters.location)
     }
     
-    return shiftDetails.filter(
-      (shift) =>
-        shift.employeeName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        shift.email.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        shift.department.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        shift.role.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        shift.shiftType.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        shift.location.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        shift.supervisor.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-    )
-  }, [shiftDetailsData?.data?.shiftDetails, debouncedSearchTerm])
+    return filtered
+  }, [shiftDetailsData?.data?.shiftDetails, debouncedSearchTerm, filters])
+
+  // Handle filter changes
+  const handleFilterChange = (filterKey: string, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterKey]: value
+    }))
+  }
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      department: "all",
+      shiftType: "all",
+      status: "all",
+      location: "all",
+    })
+    setSearchTerm("")
+  }
+
+  // Get unique values for filter options
+  const shiftDetails = shiftDetailsData?.data?.shiftDetails || []
+  const uniqueCategories = Array.from(new Set(shiftDetails.map(shift => shift.department))).filter(Boolean)
+  const uniqueLocations = Array.from(new Set(shiftDetails.map(shift => shift.location))).filter(Boolean)
 
   useEffect(() => {
     if (selectedShiftDetail) {
@@ -512,16 +561,96 @@ export default function ShiftDetailsPage() {
         </Dialog>
       )}
 
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search employees..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search employees..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button variant="outline" onClick={clearFilters}>
+            Clear Filters
+          </Button>
         </div>
+
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <Label>Department</Label>
+            <Select value={filters.department} onValueChange={(value) => handleFilterChange("department", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All departments" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All departments</SelectItem>
+                {DEPARTMENTS.map((dept) => (
+                  <SelectItem key={dept} value={dept}>
+                    {dept}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Shift Type</Label>
+            <Select value={filters.shiftType} onValueChange={(value) => handleFilterChange("shiftType", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All shift types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All shift types</SelectItem>
+                {SHIFT_TYPES.map((shift) => (
+                  <SelectItem key={shift.value} value={shift.value}>
+                    {shift.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={filters.status} onValueChange={(value) => handleFilterChange("status", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="on-leave">On Leave</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Location</Label>
+            <Select value={filters.location} onValueChange={(value) => handleFilterChange("location", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All locations</SelectItem>
+                {LOCATIONS.map((loc) => (
+                  <SelectItem key={loc} value={loc}>
+                    {loc}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Results count */}
+      <div className="text-sm text-muted-foreground">
+        Showing {filteredShiftDetails.length} of {shiftDetailsData?.data?.shiftDetails?.length || 0} employees
       </div>
 
       <div className="border rounded-lg overflow-x-auto">
@@ -647,7 +776,7 @@ export default function ShiftDetailsPage() {
         </Table>
       </div>
       {filteredShiftDetails.length === 0 && !isLoading && (
-        <p className="text-center text-muted-foreground py-8">No shift details found matching your search.</p>
+        <p className="text-center text-muted-foreground py-8">No shift details found matching your search and filters.</p>
       )}
     </div>
   )

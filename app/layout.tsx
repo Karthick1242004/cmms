@@ -24,9 +24,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className} >
+      <body className={inter.className} suppressHydrationWarning>
         <NextAuthSessionProvider >
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <QueryProvider>
             <AuthGuard>
           <ClientLayout>{children}</ClientLayout>

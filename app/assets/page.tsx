@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -47,19 +47,87 @@ export default function AllAssetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
 
+  // Filter state
+  const [filters, setFilters] = useState({
+    type: "all",
+    status: "all",
+    location: "all",
+    condition: "all",
+    priceRange: "all",
+  })
+
   useEffect(() => {
     // In a real app, fetch data. Here we use sample data.
     const allAssets = sampleAssetDetails.map(mapAssetDetailToAsset)
     setAssets(allAssets)
   }, [])
 
-  const filteredAssets = assets.filter(
-    (asset) =>
-      asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (asset.assetTag && asset.assetTag.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      asset.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.location.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Get unique values for filter options
+  const uniqueTypes = Array.from(new Set(assets.map(asset => asset.type))).filter(Boolean)
+  const uniqueLocations = Array.from(new Set(assets.map(asset => asset.location))).filter(Boolean)
+  const uniqueConditions = Array.from(new Set(assets.map(asset => asset.condition))).filter(Boolean)
+
+  // Filter assets based on search term and filters
+  const filteredAssets = useMemo(() => {
+    let filtered = assets
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(
+        (asset) =>
+          asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (asset.assetTag && asset.assetTag.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          asset.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          asset.location.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Apply filters
+    if (filters.type && filters.type !== "all") {
+      filtered = filtered.filter(asset => asset.type === filters.type)
+    }
+    if (filters.status && filters.status !== "all") {
+      filtered = filtered.filter(asset => asset.status === filters.status)
+    }
+    if (filters.location && filters.location !== "all") {
+      filtered = filtered.filter(asset => asset.location === filters.location)
+    }
+    if (filters.condition && filters.condition !== "all") {
+      filtered = filtered.filter(asset => asset.condition === filters.condition)
+    }
+    if (filters.priceRange && filters.priceRange !== "all") {
+      const [min, max] = filters.priceRange.split('-').map(Number)
+      filtered = filtered.filter(asset => {
+        const price = asset.purchasePrice || 0
+        if (max) {
+          return price >= min && price <= max
+        }
+        return price >= min
+      })
+    }
+
+    return filtered
+  }, [assets, searchTerm, filters])
+
+  // Handle filter changes
+  const handleFilterChange = (filterKey: string, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterKey]: value
+    }))
+  }
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      type: "all",
+      status: "all",
+      location: "all",
+      condition: "all",
+      priceRange: "all",
+    })
+    setSearchTerm("")
+  }
 
   // TODO: Implement actual edit/delete handlers
   const handleEdit = (asset: Asset) => console.log("Edit asset:", asset.id)
@@ -137,22 +205,122 @@ export default function AllAssetsPage() {
           </Dialog>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search all assets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        {/* Search and Filters */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search all assets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button variant="outline" onClick={clearFilters}>
+              Clear Filters
+            </Button>
           </div>
-          {/* Add more filters if needed */}
+
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="space-y-2">
+              <Label>Asset Type</Label>
+              <Select value={filters.type} onValueChange={(value) => handleFilterChange("type", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  {uniqueTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={filters.status} onValueChange={(value) => handleFilterChange("status", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="operational">Operational</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="out-of-service">Out of Service</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <Select value={filters.location} onValueChange={(value) => handleFilterChange("location", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All locations</SelectItem>
+                  {uniqueLocations.map((location) => (
+                    <SelectItem key={location} value={location}>
+                      {location}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Condition</Label>
+              <Select value={filters.condition} onValueChange={(value) => handleFilterChange("condition", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All conditions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All conditions</SelectItem>
+                  {uniqueConditions.map((condition) => (
+                    <SelectItem key={condition} value={condition}>
+                      {condition.charAt(0).toUpperCase() + condition.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Price Range</Label>
+              <Select value={filters.priceRange} onValueChange={(value) => handleFilterChange("priceRange", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All prices" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All prices</SelectItem>
+                  <SelectItem value="0-1000">$0 - $1,000</SelectItem>
+                  <SelectItem value="1001-5000">$1,001 - $5,000</SelectItem>
+                  <SelectItem value="5001-10000">$5,001 - $10,000</SelectItem>
+                  <SelectItem value="10001-50000">$10,001 - $50,000</SelectItem>
+                  <SelectItem value="50001">$50,000+</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Results count */}
+        <div className="text-sm text-muted-foreground">
+          Showing {filteredAssets.length} of {assets.length} assets
         </div>
       </PageHeader>
 
       <PageContent>
         <AssetListTable assets={filteredAssets} onEdit={handleEdit} onDelete={handleDelete} />
+        {filteredAssets.length === 0 && assets.length > 0 && (
+          <p className="text-center text-muted-foreground py-8">No assets found matching your search and filters.</p>
+        )}
       </PageContent>
     </PageLayout>
   )

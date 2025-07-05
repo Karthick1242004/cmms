@@ -17,6 +17,8 @@ import {
   PenToolIcon as Tool,
   ShieldCheck,
   LayoutDashboard,
+  Shield,
+  Calendar,
   type LucideIcon,
 } from "lucide-react"
 
@@ -37,8 +39,10 @@ const iconMap: Record<string, LucideIcon> = {
   ShoppingCart,
   HardHat,
   Tool,
-  ShieldCheck, // Added
-  LayoutDashboard, // Added
+  ShieldCheck,
+  LayoutDashboard,
+  Shield,
+  Calendar,
 }
 
 export function getIcon(iconName: string): LucideIcon {

@@ -87,4 +87,9 @@ export const navigation: NavigationItem[] = [
       // Add other admin links here if needed
     ],
   },
+  {
+    name: "Safety Inspection",
+    href: "/safety-inspection",
+    iconName: "Shield",
+  },
 ]

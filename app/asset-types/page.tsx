@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Edit, Trash2, Cog, Calendar } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const initialAssetTypes = [
   {
@@ -80,13 +81,89 @@ export default function AssetTypesPage() {
     avgLifespan: "",
   })
 
-  const filteredAssetTypes = assetTypes.filter(
-    (assetType) =>
-      assetType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assetType.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assetType.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assetType.description.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Filter state
+  const [filters, setFilters] = useState({
+    category: "all",
+    status: "all",
+    maintenanceInterval: "all",
+    assetCount: "all",
+    lifespan: "all",
+  })
+
+  // Get unique categories for filter options
+  const uniqueCategories = Array.from(new Set(assetTypes.map(asset => asset.category))).filter(Boolean)
+
+  const filteredAssetTypes = useMemo(() => {
+    let filtered = assetTypes
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(
+        (assetType) =>
+          assetType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assetType.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assetType.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assetType.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Apply filters
+    if (filters.category && filters.category !== "all") {
+      filtered = filtered.filter(asset => asset.category === filters.category)
+    }
+    if (filters.status && filters.status !== "all") {
+      filtered = filtered.filter(asset => asset.status === filters.status)
+    }
+    if (filters.maintenanceInterval && filters.maintenanceInterval !== "all") {
+      const [min, max] = filters.maintenanceInterval.split('-').map(Number)
+      filtered = filtered.filter(asset => {
+        if (max) {
+          return asset.maintenanceInterval >= min && asset.maintenanceInterval <= max
+        }
+        return asset.maintenanceInterval >= min
+      })
+    }
+    if (filters.assetCount && filters.assetCount !== "all") {
+      const [min, max] = filters.assetCount.split('-').map(Number)
+      filtered = filtered.filter(asset => {
+        if (max) {
+          return asset.assetCount >= min && asset.assetCount <= max
+        }
+        return asset.assetCount >= min
+      })
+    }
+    if (filters.lifespan && filters.lifespan !== "all") {
+      const [min, max] = filters.lifespan.split('-').map(Number)
+      filtered = filtered.filter(asset => {
+        if (max) {
+          return asset.avgLifespan >= min && asset.avgLifespan <= max
+        }
+        return asset.avgLifespan >= min
+      })
+    }
+
+    return filtered
+  }, [assetTypes, searchTerm, filters])
+
+  // Handle filter changes
+  const handleFilterChange = (filterKey: string, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterKey]: value
+    }))
+  }
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      category: "all",
+      status: "all",
+      maintenanceInterval: "all",
+      assetCount: "all",
+      lifespan: "all",
+    })
+    setSearchTerm("")
+  }
 
   const resetForm = () => {
     setFormData({
@@ -265,16 +342,110 @@ export default function AssetTypesPage() {
         </Dialog>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search asset types..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search asset types..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button variant="outline" onClick={clearFilters}>
+            Clear Filters
+          </Button>
         </div>
+
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select value={filters.category} onValueChange={(value) => handleFilterChange("category", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+                             <SelectContent>
+                 <SelectItem value="all">All categories</SelectItem>
+                 {uniqueCategories.map((category) => (
+                   <SelectItem key={category} value={category}>
+                     {category}
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={filters.status} onValueChange={(value) => handleFilterChange("status", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+                             <SelectContent>
+                 <SelectItem value="all">All statuses</SelectItem>
+                 <SelectItem value="active">Active</SelectItem>
+                 <SelectItem value="inactive">Inactive</SelectItem>
+               </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Maintenance Interval</Label>
+            <Select value={filters.maintenanceInterval} onValueChange={(value) => handleFilterChange("maintenanceInterval", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All intervals" />
+              </SelectTrigger>
+                             <SelectContent>
+                 <SelectItem value="all">All intervals</SelectItem>
+                 <SelectItem value="0-30">0-30 days</SelectItem>
+                 <SelectItem value="31-60">31-60 days</SelectItem>
+                 <SelectItem value="61-90">61-90 days</SelectItem>
+                 <SelectItem value="91-180">91-180 days</SelectItem>
+                 <SelectItem value="181">180+ days</SelectItem>
+               </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Asset Count</Label>
+            <Select value={filters.assetCount} onValueChange={(value) => handleFilterChange("assetCount", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All counts" />
+              </SelectTrigger>
+                             <SelectContent>
+                 <SelectItem value="all">All counts</SelectItem>
+                 <SelectItem value="0-5">0-5 assets</SelectItem>
+                 <SelectItem value="6-10">6-10 assets</SelectItem>
+                 <SelectItem value="11-20">11-20 assets</SelectItem>
+                 <SelectItem value="21">20+ assets</SelectItem>
+               </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Lifespan</Label>
+            <Select value={filters.lifespan} onValueChange={(value) => handleFilterChange("lifespan", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All lifespans" />
+              </SelectTrigger>
+                             <SelectContent>
+                 <SelectItem value="all">All lifespans</SelectItem>
+                 <SelectItem value="0-10">0-10 years</SelectItem>
+                 <SelectItem value="11-20">11-20 years</SelectItem>
+                 <SelectItem value="21-30">21-30 years</SelectItem>
+                 <SelectItem value="31">30+ years</SelectItem>
+               </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Results count */}
+      <div className="text-sm text-muted-foreground">
+        Showing {filteredAssetTypes.length} of {assetTypes.length} asset types
       </div>
 
       <div className="border rounded-lg">
@@ -349,6 +520,10 @@ export default function AssetTypesPage() {
           </TableBody>
         </Table>
       </div>
+      
+      {filteredAssetTypes.length === 0 && (
+        <p className="text-center text-muted-foreground py-8">No asset types found matching your search and filters.</p>
+      )}
     </div>
   )
 }
