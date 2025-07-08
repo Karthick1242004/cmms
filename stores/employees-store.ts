@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { devtools, persist } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
 import type { Employee, EmployeesState } from "@/types/employee"
+import { employeesApi } from "@/lib/employees-api"
 
 export const useEmployeesStore = create<EmployeesState>()(
   devtools(
@@ -20,30 +21,53 @@ export const useEmployeesStore = create<EmployeesState>()(
             state.filteredEmployees = employees
           }),
 
-        addEmployee: (employee) =>
-          set((state) => {
-            const newEmployee = {
-              ...employee,
-              id: Math.max(...state.employees.map((e) => e.id), 0) + 1,
+        addEmployee: async (employee) => {
+          try {
+            const response = await employeesApi.create(employee)
+            if (response.success) {
+              set((state) => {
+                state.employees.push(response.data)
+                get().filterEmployees()
+              })
             }
-            state.employees.push(newEmployee)
-            get().filterEmployees()
-          }),
+          } catch (error) {
+            console.error('Error creating employee:', error)
+            throw error
+          }
+        },
 
-        updateEmployee: (id, updates) =>
-          set((state) => {
-            const index = state.employees.findIndex((e) => e.id === id)
-            if (index !== -1) {
-              state.employees[index] = { ...state.employees[index], ...updates }
-              get().filterEmployees()
+        updateEmployee: async (id, updates) => {
+          try {
+            const response = await employeesApi.update(id, updates)
+            if (response.success) {
+              set((state) => {
+                const index = state.employees.findIndex((e) => e.id === id)
+                if (index !== -1) {
+                  state.employees[index] = response.data
+                  get().filterEmployees()
+                }
+              })
             }
-          }),
+          } catch (error) {
+            console.error('Error updating employee:', error)
+            throw error
+          }
+        },
 
-        deleteEmployee: (id) =>
-          set((state) => {
-            state.employees = state.employees.filter((e) => e.id !== id)
-            get().filterEmployees()
-          }),
+        deleteEmployee: async (id) => {
+          try {
+            const response = await employeesApi.delete(id)
+            if (response.success) {
+              set((state) => {
+                state.employees = state.employees.filter((e) => e.id !== id)
+                get().filterEmployees()
+              })
+            }
+          } catch (error) {
+            console.error('Error deleting employee:', error)
+            throw error
+          }
+        },
 
         setSearchTerm: (term) =>
           set((state) => {
@@ -83,57 +107,17 @@ export const useEmployeesStore = create<EmployeesState>()(
           })
 
           try {
-            await new Promise((resolve) => setTimeout(resolve, 800))
-
-            const mockEmployees: Employee[] = [
-              {
-                id: 1,
-                name: "John Smith",
-                email: "john.smith@company.com",
-                phone: "+1 (555) 123-4567",
-                department: "Maintenance",
-                role: "Manager",
-                status: "active",
-                avatar: "/placeholder.svg?height=32&width=32",
-              },
-              {
-                id: 2,
-                name: "Sarah Johnson",
-                email: "sarah.johnson@company.com",
-                phone: "+1 (555) 234-5678",
-                department: "HVAC",
-                role: "Technician",
-                status: "active",
-                avatar: "/placeholder.svg?height=32&width=32",
-              },
-              {
-                id: 3,
-                name: "Mike Wilson",
-                email: "mike.wilson@company.com",
-                phone: "+1 (555) 345-6789",
-                department: "Electrical",
-                role: "Senior Technician",
-                status: "active",
-                avatar: "/placeholder.svg?height=32&width=32",
-              },
-              {
-                id: 4,
-                name: "Lisa Brown",
-                email: "lisa.brown@company.com",
-                phone: "+1 (555) 456-7890",
-                department: "Plumbing",
-                role: "Technician",
-                status: "inactive",
-                avatar: "/placeholder.svg?height=32&width=32",
-              },
-            ]
-
-            set((state) => {
-              state.employees = mockEmployees
-              state.filteredEmployees = mockEmployees
-              state.isLoading = false
-            })
+            const response = await employeesApi.getAll({ limit: 100 })
+            if (response.success) {
+              set((state) => {
+                state.employees = response.data.employees
+                state.filteredEmployees = response.data.employees
+                state.isLoading = false
+              })
+              get().filterEmployees()
+            }
           } catch (error) {
+            console.error('Error fetching employees:', error)
             set((state) => {
               state.isLoading = false
             })

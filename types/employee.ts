@@ -1,5 +1,5 @@
 export interface Employee {
-  id: number
+  id: string
   name: string
   email: string
   phone: string
@@ -7,6 +7,8 @@ export interface Employee {
   role: string
   status: "active" | "inactive"
   avatar?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface EmployeesState {
@@ -19,9 +21,9 @@ export interface EmployeesState {
 
   // Actions
   setEmployees: (employees: Employee[]) => void
-  addEmployee: (employee: Omit<Employee, "id">) => void
-  updateEmployee: (id: number, updates: Partial<Employee>) => void
-  deleteEmployee: (id: number) => void
+  addEmployee: (employee: Omit<Employee, "id" | "createdAt" | "updatedAt">) => Promise<void>
+  updateEmployee: (id: string, updates: Partial<Omit<Employee, "id" | "createdAt" | "updatedAt">>) => Promise<void>
+  deleteEmployee: (id: string) => Promise<void>
   setSearchTerm: (term: string) => void
   setLoading: (loading: boolean) => void
   setDialogOpen: (open: boolean) => void
