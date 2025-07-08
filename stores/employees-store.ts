@@ -40,13 +40,8 @@ export const useEmployeesStore = create<EmployeesState>()(
           try {
             const response = await employeesApi.update(id, updates)
             if (response.success) {
-              set((state) => {
-                const index = state.employees.findIndex((e) => e.id === id)
-                if (index !== -1) {
-                  state.employees[index] = response.data
-                  get().filterEmployees()
-                }
-              })
+              // Refetch all employees to ensure data consistency
+              await get().fetchEmployees()
             }
           } catch (error) {
             console.error('Error updating employee:', error)
@@ -58,10 +53,8 @@ export const useEmployeesStore = create<EmployeesState>()(
           try {
             const response = await employeesApi.delete(id)
             if (response.success) {
-              set((state) => {
-                state.employees = state.employees.filter((e) => e.id !== id)
-                get().filterEmployees()
-              })
+              // Refetch all employees to ensure data consistency
+              await get().fetchEmployees()
             }
           } catch (error) {
             console.error('Error deleting employee:', error)
