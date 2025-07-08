@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Badge } from "@/components/ui/badge"
 import { Bell, ChevronDown } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
@@ -41,27 +41,27 @@ export const AppSidebar = memo(function AppSidebar() {
 
   return (
     <TooltipProvider delayDuration={100}>
-      <Card className="w-64 h-full flex flex-col shadow-lg border-r bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        {/* Header */}
-        <div className="p-4 border-b">
-          <div className="flex flex-col space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                CMMS
-              </h2>
-              <Badge
-                variant="outline"
-                className="animate-pulse bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300"
-              >
-                v1.0
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">Maintenance Management</p>
+      <div className="h-full flex flex-col bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 border-r shadow-lg">
+      {/* Header */}
+      <SidebarHeader className="p-4 border-b bg-card/50">
+        <div className="flex flex-col space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+              CMMS
+            </h2>
+            <Badge
+              variant="outline"
+              className="animate-pulse bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300"
+            >
+              v1.0
+            </Badge>
           </div>
+          <p className="text-sm text-muted-foreground">Maintenance Management</p>
         </div>
+      </SidebarHeader>
 
-        {/* Navigation */}
-        <CardContent className="flex-1 p-2 overflow-y-auto custom-scrollbar">
+      {/* Navigation */}
+      <SidebarContent className="flex-1 p-2 overflow-y-auto custom-scrollbar bg-card/30">
           <div className="space-y-1">
             <div className="px-2 py-1">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Navigation</h3>
@@ -234,10 +234,10 @@ export const AppSidebar = memo(function AppSidebar() {
               )
             })}
           </div>
-        </CardContent>
+        </SidebarContent>
 
         {/* Footer */}
-        <div className="p-4 border-t bg-muted/30">
+        <SidebarFooter className="p-4 border-t bg-card/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Avatar className="h-8 w-8 ring-2 ring-primary/20">
@@ -258,8 +258,8 @@ export const AppSidebar = memo(function AppSidebar() {
               <ModeToggle />
             </div>
           </div>
-        </div>
-      </Card>
+        </SidebarFooter>
+      </div>
     </TooltipProvider>
   )
 })

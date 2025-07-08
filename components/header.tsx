@@ -19,6 +19,7 @@ import { useEffect, useState } from "react"
 import { useAuthStore } from "@/stores/auth-store"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export function Header() {
   const router = useRouter()
@@ -61,6 +62,7 @@ export function Header() {
     >
       <div className="flex h-14 items-center px-6">
         <div className="flex-1 flex items-center space-x-4">
+          <SidebarTrigger className="h-8 w-8" />
           <div className="relative w-96 transition-all duration-300 hover:w-[28rem]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
