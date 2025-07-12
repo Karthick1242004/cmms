@@ -4,6 +4,7 @@ export interface StockTransaction {
   time: string
   partNumber: string
   partName: string
+  department: string // Department where this transaction occurred
   transactionType: "in" | "out" | "adjustment"
   quantity: number
   unitPrice: number

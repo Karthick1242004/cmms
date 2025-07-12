@@ -4,6 +4,12 @@ import { immer } from "zustand/middleware/immer"
 import type { MaintenanceSchedule, MaintenanceRecord, MaintenanceState, MaintenanceStats } from "@/types/maintenance"
 import { maintenanceApi } from "@/lib/maintenance-api"
 
+// Helper function to get auth token for API calls
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('auth-token')
+  return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
+
 export const useMaintenanceStore = create<MaintenanceState>()(
   devtools(
     persist(
@@ -315,6 +321,8 @@ export const useMaintenanceStore = create<MaintenanceState>()(
           })
 
           try {
+            // Note: Department filtering is now handled by the API based on user authentication
+            // No need to pass department explicitly as it's extracted from the user session/token
             const response = await maintenanceApi.schedules.getAll({
               limit: 100, // Get more records for now
               sortBy: 'nextDueDate',
@@ -342,6 +350,8 @@ export const useMaintenanceStore = create<MaintenanceState>()(
           })
 
           try {
+            // Note: Department filtering is now handled by the API based on user authentication
+            // No need to pass department explicitly as it's extracted from the user session/token
             const response = await maintenanceApi.records.getAll({
               limit: 100, // Get more records for now
               sortBy: 'completedDate',

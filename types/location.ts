@@ -4,6 +4,7 @@ export interface Location {
   code: string
   type: string
   description: string
+  department: string // Department responsible for this location
   parentLocation: string
   assetCount: number
   address: string

@@ -1,7 +1,8 @@
 import { create } from "zustand"
 import { devtools, persist } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
-import type { Asset, AssetsState } from "@/types/asset"
+import type { Asset, AssetsState, AssetDetail } from "@/types/asset"
+import { assetsApi } from "@/lib/assets-api"
 
 export const useAssetsStore = create<AssetsState>()(
   devtools(
@@ -22,30 +23,94 @@ export const useAssetsStore = create<AssetsState>()(
             state.filteredAssets = assets
           }),
 
-        addAsset: (asset) =>
-          set((state) => {
-            const newAsset = {
-              ...asset,
-              id: Math.max(...state.assets.map((a) => a.id), 0) + 1,
+        addAsset: async (asset) => {
+          try {
+            const response = await assetsApi.createAsset(asset)
+            if (response.success && response.data) {
+              // Transform the response data to Asset format
+              const transformedAsset: Asset = {
+                id: response.data.id,
+                name: response.data.assetName,
+                assetTag: response.data.serialNo,
+                type: response.data.category,
+                location: response.data.location || "N/A",
+                department: response.data.department,
+                status: response.data.statusText?.toLowerCase().includes("online") || response.data.statusText?.toLowerCase().includes("operational")
+                  ? "operational"
+                  : response.data.statusText?.toLowerCase().includes("maintenance")
+                    ? "maintenance"
+                    : response.data.statusText?.toLowerCase().includes("stock") || response.data.statusText?.toLowerCase().includes("available")
+                      ? "available"
+                      : "out-of-service",
+                purchaseDate: response.data.purchaseDate || response.data.commissioningDate,
+                purchasePrice: response.data.purchasePrice || response.data.costPrice,
+                condition: response.data.condition || "good",
+                imageSrc: response.data.imageSrc,
+                categoryName: response.data.categoryName,
+              }
+              
+              set((state) => {
+                state.assets.push(transformedAsset)
+                get().filterAssets()
+              })
             }
-            state.assets.push(newAsset)
-            get().filterAssets()
-          }),
+          } catch (error) {
+            console.error('Error adding asset:', error)
+          }
+        },
 
-        updateAsset: (id, updates) =>
-          set((state) => {
-            const index = state.assets.findIndex((a) => a.id === id)
-            if (index !== -1) {
-              state.assets[index] = { ...state.assets[index], ...updates }
-              get().filterAssets()
+        updateAsset: async (id, updates) => {
+          try {
+            const response = await assetsApi.updateAsset(id, updates)
+            if (response.success && response.data) {
+              // Transform the response data to Asset format
+              const transformedAsset: Asset = {
+                id: response.data.id,
+                name: response.data.assetName,
+                assetTag: response.data.serialNo,
+                type: response.data.category,
+                location: response.data.location || "N/A",
+                department: response.data.department,
+                status: response.data.statusText?.toLowerCase().includes("online") || response.data.statusText?.toLowerCase().includes("operational")
+                  ? "operational"
+                  : response.data.statusText?.toLowerCase().includes("maintenance")
+                    ? "maintenance"
+                    : response.data.statusText?.toLowerCase().includes("stock") || response.data.statusText?.toLowerCase().includes("available")
+                      ? "available"
+                      : "out-of-service",
+                purchaseDate: response.data.purchaseDate || response.data.commissioningDate,
+                purchasePrice: response.data.purchasePrice || response.data.costPrice,
+                condition: response.data.condition || "good",
+                imageSrc: response.data.imageSrc,
+                categoryName: response.data.categoryName,
+              }
+
+              set((state) => {
+                const index = state.assets.findIndex((a) => a.id === id)
+                if (index !== -1) {
+                  state.assets[index] = transformedAsset
+                  get().filterAssets()
+                }
+              })
             }
-          }),
+          } catch (error) {
+            console.error('Error updating asset:', error)
+          }
+        },
 
-        deleteAsset: (id) =>
-          set((state) => {
-            state.assets = state.assets.filter((a) => a.id !== id)
-            get().filterAssets()
-          }),
+        deleteAsset: async (id) => {
+          try {
+            const response = await assetsApi.deleteAsset(id)
+            if (response.success) {
+              set((state) => {
+                state.assets = state.assets.filter((a) => a.id !== id)
+                get().filterAssets()
+              })
+            }
+          } catch (error) {
+            console.error('Error deleting asset:', error)
+          }
+        },
 
         setSearchTerm: (term) =>
           set((state) => {
@@ -102,68 +167,55 @@ export const useAssetsStore = create<AssetsState>()(
             state.filteredAssets = filtered
           }),
 
-        fetchAssets: async () => {
+        fetchAssets: async (filters = {}) => {
           set((state) => {
             state.isLoading = true
           })
 
           try {
-            await new Promise((resolve) => setTimeout(resolve, 800))
+            const response = await assetsApi.getAssets(filters)
+            
+            if (response.success && response.data) {
+              // Transform AssetDetail to Asset for list views
+              const transformedAssets: Asset[] = response.data.assets.map((detail: AssetDetail) => ({
+                id: detail.id,
+                name: detail.assetName,
+                assetTag: detail.serialNo, // Or assetTag if available directly
+                type: detail.category, // Main category like "Equipment"
+                location: detail.location || "N/A",
+                status:
+                  detail.statusText?.toLowerCase().includes("online") || detail.statusText?.toLowerCase().includes("operational")
+                    ? "operational"
+                    : detail.statusText?.toLowerCase().includes("maintenance")
+                      ? "maintenance"
+                      : detail.statusText?.toLowerCase().includes("stock") || detail.statusText?.toLowerCase().includes("available")
+                        ? "available"
+                        : "out-of-service",
+                purchaseDate: detail.purchaseDate || detail.commissioningDate,
+                purchasePrice: detail.purchasePrice || detail.costPrice,
+                condition: detail.condition || "good",
+                imageSrc: detail.imageSrc,
+                categoryName: detail.categoryName,
+              }))
 
-            const mockAssets: Asset[] = [
-              {
-                id: 1,
-                name: "HVAC Unit #1",
-                assetTag: "HVAC-001",
-                type: "HVAC System",
-                location: "Building A - Floor 1",
-                status: "operational",
-                purchaseDate: "2022-01-15",
-                purchasePrice: 15000,
-                condition: "good",
-              },
-              {
-                id: 2,
-                name: "Generator #3",
-                assetTag: "GEN-003",
-                type: "Power Generation",
-                location: "Building B - Basement",
-                status: "maintenance",
-                purchaseDate: "2021-06-20",
-                purchasePrice: 25000,
-                condition: "fair",
-              },
-              {
-                id: 3,
-                name: "Air Handler #2",
-                assetTag: "AH-002",
-                type: "HVAC System",
-                location: "Building A - Floor 2",
-                status: "operational",
-                purchaseDate: "2023-03-10",
-                purchasePrice: 8000,
-                condition: "excellent",
-              },
-              {
-                id: 4,
-                name: "Elevator #1",
-                assetTag: "ELEV-001",
-                type: "Transportation",
-                location: "Building A - Main",
-                status: "out-of-service",
-                purchaseDate: "2020-11-05",
-                purchasePrice: 45000,
-                condition: "poor",
-              },
-            ]
-
-            set((state) => {
-              state.assets = mockAssets
-              state.filteredAssets = mockAssets
-              state.isLoading = false
-            })
+              set((state) => {
+                state.assets = transformedAssets
+                state.filteredAssets = transformedAssets
+                state.isLoading = false
+              })
+            } else {
+              console.error('Failed to fetch assets:', response.error || response.message)
+              set((state) => {
+                state.assets = []
+                state.filteredAssets = []
+                state.isLoading = false
+              })
+            }
           } catch (error) {
+            console.error('Error fetching assets:', error)
             set((state) => {
+              state.assets = []
+              state.filteredAssets = []
               state.isLoading = false
             })
           }

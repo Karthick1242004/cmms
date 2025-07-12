@@ -299,6 +299,8 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
   fetchSchedules: async () => {
     set({ isLoading: true })
     try {
+      // Note: Department filtering is now handled by the API based on user authentication
+      // No need to pass department explicitly as it's extracted from the user session/token
       const response = await safetyInspectionSchedulesApi.getAll()
       set({ schedules: response.data.schedules, isLoading: false })
       get().filterSchedules()
@@ -315,6 +317,8 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
   fetchRecords: async () => {
     set({ isLoading: true })
     try {
+      // Note: Department filtering is now handled by the API based on user authentication
+      // No need to pass department explicitly as it's extracted from the user session/token
       const response = await safetyInspectionRecordsApi.getAll()
       set({ records: response.data.records, isLoading: false })
       get().filterRecords()

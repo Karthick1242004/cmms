@@ -4,6 +4,7 @@ export interface AssetType {
   code: string
   category: string
   description: string
+  department: string // Department that this asset type belongs to
   maintenanceInterval: number
   assetCount: number
   avgLifespan: number

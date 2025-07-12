@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area" // Added for horizontal scroll
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import {
   AlertTriangle,
   CheckCircle2,
@@ -34,10 +34,7 @@ import {
 import type { AssetDetail } from "@/types/asset"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { Skeleton } from "@/components/ui/skeleton"
-import { sampleAssetDetails } from "@/data/assets-sample" // Import sample data
-
-// Mock data - replace with actual data fetching
-// const mockAssetDetail: AssetDetail = { ... } // Using sampleAssetDetails now
+import { assetsApi } from "@/lib/assets-api"
 
 interface DetailItemProps {
   label: string
@@ -63,14 +60,29 @@ export default function AssetDetailPage() {
   const assetId = params.id as string
   const [asset, setAsset] = useState<AssetDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const fetchAsset = async () => {
     setIsLoading(true)
-    setTimeout(() => {
-      const foundAsset = sampleAssetDetails.find((a) => a.id === assetId) || sampleAssetDetails[0] // Fallback to first for demo
-      setAsset(foundAsset)
+      setError(null)
+      
+      try {
+        const response = await assetsApi.getAssetById(assetId)
+        
+        if (response.success && response.data) {
+          setAsset(response.data)
+        } else {
+          setError(response.error || 'Failed to fetch asset details')
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
       setIsLoading(false)
-    }, 1000)
+      }
+    }
+
+    fetchAsset()
   }, [assetId])
 
   if (isLoading) {
@@ -114,6 +126,22 @@ export default function AssetDetailPage() {
               </div>
             </CardContent>
           </Card>
+        </PageContent>
+      </PageLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <PageLayout>
+        <PageHeader>
+          <h1 className="text-2xl font-bold">Error Loading Asset</h1>
+        </PageHeader>
+        <PageContent>
+          <p className="text-red-600">{error}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
         </PageContent>
       </PageLayout>
     )
@@ -281,24 +309,293 @@ export default function AssetDetailPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
-              {tabItems
-                .filter((t) => t !== "General")
-                .map((tabValue) => (
-                  <TabsContent
-                    key={tabValue}
-                    value={tabValue.toLowerCase().replace(/[^a-z0-9]/gi, "")}
-                    className="mt-4"
-                  >
+
+              {/* Parts/BOM Tab */}
+              <TabsContent value="partsbom" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Parts/BOM</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {asset.partsBOM && asset.partsBOM.length > 0 ? (
+                      <div className="space-y-4">
+                        {asset.partsBOM.map((part: any, index: number) => (
+                          <div key={part.id || index} className="border rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <DetailItem label="Part Name" value={part.partName} />
+                              <DetailItem label="Part Number" value={part.partNumber} />
+                              <DetailItem label="Quantity" value={part.quantity} />
+                              <DetailItem label="Unit Cost" value={`USD ${part.unitCost?.toFixed(2)}`} />
+                              <DetailItem label="Supplier" value={part.supplier} />
+                              <DetailItem label="Last Replaced" value={part.lastReplaced} />
+                              <DetailItem label="Next Maintenance" value={part.nextMaintenanceDate} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No parts/BOM data available for this asset.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Metering/Events Tab */}
+              <TabsContent value="meteringevents" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Metering/Events</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {asset.meteringEvents && asset.meteringEvents.length > 0 ? (
+                      <div className="space-y-4">
+                        {asset.meteringEvents.map((event: any, index: number) => (
+                          <div key={event.id || index} className="border rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <DetailItem label="Event Type" value={event.eventType} />
+                              <DetailItem label="Reading" value={`${event.reading} ${event.unit}`} />
+                              <DetailItem label="Recorded Date" value={event.recordedDate} />
+                              <DetailItem label="Recorded By" value={event.recordedBy} />
+                              <DetailItem label="Notes" value={event.notes} className="md:col-span-2 lg:col-span-3" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No metering/events data available for this asset.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Personnel Tab */}
+              <TabsContent value="personnel" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Personnel</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {asset.personnel && asset.personnel.length > 0 ? (
+                      <div className="space-y-4">
+                        {asset.personnel.map((person: any, index: number) => (
+                          <div key={person.id || index} className="border rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <DetailItem label="Name" value={person.name} />
+                              <DetailItem label="Role" value={person.role} />
+                              <DetailItem label="Email" value={person.email} />
+                              <DetailItem label="Phone" value={person.phone} />
+                              <DetailItem label="Assigned Date" value={person.assignedDate} />
+                              <DetailItem label="Responsibilities" value={person.responsibilities?.join(', ')} className="md:col-span-2 lg:col-span-3" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No personnel data available for this asset.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Warranty Tab */}
+              <TabsContent value="warranty" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Warranty</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {asset.warrantyDetails ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <DetailItem label="Provider" value={asset.warrantyDetails.provider} />
+                          <DetailItem label="Type" value={asset.warrantyDetails.type} />
+                          <DetailItem label="Start Date" value={asset.warrantyDetails.startDate} />
+                          <DetailItem label="End Date" value={asset.warrantyDetails.endDate} />
+                          <DetailItem label="Coverage" value={asset.warrantyDetails.coverage} />
+                          <DetailItem label="Contact Info" value={asset.warrantyDetails.contactInfo} />
+                          <DetailItem label="Terms" value={asset.warrantyDetails.terms} className="md:col-span-2 lg:col-span-3" />
+                        </div>
+                        {asset.warrantyDetails.claimHistory && asset.warrantyDetails.claimHistory.length > 0 && (
+                          <div className="mt-6">
+                            <h4 className="font-semibold mb-3">Claim History</h4>
+                            <div className="space-y-2">
+                              {asset.warrantyDetails.claimHistory.map((claim: any, index: number) => (
+                                <div key={claim.claimNumber || index} className="border rounded-lg p-3">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                                    <DetailItem label="Claim Number" value={claim.claimNumber} />
+                                    <DetailItem label="Date" value={claim.date} />
+                                    <DetailItem label="Issue" value={claim.issue} />
+                                    <DetailItem label="Status" value={claim.status} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No warranty data available for this asset.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Businesses Tab */}
+              <TabsContent value="businesses" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Businesses</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {asset.businesses && asset.businesses.length > 0 ? (
+                      <div className="space-y-4">
+                        {asset.businesses.map((business: any, index: number) => (
+                          <div key={business.id || index} className="border rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <DetailItem label="Name" value={business.name} />
+                              <DetailItem label="Type" value={business.type} />
+                              <DetailItem label="Contact Person" value={business.contactPerson} />
+                              <DetailItem label="Phone" value={business.phone} />
+                              <DetailItem label="Email" value={business.email} />
+                              <DetailItem label="Address" value={business.address} className="md:col-span-2 lg:col-span-3" />
+                              <DetailItem label="Relationship" value={business.relationship} className="md:col-span-2 lg:col-span-3" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No business data available for this asset.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Files Tab */}
+              <TabsContent value="files" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Files</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {asset.files && asset.files.length > 0 ? (
+                      <div className="space-y-4">
+                        {asset.files.map((file: any, index: number) => (
+                          <div key={file.id || index} className="border rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <DetailItem label="File Name" value={file.name} />
+                              <DetailItem label="Type" value={file.type} />
+                              <DetailItem label="Category" value={file.category} />
+                              <DetailItem label="Size" value={file.size} />
+                              <DetailItem label="Upload Date" value={file.uploadDate} />
+                              <DetailItem label="Uploaded By" value={file.uploadedBy} />
+                              <DetailItem label="Description" value={file.description} className="md:col-span-2 lg:col-span-3" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No files available for this asset.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Financials Tab */}
+              <TabsContent value="financials" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Financials</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {asset.financials ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <DetailItem label="Total Cost of Ownership" value={`USD ${asset.financials.totalCostOfOwnership?.toFixed(2)}`} />
+                        <DetailItem label="Annual Operating Cost" value={`USD ${asset.financials.annualOperatingCost?.toFixed(2)}`} />
+                        <DetailItem label="Depreciation Rate" value={`${(asset.financials.depreciationRate * 100)?.toFixed(1)}%`} />
+                        <DetailItem label="Current Book Value" value={`USD ${asset.financials.currentBookValue?.toFixed(2)}`} />
+                        <DetailItem label="Maintenance Cost YTD" value={`USD ${asset.financials.maintenanceCostYTD?.toFixed(2)}`} />
+                        <DetailItem label="Fuel Cost YTD" value={`USD ${asset.financials.fuelCostYTD?.toFixed(2)}`} />
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No financial data available for this asset.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Purchase Tab */}
+              <TabsContent value="purchase" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Purchase</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {asset.purchaseInfo ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <DetailItem label="Purchase Order Number" value={asset.purchaseInfo.purchaseOrderNumber} />
+                        <DetailItem label="Vendor" value={asset.purchaseInfo.vendor} />
+                        <DetailItem label="Requested By" value={asset.purchaseInfo.requestedBy} />
+                        <DetailItem label="Approved By" value={asset.purchaseInfo.approvedBy} />
+                        <DetailItem label="Purchase Date" value={asset.purchaseInfo.purchaseDate} />
+                        <DetailItem label="Delivery Date" value={asset.purchaseInfo.deliveryDate} />
+                        <DetailItem label="Invoice Number" value={asset.purchaseInfo.invoiceNumber} />
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No purchase data available for this asset.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Associated Customer Tab */}
+              <TabsContent value="associatedcustomer" className="mt-4">
                     <Card>
                       <CardHeader>
-                        <CardTitle className="capitalize">{tabValue}</CardTitle>
+                    <CardTitle className="text-lg">Associated Customer</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-muted-foreground">Details for {tabValue} will be displayed here.</p>
+                    {asset.associatedCustomer ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <DetailItem label="Customer Name" value={asset.associatedCustomer.name} />
+                        <DetailItem label="Type" value={asset.associatedCustomer.type} />
+                        <DetailItem label="Contact Person" value={asset.associatedCustomer.contactPerson} />
+                        <DetailItem label="Email" value={asset.associatedCustomer.email} />
+                        <DetailItem label="Projects" value={asset.associatedCustomer.projects?.join(', ')} className="md:col-span-2 lg:col-span-3" />
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No associated customer data available for this asset.</p>
+                    )}
                       </CardContent>
                     </Card>
                   </TabsContent>
-                ))}
+
+              {/* Log Tab */}
+              <TabsContent value="log" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Log</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {asset.log && asset.log.length > 0 ? (
+                      <div className="space-y-4">
+                        {asset.log.map((logEntry: any, index: number) => (
+                          <div key={logEntry.id || index} className="border rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                              <DetailItem label="Date" value={logEntry.date} />
+                              <DetailItem label="Action" value={logEntry.action} />
+                              <DetailItem label="Performed By" value={logEntry.performedBy} />
+                              <DetailItem label="Category" value={logEntry.category} />
+                              <DetailItem label="Details" value={logEntry.details} className="md:col-span-2 lg:col-span-4" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No log data available for this asset.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>

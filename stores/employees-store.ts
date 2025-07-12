@@ -100,6 +100,8 @@ export const useEmployeesStore = create<EmployeesState>()(
           })
 
           try {
+            // Note: Department filtering is now handled by the API based on user authentication
+            // No need to pass department explicitly as it's extracted from the user session/token
             const response = await employeesApi.getAll({ limit: 100 })
             if (response.success) {
               set((state) => {

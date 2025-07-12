@@ -142,6 +142,8 @@ export const useShiftDetailsStore = create<ShiftDetailsState>()(
             state.isLoading = true
           })
 
+          // Note: Department filtering is now handled by the API based on user authentication
+          // No need to pass department explicitly as it's extracted from the user session/token
           const response = await ShiftDetailsAPI.getAllShiftDetails({
             limit: 100 // Get all shift details for now
           })

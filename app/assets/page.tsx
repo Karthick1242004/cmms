@@ -17,35 +17,20 @@ import { Plus, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
-import { sampleAssetDetails } from "@/data/assets-sample"
-import type { Asset, AssetDetail } from "@/types/asset"
-
-// Helper to map AssetDetail to simpler Asset for list views
-const mapAssetDetailToAsset = (detail: AssetDetail): Asset => ({
-  id: detail.id,
-  name: detail.assetName,
-  assetTag: detail.serialNo, // Or assetTag if available directly
-  type: detail.category, // Main category like "Equipment"
-  location: detail.location || "N/A",
-  status:
-    detail.statusText.toLowerCase().includes("online") || detail.statusText.toLowerCase().includes("operational")
-      ? "operational"
-      : detail.statusText.toLowerCase().includes("maintenance")
-        ? "maintenance"
-        : detail.statusText.toLowerCase().includes("stock") || detail.statusText.toLowerCase().includes("available")
-          ? "available"
-          : "out-of-service",
-  purchaseDate: detail.purchaseDate || detail.commissioningDate,
-  purchasePrice: detail.purchasePrice || detail.costPrice,
-  condition: detail.condition || "good",
-  imageSrc: detail.imageSrc,
-  categoryName: detail.categoryName,
-})
+import { useAssetsStore } from "@/stores/assets-store"
+import type { Asset } from "@/types/asset"
 
 export default function AllAssetsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [assets, setAssets] = useState<Asset[]>([])
+  
+  // Use the assets store
+  const { 
+    assets, 
+    isLoading, 
+    fetchAssets,
+    deleteAsset 
+  } = useAssetsStore()
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -57,9 +42,8 @@ export default function AllAssetsPage() {
   })
 
   useEffect(() => {
-    // In a real app, fetch data. Here we use sample data.
-    const allAssets = sampleAssetDetails.map(mapAssetDetailToAsset)
-    setAssets(allAssets)
+    // Fetch assets from API
+    fetchAssets()
   }, [])
 
   // Get unique values for filter options
@@ -131,7 +115,17 @@ export default function AllAssetsPage() {
 
   // TODO: Implement actual edit/delete handlers
   const handleEdit = (asset: Asset) => console.log("Edit asset:", asset.id)
-  const handleDelete = (assetId: string) => console.log("Delete asset:", assetId)
+  const handleDelete = async (assetId: string) => {
+    if (confirm('Are you sure you want to delete this asset?')) {
+      try {
+        await deleteAsset(assetId)
+        // Refresh the list after deletion
+        await fetchAssets()
+      } catch (error) {
+        console.error('Error deleting asset:', error)
+      }
+    }
+  }
 
   return (
     <PageLayout>
@@ -317,9 +311,23 @@ export default function AllAssetsPage() {
       </PageHeader>
 
       <PageContent>
-        <AssetListTable assets={filteredAssets} onEdit={handleEdit} onDelete={handleDelete} />
-        {filteredAssets.length === 0 && assets.length > 0 && (
-          <p className="text-center text-muted-foreground py-8">No assets found matching your search and filters.</p>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-2 text-muted-foreground">Loading assets...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <AssetListTable assets={filteredAssets} onEdit={handleEdit} onDelete={handleDelete} />
+            {filteredAssets.length === 0 && assets.length > 0 && (
+              <p className="text-center text-muted-foreground py-8">No assets found matching your search and filters.</p>
+            )}
+            {filteredAssets.length === 0 && assets.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">No assets found. Try adding some assets first.</p>
+            )}
+          </>
         )}
       </PageContent>
     </PageLayout>

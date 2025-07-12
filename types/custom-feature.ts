@@ -50,6 +50,7 @@ export interface CustomFeatureDefinition {
   name: string // e.g., "Safety Inspections", "Equipment Calibration"
   slug: string // URL-friendly slug, e.g., "safety-inspections"
   iconName?: string // Lucide icon name
+  department: string // Department that this custom feature belongs to
   fields: FeatureField[]
   uiSchema: {
     listView: FeatureUISchemaView

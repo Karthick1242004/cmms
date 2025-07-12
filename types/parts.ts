@@ -4,6 +4,7 @@ export interface Part {
   name: string
   description: string
   category: string
+  department: string // Department that manages this part inventory
   linkedAssets: string[]
   stockQuantity: number
   minStockLevel: number

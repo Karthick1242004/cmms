@@ -5,6 +5,7 @@ export interface SafetyInspectionSchedule {
   assetTag?: string
   assetType: string
   location: string
+  department: string // Department responsible for this safety inspection
   title: string
   description?: string
   frequency: "daily" | "weekly" | "monthly" | "quarterly" | "annually" | "custom"
@@ -48,6 +49,7 @@ export interface SafetyInspectionRecord {
   scheduleId: string
   assetId: string
   assetName: string
+  department: string // Department responsible for this safety inspection record
   completedDate: string
   startTime: string
   endTime: string

@@ -5,6 +5,7 @@ export interface Asset {
   assetTag?: string // Made optional as not all assets might have it (e.g. products)
   type: string // This will be the main category like "Equipment", "Facilities"
   location: string
+  department: string // Department that owns/manages this asset
   status: "operational" | "maintenance" | "out-of-service" | "available" | "in stock" | "new" // Expanded status
   purchaseDate?: string
   purchasePrice?: number
@@ -32,6 +33,7 @@ export interface AssetDetail {
   outOfOrder?: "Yes" | "No"
   isActive?: "Yes" | "No"
   category: string // Main category for filtering: "Equipment", "Facilities", "Products", "Tools"
+  department: string // Department that owns/manages this asset
   size?: string
   costPrice?: number
   productionHoursDaily?: number
@@ -83,9 +85,9 @@ export interface AssetsState {
   // currentAssetDetail: AssetDetail | null // For detail page state management
 
   setAssets: (assets: Asset[]) => void
-  addAsset: (asset: Omit<Asset, "id"> & { id?: string }) => void // Allow optional ID for new
-  updateAsset: (id: string, updates: Partial<Asset>) => void
-  deleteAsset: (id: string) => void
+  addAsset: (asset: Omit<Asset, "id"> & { id?: string }) => Promise<void> // Allow optional ID for new
+  updateAsset: (id: string, updates: Partial<Asset>) => Promise<void>
+  deleteAsset: (id: string) => Promise<void>
   setSearchTerm: (term: string) => void
   setStatusFilter: (status: string) => void
   setConditionFilter: (condition: string) => void
@@ -93,6 +95,6 @@ export interface AssetsState {
   setDialogOpen: (open: boolean) => void
   setSelectedAsset: (asset: Asset | null) => void
   filterAssets: (category?: string) => void // Add optional category for filtering
-  fetchAssets: (category?: string) => Promise<void> // Add optional category
+  fetchAssets: (filters?: any) => Promise<void> // Add optional filters parameter
   // fetchAssetDetail: (id: string) => Promise<AssetDetail | null>
 }

@@ -1,13 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import { getUserContext } from '@/lib/auth-helpers';
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
+    // Get user context for department filtering
+    const user = await getUserContext(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
+    }
+
     // Extract query parameters
     const url = new URL(request.url);
+    
+    // Add department filter for non-admin users
+    if (user.role !== 'admin') {
+      url.searchParams.set('department', user.department);
+    }
+    
     const queryParams = url.searchParams.toString();
     const queryString = queryParams ? `?${queryParams}` : '';
 
@@ -41,7 +57,21 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get user context for department assignment
+    const user = await getUserContext(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
+
+    // Add department to data (use user's department unless admin specifies different)
+    if (!body.department || user.role !== 'admin') {
+      body.department = user.department;
+    }
 
     // Validate required fields
     if (!body.employeeName || !body.email || !body.phone || !body.department) {

@@ -4,6 +4,7 @@ export interface Part {
   sku: string
   quantity: number
   location?: string
+  department: string // Department that manages this part
   description?: string
   price?: number
   minStockLevel?: number
