@@ -21,11 +21,11 @@ export const navigation: NavigationItem[] = [
     href: "/shift-details",
     iconName: "Calendar",
   },
-  {
-    name: "Asset Types",
-    href: "/asset-types",
-    iconName: "Cog",
-  },
+  // {
+  //   name: "Asset Types",
+  //   href: "/asset-types",
+  //   iconName: "Cog",
+  // },
   {
     name: "Locations",
     href: "/locations",
@@ -54,7 +54,7 @@ export const navigation: NavigationItem[] = [
     iconName: "Settings2",
   },
   {
-    name: "Stock History",
+    name: "Inventory",
     href: "/stock-history",
     iconName: "Archive",
   },
@@ -74,19 +74,19 @@ export const navigation: NavigationItem[] = [
     iconName: "UserCog",
   },
   // New Admin Section for Feature Builder
-  {
-    name: "Admin", // This could be a parent item if more admin features are added
-    href: "/admin", // Or directly to feature-builder if it's the only one
-    iconName: "ShieldCheck", // Example icon for Admin
-    subItems: [
-      {
-        name: "Feature Builder",
-        href: "/admin/feature-builder",
-        iconName: "LayoutDashboard", // Using a generic dashboard/layout icon
-      },
-      // Add other admin links here if needed
-    ],
-  },
+  // {
+  //   name: "Admin", // This could be a parent item if more admin features are added
+  //   href: "/admin", // Or directly to feature-builder if it's the only one
+  //   iconName: "ShieldCheck", // Example icon for Admin
+  //   subItems: [
+  //     {
+  //       name: "Feature Builder",
+  //       href: "/admin/feature-builder",
+  //       iconName: "LayoutDashboard", // Using a generic dashboard/layout icon
+  //     },
+  //     // Add other admin links here if needed
+  //   ],
+  // },
   {
     name: "Safety Inspection",
     href: "/safety-inspection",

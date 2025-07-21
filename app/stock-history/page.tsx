@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Search, Download, Filter, AlertTriangle, Package, Wrench } from "lucide-react"
+import { Search, AlertTriangle, Package, Wrench } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAssetsStore } from "@/stores/assets-store"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useDebounce } from "@/hooks/use-debounce"
+import { PartsInventoryReport } from "@/components/parts-inventory-report"
 
 interface PartInventory {
   id: string
@@ -34,6 +35,7 @@ export default function PartsInventoryPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [stockFilter, setStockFilter] = useState("all")
   const [partsInventory, setPartsInventory] = useState<PartInventory[]>([])
+  const [isLoadingParts, setIsLoadingParts] = useState(false)
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
   
   const { assets, isLoading, fetchAssets } = useAssetsStore()
@@ -43,60 +45,60 @@ export default function PartsInventoryPage() {
     fetchAssets({ limit: 500 }) // Get all assets
   }, [fetchAssets])
 
-  // Transform assets' partsBOM into inventory data
+  // Transform assets' partsBOM into inventory data from real API data
   useEffect(() => {
-    if (assets.length > 0) {
-      const inventory: PartInventory[] = []
-      
-      assets.forEach(asset => {
-        // Check if asset has partsBOM data (this would come from the database)
-        // For now we'll create some sample data based on asset data
-        if (asset.type === "Equipment" || asset.type === "Facilities" || asset.type === "Tools") {
-          // Create sample parts for each asset based on its type
-          const sampleParts = generateSamplePartsForAsset(asset)
-          inventory.push(...sampleParts)
+    const fetchAssetsWithBOM = async () => {
+      if (assets.length > 0) {
+        setIsLoadingParts(true)
+        const inventory: PartInventory[] = []
+        
+        try {
+          // Fetch detailed asset data to get partsBOM
+          for (const asset of assets) {
+            try {
+              const response = await fetch(`/api/assets/${asset.id}`)
+              if (response.ok) {
+                const assetDetailData = await response.json()
+                const assetDetail = assetDetailData.data
+                
+                // Extract partsBOM from the detailed asset data
+                if (assetDetail && assetDetail.partsBOM && Array.isArray(assetDetail.partsBOM)) {
+                  const partsFromAsset = assetDetail.partsBOM.map((part: any) => ({
+                    id: `${asset.id}-${part.id || part.partNumber}`,
+                    partName: part.partName,
+                    partNumber: part.partNumber,
+                    quantity: part.quantity || 0,
+                    unitCost: part.unitCost || 0,
+                    supplier: part.supplier || "Unknown",
+                    lastReplaced: part.lastReplaced,
+                    nextMaintenanceDate: part.nextMaintenanceDate,
+                    assetId: asset.id,
+                    assetName: asset.name,
+                    assetType: asset.type,
+                    location: asset.location,
+                    department: asset.department || "General",
+                    isLowStock: (part.quantity || 0) <= 1, // Low stock if quantity is 1 or less
+                  }))
+                  
+                  inventory.push(...partsFromAsset)
+                }
+              }
+            } catch (error) {
+              console.error(`Error fetching asset details for ${asset.id}:`, error)
+            }
+          }
+          
+          setPartsInventory(inventory)
+        } catch (error) {
+          console.error('Error fetching parts inventory:', error)
+        } finally {
+          setIsLoadingParts(false)
         }
-      })
-      
-      setPartsInventory(inventory)
+      }
     }
+
+    fetchAssetsWithBOM()
   }, [assets])
-
-  // Generate sample parts based on asset type (in real implementation, this would come from API)
-  const generateSamplePartsForAsset = (asset: any): PartInventory[] => {
-    const baseParts = {
-      Equipment: [
-        { partName: "Hydraulic Fluid", partNumber: "HF-001", quantity: 15, unitCost: 25.50, supplier: "Caterpillar Parts" },
-        { partName: "Air Filter", partNumber: "AF-002", quantity: 8, unitCost: 45.00, supplier: "OEM Filters" },
-        { partName: "Engine Oil", partNumber: "EO-003", quantity: 25, unitCost: 12.75, supplier: "Mobil 1" },
-      ],
-      Facilities: [
-        { partName: "HVAC Filter", partNumber: "HV-001", quantity: 12, unitCost: 35.00, supplier: "HVAC Supply Co" },
-        { partName: "Door Seal", partNumber: "DS-002", quantity: 0, unitCost: 18.50, supplier: "Building Parts" },
-        { partName: "Light Bulb", partNumber: "LB-003", quantity: 50, unitCost: 5.25, supplier: "Electrical Supply" },
-      ],
-      Tools: [
-        { partName: "Drill Bit Set", partNumber: "DB-001", quantity: 3, unitCost: 28.00, supplier: "Tool Supply Co" },
-        { partName: "Safety Gloves", partNumber: "SG-002", quantity: 0, unitCost: 8.75, supplier: "Safety Equipment" },
-        { partName: "Lubricant", partNumber: "LU-003", quantity: 7, unitCost: 15.00, supplier: "Industrial Supplies" },
-      ],
-    }
-
-    const partsForType = baseParts[asset.type as keyof typeof baseParts] || []
-    
-    return partsForType.map((part, index) => ({
-      id: `${asset.id}-part-${index}`,
-      ...part,
-      lastReplaced: "15-Jan-2024",
-      nextMaintenanceDate: "15-Apr-2024",
-      assetId: asset.id,
-      assetName: asset.name,
-      assetType: asset.type,
-      location: asset.location,
-      department: asset.department || "General",
-      isLowStock: part.quantity <= 1, // Low stock if quantity is 1 or less
-    }))
-  }
 
   const filteredInventory = partsInventory.filter((part) => {
     const matchesSearch =
@@ -132,11 +134,15 @@ export default function PartsInventoryPage() {
     return <Package className="h-4 w-4 text-green-600" />
   }
 
-  if (isLoading) {
+
+
+  if (isLoading || isLoadingParts) {
     return (
       <div className="flex justify-center items-center py-12">
         <LoadingSpinner />
-        <span className="ml-2 text-muted-foreground">Loading parts inventory...</span>
+        <span className="ml-2 text-muted-foreground">
+          {isLoading ? "Loading assets..." : "Loading parts inventory from asset BOM data..."}
+        </span>
       </div>
     )
   }
@@ -148,10 +154,13 @@ export default function PartsInventoryPage() {
           <h1 className="text-3xl font-bold tracking-tight">Parts Inventory</h1>
           <p className="text-muted-foreground">Track all parts and components from asset Bill of Materials (BOM)</p>
         </div>
-        <Button>
-          <Download className="mr-2 h-4 w-4" />
-          Export Inventory
-        </Button>
+        <PartsInventoryReport
+          filteredInventory={filteredInventory}
+          totalParts={totalParts}
+          lowStockParts={lowStockParts}
+          totalValue={totalValue}
+          uniqueDepartments={uniqueDepartments}
+        />
       </div>
 
       {/* Summary Cards */}
@@ -239,7 +248,7 @@ export default function PartsInventoryPage() {
           </TableHeader>
           <TableBody>
             {filteredInventory.map((part) => (
-              <TableRow key={part.id} className={part.isLowStock ? "bg-red-50" : ""}>
+              <TableRow key={part.id} className={part.isLowStock ? "bg-red-800 border-red-200" : ""}>
                 <TableCell>
                   <div>
                     <div className="font-medium">{part.partName}</div>
