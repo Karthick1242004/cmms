@@ -101,33 +101,6 @@ export const employeesApi = {
   },
 };
 
-// Legacy class-based API for backward compatibility
-export class EmployeesAPI {
-  static async getAllEmployees(params: EmployeeQueryParams = {}): Promise<EmployeeResponse> {
-    return employeesApi.getAll(params);
-  }
-
-  static async getEmployeeById(id: string): Promise<SingleEmployeeResponse> {
-    return employeesApi.getById(id);
-  }
-
-  static async createEmployee(employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<SingleEmployeeResponse> {
-    return employeesApi.create(employee);
-  }
-
-  static async updateEmployee(id: string, updates: Partial<Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>>): Promise<SingleEmployeeResponse> {
-    return employeesApi.update(id, updates);
-  }
-
-  static async deleteEmployee(id: string): Promise<{ success: boolean; message: string }> {
-    return employeesApi.delete(id);
-  }
-
-  static async getEmployeeStats(): Promise<EmployeeStatsResponse> {
-    return employeesApi.getStats();
-  }
-}
-
 // Export types for use in components
 export type {
   EmployeeResponse,
@@ -135,3 +108,5 @@ export type {
   EmployeeStatsResponse,
   EmployeeQueryParams,
 }; 
+
+export { employeesApi as default } 

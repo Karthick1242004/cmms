@@ -113,8 +113,12 @@ export default function AllAssetsPage() {
     setSearchTerm("")
   }
 
-  // TODO: Implement actual edit/delete handlers
-  const handleEdit = (asset: Asset) => console.log("Edit asset:", asset.id)
+  // Asset action handlers
+  const handleEdit = (asset: Asset) => {
+    // TODO: Implement edit functionality - could navigate to edit page or open edit dialog
+    console.log("Edit asset:", asset.id)
+  }
+  
   const handleDelete = async (assetId: string) => {
     if (confirm('Are you sure you want to delete this asset?')) {
       try {

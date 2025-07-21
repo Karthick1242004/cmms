@@ -3,49 +3,46 @@
 import { useState, useEffect } from "react"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
-import { sampleAssetDetails } from "@/data/assets-sample"
-import type { Asset, AssetDetail } from "@/types/asset"
+import { useAssetsStore } from "@/stores/assets-store"
+import type { Asset } from "@/types/asset"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
-
-const mapAssetDetailToAsset = (detail: AssetDetail): Asset => ({
-  id: detail.id,
-  name: detail.assetName,
-  assetTag: detail.serialNo,
-  type: detail.category,
-  location: detail.location || "N/A",
-  status: detail.statusText.toLowerCase().includes("stock") ? "in stock" : "available",
-  purchaseDate: detail.purchaseDate,
-  purchasePrice: detail.purchasePrice || detail.costPrice,
-  condition: detail.condition || "new",
-  imageSrc: detail.imageSrc,
-  categoryName: detail.categoryName,
-})
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { useDebounce } from "@/hooks/use-debounce"
 
 export default function ProductsAssetsPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [assets, setAssets] = useState<Asset[]>([])
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  
+  const { 
+    assets, 
+    isLoading, 
+    fetchAssets 
+  } = useAssetsStore()
 
+  // Fetch assets on component mount and when search changes
   useEffect(() => {
-    const productAssets = sampleAssetDetails.filter((asset) => asset.category === "Products").map(mapAssetDetailToAsset)
-    setAssets(productAssets)
-  }, [])
+    fetchAssets({
+      category: 'Products', // Filter for products only
+      search: debouncedSearchTerm || undefined,
+      limit: 100 // Get all product assets
+    })
+  }, [fetchAssets, debouncedSearchTerm])
 
-  const filteredAssets = assets.filter(
-    (asset) =>
-      asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (asset.assetTag && asset.assetTag.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      asset.location.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Filter assets to only show products (as backup to API filtering)
+  const productAssets = assets.filter(asset => asset.type === 'Products')
 
   return (
     <PageLayout>
       <PageHeader>
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-            <p className="text-muted-foreground">Manage all product inventory and stock.</p>
+            <h1 className="text-3xl font-bold tracking-tight">Product Assets</h1>
+            <p className="text-muted-foreground">
+              Manage all product inventory and stock. {productAssets.length} assets found.
+            </p>
           </div>
+          {/* Add button can be added here if needed */}
         </div>
         <div className="flex items-center space-x-2">
           <div className="relative flex-1 max-w-sm">
@@ -60,7 +57,14 @@ export default function ProductsAssetsPage() {
         </div>
       </PageHeader>
       <PageContent>
-        <AssetListTable assets={filteredAssets} />
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <LoadingSpinner />
+            <span className="ml-2 text-muted-foreground">Loading product assets...</span>
+          </div>
+        ) : (
+          <AssetListTable assets={productAssets} />
+        )}
       </PageContent>
     </PageLayout>
   )

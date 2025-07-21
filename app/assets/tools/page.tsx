@@ -3,49 +3,46 @@
 import { useState, useEffect } from "react"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
-import { sampleAssetDetails } from "@/data/assets-sample"
-import type { Asset, AssetDetail } from "@/types/asset"
+import { useAssetsStore } from "@/stores/assets-store"
+import type { Asset } from "@/types/asset"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
-
-const mapAssetDetailToAsset = (detail: AssetDetail): Asset => ({
-  id: detail.id,
-  name: detail.assetName,
-  assetTag: detail.serialNo,
-  type: detail.category,
-  location: detail.location || "N/A",
-  status: detail.statusText.toLowerCase().includes("available") ? "available" : "out-of-service",
-  purchaseDate: detail.purchaseDate || detail.commissioningDate,
-  purchasePrice: detail.purchasePrice || detail.costPrice,
-  condition: detail.condition || "good",
-  imageSrc: detail.imageSrc,
-  categoryName: detail.categoryName,
-})
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { useDebounce } from "@/hooks/use-debounce"
 
 export default function ToolsAssetsPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [assets, setAssets] = useState<Asset[]>([])
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  
+  const { 
+    assets, 
+    isLoading, 
+    fetchAssets 
+  } = useAssetsStore()
 
+  // Fetch assets on component mount and when search changes
   useEffect(() => {
-    const toolAssets = sampleAssetDetails.filter((asset) => asset.category === "Tools").map(mapAssetDetailToAsset)
-    setAssets(toolAssets)
-  }, [])
+    fetchAssets({
+      category: 'Tools', // Filter for tools only
+      search: debouncedSearchTerm || undefined,
+      limit: 100 // Get all tool assets
+    })
+  }, [fetchAssets, debouncedSearchTerm])
 
-  const filteredAssets = assets.filter(
-    (asset) =>
-      asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (asset.assetTag && asset.assetTag.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      asset.location.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Filter assets to only show tools (as backup to API filtering)
+  const toolAssets = assets.filter(asset => asset.type === 'Tools')
 
   return (
     <PageLayout>
       <PageHeader>
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Tools</h1>
-            <p className="text-muted-foreground">Manage all tools and small equipment.</p>
+            <h1 className="text-3xl font-bold tracking-tight">Tools Assets</h1>
+            <p className="text-muted-foreground">
+              Manage all tools and equipment. {toolAssets.length} assets found.
+            </p>
           </div>
+          {/* Add button can be added here if needed */}
         </div>
         <div className="flex items-center space-x-2">
           <div className="relative flex-1 max-w-sm">
@@ -60,7 +57,14 @@ export default function ToolsAssetsPage() {
         </div>
       </PageHeader>
       <PageContent>
-        <AssetListTable assets={filteredAssets} />
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <LoadingSpinner />
+            <span className="ml-2 text-muted-foreground">Loading tool assets...</span>
+          </div>
+        ) : (
+          <AssetListTable assets={toolAssets} />
+        )}
       </PageContent>
     </PageLayout>
   )

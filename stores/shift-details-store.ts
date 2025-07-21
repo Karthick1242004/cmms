@@ -2,7 +2,7 @@ import { create } from "zustand"
 import { devtools } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
 import type { ShiftDetail, ShiftDetailsState } from "@/types/shift-detail"
-import { ShiftDetailsAPI } from "@/lib/shift-details-api"
+import { shiftDetailsApi } from "@/lib/shift-details-api"
 
 export const useShiftDetailsStore = create<ShiftDetailsState>()(
   devtools(
@@ -26,7 +26,7 @@ export const useShiftDetailsStore = create<ShiftDetailsState>()(
             state.isLoading = true
           })
 
-          const response = await ShiftDetailsAPI.createShiftDetail(shiftDetailData)
+          const response = await shiftDetailsApi.create(shiftDetailData)
           if (response.success) {
             set((state) => {
               state.shiftDetails.push(response.data)
@@ -49,7 +49,7 @@ export const useShiftDetailsStore = create<ShiftDetailsState>()(
             state.isLoading = true
           })
 
-          const response = await ShiftDetailsAPI.updateShiftDetail(id, updates)
+          const response = await shiftDetailsApi.update(id, updates)
           if (response.success) {
             set((state) => {
               const index = state.shiftDetails.findIndex((s) => s.id === id)
@@ -75,7 +75,7 @@ export const useShiftDetailsStore = create<ShiftDetailsState>()(
             state.isLoading = true
           })
 
-          const response = await ShiftDetailsAPI.deleteShiftDetail(id)
+          const response = await shiftDetailsApi.delete(id)
           if (response.success) {
             set((state) => {
               state.shiftDetails = state.shiftDetails.filter((s) => s.id !== id)
@@ -144,7 +144,7 @@ export const useShiftDetailsStore = create<ShiftDetailsState>()(
 
           // Note: Department filtering is now handled by the API based on user authentication
           // No need to pass department explicitly as it's extracted from the user session/token
-          const response = await ShiftDetailsAPI.getAllShiftDetails({
+          const response = await shiftDetailsApi.getAll({
             limit: 100 // Get all shift details for now
           })
           

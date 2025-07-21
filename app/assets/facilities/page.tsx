@@ -3,42 +3,34 @@
 import { useState, useEffect } from "react"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
-import { sampleAssetDetails } from "@/data/assets-sample"
-import type { Asset, AssetDetail } from "@/types/asset"
+import { useAssetsStore } from "@/stores/assets-store"
+import type { Asset } from "@/types/asset"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
-
-const mapAssetDetailToAsset = (detail: AssetDetail): Asset => ({
-  id: detail.id,
-  name: detail.assetName,
-  assetTag: detail.serialNo,
-  type: detail.category,
-  location: detail.location || "N/A",
-  status: detail.statusText.toLowerCase().includes("operational") ? "operational" : "maintenance",
-  purchaseDate: detail.purchaseDate || detail.commissioningDate,
-  purchasePrice: detail.purchasePrice || detail.costPrice,
-  condition: detail.condition || "good",
-  imageSrc: detail.imageSrc,
-  categoryName: detail.categoryName,
-})
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { useDebounce } from "@/hooks/use-debounce"
 
 export default function FacilitiesAssetsPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [assets, setAssets] = useState<Asset[]>([])
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  
+  const { 
+    assets, 
+    isLoading, 
+    fetchAssets 
+  } = useAssetsStore()
 
+  // Fetch assets on component mount and when search changes
   useEffect(() => {
-    const facilityAssets = sampleAssetDetails
-      .filter((asset) => asset.category === "Facilities")
-      .map(mapAssetDetailToAsset)
-    setAssets(facilityAssets)
-  }, [])
+    fetchAssets({
+      category: 'Facilities', // Filter for facilities only
+      search: debouncedSearchTerm || undefined,
+      limit: 100 // Get all facilities assets
+    })
+  }, [fetchAssets, debouncedSearchTerm])
 
-  const filteredAssets = assets.filter(
-    (asset) =>
-      asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (asset.assetTag && asset.assetTag.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      asset.location.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Filter assets to only show facilities (as backup to API filtering)
+  const facilityAssets = assets.filter(asset => asset.type === 'Facilities')
 
   return (
     <PageLayout>
@@ -46,7 +38,9 @@ export default function FacilitiesAssetsPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Facilities Assets</h1>
-            <p className="text-muted-foreground">Manage all facility-related assets.</p>
+            <p className="text-muted-foreground">
+              Manage all facility-related assets. {facilityAssets.length} assets found.
+            </p>
           </div>
           {/* Add button can be added here if needed */}
         </div>
@@ -63,7 +57,14 @@ export default function FacilitiesAssetsPage() {
         </div>
       </PageHeader>
       <PageContent>
-        <AssetListTable assets={filteredAssets} />
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <LoadingSpinner />
+            <span className="ml-2 text-muted-foreground">Loading facilities assets...</span>
+          </div>
+        ) : (
+          <AssetListTable assets={facilityAssets} />
+        )}
       </PageContent>
     </PageLayout>
   )

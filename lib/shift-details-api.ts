@@ -99,29 +99,4 @@ export const shiftDetailsApi = {
   },
 }
 
-// Legacy class-based API for backward compatibility
-export class ShiftDetailsAPI {
-  static async getAllShiftDetails(filters: ShiftDetailFilters = {}): Promise<ShiftDetailsListResponse> {
-    return shiftDetailsApi.getAll(filters)
-  }
-
-  static async getShiftDetailById(id: number): Promise<ShiftDetailResponse> {
-    return shiftDetailsApi.getById(id)
-  }
-
-  static async createShiftDetail(shiftDetailData: Omit<ShiftDetail, 'id'>): Promise<ShiftDetailResponse> {
-    return shiftDetailsApi.create(shiftDetailData)
-  }
-
-  static async updateShiftDetail(id: number, updates: Partial<ShiftDetail>): Promise<ShiftDetailResponse> {
-    return shiftDetailsApi.update(id, updates)
-  }
-
-  static async deleteShiftDetail(id: number): Promise<{ success: boolean; message: string }> {
-    return shiftDetailsApi.delete(id)
-  }
-
-  static async getShiftDetailStats(): Promise<ShiftDetailStatsResponse> {
-    return shiftDetailsApi.getStats()
-  }
-} 
+export { shiftDetailsApi as default } 
