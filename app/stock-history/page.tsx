@@ -140,9 +140,6 @@ export default function PartsInventoryPage() {
     return (
       <div className="flex justify-center items-center py-12">
         <LoadingSpinner />
-        <span className="ml-2 text-muted-foreground">
-          {isLoading ? "Loading assets..." : "Loading parts inventory from asset BOM data..."}
-        </span>
       </div>
     )
   }

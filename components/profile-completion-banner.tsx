@@ -10,9 +10,15 @@ import { useRouter } from "next/navigation"
 
 interface ProfileCompletionBannerProps {
   className?: string
+  profileStatus?: {
+    isComplete: boolean
+    missingFields: string[]
+    completionPercentage: number
+  }
+  onCompleteClick?: () => void
 }
 
-export function ProfileCompletionBanner({ className }: ProfileCompletionBannerProps) {
+export function ProfileCompletionBanner({ className, profileStatus, onCompleteClick }: ProfileCompletionBannerProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const [isVisible, setIsVisible] = useState(false)
@@ -23,7 +29,14 @@ export function ProfileCompletionBanner({ className }: ProfileCompletionBannerPr
   } | null>(null)
 
   useEffect(() => {
-    // Only show for OAuth users with incomplete profiles
+    // Use passed in profileStatus if available
+    if (profileStatus) {
+      setProfileData(profileStatus)
+      setIsVisible(!profileStatus.isComplete)
+      return
+    }
+
+    // Fallback to session-based logic
     if (session?.user?.email && session.user.profileCompleted === false) {
       setIsVisible(true)
       // Calculate missing fields based on session data
@@ -37,10 +50,14 @@ export function ProfileCompletionBanner({ className }: ProfileCompletionBannerPr
         completionPercentage
       })
     }
-  }, [session])
+  }, [session, profileStatus])
 
   const handleCompleteProfile = () => {
-    router.push("/profile")
+    if (onCompleteClick) {
+      onCompleteClick()
+    } else {
+      router.push("/profile")
+    }
     setIsVisible(false)
   }
 
