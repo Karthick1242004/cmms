@@ -54,6 +54,11 @@ export const navigation: NavigationItem[] = [
     iconName: "Settings2",
   },
   {
+    name: "Tickets",
+    href: "/tickets",
+    iconName: "FileText",
+  },
+  {
     name: "Inventory",
     href: "/stock-history",
     iconName: "Archive",
