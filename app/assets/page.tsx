@@ -17,6 +17,7 @@ import { Plus, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
+import { AssetCreationForm } from "@/components/asset-creation-form"
 import { useAssetsStore } from "@/stores/assets-store"
 import type { Asset } from "@/types/asset"
 
@@ -146,59 +147,14 @@ export default function AllAssetsPage() {
                 Add Asset
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add New Asset</DialogTitle>
-                <DialogDescription>Register a new asset in your inventory.</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                {/* Form fields from original assets/page.tsx */}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Name
-                  </Label>
-                  <Input id="name" className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="assetTag" className="text-right">
-                    Asset Tag
-                  </Label>
-                  <Input id="assetTag" className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="type" className="text-right">
-                    Type
-                  </Label>
-                  <Select>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select asset type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="facilities">Facilities</SelectItem>
-                      <SelectItem value="products">Products</SelectItem>
-                      <SelectItem value="equipment">Equipment</SelectItem>
-                      <SelectItem value="tools">Tools</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="location" className="text-right">
-                    Location
-                  </Label>
-                  <Input id="location" className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="purchasePrice" className="text-right">
-                    Purchase Price
-                  </Label>
-                  <Input id="purchasePrice" type="number" className="col-span-3" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit" onClick={() => setIsDialogOpen(false)}>
-                  Save Asset
-                </Button>
-              </DialogFooter>
+            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+              <AssetCreationForm 
+                onSuccess={() => {
+                  setIsDialogOpen(false)
+                  fetchAssets() // Refresh the assets list
+                }}
+                onCancel={() => setIsDialogOpen(false)}
+              />
             </DialogContent>
           </Dialog>
         </div>

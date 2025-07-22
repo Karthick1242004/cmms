@@ -53,9 +53,13 @@ export const useAssetsStore = create<AssetsState>()(
                 state.assets.push(transformedAsset)
                 get().filterAssets()
               })
+            } else {
+              // Throw error if API response indicates failure
+              throw new Error(response.error || response.message || 'Failed to create asset')
             }
           } catch (error) {
             console.error('Error adding asset:', error)
+            throw error // Re-throw to allow form to handle the error
           }
         },
 

@@ -215,6 +215,7 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
       description: newPartData.description || undefined,
       price: newPartData.price || undefined,
       minStockLevel: newPartData.minStockLevel || undefined,
+      department: ""
     }
 
     setParts(prevParts => [...prevParts, newPart])
