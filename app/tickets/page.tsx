@@ -159,8 +159,8 @@ export default function TicketsPage() {
 
   // Handle ticket actions
   const handleViewTicket = (ticket: Ticket) => {
-    // TODO: Implement ticket detail view
-    toast.info(`View ticket ${ticket.ticketId} - Detail view coming soon!`)
+    // Navigate to ticket detail page
+    window.location.href = `/tickets/${ticket.id}`
   }
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
@@ -225,32 +225,32 @@ export default function TicketsPage() {
 
       <PageContent>
         {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Filter className="h-4 w-4" />
               Filters
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Search</label>
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Search</label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-2 top-2.5 h-3 w-3 text-muted-foreground" />
                   <Input
                     placeholder="Search tickets..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-7 h-8 text-sm"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Status</label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
@@ -264,10 +264,10 @@ export default function TicketsPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Priority</label>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Priority</label>
                 <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="All priorities" />
                   </SelectTrigger>
                   <SelectContent>
@@ -280,10 +280,10 @@ export default function TicketsPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Department</label>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Department</label>
                 <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="All departments" />
                   </SelectTrigger>
                   <SelectContent>
@@ -297,10 +297,10 @@ export default function TicketsPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Report Type</label>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Report Type</label>
                 <Select value={reportTypeFilter} onValueChange={setReportTypeFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="All types" />
                   </SelectTrigger>
                   <SelectContent>
@@ -313,10 +313,10 @@ export default function TicketsPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">View</label>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">View</label>
                 <Select value={showOpenTickets ? "open" : "all"} onValueChange={(value) => setShowOpenTickets(value === "open")}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="All tickets" />
                   </SelectTrigger>
                   <SelectContent>
@@ -331,16 +331,16 @@ export default function TicketsPage() {
 
         {/* Tickets Table */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FileText className="h-4 w-4" />
               Tickets ({filteredTickets.length})
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               {showOpenTickets ? 'Showing open tickets visible to all departments' : 'Showing tickets for your department'}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-muted-foreground">Loading tickets...</div>
@@ -360,53 +360,57 @@ export default function TicketsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Ticket ID</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Logged By</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="text-xs font-medium py-2">Ticket ID</TableHead>
+                      <TableHead className="text-xs font-medium py-2">Subject</TableHead>
+                      <TableHead className="text-xs font-medium py-2">Priority</TableHead>
+                      <TableHead className="text-xs font-medium py-2">Status</TableHead>
+                      <TableHead className="text-xs font-medium py-2">Department</TableHead>
+                      <TableHead className="text-xs font-medium py-2">Logged By</TableHead>
+                      <TableHead className="text-xs font-medium py-2">Created</TableHead>
+                      <TableHead className="text-xs font-medium py-2">Type</TableHead>
+                      <TableHead className="text-xs font-medium py-2">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredTickets.map((ticket) => {
                       const statusInfo = getStatusInfo(ticket.status)
                       return (
-                        <TableRow key={ticket.id}>
-                          <TableCell className="font-mono font-medium">
-                            {ticket.ticketId}
-                            {ticket.isOpenTicket && (
-                              <Badge variant="outline" className="ml-2">
-                                <Eye className="h-3 w-3 mr-1" />
-                                Open
-                              </Badge>
-                            )}
+                        <TableRow key={ticket.id} className="hover:bg-muted/50">
+                          <TableCell className="font-mono font-medium text-xs py-2">
+                            <div className="flex items-center gap-1">
+                              <span className="cursor-pointer hover:text-blue-600" onClick={() => handleViewTicket(ticket)}>
+                                {ticket.ticketId}
+                              </span>
+                              {ticket.isOpenTicket && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Eye className="h-2 w-2 mr-1" />
+                                  Open
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
-                          <TableCell className="max-w-xs">
-                            <div className="truncate font-medium">{ticket.subject}</div>
+                          <TableCell className="max-w-xs py-2">
+                            <div className="truncate font-medium text-xs">{ticket.subject}</div>
                             {ticket.equipmentId && (
                               <div className="text-xs text-muted-foreground">
                                 Equipment: {ticket.equipmentId}
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant={getPriorityColor(ticket.priority) as any}>
+                          <TableCell className="py-2">
+                            <Badge variant={getPriorityColor(ticket.priority) as any} className="text-xs">
                               {ticket.priority}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            <Badge variant={statusInfo.color as any} className="flex items-center gap-1 w-fit">
+                          <TableCell className="py-2">
+                            <Badge variant={statusInfo.color as any} className="flex items-center gap-1 w-fit text-xs">
                               {statusInfo.icon}
                               {ticket.status}
                             </Badge>
                           </TableCell>
-                          <TableCell>{ticket.department}</TableCell>
-                          <TableCell>{ticket.loggedBy}</TableCell>
-                          <TableCell className="text-sm">
+                          <TableCell className="text-xs py-2">{ticket.department}</TableCell>
+                          <TableCell className="text-xs py-2">{ticket.loggedBy}</TableCell>
+                          <TableCell className="text-xs py-2">
                             {formatDate(ticket.loggedDateTime)}
                             {ticket.timeSinceLogged && (
                               <div className="text-xs text-muted-foreground">
@@ -414,7 +418,7 @@ export default function TicketsPage() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-2">
                             <div className="flex flex-wrap gap-1">
                               {Object.entries(ticket.reportType).map(([type, selected]) => 
                                 selected && (
@@ -425,18 +429,19 @@ export default function TicketsPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
+                          <TableCell className="py-2">
+                            <div className="flex gap-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleViewTicket(ticket)}
+                                className="h-6 w-6 p-0"
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="h-3 w-3" />
                               </Button>
                               {ticket.status !== 'Closed' && (
                                 <Select onValueChange={(status) => handleUpdateStatus(ticket.id, status)}>
-                                  <SelectTrigger className="w-auto h-8">
+                                  <SelectTrigger className="w-auto h-6 text-xs">
                                     <SelectValue placeholder="Status" />
                                   </SelectTrigger>
                                   <SelectContent>
