@@ -11,9 +11,24 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { Calendar, Clock, Save, AlertCircle, FileText, User, Building2 } from "lucide-react"
+import { Calendar, Clock, Save, AlertCircle, FileText, User, Building2, X, Check } from "lucide-react"
 import { toast } from "sonner"
 import type { TicketFormData } from "@/types/ticket"
+import { useDepartments } from "@/hooks/use-departments"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 
 interface TicketCreationFormProps {
   onSuccess?: () => void
@@ -23,6 +38,10 @@ interface TicketCreationFormProps {
 
 export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: TicketCreationFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [openDepartments, setOpenDepartments] = useState(false)
+  
+  // Fetch departments from the database
+  const { data: departmentsData, isLoading: isLoadingDepartments, error: departmentsError } = useDepartments()
   
   const [formData, setFormData] = useState<TicketFormData>({
     priority: 'Medium',
@@ -63,11 +82,10 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
     }))
   }
 
-  const handleAssignedDepartmentsChange = (departments: string) => {
-    const deptList = departments.split(',').map(d => d.trim()).filter(d => d.length > 0)
+  const handleAssignedDepartmentsChange = (departments: string[]) => {
     setFormData(prev => ({
       ...prev,
-      assignedDepartments: deptList
+      assignedDepartments: departments
     }))
   }
 
@@ -219,12 +237,26 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
 
             <div className="space-y-2">
               <Label htmlFor="department">Department *</Label>
-              <Input 
-                id="department"
-                value={formData.department}
-                onChange={(e) => handleInputChange('department', e.target.value)}
-                placeholder="e.g., Maintenance"
-              />
+              <Select 
+                value={formData.department} 
+                onValueChange={(value) => handleInputChange('department', value)}
+                disabled={isLoadingDepartments}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={isLoadingDepartments ? "Loading departments..." : "Select department"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {departmentsError ? (
+                    <SelectItem value="" disabled>
+                      Error loading departments
+                    </SelectItem>
+                  ) : departmentsData?.data?.departments?.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.name}>
+                      {dept.name}
+                    </SelectItem>
+                  )) || []}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -408,14 +440,97 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="assignedDepartments">Assigned Departments</Label>
-            <Input 
-              id="assignedDepartments"
-              value={formData.assignedDepartments.join(', ')}
-              onChange={(e) => handleAssignedDepartmentsChange(e.target.value)}
-              placeholder="e.g., IT, Maintenance, Operations (comma-separated)"
-            />
+            <Popover open={openDepartments} onOpenChange={setOpenDepartments}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between"
+                  disabled={isLoadingDepartments}
+                >
+                  {formData.assignedDepartments.length === 0 ? (
+                    "Select departments..."
+                  ) : (
+                    <div className="flex flex-wrap gap-1 max-w-[300px]">
+                      {formData.assignedDepartments.slice(0, 2).map((dept) => (
+                        <Badge key={dept} variant="secondary" className="text-xs">
+                          {dept}
+                        </Badge>
+                      ))}
+                      {formData.assignedDepartments.length > 2 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{formData.assignedDepartments.length - 2} more
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  <X className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0">
+                <Command>
+                  <CommandInput placeholder="Search departments..." />
+                  <CommandList>
+                    <CommandEmpty>No departments found.</CommandEmpty>
+                    <CommandGroup>
+                      {departmentsData?.data?.departments?.map((dept) => {
+                        const isSelected = formData.assignedDepartments.includes(dept.name)
+                        return (
+                          <CommandItem
+                            key={dept.id}
+                            value={dept.name}
+                            onSelect={() => {
+                              if (isSelected) {
+                                // Remove department
+                                handleAssignedDepartmentsChange(
+                                  formData.assignedDepartments.filter(d => d !== dept.name)
+                                )
+                              } else {
+                                // Add department
+                                handleAssignedDepartmentsChange([...formData.assignedDepartments, dept.name])
+                              }
+                            }}
+                          >
+                            <Check 
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                isSelected ? "opacity-100" : "opacity-0"
+                              )} 
+                            />
+                            {dept.name}
+                          </CommandItem>
+                        )
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            
+            {/* Show selected departments as removable badges */}
+            {formData.assignedDepartments.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {formData.assignedDepartments.map((dept) => (
+                  <Badge key={dept} variant="secondary" className="text-xs">
+                    {dept}
+                    <button
+                      type="button"
+                      onClick={() => handleAssignedDepartmentsChange(
+                        formData.assignedDepartments.filter(d => d !== dept)
+                      )}
+                      className="ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                      title={`Remove ${dept}`}
+                      aria-label={`Remove ${dept} department`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            
             <p className="text-xs text-muted-foreground">
-              Enter department names separated by commas
+              Select departments that should be assigned to this ticket
             </p>
           </div>
 
