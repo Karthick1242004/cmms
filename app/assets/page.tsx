@@ -18,12 +18,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
 import { AssetCreationForm } from "@/components/asset-creation-form"
+import { AssetEditForm } from "@/components/asset-edit-form"
 import { useAssetsStore } from "@/stores/assets-store"
 import type { Asset } from "@/types/asset"
 
 export default function AllAssetsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [selectedAssetForEdit, setSelectedAssetForEdit] = useState<Asset | null>(null)
   
   // Use the assets store
   const { 
@@ -116,8 +119,8 @@ export default function AllAssetsPage() {
 
   // Asset action handlers
   const handleEdit = (asset: Asset) => {
-    // TODO: Implement edit functionality - could navigate to edit page or open edit dialog
-    console.log("Edit asset:", asset.id)
+    setSelectedAssetForEdit(asset)
+    setIsEditDialogOpen(true)
   }
   
   const handleDelete = async (assetId: string) => {
@@ -132,10 +135,21 @@ export default function AllAssetsPage() {
     }
   }
 
+  const handleEditSuccess = () => {
+    setIsEditDialogOpen(false)
+    setSelectedAssetForEdit(null)
+    fetchAssets() // Refresh the assets list
+  }
+
+  const handleEditCancel = () => {
+    setIsEditDialogOpen(false)
+    setSelectedAssetForEdit(null)
+  }
+
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex mt-4 justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">All Assets</h1>
             <p className="text-muted-foreground">Browse and manage all assets across your organization</p>
@@ -290,6 +304,19 @@ export default function AllAssetsPage() {
           </>
         )}
       </PageContent>
+
+      {/* Edit Asset Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          {selectedAssetForEdit && (
+            <AssetEditForm
+              asset={selectedAssetForEdit}
+              onSuccess={handleEditSuccess}
+              onCancel={handleEditCancel}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   )
 }

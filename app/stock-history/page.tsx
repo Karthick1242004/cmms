@@ -5,299 +5,357 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Search, AlertTriangle, Package, Wrench } from "lucide-react"
+import { Search, Package, TrendingUp, TrendingDown, RotateCcw, Plus, Filter, Calendar, Download } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAssetsStore } from "@/stores/assets-store"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useDebounce } from "@/hooks/use-debounce"
-import { PartsInventoryReport } from "@/components/parts-inventory-report"
+import { sampleStockTransactions, sampleParts } from "@/data/parts-sample"
+import type { StockTransaction } from "@/types/stock-transaction"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 
-interface PartInventory {
-  id: string
-  partName: string
-  partNumber: string
-  quantity: number
-  unitCost: number
-  supplier: string
-  lastReplaced?: string
-  nextMaintenanceDate?: string
-  assetId: string
-  assetName: string
-  assetType: string
-  location: string
-  department: string
-  isLowStock: boolean
-}
-
-export default function PartsInventoryPage() {
+export default function StockHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
-  const [stockFilter, setStockFilter] = useState("all")
-  const [partsInventory, setPartsInventory] = useState<PartInventory[]>([])
-  const [isLoadingParts, setIsLoadingParts] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState("all")
+  const [transactions, setTransactions] = useState<StockTransaction[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
-  
-  const { assets, isLoading, fetchAssets } = useAssetsStore()
 
-  // Fetch all assets to extract parts BOM
+  // Load sample data (in real app, this would fetch from API)
   useEffect(() => {
-    fetchAssets({ limit: 500 }) // Get all assets
-  }, [fetchAssets])
+    setIsLoading(true)
+    // Simulate API call
+    setTimeout(() => {
+      setTransactions(sampleStockTransactions)
+      setIsLoading(false)
+    }, 500)
+  }, [])
 
-  // Transform assets' partsBOM into inventory data from real API data
-  useEffect(() => {
-    const fetchAssetsWithBOM = async () => {
-      if (assets.length > 0) {
-        setIsLoadingParts(true)
-        const inventory: PartInventory[] = []
-        
-        try {
-          // Fetch detailed asset data to get partsBOM
-          for (const asset of assets) {
-            try {
-              const response = await fetch(`/api/assets/${asset.id}`)
-              if (response.ok) {
-                const assetDetailData = await response.json()
-                const assetDetail = assetDetailData.data
-                
-                // Extract partsBOM from the detailed asset data
-                if (assetDetail && assetDetail.partsBOM && Array.isArray(assetDetail.partsBOM)) {
-                  const partsFromAsset = assetDetail.partsBOM.map((part: any) => ({
-                    id: `${asset.id}-${part.id || part.partNumber}`,
-                    partName: part.partName,
-                    partNumber: part.partNumber,
-                    quantity: part.quantity || 0,
-                    unitCost: part.unitCost || 0,
-                    supplier: part.supplier || "Unknown",
-                    lastReplaced: part.lastReplaced,
-                    nextMaintenanceDate: part.nextMaintenanceDate,
-                    assetId: asset.id,
-                    assetName: asset.name,
-                    assetType: asset.type,
-                    location: asset.location,
-                    department: asset.department || "General",
-                    isLowStock: (part.quantity || 0) <= 1, // Low stock if quantity is 1 or less
-                  }))
-                  
-                  inventory.push(...partsFromAsset)
-                }
-              }
-            } catch (error) {
-              console.error(`Error fetching asset details for ${asset.id}:`, error)
-            }
-          }
-          
-          setPartsInventory(inventory)
-        } catch (error) {
-          console.error('Error fetching parts inventory:', error)
-        } finally {
-          setIsLoadingParts(false)
-        }
-      }
-    }
+  const filteredTransactions = transactions.filter((transaction) => {
+    const matchesSearch = debouncedSearchTerm === "" || 
+      transaction.partName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      transaction.partNumber.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      transaction.sku.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      transaction.materialCode.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      transaction.reason.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      transaction.performedBy.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
 
-    fetchAssetsWithBOM()
-  }, [assets])
+    const matchesDepartment = departmentFilter === "all" || transaction.department === departmentFilter
+    const matchesCategory = categoryFilter === "all" || transaction.category === categoryFilter
+    const matchesType = transactionTypeFilter === "all" || transaction.transactionType === transactionTypeFilter
 
-  const filteredInventory = partsInventory.filter((part) => {
-    const matchesSearch =
-      part.partName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      part.partNumber.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      part.assetName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      part.supplier.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-
-    const matchesDepartment = departmentFilter === "all" || part.department === departmentFilter
-    const matchesStock = stockFilter === "all" || 
-      (stockFilter === "low" && part.isLowStock) ||
-      (stockFilter === "normal" && !part.isLowStock)
-
-    return matchesSearch && matchesDepartment && matchesStock
+    return matchesSearch && matchesDepartment && matchesCategory && matchesType
   })
 
-  const totalParts = filteredInventory.length
-  const lowStockParts = filteredInventory.filter(part => part.isLowStock).length
-  const totalValue = filteredInventory.reduce((sum, part) => sum + (part.quantity * part.unitCost), 0)
-  const uniqueDepartments = [...new Set(partsInventory.map(part => part.department))]
+  // Calculate summary statistics
+  const totalTransactions = filteredTransactions.length
+  const totalValue = filteredTransactions.reduce((sum, txn) => sum + Math.abs(txn.totalValue), 0)
+  const inTransactions = filteredTransactions.filter(txn => txn.transactionType === 'in').length
+  const outTransactions = filteredTransactions.filter(txn => txn.transactionType === 'out').length
+  const adjustments = filteredTransactions.filter(txn => txn.transactionType === 'adjustment').length
 
-  const getStockBadge = (part: PartInventory) => {
-    if (part.isLowStock) {
-      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Low Stock</Badge>
+  const getTransactionTypeIcon = (type: string) => {
+    switch (type) {
+      case 'in':
+        return <TrendingUp className="h-4 w-4 text-green-600" />
+      case 'out':
+        return <TrendingDown className="h-4 w-4 text-red-600" />
+      case 'adjustment':
+        return <RotateCcw className="h-4 w-4 text-blue-600" />
+      case 'transfer':
+        return <Package className="h-4 w-4 text-purple-600" />
+      default:
+        return <Package className="h-4 w-4 text-gray-600" />
     }
-    return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">In Stock</Badge>
   }
 
-  const getStockIcon = (part: PartInventory) => {
-    if (part.isLowStock) {
-      return <AlertTriangle className="h-4 w-4 text-red-600" />
+  const getTransactionTypeBadge = (type: string, quantity: number) => {
+    switch (type) {
+      case 'in':
+        return <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">Stock In (+{quantity})</Badge>
+      case 'out':
+        return <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">Stock Out ({quantity})</Badge>
+      case 'adjustment':
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Adjustment ({quantity > 0 ? '+' : ''}{quantity})</Badge>
+      case 'transfer':
+        return <Badge variant="secondary" className="bg-purple-100 text-purple-800 hover:bg-purple-100">Transfer ({quantity})</Badge>
+      default:
+        return <Badge variant="outline">{type}</Badge>
     }
-    return <Package className="h-4 w-4 text-green-600" />
   }
 
+  const formatDateTime = (date: string, time: string) => {
+    const dateObj = new Date(`${date}T${time}`)
+    return dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
 
+  const uniqueDepartments = [...new Set(transactions.map(txn => txn.department))]
+  const uniqueCategories = [...new Set(transactions.map(txn => txn.category))]
 
-  if (isLoading || isLoadingParts) {
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner />
-      </div>
+      <PageLayout>
+        <div className="flex justify-center items-center py-12">
+          <LoadingSpinner />
+        </div>
+      </PageLayout>
     )
   }
 
   return (
-    <div className="space-y-6 animate-fade-in p-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Parts Inventory</h1>
-          <p className="text-muted-foreground">Track all parts and components from asset Bill of Materials (BOM)</p>
+    <PageLayout>
+      <PageHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Inventory Transaction History</h1>
+            <p className="text-muted-foreground">Track all parts inventory movements with SKU and material codes</p>
+          </div>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Transaction
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create Stock Transaction</DialogTitle>
+                <DialogDescription>
+                  Record a new inventory movement
+                </DialogDescription>
+              </DialogHeader>
+              {/* Transaction form would go here */}
+              <div className="text-center text-muted-foreground py-8">
+                Transaction creation form will be implemented here
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
-        <PartsInventoryReport
-          filteredInventory={filteredInventory}
-          totalParts={totalParts}
-          lowStockParts={lowStockParts}
-          totalValue={totalValue}
-          uniqueDepartments={uniqueDepartments}
-        />
-      </div>
+      </PageHeader>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Parts</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalParts}</div>
-            <p className="text-xs text-muted-foreground">Across all assets</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Alert</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{lowStockParts}</div>
-            <p className="text-xs text-muted-foreground">Parts need attention</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Inventory Value</CardTitle>
-            <Wrench className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">${totalValue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Current stock value</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search parts, assets, or suppliers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      <PageContent>
+        {/* Summary Cards */}
+        <div className="grid gap-4 md:grid-cols-4 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalTransactions}</div>
+              <p className="text-xs text-muted-foreground">Filtered results</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Stock In</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{inTransactions}</div>
+              <p className="text-xs text-muted-foreground">Receipts & purchases</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Stock Out</CardTitle>
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{outTransactions}</div>
+              <p className="text-xs text-muted-foreground">Issues & consumption</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+              <Package className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">${totalValue.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">Transaction value</p>
+            </CardContent>
+          </Card>
         </div>
-        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by department" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
-            {uniqueDepartments.map(dept => (
-              <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={stockFilter} onValueChange={setStockFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by stock" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Stock Levels</SelectItem>
-            <SelectItem value="low">Low Stock Only</SelectItem>
-            <SelectItem value="normal">Normal Stock</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* Parts Inventory Table */}
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Part Details</TableHead>
-              <TableHead>Asset Information</TableHead>
-              <TableHead>Stock Status</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Unit Cost</TableHead>
-              <TableHead>Total Value</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Last Replaced</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredInventory.map((part) => (
-              <TableRow key={part.id} className={part.isLowStock ? "bg-red-800 border-red-200" : ""}>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{part.partName}</div>
-                    <div className="text-sm text-muted-foreground">{part.partNumber}</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{part.assetName}</div>
-                    <div className="text-sm text-muted-foreground">{part.assetType} • {part.location}</div>
-                    <div className="text-xs text-muted-foreground">{part.department}</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    {getStockIcon(part)}
-                    {getStockBadge(part)}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={part.isLowStock ? "text-red-600 font-medium" : "text-green-600 font-medium"}
-                  >
-                    {part.quantity}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className="font-medium">
-                    ${part.unitCost.toFixed(2)}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className="font-medium">
-                    ${(part.quantity * part.unitCost).toFixed(2)}
-                  </span>
-                </TableCell>
-                <TableCell className="text-sm">{part.supplier}</TableCell>
-                <TableCell className="text-sm">
-                  <Badge variant="outline">{part.lastReplaced || "N/A"}</Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredInventory.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  No parts found matching your criteria
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Filter className="h-4 w-4" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-5">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Search</label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-3 w-3 text-muted-foreground" />
+                  <Input
+                    placeholder="Search parts, SKU, material code..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-7 h-8 text-sm"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Department</label>
+                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="All departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {uniqueDepartments.map(dept => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Category</label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="All categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {uniqueCategories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Transaction Type</label>
+                <Select value={transactionTypeFilter} onValueChange={setTransactionTypeFilter}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="in">Stock In</SelectItem>
+                    <SelectItem value="out">Stock Out</SelectItem>
+                    <SelectItem value="adjustment">Adjustment</SelectItem>
+                    <SelectItem value="transfer">Transfer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Actions</label>
+                <Button variant="outline" size="sm" className="w-full h-8 text-xs">
+                  <Download className="mr-1 h-3 w-3" />
+                  Export
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Transactions Table */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Package className="h-4 w-4" />
+              Stock Transactions ({filteredTransactions.length})
+            </CardTitle>
+            <CardDescription>
+              Complete history of all inventory movements
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs font-medium py-2">Date & Time</TableHead>
+                    <TableHead className="text-xs font-medium py-2">Part Details</TableHead>
+                    <TableHead className="text-xs font-medium py-2">SKU / Material Code</TableHead>
+                    <TableHead className="text-xs font-medium py-2">Transaction</TableHead>
+                    <TableHead className="text-xs font-medium py-2">Value</TableHead>
+                    <TableHead className="text-xs font-medium py-2">Balance</TableHead>
+                    <TableHead className="text-xs font-medium py-2">Reason</TableHead>
+                    <TableHead className="text-xs font-medium py-2">Performed By</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTransactions.map((transaction) => (
+                    <TableRow key={transaction.id} className="hover:bg-muted/50">
+                      <TableCell className="py-2">
+                        <div className="text-xs">
+                          <div className="font-medium">{transaction.date}</div>
+                          <div className="text-muted-foreground">{transaction.time}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="text-xs">
+                          <div className="font-medium">{transaction.partName}</div>
+                          <div className="text-muted-foreground">{transaction.partNumber}</div>
+                          <div className="text-muted-foreground">{transaction.category} • {transaction.department}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="space-y-1">
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {transaction.sku}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {transaction.materialCode}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="flex items-center gap-2">
+                          {getTransactionTypeIcon(transaction.transactionType)}
+                          {getTransactionTypeBadge(transaction.transactionType, transaction.quantity)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="text-xs">
+                          <div className="font-medium">${Math.abs(transaction.totalValue).toFixed(2)}</div>
+                          <div className="text-muted-foreground">${transaction.unitPrice.toFixed(2)} each</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="text-xs font-medium">{transaction.balanceAfter}</div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="text-xs max-w-xs">
+                          <div className="truncate">{transaction.reason}</div>
+                          {transaction.referenceNumber && (
+                            <div className="text-muted-foreground">{transaction.referenceNumber}</div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="text-xs">{transaction.performedBy}</div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {filteredTransactions.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No transactions found matching your criteria
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </PageContent>
+    </PageLayout>
   )
 }

@@ -192,7 +192,7 @@ export default function TicketsPage() {
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between mt-4 items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Tickets</h1>
             <p className="text-muted-foreground">Manage support tickets and service requests</p>

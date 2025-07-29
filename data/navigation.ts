@@ -97,4 +97,9 @@ export const navigation: NavigationItem[] = [
     href: "/safety-inspection",
     iconName: "Shield",
   },
+  {
+    name: "Meeting Minutes",
+    href: "/meeting-minutes",
+    iconName: "FileText",
+  },
 ]

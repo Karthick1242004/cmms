@@ -78,8 +78,8 @@ export default function TicketDetailPage() {
         setFormData({
           subject: ticketData.subject,
           description: ticketData.description,
-          priority: ticketData.priority,
-          status: ticketData.status,
+          priority: ticketData.priority as typeof formData.priority,
+          status: ticketData.status as typeof formData.status,
           department: ticketData.department,
           area: ticketData.area,
           inCharge: ticketData.inCharge,
@@ -257,7 +257,7 @@ export default function TicketDetailPage() {
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex mt-4 justify-between items-center">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
