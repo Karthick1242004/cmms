@@ -125,6 +125,7 @@ export interface MeetingMinutesState {
   stats: MeetingMinutesStats | null;
   loading: boolean;
   error: string | null;
+  isViewDialogOpen: boolean;
   filters: MeetingMinutesFilters;
   pagination: {
     currentPage: number;
@@ -144,6 +145,7 @@ export interface MeetingMinutesState {
   updateActionItemStatus: (meetingMinutesId: string, actionItemId: string, status: ActionItem['status']) => Promise<void>;
   setFilters: (filters: Partial<MeetingMinutesFilters>) => void;
   setSelectedMeetingMinutes: (meetingMinutes: MeetingMinutes | null) => void;
+  setViewDialogOpen: (open: boolean) => void;
   clearError: () => void;
 }
 

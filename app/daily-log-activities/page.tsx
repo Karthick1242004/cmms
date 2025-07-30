@@ -54,7 +54,6 @@ export default function DailyLogActivitiesPage() {
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    // Debounce search in a real implementation
     setTimeout(() => {
       fetchActivities();
     }, 300);

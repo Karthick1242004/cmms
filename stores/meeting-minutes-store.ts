@@ -34,6 +34,7 @@ export const useMeetingMinutesStore = create<MeetingMinutesState>()(
       stats: null,
       loading: false,
       error: null,
+      isViewDialogOpen: false,
       filters: initialFilters,
       pagination: initialPagination,
 
@@ -245,6 +246,14 @@ export const useMeetingMinutesStore = create<MeetingMinutesState>()(
         set({ selectedMeetingMinutes: meetingMinutes });
       },
 
+      setViewDialogOpen: (open) => {
+        set({ 
+          isViewDialogOpen: open,
+          // Clear selected meeting minutes when closing dialog
+          ...(open === false && { selectedMeetingMinutes: null })
+        });
+      },
+
       clearError: () => {
         set({ error: null });
       },
@@ -299,9 +308,11 @@ export const useSelectedMeetingMinutes = () => {
   const store = useMeetingMinutesStore();
   return {
     selectedMeetingMinutes: store.selectedMeetingMinutes,
+    isViewDialogOpen: store.isViewDialogOpen,
     loading: store.loading,
     error: store.error,
     fetchMeetingMinutesById: store.fetchMeetingMinutesById,
     setSelectedMeetingMinutes: store.setSelectedMeetingMinutes,
+    setViewDialogOpen: store.setViewDialogOpen,
   };
 };

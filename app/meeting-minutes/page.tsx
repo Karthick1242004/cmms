@@ -32,11 +32,12 @@ import {
   Archive,
   Building2
 } from 'lucide-react';
-import { useMeetingMinutesList, useMeetingMinutesActions, useMeetingMinutesStats } from '@/stores/meeting-minutes-store';
+import { useMeetingMinutesList, useMeetingMinutesActions, useMeetingMinutesStats, useSelectedMeetingMinutes } from '@/stores/meeting-minutes-store';
 import { useDepartments } from '@/hooks/use-departments';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { MeetingMinutes, MeetingMinutesFilters } from '@/types/meeting-minutes';
 import { MeetingMinutesForm } from '@/components/meeting-minutes/meeting-minutes-form';
+import { MeetingMinutesView } from '@/components/meeting-minutes/meeting-minutes-view';
 import { cn } from '@/lib/utils';
 
 // Mock user context - replace with actual auth context
@@ -90,6 +91,13 @@ export default function MeetingMinutesPage() {
     loading: statsLoading 
   } = useMeetingMinutesStats();
 
+  const {
+    selectedMeetingMinutes,
+    isViewDialogOpen,
+    setSelectedMeetingMinutes,
+    setViewDialogOpen,
+  } = useSelectedMeetingMinutes();
+
   // Effects
   useEffect(() => {
     fetchMeetingMinutes();
@@ -122,6 +130,11 @@ export default function MeetingMinutesPage() {
     setSelectedMOM(null);
     toast.success('Meeting minutes updated successfully!');
     fetchStats(); // Refresh stats
+  };
+
+  const handleView = (mom: MeetingMinutes) => {
+    setSelectedMeetingMinutes(mom);
+    setViewDialogOpen(true);
   };
 
   const handleEdit = (mom: MeetingMinutes) => {
@@ -417,7 +430,7 @@ export default function MeetingMinutesPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => console.log('View', mom.id)}>
+                                <DropdownMenuItem onClick={() => handleView(mom)}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   View
                                 </DropdownMenuItem>
@@ -542,6 +555,13 @@ export default function MeetingMinutesPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Meeting Minutes View Dialog */}
+        <MeetingMinutesView 
+          isOpen={isViewDialogOpen}
+          onClose={() => setViewDialogOpen(false)}
+          meetingMinutes={selectedMeetingMinutes}
+        />
       </div>
     </PageLayout>
   );
