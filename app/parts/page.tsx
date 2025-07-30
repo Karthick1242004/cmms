@@ -351,8 +351,8 @@ export default function PartsPage() {
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex justify-between items-center">
-          <div>
+          <div className="flex justify-between items-center">
+            <div>
             <h1 className="text-3xl font-bold tracking-tight">Parts & Inventory Management</h1>
             <p className="text-muted-foreground">Manage your spare parts inventory with SKU and material codes</p>
           </div>
@@ -378,7 +378,7 @@ export default function PartsPage() {
         </div>
       </PageHeader>
 
-      <PageContent>
+        <PageContent>
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-3 mb-6">
           <Card>
@@ -603,7 +603,7 @@ export default function PartsPage() {
             </div>
           </CardContent>
         </Card>
-      </PageContent>
+        </PageContent>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

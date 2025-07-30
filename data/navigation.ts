@@ -102,4 +102,9 @@ export const navigation: NavigationItem[] = [
     href: "/meeting-minutes",
     iconName: "FileText",
   },
+  {
+    name: "Daily Log Activities",
+    href: "/daily-log-activities",
+    iconName: "ClipboardList",
+  },
 ]

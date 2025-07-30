@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     
     // Forward all query parameters to the backend
     const queryString = searchParams.toString();
-    const url = `${SERVER_BASE_URL}/api/departments${queryString ? `?${queryString}` : ''}`;
+    const url = `${SERVER_BASE_URL}/api/daily-log-activities${queryString ? `?${queryString}` : ''}`;
 
     // Prepare headers with user context
     const headers: Record<string, string> = {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to fetch departments' },
+        { success: false, message: errorData.message || 'Failed to fetch daily log activities' },
         { status: response.status }
       );
     }
@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error('Error fetching departments:', error);
+    console.error('Error fetching daily log activities:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error while fetching departments' },
+      { success: false, message: 'Internal server error while fetching daily log activities' },
       { status: 500 }
     );
   }
@@ -60,6 +60,20 @@ export async function POST(request: NextRequest) {
     const user = await getUserContext(request);
     
     const body = await request.json();
+    
+    // Add created by information if not provided
+    if (!body.createdBy && user) {
+      body.createdBy = user.id;
+      body.createdByName = user.name;
+    }
+
+    // Validate required fields
+    if (!body.time || !body.area || !body.departmentId || !body.assetId || !body.natureOfProblem || !body.commentsOrSolution || !body.attendedBy) {
+      return NextResponse.json(
+        { success: false, message: 'Required fields are missing' },
+        { status: 400 }
+      );
+    }
 
     // Prepare headers with user context
     const headers: Record<string, string> = {
@@ -76,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/departments`, {
+    const response = await fetch(`${SERVER_BASE_URL}/api/daily-log-activities`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -85,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to create department' },
+        { success: false, message: errorData.message || 'Failed to create daily log activity' },
         { status: response.status }
       );
     }
@@ -93,9 +107,9 @@ export async function POST(request: NextRequest) {
     const result = await response.json();
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error('Error creating department:', error);
+    console.error('Error creating daily log activity:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error while creating department' },
+      { success: false, message: 'Internal server error while creating daily log activity' },
       { status: 500 }
     );
   }
