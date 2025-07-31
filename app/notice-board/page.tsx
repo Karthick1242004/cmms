@@ -33,6 +33,7 @@ import {
 import { formatDistanceToNow, format } from 'date-fns';
 import { toast } from 'sonner';
 import React from 'react';
+import { NoticeBoardForm } from '@/components/notice-board/notice-board-form';
 
 // Priority colors
 const priorityColors = {
@@ -424,15 +425,13 @@ export default function NoticeBoardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Create/Edit Notice Dialog - TODO: Implement form component */}
+      {/* Create/Edit Notice Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Create Notice</DialogTitle>
           </DialogHeader>
-          <div className="text-center py-8 text-gray-500">
-            Notice form component will be implemented next...
-          </div>
+          <NoticeBoardForm />
         </DialogContent>
       </Dialog>
     </PageLayout>
