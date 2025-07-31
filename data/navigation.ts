@@ -107,4 +107,9 @@ export const navigation: NavigationItem[] = [
     href: "/daily-log-activities",
     iconName: "ClipboardList",
   },
+  {
+    name: "Notice Board",
+    href: "/notice-board",
+    iconName: "MessageSquare",
+  },
 ]

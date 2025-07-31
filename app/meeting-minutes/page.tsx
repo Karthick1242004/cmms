@@ -368,10 +368,10 @@ export default function MeetingMinutesPage() {
                       const actionItemsSummary = getActionItemsStatusSummary(mom.actionItems);
                       
                       return (
-                        <TableRow key={mom.id}>
+                        <TableRow key={mom.id} onClick={() => handleView(mom)}>
                           <TableCell>
                             <div className="space-y-1">
-                              <div className="font-medium">{mom.title}</div>
+                              <div className="font-medium cursor-pointer">{mom.title}</div>
                               <div className="text-sm text-muted-foreground truncate max-w-[200px]">
                                 {mom.purpose}
                               </div>
