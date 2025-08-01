@@ -21,12 +21,12 @@ export const noticeBoardApi = {
   getAll: async (filters: NoticeBoardFilters = {}): Promise<NoticeBoardResponse> => {
     const queryParams = new URLSearchParams();
     
-    // Add filter parameters
+    // Build query parameters, excluding 'all' values to prevent validation errors
     if (filters.page) queryParams.append('page', filters.page.toString());
     if (filters.limit) queryParams.append('limit', filters.limit.toString());
-    if (filters.priority) queryParams.append('priority', filters.priority);
-    if (filters.type) queryParams.append('type', filters.type);
-    if (filters.targetAudience) queryParams.append('targetAudience', filters.targetAudience);
+    if (filters.priority && filters.priority !== 'all') queryParams.append('priority', filters.priority);
+    if (filters.type && filters.type !== 'all') queryParams.append('type', filters.type);
+    if (filters.targetAudience && filters.targetAudience !== 'all') queryParams.append('targetAudience', filters.targetAudience);
     if (filters.isActive !== undefined) queryParams.append('isActive', filters.isActive.toString());
     if (filters.isPublished !== undefined) queryParams.append('isPublished', filters.isPublished.toString());
     if (filters.search) queryParams.append('search', filters.search);

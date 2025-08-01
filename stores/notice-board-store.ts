@@ -51,9 +51,15 @@ export const useNoticeBoardStore = create<NoticeBoardState>()(
             const response = await noticeBoardApi.getAll(queryFilters);
 
             if (response.success) {
+              // Transform MongoDB _id to id for consistent frontend usage
+              const transformedNotices = response.data.notices.map((notice: NoticeBoard & { _id?: string }) => ({
+                ...notice,
+                id: notice.id || notice._id || '', // Use id if available, fallback to _id
+              }));
+              
               set((state) => {
-                state.notices = response.data.notices;
-                state.filteredNotices = response.data.notices;
+                state.notices = transformedNotices;
+                state.filteredNotices = transformedNotices;
                 state.pagination = response.data.pagination;
                 state.isLoading = false;
                 if (filters) {
@@ -85,10 +91,14 @@ export const useNoticeBoardStore = create<NoticeBoardState>()(
             const response = await noticeBoardApi.getById(id);
             
             if (response.success) {
+              const transformedNotice = {
+                ...response.data,
+                id: response.data.id || (response.data as NoticeBoard & { _id?: string })._id || '',
+              };
               set((state) => {
-                state.currentNotice = response.data;
+                state.currentNotice = transformedNotice;
               });
-              return response.data;
+              return transformedNotice;
             } else {
               throw new Error(response.message || 'Notice not found');
             }
@@ -109,8 +119,12 @@ export const useNoticeBoardStore = create<NoticeBoardState>()(
             const response = await noticeBoardApi.create(data);
 
             if (response.success) {
+              const transformedNotice = {
+                ...response.data,
+                id: response.data.id || (response.data as NoticeBoard & { _id?: string })._id || '',
+              };
               set((state) => {
-                state.notices.unshift(response.data);
+                state.notices.unshift(transformedNotice);
                 state.isCreating = false;
                 state.isDialogOpen = false;
               });
@@ -143,10 +157,14 @@ export const useNoticeBoardStore = create<NoticeBoardState>()(
             const response = await noticeBoardApi.update(id, data);
 
             if (response.success) {
+              const transformedNotice = {
+                ...response.data,
+                id: response.data.id || (response.data as NoticeBoard & { _id?: string })._id || '',
+              };
               set((state) => {
                 const index = state.notices.findIndex(notice => notice.id === id);
                 if (index !== -1) {
-                  state.notices[index] = response.data;
+                  state.notices[index] = transformedNotice;
                 }
                 state.isUpdating = false;
                 state.isDialogOpen = false;
@@ -214,10 +232,14 @@ export const useNoticeBoardStore = create<NoticeBoardState>()(
             const response = await noticeBoardApi.togglePublish(id, isPublished);
 
             if (response.success) {
+              const transformedNotice = {
+                ...response.data,
+                id: response.data.id || (response.data as NoticeBoard & { _id?: string })._id || '',
+              };
               set((state) => {
                 const index = state.notices.findIndex(notice => notice.id === id);
                 if (index !== -1) {
-                  state.notices[index] = response.data;
+                  state.notices[index] = transformedNotice;
                 }
                 state.isPublishing = false;
               });

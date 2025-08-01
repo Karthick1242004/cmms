@@ -74,8 +74,15 @@ export default function NoticeBoardPage() {
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
-    fetchNotices();
-  }, [fetchNotices]);
+    // Fetch notices based on user role
+    if (isAdmin) {
+      // Admins see all notices (published + unpublished)
+      fetchNotices({ page: 1, limit: 10 });
+    } else {
+      // Regular users see only published notices
+      fetchNotices({ page: 1, limit: 10, isPublished: true });
+    }
+  }, [fetchNotices, isAdmin]);
 
   const handleViewNotice = (notice: NoticeBoard) => {
     setSelectedNotice(notice);
@@ -83,23 +90,41 @@ export default function NoticeBoardPage() {
   };
 
   const handleEditNotice = (notice: NoticeBoard) => {
-    // TODO: Implement edit functionality
-    toast.info('Edit functionality will be implemented in the form component');
+    // Set the notice for editing and open the dialog
+    // Note: Edit functionality will be implemented when the form component supports it
+    toast.info('Edit functionality coming soon');
   };
 
   const handleDeleteNotice = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this notice?')) {
-      await deleteNotice(id);
+    if (window.confirm('Are you sure you want to delete this notice? This action cannot be undone.')) {
+      try {
+        await deleteNotice(id);
+      } catch (error) {
+        console.error('Failed to delete notice:', error);
+        toast.error('Failed to delete notice. Please try again.');
+      }
     }
   };
 
   const handleTogglePublish = async (id: string, currentStatus: boolean) => {
-    await togglePublishNotice(id, !currentStatus);
+    try {
+      await togglePublishNotice(id, !currentStatus);
+    } catch (error) {
+      console.error('Failed to toggle publish status:', error);
+      toast.error('Failed to update publication status. Please try again.');
+    }
   };
 
   const handleFilterChange = (key: string, value: any) => {
-    setFilters({ [key]: value });
-    fetchNotices({ ...filters, [key]: value });
+    const newFilters = { ...filters, [key]: value };
+    
+    // Clean filters: remove undefined, 'all', and empty values before API call
+    const cleanFilters = Object.fromEntries(
+      Object.entries(newFilters).filter(([_, v]) => v !== undefined && v !== 'all' && v !== '')
+    );
+    
+    setFilters(newFilters);
+    fetchNotices(cleanFilters);
   };
 
   const getPriorityIcon = (priority: string) => {
@@ -134,6 +159,11 @@ export default function NoticeBoardPage() {
                   <span className="ml-1 capitalize">{notice.priority}</span>
                 </Badge>
                 {getStatusIcon(notice)}
+                {!notice.isPublished && (
+                  <Badge variant="secondary" className="bg-gray-100 text-gray-700 text-xs">
+                    Draft
+                  </Badge>
+                )}
               </div>
               <CardTitle className="text-lg line-clamp-2 cursor-pointer hover:text-blue-600" 
                         onClick={() => handleViewNotice(notice)}>
@@ -262,6 +292,16 @@ export default function NoticeBoardPage() {
       <PageContent>
         {/* Filters and Search */}
         <div className="mb-6 space-y-4">
+          {/* Notice Count Info */}
+          {/* {isAdmin && (
+            <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
+              <strong>Notices:</strong> Showing {filteredNotices.length} of {pagination?.totalCount || 0} notices
+              <span className="ml-2 text-xs text-blue-600">
+                (Including drafts - use filters to switch between published/unpublished)
+              </span>
+            </div>
+          )} */}
+          
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -273,7 +313,13 @@ export default function NoticeBoardPage() {
               />
             </div>
             <div className="flex gap-2">
-              <Select value={filters.priority || ''} onValueChange={(value) => handleFilterChange('priority', value || undefined)}>
+              <Select value={filters.priority || ''} onValueChange={(value) => {
+                if (value === 'all' || value === '') {
+                  handleFilterChange('priority', undefined);
+                } else {
+                  handleFilterChange('priority', value);
+                }
+              }}>
                 <SelectTrigger className="w-[130px]">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
@@ -286,7 +332,13 @@ export default function NoticeBoardPage() {
                 </SelectContent>
               </Select>
               
-              <Select value={filters.type || ''} onValueChange={(value) => handleFilterChange('type', value || undefined)}>
+              <Select value={filters.type || ''} onValueChange={(value) => {
+                if (value === 'all' || value === '') {
+                  handleFilterChange('type', undefined);
+                } else {
+                  handleFilterChange('type', value);
+                }
+              }}>
                 <SelectTrigger className="w-[120px]">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
@@ -295,6 +347,26 @@ export default function NoticeBoardPage() {
                   <SelectItem value="text">Text</SelectItem>
                   <SelectItem value="link">Link</SelectItem>
                   <SelectItem value="file">File</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Publication Status Filter */}
+              <Select value={filters.isPublished !== undefined ? filters.isPublished.toString() : ''} onValueChange={(value) => {
+                if (value === 'all') {
+                  handleFilterChange('isPublished', undefined);
+                } else if (value === 'true') {
+                  handleFilterChange('isPublished', true);
+                } else if (value === 'false') {
+                  handleFilterChange('isPublished', false);
+                }
+              }}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="true">Published</SelectItem>
+                  <SelectItem value="false">Drafts</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -309,12 +381,12 @@ export default function NoticeBoardPage() {
             <p className="text-gray-500 mb-4">
               {searchTerm ? 'Try adjusting your search terms.' : 'No notices have been published yet.'}
             </p>
-            {isAdmin && !searchTerm && (
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create First Notice
-              </Button>
-            )}
+                      {isAdmin && !searchTerm && (
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create First Notice
+            </Button>
+          )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
