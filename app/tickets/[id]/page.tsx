@@ -27,10 +27,12 @@ import {
   Calendar,
   MessageSquare,
   Activity,
-  Trash2
+  Trash2,
+  FileDown
 } from "lucide-react"
 import { toast } from "sonner"
 import { ticketsApi } from "@/lib/tickets-api"
+import { TicketReport } from "@/components/ticket-report"
 import type { Ticket, ActivityLogEntry } from "@/types/ticket"
 
 export default function TicketDetailPage() {
@@ -44,6 +46,7 @@ export default function TicketDetailPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [newActivityRemark, setNewActivityRemark] = useState("")
   const [isAddingActivity, setIsAddingActivity] = useState(false)
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   // Form state for editing
   const [formData, setFormData] = useState({
@@ -290,6 +293,10 @@ export default function TicketDetailPage() {
                 </Button>
               </>
             )}
+            <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}>
+              <FileDown className="h-4 w-4 mr-2" />
+              Generate Report
+            </Button>
             <Button variant="destructive" onClick={handleDelete}>
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -639,6 +646,15 @@ export default function TicketDetailPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Ticket Report Dialog */}
+        {ticket && (
+          <TicketReport
+            ticket={ticket}
+            isOpen={isReportDialogOpen}
+            onClose={() => setIsReportDialogOpen(false)}
+          />
+        )}
       </PageContent>
     </PageLayout>
   )

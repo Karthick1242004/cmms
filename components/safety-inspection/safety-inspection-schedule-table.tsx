@@ -11,6 +11,7 @@ import { MoreHorizontal, Edit, Trash2, Eye, Shield, AlertTriangle, Clock, CheckC
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { SafetyInspectionScheduleForm } from "./safety-inspection-schedule-form"
 import { SafetyInspectionRecordForm } from "./safety-inspection-record-form"
+import { SafetyInspectionScheduleDetail } from "./safety-inspection-schedule-detail"
 import type { SafetyInspectionSchedule } from "@/types/safety-inspection"
 
 interface SafetyInspectionScheduleTableProps {
@@ -22,6 +23,10 @@ interface SafetyInspectionScheduleTableProps {
 export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }: SafetyInspectionScheduleTableProps) {
   const { deleteSchedule, setSelectedSchedule, setScheduleDialogOpen, setRecordDialogOpen } = useSafetyInspectionStore()
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; schedule: SafetyInspectionSchedule | null }>({
+    open: false,
+    schedule: null
+  })
+  const [detailDialog, setDetailDialog] = useState<{ open: boolean; schedule: SafetyInspectionSchedule | null }>({
     open: false,
     schedule: null
   })
@@ -103,6 +108,10 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
     setRecordDialogOpen(true)
   }
 
+  const handleViewDetails = (schedule: SafetyInspectionSchedule) => {
+    setDetailDialog({ open: true, schedule })
+  }
+
   if (isLoading) {
     return (
       <Card>
@@ -169,7 +178,13 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{schedule.title}</div>
+                            <button 
+                              onClick={() => handleViewDetails(schedule)}
+                              className="font-medium text-left hover:text-primary hover:underline cursor-pointer transition-colors"
+                              title="Click to view details"
+                            >
+                              {schedule.title}
+                            </button>
                             {schedule.description && (
                               <div className="text-sm text-muted-foreground line-clamp-2">
                                 {schedule.description}
@@ -244,6 +259,10 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(schedule)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleCreateRecord(schedule)}>
                                 <Shield className="mr-2 h-4 w-4" />
                                 Start Inspection
@@ -286,6 +305,13 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
       <SafetyInspectionRecordForm
         trigger={<div />}
         schedule={null}
+      />
+
+      {/* Detail View Dialog */}
+      <SafetyInspectionScheduleDetail
+        schedule={detailDialog.schedule}
+        isOpen={detailDialog.open}
+        onClose={() => setDetailDialog({ open: false, schedule: null })}
       />
 
       {/* Delete Confirmation Dialog */}

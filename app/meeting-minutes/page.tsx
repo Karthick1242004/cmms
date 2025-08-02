@@ -39,15 +39,7 @@ import type { MeetingMinutes, MeetingMinutesFilters } from '@/types/meeting-minu
 import { MeetingMinutesForm } from '@/components/meeting-minutes/meeting-minutes-form';
 import { MeetingMinutesView } from '@/components/meeting-minutes/meeting-minutes-view';
 import { cn } from '@/lib/utils';
-
-// Mock user context - replace with actual auth context
-const mockUser = {
-  id: 'user123',
-  name: 'John Doe',
-  email: 'john@example.com',
-  department: 'Engineering',
-  role: 'admin' as const, // Change to 'user' to test regular user permissions
-};
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function MeetingMinutesPage() {
   // State
@@ -67,6 +59,16 @@ export default function MeetingMinutesPage() {
   // Hooks
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments();
+  const { user, isAuthenticated } = useAuthStore();
+
+  // Create user context from auth store
+  const userContext = user ? {
+    id: user.id.toString(),
+    name: user.name,
+    email: user.email,
+    department: user.department,
+    role: user.role === 'admin' ? 'admin' as const : 'user' as const,
+  } : null;
   
   // Store hooks
   const { 
@@ -108,7 +110,7 @@ export default function MeetingMinutesPage() {
     const newFilters: Partial<MeetingMinutesFilters> = {
       search: debouncedSearchTerm || undefined,
       status: statusFilter === 'all' ? undefined : statusFilter as any,
-      department: (mockUser.role === 'admin' && departmentFilter !== 'all') ? departmentFilter : undefined,
+      department: (userContext?.role === 'admin' && departmentFilter !== 'all') ? departmentFilter : undefined,
       sortBy: sortBy as any,
       sortOrder: sortOrder as any,
       page: 1, // Reset to first page when filters change
@@ -188,6 +190,22 @@ export default function MeetingMinutesPage() {
     if (completed === 0) return { text: `${completed}/${total} completed`, color: 'text-red-600' };
     return { text: `${completed}/${total} completed`, color: 'text-yellow-600' };
   };
+
+  // Safety check - redirect to login if not authenticated
+  if (!isAuthenticated || !userContext) {
+    return (
+      <PageLayout>
+        <PageContent>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <h2 className="text-lg font-semibold mb-2">Authentication Required</h2>
+              <p className="text-muted-foreground">Please log in to access Meeting Minutes.</p>
+            </div>
+          </div>
+        </PageContent>
+      </PageLayout>
+    );
+  }
 
   // Loading state
   if (loading && meetingMinutes.length === 0) {
@@ -288,7 +306,7 @@ export default function MeetingMinutesPage() {
                 </Select>
 
                 {/* Department Filter (Admin only) */}
-                {mockUser.role === 'admin' && (
+                {userContext?.role === 'admin' && (
                   <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Department" />
@@ -320,7 +338,7 @@ export default function MeetingMinutesPage() {
                   <MeetingMinutesForm
                     onSuccess={handleCreateSuccess}
                     onCancel={() => setIsCreateDialogOpen(false)}
-                    userContext={mockUser}
+                    userContext={userContext!}
                   />
                 </DialogContent>
               </Dialog>
@@ -527,7 +545,7 @@ export default function MeetingMinutesPage() {
                   setIsEditDialogOpen(false);
                   setSelectedMOM(null);
                 }}
-                userContext={mockUser}
+                userContext={userContext!}
               />
             )}
           </DialogContent>

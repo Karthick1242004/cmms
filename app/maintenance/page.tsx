@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
-import { Plus, Search, Calendar, Clock, AlertTriangle, CheckCircle, Users, TrendingUp } from "lucide-react"
+import { Plus, Search, Calendar, Clock, AlertTriangle, CheckCircle, Users, TrendingUp, FileBarChart } from "lucide-react"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { MaintenanceScheduleForm } from "@/components/maintenance/maintenance-schedule-form"
@@ -16,6 +16,7 @@ import { MaintenanceRecordForm } from "@/components/maintenance/maintenance-reco
 import { MaintenanceScheduleTable } from "@/components/maintenance/maintenance-schedule-table"
 import { MaintenanceRecordTable } from "@/components/maintenance/maintenance-record-table"
 import { MaintenanceStats } from "@/components/maintenance/maintenance-stats"
+import { MaintenanceOverallReport } from "@/components/maintenance/maintenance-overall-report"
 
 export default function MaintenancePage() {
   const {
@@ -39,6 +40,7 @@ export default function MaintenancePage() {
 
   const { user } = useAuthStore()
   const [activeTab, setActiveTab] = useState("schedules")
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   useEffect(() => {
     fetchSchedules()
@@ -82,16 +84,22 @@ export default function MaintenancePage() {
               Manage maintenance schedules and track completion records
             </p>
           </div>
-          {isAdmin && (
-            <MaintenanceScheduleForm
-              trigger={
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Schedule Maintenance
-                </Button>
-              }
-            />
-          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}>
+              <FileBarChart className="mr-2 h-4 w-4" />
+              Generate Report
+            </Button>
+            {isAdmin && (
+              <MaintenanceScheduleForm
+                trigger={
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Schedule Maintenance
+                  </Button>
+                }
+              />
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -209,6 +217,12 @@ export default function MaintenancePage() {
             />
           </TabsContent>
         </Tabs>
+
+        {/* Overall Maintenance Report Dialog */}
+        <MaintenanceOverallReport
+          isOpen={isReportDialogOpen}
+          onClose={() => setIsReportDialogOpen(false)}
+        />
       </PageContent>
     </PageLayout>
   )

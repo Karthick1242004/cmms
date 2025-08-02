@@ -43,11 +43,11 @@ export const navigation: NavigationItem[] = [
       { name: "Tools", href: "/assets/tools", iconName: "Tool" },
     ],
   },
-  // {
-  //   name: "Parts",
-  //   href: "/parts",
-  //   iconName: "Wrench",
-  // },
+  {
+    name: "Parts",
+    href: "/parts",
+    iconName: "Wrench",
+  },
   {
     name: "Maintenance",
     href: "/maintenance",

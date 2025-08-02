@@ -17,7 +17,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { TicketCreationForm } from "@/components/ticket-creation-form"
-import { Plus, Search, Filter, FileText, Clock, AlertCircle, CheckCircle, XCircle, Eye } from "lucide-react"
+import { TicketReport } from "@/components/ticket-report"
+import { Plus, Search, Filter, FileText, Clock, AlertCircle, CheckCircle, XCircle, Eye, FileDown } from "lucide-react"
 import { toast } from "sonner"
 import type { Ticket, TicketFilters } from "@/types/ticket"
 
@@ -32,6 +33,8 @@ export default function TicketsPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [reportTypeFilter, setReportTypeFilter] = useState("all")
   const [showOpenTickets, setShowOpenTickets] = useState(false)
+  const [selectedTicketForReport, setSelectedTicketForReport] = useState<Ticket | null>(null)
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   // Fetch tickets
   const fetchTickets = async () => {
@@ -161,6 +164,11 @@ export default function TicketsPage() {
   const handleViewTicket = (ticket: Ticket) => {
     // Navigate to ticket detail page
     window.location.href = `/tickets/${ticket.id}`
+  }
+
+  const handleGenerateReport = (ticket: Ticket) => {
+    setSelectedTicketForReport(ticket)
+    setIsReportDialogOpen(true)
   }
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
@@ -436,8 +444,18 @@ export default function TicketsPage() {
                                 size="sm"
                                 onClick={() => handleViewTicket(ticket)}
                                 className="h-6 w-6 p-0"
+                                title="View Ticket"
                               >
                                 <Eye className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleGenerateReport(ticket)}
+                                className="h-6 w-6 p-0"
+                                title="Generate Report"
+                              >
+                                <FileDown className="h-3 w-3" />
                               </Button>
                               {ticket.status !== 'Closed' && (
                                 <Select onValueChange={(status) => handleUpdateStatus(ticket.id, status)}>
@@ -464,6 +482,18 @@ export default function TicketsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Ticket Report Dialog */}
+        {selectedTicketForReport && (
+          <TicketReport
+            ticket={selectedTicketForReport}
+            isOpen={isReportDialogOpen}
+            onClose={() => {
+              setIsReportDialogOpen(false)
+              setSelectedTicketForReport(null)
+            }}
+          />
+        )}
       </PageContent>
     </PageLayout>
   )

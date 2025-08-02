@@ -7,11 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Edit, Trash2, Calendar, User, Clock, AlertTriangle, CheckCircle2, Play } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, Calendar, User, Clock, AlertTriangle, CheckCircle2, Play, Eye } from "lucide-react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { MaintenanceScheduleForm } from "./maintenance-schedule-form"
 import { MaintenanceRecordForm } from "./maintenance-record-form"
+import { MaintenanceScheduleDetail } from "./maintenance-schedule-detail"
 import type { MaintenanceSchedule } from "@/types/maintenance"
 
 interface MaintenanceScheduleTableProps {
@@ -24,6 +25,10 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
   const { deleteSchedule, setSelectedSchedule } = useMaintenanceStore()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null)
+  const [detailDialog, setDetailDialog] = useState<{ open: boolean; schedule: MaintenanceSchedule | null }>({
+    open: false,
+    schedule: null
+  })
 
   const handleDeleteClick = (scheduleId: string) => {
     setScheduleToDelete(scheduleId)
@@ -36,6 +41,10 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
       setScheduleToDelete(null)
     }
     setDeleteDialogOpen(false)
+  }
+
+  const handleViewDetails = (schedule: MaintenanceSchedule) => {
+    setDetailDialog({ open: true, schedule })
   }
 
   const getPriorityColor = (priority: string) => {
@@ -153,7 +162,13 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{schedule.title}</div>
+                      <button 
+                        onClick={() => handleViewDetails(schedule)}
+                        className="font-medium text-left hover:text-primary hover:underline cursor-pointer transition-colors"
+                        title="Click to view details"
+                      >
+                        {schedule.title}
+                      </button>
                       {schedule.description && (
                         <div className="text-sm text-muted-foreground line-clamp-2">
                           {schedule.description}
@@ -218,6 +233,10 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleViewDetails(schedule)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
                         <MaintenanceRecordForm
                           schedule={schedule}
                           trigger={
@@ -277,6 +296,13 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Detail View Dialog */}
+      <MaintenanceScheduleDetail
+        schedule={detailDialog.schedule}
+        isOpen={detailDialog.open}
+        onClose={() => setDetailDialog({ open: false, schedule: null })}
+      />
     </>
   )
 } 
