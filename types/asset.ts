@@ -71,6 +71,15 @@ export interface AssetDetail {
   purchaseInfo?: any
   associatedCustomer?: any
   log?: any[]
+  
+  // Links for Files section
+  links?: Array<{
+    id: string
+    name: string
+    url: string
+    description?: string
+    type: 'document' | 'manual' | 'specification' | 'image' | 'other'
+  }>
 }
 
 export interface AssetsState {

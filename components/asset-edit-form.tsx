@@ -62,6 +62,15 @@ interface AssetFormData {
   financials: any
   purchaseInfo: any
   associatedCustomer: any
+  
+  // Links for Files section
+  links: Array<{
+    id: string
+    name: string
+    url: string
+    description?: string
+    type: 'document' | 'manual' | 'specification' | 'image' | 'other'
+  }>
 }
 
 interface AssetEditFormProps {
@@ -108,6 +117,7 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
     personnel: [],
     businesses: [],
     files: [],
+    links: [],
     partsBOM: [],
     warrantyDetails: {},
     financials: {},
@@ -157,7 +167,33 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
             meteringEvents: assetDetail.meteringEvents || [],
             personnel: assetDetail.personnel || [],
             businesses: assetDetail.businesses || [],
-            files: assetDetail.files || [],
+            // Separate files from links when loading (files are now stored as JSON strings)
+            files: (() => {
+              const allFiles = assetDetail.files || []
+              const parsedFiles = allFiles.map(file => {
+                try {
+                  return typeof file === 'string' ? JSON.parse(file) : file
+                } catch {
+                  return file
+                }
+              })
+              const regularFiles = parsedFiles.filter(file => !file.url && !file.isLink)
+              return regularFiles
+            })(),
+            links: (() => {
+              const allFiles = assetDetail.files || []
+              const parsedFiles = allFiles.map(file => {
+                try {
+                  return typeof file === 'string' ? JSON.parse(file) : file
+                } catch {
+                  return file
+                }
+              })
+              const existingLinks = parsedFiles.filter(file => file.url || file.isLink)
+              const separateLinks = (assetDetail as any).links || []
+              const combinedLinks = [...existingLinks, ...separateLinks]
+              return combinedLinks
+            })(),
             partsBOM: assetDetail.partsBOM || [],
             warrantyDetails: assetDetail.warrantyDetails || {},
             financials: assetDetail.financials || {},
@@ -182,6 +218,37 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }))
+  }
+
+  // Helper functions for managing links
+  const addLink = () => {
+    const newLink = {
+      id: `link-${Date.now()}`,
+      name: '',
+      url: '',
+      description: '',
+      type: 'document' as const
+    }
+    setFormData(prev => ({
+      ...prev,
+      links: [...prev.links, newLink]
+    }))
+  }
+
+  const updateLink = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      links: prev.links.map((link, i) => 
+        i === index ? { ...link, [field]: value } : link
+      )
+    }))
+  }
+
+  const removeLink = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      links: prev.links.filter((_, i) => i !== index)
     }))
   }
 
@@ -230,13 +297,52 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
         ...(formData.meteringEvents && formData.meteringEvents.length > 0 && { meteringEvents: formData.meteringEvents }),
         ...(formData.personnel && formData.personnel.length > 0 && { personnel: formData.personnel }),
         ...(formData.businesses && formData.businesses.length > 0 && { businesses: formData.businesses }),
-        ...(formData.files && formData.files.length > 0 && { files: formData.files }),
+        // Merge existing files with new links into the files array
+        ...(() => {
+          const existingFiles = formData.files || []
+          const linksAsFiles = (formData.links || []).map(link => ({
+            // Convert link to file format that backend expects
+            id: link.id,
+            name: link.name,
+            url: link.url,
+            description: link.description,
+            type: link.type,
+            // Add common file properties that might be expected
+            category: link.type || 'document',
+            size: undefined,
+            uploadDate: new Date().toISOString(),
+            uploadedBy: undefined,
+            // Mark as link for identification
+            isLink: true
+          }))
+          const allFiles = [...existingFiles, ...linksAsFiles]
+          const stringifiedFiles = allFiles.map(file => typeof file === 'object' ? JSON.stringify(file) : file)
+          
+          return allFiles.length > 0 ? { files: stringifiedFiles } : {}
+        })(),
         ...(formData.partsBOM && formData.partsBOM.length > 0 && { partsBOM: formData.partsBOM }),
-        // Only include objects if they have meaningful content
-        ...(formData.warrantyDetails && Object.keys(formData.warrantyDetails).length > 0 && { warrantyDetails: formData.warrantyDetails }),
-        ...(formData.financials && Object.keys(formData.financials).length > 0 && { financials: formData.financials }),
-        ...(formData.purchaseInfo && Object.keys(formData.purchaseInfo).length > 0 && { purchaseInfo: formData.purchaseInfo }),
-        ...(formData.associatedCustomer && Object.keys(formData.associatedCustomer).length > 0 && { associatedCustomer: formData.associatedCustomer }),
+        // Only include objects if they have meaningful content - convert to strings if needed
+        ...(formData.warrantyDetails && Object.keys(formData.warrantyDetails).length > 0 && { 
+          warrantyDetails: typeof formData.warrantyDetails === 'object' 
+            ? JSON.stringify(formData.warrantyDetails) 
+            : formData.warrantyDetails 
+        }),
+        ...(formData.financials && Object.keys(formData.financials).length > 0 && { 
+          financials: typeof formData.financials === 'object' 
+            ? JSON.stringify(formData.financials) 
+            : formData.financials 
+        }),
+        ...(formData.purchaseInfo && Object.keys(formData.purchaseInfo).length > 0 && { 
+          purchaseInfo: typeof formData.purchaseInfo === 'object' 
+            ? JSON.stringify(formData.purchaseInfo) 
+            : formData.purchaseInfo 
+        }),
+        // Convert associatedCustomer object to string if it has content, otherwise exclude it
+        ...(formData.associatedCustomer && Object.keys(formData.associatedCustomer).length > 0 && { 
+          associatedCustomer: typeof formData.associatedCustomer === 'object' 
+            ? JSON.stringify(formData.associatedCustomer) 
+            : formData.associatedCustomer 
+        }),
       }
 
       // Update the asset
@@ -648,6 +754,126 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                   placeholder="Enter person or department"
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Links/Files Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Files & Links</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addLink}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Link
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                Add links to documents, manuals, specifications, or other relevant files
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {formData.links.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No links added yet</p>
+                  <p className="text-sm">Click "Add Link" to add file references</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {formData.links.map((link, index) => (
+                    <div key={link.id} className="border rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">Link {index + 1}</h4>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeLink(index)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={`link-name-${index}`}>Link Name *</Label>
+                          <Input
+                            id={`link-name-${index}`}
+                            value={link.name}
+                            onChange={(e) => updateLink(index, 'name', e.target.value)}
+                            placeholder="e.g., User Manual"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`link-type-${index}`}>Type</Label>
+                          <Select 
+                            value={link.type} 
+                            onValueChange={(value) => updateLink(index, 'type', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="document">Document</SelectItem>
+                              <SelectItem value="manual">Manual</SelectItem>
+                              <SelectItem value="specification">Specification</SelectItem>
+                              <SelectItem value="image">Image</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`link-url-${index}`}>URL *</Label>
+                        <Input
+                          id={`link-url-${index}`}
+                          type="url"
+                          value={link.url}
+                          onChange={(e) => updateLink(index, 'url', e.target.value)}
+                          placeholder="https://example.com/document.pdf"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`link-description-${index}`}>Description</Label>
+                        <Textarea
+                          id={`link-description-${index}`}
+                          value={link.description || ''}
+                          onChange={(e) => updateLink(index, 'description', e.target.value)}
+                          placeholder="Brief description of the file or link"
+                          rows={2}
+                        />
+                      </div>
+
+                      {/* Preview/Test Link */}
+                      {link.url && (
+                        <div className="flex items-center gap-2 pt-2 border-t">
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline flex items-center gap-1"
+                          >
+                            <Upload className="h-3 w-3" />
+                            Open Link
+                          </a>
+                          <Badge variant="outline" className="text-xs">
+                            {link.type}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

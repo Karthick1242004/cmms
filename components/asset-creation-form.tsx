@@ -60,6 +60,15 @@ interface AssetFormData {
   financials: any
   purchaseInfo: any
   associatedCustomer: any
+  
+  // Links for Files section
+  links: Array<{
+    id: string
+    name: string
+    url: string
+    description?: string
+    type: 'document' | 'manual' | 'specification' | 'image' | 'other'
+  }>
 }
 
 interface AssetCreationFormProps {
@@ -104,6 +113,7 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
     personnel: [],
     businesses: [],
     files: [],
+    links: [],
     partsBOM: [],
     warrantyDetails: {},
     financials: {},
@@ -115,6 +125,37 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }))
+  }
+
+  // Helper functions for managing links
+  const addLink = () => {
+    const newLink = {
+      id: `link-${Date.now()}`,
+      name: '',
+      url: '',
+      description: '',
+      type: 'document' as const
+    }
+    setFormData(prev => ({
+      ...prev,
+      links: [...prev.links, newLink]
+    }))
+  }
+
+  const updateLink = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      links: prev.links.map((link, i) => 
+        i === index ? { ...link, [field]: value } : link
+      )
+    }))
+  }
+
+  const removeLink = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      links: prev.links.filter((_, i) => i !== index)
     }))
   }
 
@@ -293,9 +334,39 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
         return cleaned
       }
 
+      // Merge links into files array before cleaning data
+      const linksAsFiles = (formData.links || []).map(link => ({
+        // Convert link to file format that backend expects
+        id: link.id,
+        name: link.name,
+        url: link.url,
+        description: link.description,
+        type: link.type,
+        // Add common file properties that might be expected
+        category: link.type || 'document',
+        size: undefined,
+        uploadDate: new Date().toISOString(),
+        uploadedBy: undefined,
+        // Mark as link for identification
+        isLink: true
+      }))
+
+      const mergedFormData = {
+        ...formData,
+        files: [...(formData.files || []), ...linksAsFiles], // Merge existing files with formatted links
+        links: undefined // Remove links field since we're merging into files
+      }
+
+      // Convert file objects to strings as backend expects
+      if (mergedFormData.files && mergedFormData.files.length > 0) {
+        mergedFormData.files = mergedFormData.files.map(file => 
+          typeof file === 'object' ? JSON.stringify(file) : file
+        )
+      }
+
       // Transform and clean form data
       const assetData = cleanData({
-        ...formData, // Include all form data first
+        ...mergedFormData, // Include all form data first (with merged files)
         name: formData.assetName, // Override with correct field mappings
         type: formData.category,
         status: formData.statusText.toLowerCase().includes("available") ? "available" as const :
@@ -943,6 +1014,126 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                   </SelectContent>
                 </Select>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Links/Files Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Files & Links</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addLink}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Link
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                Add links to documents, manuals, specifications, or other relevant files
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {formData.links.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No links added yet</p>
+                  <p className="text-sm">Click "Add Link" to add file references</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {formData.links.map((link, index) => (
+                    <div key={link.id} className="border rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">Link {index + 1}</h4>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeLink(index)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={`create-link-name-${index}`}>Link Name *</Label>
+                          <Input
+                            id={`create-link-name-${index}`}
+                            value={link.name}
+                            onChange={(e) => updateLink(index, 'name', e.target.value)}
+                            placeholder="e.g., User Manual"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`create-link-type-${index}`}>Type</Label>
+                          <Select 
+                            value={link.type} 
+                            onValueChange={(value) => updateLink(index, 'type', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="document">Document</SelectItem>
+                              <SelectItem value="manual">Manual</SelectItem>
+                              <SelectItem value="specification">Specification</SelectItem>
+                              <SelectItem value="image">Image</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`create-link-url-${index}`}>URL *</Label>
+                        <Input
+                          id={`create-link-url-${index}`}
+                          type="url"
+                          value={link.url}
+                          onChange={(e) => updateLink(index, 'url', e.target.value)}
+                          placeholder="https://example.com/document.pdf"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`create-link-description-${index}`}>Description</Label>
+                        <Textarea
+                          id={`create-link-description-${index}`}
+                          value={link.description || ''}
+                          onChange={(e) => updateLink(index, 'description', e.target.value)}
+                          placeholder="Brief description of the file or link"
+                          rows={2}
+                        />
+                      </div>
+
+                      {/* Preview/Test Link */}
+                      {link.url && (
+                        <div className="flex items-center gap-2 pt-2 border-t">
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline flex items-center gap-1"
+                          >
+                            <Upload className="h-3 w-3" />
+                            Open Link
+                          </a>
+                          <Badge variant="outline" className="text-xs">
+                            {link.type}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

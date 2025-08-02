@@ -30,6 +30,7 @@ import {
   Wrench,
   UserCircle,
   Trash2,
+  Upload,
 } from "lucide-react"
 import type { AssetDetail } from "@/types/asset"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
@@ -186,7 +187,7 @@ export default function AssetDetailPage() {
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex mt-4 flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center">
               <Package className="h-6 w-6 mr-2 text-primary" />
@@ -479,22 +480,70 @@ export default function AssetDetailPage() {
                   <CardContent>
                     {asset.files && asset.files.length > 0 ? (
                       <div className="space-y-4">
-                        {asset.files.map((file: any, index: number) => (
+                        {asset.files.map((fileData: any, index: number) => {
+                          // Parse file data if it's a JSON string
+                          const file = (() => {
+                            try {
+                              return typeof fileData === 'string' ? JSON.parse(fileData) : fileData
+                            } catch {
+                              return fileData
+                            }
+                          })()
+                          
+                          return (
                           <div key={file.id || index} className="border rounded-lg p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              <DetailItem label="File Name" value={file.name} />
-                              <DetailItem label="Type" value={file.type} />
-                              <DetailItem label="Category" value={file.category} />
-                              <DetailItem label="Size" value={file.size} />
-                              <DetailItem label="Upload Date" value={file.uploadDate} />
-                              <DetailItem label="Uploaded By" value={file.uploadedBy} />
-                              <DetailItem label="Description" value={file.description} className="md:col-span-2 lg:col-span-3" />
-                            </div>
+                            {/* Check if this is a link (has url property) or regular file */}
+                            {file.url ? (
+                              // Display as link
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium text-lg">{file.name || 'Unnamed Link'}</h4>
+                                  <Badge variant="outline" className="text-xs">
+                                    {file.type || 'link'}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  <DetailItem label="Link Name" value={file.name} />
+                                  <DetailItem label="Type" value={file.type} />
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted-foreground">URL</label>
+                                    <a 
+                                      href={file.url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      <Upload className="h-3 w-3" />
+                                      Open Link
+                                    </a>
+                                  </div>
+                                  {file.description && (
+                                    <DetailItem 
+                                      label="Description" 
+                                      value={file.description} 
+                                      className="md:col-span-2 lg:col-span-3" 
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              // Display as regular file
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <DetailItem label="File Name" value={file.name} />
+                                <DetailItem label="Type" value={file.type} />
+                                <DetailItem label="Category" value={file.category} />
+                                <DetailItem label="Size" value={file.size} />
+                                <DetailItem label="Upload Date" value={file.uploadDate} />
+                                <DetailItem label="Uploaded By" value={file.uploadedBy} />
+                                <DetailItem label="Description" value={file.description} className="md:col-span-2 lg:col-span-3" />
+                              </div>
+                            )}
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     ) : (
-                      <p className="text-muted-foreground">No files available for this asset.</p>
+                      <p className="text-muted-foreground">No files or links available for this asset.</p>
                     )}
                   </CardContent>
                 </Card>
