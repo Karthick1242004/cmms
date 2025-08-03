@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -16,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, Search, Edit, Trash2, Phone, Mail, Loader2 } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Phone, Mail, Loader2, Eye } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useEmployeesStore } from "@/stores/employees-store"
@@ -24,6 +25,7 @@ import { Employee } from "@/types/employee"
 import { toast } from "sonner"
 
 export default function EmployeesPage() {
+  const router = useRouter()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [formData, setFormData] = useState<{
@@ -114,17 +116,17 @@ export default function EmployeesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex mt-4 justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Employees</h1>
           <p className="text-muted-foreground">Manage department employees and their responsibilities</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
-            <Button>
+            {/* <Button>
               <Plus className="mr-2 h-4 w-4" />
               Add Employee
-            </Button>
+            </Button> */}
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -274,7 +276,12 @@ export default function EmployeesPage() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">{employee.name}</div>
+                        <div 
+                          className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer"
+                          onClick={() => router.push(`/employees/${employee.id}`)}
+                        >
+                          {employee.name}
+                        </div>
                       </div>
                     </div>
                   </TableCell>
@@ -306,6 +313,10 @@ export default function EmployeesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => router.push(`/employees/${employee.id}`)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEdit(employee)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit

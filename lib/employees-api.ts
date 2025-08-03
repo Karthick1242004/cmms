@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import type { Employee } from '@/types/employee';
+import type { Employee, EmployeeDetail, EmployeeAnalytics, WorkHistoryEntry } from '@/types/employee';
 
 // API Response types
 interface EmployeeResponse {
@@ -20,6 +20,33 @@ interface EmployeeResponse {
 interface SingleEmployeeResponse {
   success: boolean;
   data: Employee;
+  message: string;
+}
+
+interface EmployeeDetailResponse {
+  success: boolean;
+  data: EmployeeDetail;
+  message: string;
+}
+
+interface EmployeeAnalyticsResponse {
+  success: boolean;
+  data: EmployeeAnalytics;
+  message: string;
+}
+
+interface WorkHistoryResponse {
+  success: boolean;
+  data: {
+    items: WorkHistoryEntry[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalCount: number;
+      hasNext: boolean;
+      hasPrevious: boolean;
+    };
+  };
   message: string;
 }
 
@@ -99,12 +126,40 @@ export const employeesApi = {
   getStats: async (): Promise<EmployeeStatsResponse> => {
     return apiClient.get<EmployeeStatsResponse>('/employees/stats');
   },
+
+  // Get detailed employee information with work history and analytics
+  getEmployeeDetails: async (id: string): Promise<EmployeeDetailResponse> => {
+    return apiClient.get<EmployeeDetailResponse>(`/employees/${id}/details`);
+  },
+
+  // Get employee analytics and performance metrics
+  getEmployeeAnalytics: async (id: string): Promise<EmployeeAnalyticsResponse> => {
+    return apiClient.get<EmployeeAnalyticsResponse>(`/employees/${id}/analytics`);
+  },
+
+  // Get employee work history with filtering and pagination
+  getEmployeeWorkHistory: async (
+    id: string, 
+    params: {
+      page?: number;
+      limit?: number;
+      type?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {}
+  ): Promise<WorkHistoryResponse> => {
+    const queryString = buildQueryString(params);
+    return apiClient.get<WorkHistoryResponse>(`/employees/${id}/work-history${queryString}`);
+  },
 };
 
 // Export types for use in components
 export type {
   EmployeeResponse,
   SingleEmployeeResponse,
+  EmployeeDetailResponse,
+  EmployeeAnalyticsResponse,
+  WorkHistoryResponse,
   EmployeeStatsResponse,
   EmployeeQueryParams,
 }; 
