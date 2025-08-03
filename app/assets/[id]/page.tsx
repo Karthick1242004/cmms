@@ -31,11 +31,13 @@ import {
   UserCircle,
   Trash2,
   Upload,
+  Printer,
 } from "lucide-react"
 import type { AssetDetail } from "@/types/asset"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { Skeleton } from "@/components/ui/skeleton"
 import { assetsApi } from "@/lib/assets-api"
+import { AssetIndividualReport } from "@/components/assets/asset-individual-report"
 
 interface DetailItemProps {
   label: string
@@ -62,6 +64,7 @@ export default function AssetDetailPage() {
   const [asset, setAsset] = useState<AssetDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isReportOpen, setIsReportOpen] = useState(false)
 
   useEffect(() => {
     const fetchAsset = async () => {
@@ -196,9 +199,15 @@ export default function AssetDetailPage() {
             <p className="text-muted-foreground">Viewing details for asset: {asset.assetName}</p>
           </div>
           <div className="flex space-x-2 flex-wrap gap-2">
-            <Button variant="outline">
-              <Edit className="mr-2 h-4 w-4" /> Move To
+            <Button 
+              onClick={() => setIsReportOpen(true)}
+              variant="outline"
+            >
+              <Printer className="mr-2 h-4 w-4" /> Individual Report
             </Button>
+            {/* <Button variant="outline">
+              <Edit className="mr-2 h-4 w-4" /> Move To
+            </Button> */}
             <Button variant="outline">
               <List className="mr-2 h-4 w-4" /> Equipment List
             </Button>
@@ -649,6 +658,14 @@ export default function AssetDetailPage() {
           </CardContent>
         </Card>
       </PageContent>
+
+      {/* Asset Individual Report */}
+      {isReportOpen && asset && (
+        <AssetIndividualReport 
+          asset={asset}
+          onClose={() => setIsReportOpen(false)}
+        />
+      )}
     </PageLayout>
   )
 }

@@ -18,6 +18,7 @@ import type { Part } from "@/types/part"
 import { toast } from "sonner"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { useAuthStore } from "@/stores/auth-store"
+import { PartsInventoryReport } from "@/components/parts/parts-inventory-report"
 
 export default function PartsPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -29,6 +30,7 @@ export default function PartsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedPart, setSelectedPart] = useState<Part | null>(null)
+  const [isReportOpen, setIsReportOpen] = useState(false)
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   const { user } = useAuthStore()
@@ -351,30 +353,39 @@ export default function PartsPage() {
   return (
     <PageLayout>
       <PageHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex mt-4 justify-between items-center">
             <div>
             <h1 className="text-3xl font-bold tracking-tight">Parts & Inventory Management</h1>
             <p className="text-muted-foreground">Manage your spare parts inventory with SKU and material codes</p>
+            </div>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={() => setIsReportOpen(true)}
+              variant="outline"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Generate Report
+            </Button>
+            {isAdmin && (
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Part
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Create New Part</DialogTitle>
+                    <DialogDescription>
+                      Add a new part to your inventory system
+                    </DialogDescription>
+                  </DialogHeader>
+                  <PartForm />
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
-          {isAdmin && (
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Part
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Part</DialogTitle>
-                  <DialogDescription>
-                    Add a new part to your inventory system
-                  </DialogDescription>
-                </DialogHeader>
-                <PartForm />
-              </DialogContent>
-            </Dialog>
-          )}
         </div>
       </PageHeader>
 
@@ -480,13 +491,13 @@ export default function PartsPage() {
                 </Select>
               </div>
 
-              <div className="space-y-1">
+              {/* <div className="space-y-1">
                 <label className="text-xs font-medium">Actions</label>
                 <Button variant="outline" size="sm" className="w-full h-8 text-xs">
                   <Download className="mr-1 h-3 w-3" />
                   Export
                 </Button>
-              </div>
+              </div> */}
             </div>
           </CardContent>
         </Card>
@@ -617,6 +628,14 @@ export default function PartsPage() {
           <PartForm isEdit={true} />
         </DialogContent>
       </Dialog>
+
+      {/* Parts Inventory Report */}
+      {isReportOpen && (
+        <PartsInventoryReport 
+          parts={parts}
+          onClose={() => setIsReportOpen(false)}
+        />
+      )}
     </PageLayout>
   )
 }

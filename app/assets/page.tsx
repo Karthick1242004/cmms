@@ -13,12 +13,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, FileText } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
 import { AssetCreationForm } from "@/components/asset-creation-form"
 import { AssetEditForm } from "@/components/asset-edit-form"
+import { AssetsOverallReport } from "@/components/assets/assets-overall-report"
 import { useAssetsStore } from "@/stores/assets-store"
 import type { Asset } from "@/types/asset"
 
@@ -27,6 +28,7 @@ export default function AllAssetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedAssetForEdit, setSelectedAssetForEdit] = useState<Asset | null>(null)
+  const [isReportOpen, setIsReportOpen] = useState(false)
   
   // Use the assets store
   const { 
@@ -154,23 +156,32 @@ export default function AllAssetsPage() {
             <h1 className="text-3xl font-bold tracking-tight">All Assets</h1>
             <p className="text-muted-foreground">Browse and manage all assets across your organization</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Asset
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-              <AssetCreationForm 
-                onSuccess={() => {
-                  setIsDialogOpen(false)
-                  fetchAssets() // Refresh the assets list
-                }}
-                onCancel={() => setIsDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={() => setIsReportOpen(true)}
+              variant="outline"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Generate Report
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Asset
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+                <AssetCreationForm 
+                  onSuccess={() => {
+                    setIsDialogOpen(false)
+                    fetchAssets() // Refresh the assets list
+                  }}
+                  onCancel={() => setIsDialogOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -317,6 +328,14 @@ export default function AllAssetsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Assets Overall Report */}
+      {isReportOpen && (
+        <AssetsOverallReport 
+          assets={filteredAssets}
+          onClose={() => setIsReportOpen(false)}
+        />
+      )}
     </PageLayout>
   )
 }
