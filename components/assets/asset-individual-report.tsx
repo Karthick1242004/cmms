@@ -98,7 +98,7 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
                     <Tag className="h-5 w-5 text-blue-600" />
                     <h3 className="font-semibold text-blue-900">Asset ID</h3>
                   </div>
-                  <p className="text-lg font-bold text-blue-600">{asset.id}</p>
+                  <p className="text-sm  font-bold text-blue-600">{asset.id}</p>
                 </div>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -502,7 +502,7 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
           }
           
           @page {
-            margin: 0.4in 0.3in;
+            margin: 0.3in 0.2in;
             size: A4 portrait;
           }
           
@@ -526,6 +526,7 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
           th {
             background-color: #f0f0f0 !important;
             font-weight: bold !important;
+            font-size: 8px !important;
           }
           
           .text-red-600 { color: #dc2626 !important; }
@@ -545,22 +546,44 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
           .bg-gray-50 { background-color: #f9fafb !important; }
           
           .space-y-4 > * + * {
-            margin-top: 0.5rem !important;
+            margin-top: 0.3rem !important;
           }
           
+          .space-y-6 > * + * {
+            margin-top: 0.4rem !important;
+          }
+          
+          /* Readable header sizes for 1-2 pages */
           h1 {
-            font-size: 18px !important;
-            margin: 8px 0 !important;
-          }
-          
-          h2 {
-            font-size: 14px !important;
+            font-size: 16px !important;
             margin: 6px 0 !important;
           }
           
-          h3 {
+          h2 {
             font-size: 12px !important;
             margin: 4px 0 !important;
+          }
+          
+          h3 {
+            font-size: 10px !important;
+            margin: 3px 0 !important;
+          }
+          
+          /* Readable overview cards */
+          .grid > div {
+            padding: 3px !important;
+            margin: 2px !important;
+            font-size: 8px !important;
+          }
+          
+          /* Balanced section spacing */
+          .print-content > div {
+            margin-bottom: 0.4rem !important;
+          }
+          
+          /* Reasonable print content padding */
+          .print-content {
+            padding: 6px !important;
           }
           
           .grid {
@@ -572,11 +595,53 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
             width: 23% !important;
             margin: 0 0.5% !important;
             vertical-align: top !important;
+            padding: 2px !important;
+            font-size: 6px !important;
           }
           
           .md\\:grid-cols-2 > div {
             width: 48% !important;
             margin: 0 1% !important;
+          }
+          
+          /* Allow natural page breaks for 1-2 pages */
+          .space-y-4, .space-y-6 {
+            page-break-inside: auto !important;
+            break-inside: auto !important;
+          }
+          
+          /* Allow page breaks where needed but avoid orphans */
+          table {
+            page-break-inside: auto !important;
+          }
+          
+          table tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          
+          /* Readable description box */
+          .bg-gray-50 {
+            padding: 4px !important;
+            font-size: 9px !important;
+            line-height: 1.3 !important;
+          }
+          
+          /* Readable text elements */
+          p, span, div {
+            font-size: 8px !important;
+            line-height: 1.2 !important;
+            margin: 1px 0 !important;
+          }
+          
+          /* Ensure sections can break across pages naturally */
+          h2 {
+            page-break-after: avoid !important;
+          }
+          
+          /* Keep table headers with content */
+          thead {
+            display: table-header-group !important;
           }
         }
       `}</style>
