@@ -369,7 +369,7 @@ export default function TicketsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs font-medium py-2">Ticket ID</TableHead>
-                      <TableHead className="text-xs font-medium py-2">Subject</TableHead>
+                      {/* <TableHead className="text-xs font-medium py-2">Subject</TableHead> */}
                       <TableHead className="text-xs font-medium py-2">Priority</TableHead>
                       <TableHead className="text-xs font-medium py-2">Status</TableHead>
                       <TableHead className="text-xs font-medium py-2">Department</TableHead>
@@ -397,14 +397,14 @@ export default function TicketsPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="max-w-xs py-2">
+                          {/* <TableCell className="max-w-xs py-2">
                             <div className="truncate font-medium text-xs">{ticket.subject}</div>
                             {ticket.equipmentId && (
                               <div className="text-xs text-muted-foreground">
                                 Equipment: {ticket.equipmentId}
                               </div>
                             )}
-                          </TableCell>
+                          </TableCell> */}
                           <TableCell className="py-2">
                             <Badge variant={getPriorityColor(ticket.priority) as any} className="text-xs">
                               {ticket.priority}
