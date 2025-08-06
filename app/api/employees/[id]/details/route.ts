@@ -1,14 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import jwt from 'jsonwebtoken'
+import connectDB from '@/lib/mongodb'
+import Employee from '@/models/Employee'
 
 const SERVER_API_URL = process.env.NEXT_PUBLIC_SERVER_API_URL || 'http://localhost:5001'
 
+// Helper function to get user from JWT token
+async function getUserFromToken(request: NextRequest) {
+  const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
+                request.cookies.get('auth-token')?.value
+
+  if (!token) {
+    return null
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any
+    await connectDB()
+    return await Employee.findById(decoded.userId).select('-password')
+  } catch (error) {
+    return null
+  }
+}
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await getUserFromToken(request)
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
         { status: 401 }
@@ -16,16 +35,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const { id } = params
+    const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value
 
     const response = await fetch(`${SERVER_API_URL}/api/employees/${id}/details`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.user.token}`,
-        'x-user-id': session.user.id,
-        'x-user-email': session.user.email,
-        'x-user-department': session.user.department || '',
-        'x-user-role': session.user.role || 'user',
+        'Authorization': `Bearer ${token}`,
+        'x-user-id': user._id.toString(),
+        'x-user-email': user.email,
+        'x-user-department': user.department || '',
+        'x-user-role': user.role || 'user',
       },
     })
 

@@ -1,15 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import jwt from 'jsonwebtoken'
+import connectDB from '@/lib/mongodb'
+import Employee from '@/models/Employee'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5001'
 
+// Helper function to get user from JWT token
+async function getUserFromToken(request: NextRequest) {
+  const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
+                request.cookies.get('auth-token')?.value
+
+  if (!token) {
+    return null
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any
+    await connectDB()
+    return await Employee.findById(decoded.userId).select('-password')
+  } catch (error) {
+    return null
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Get session for authentication
-    const session = await getServerSession(authOptions)
+    // Get user from JWT token
+    const user = await getUserFromToken(request)
     
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ 
         success: false, 
         message: 'Unauthorized' 
@@ -25,7 +44,7 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         // Add department filtering if needed
-        ...(session.user?.department && { 'X-User-Department': session.user.department }),
+        ...(user.department && { 'X-User-Department': user.department }),
       },
       body: JSON.stringify(body),
     })

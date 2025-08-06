@@ -1,6 +1,4 @@
 import { NextRequest } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import jwt from 'jsonwebtoken'
 import connectDB from '@/lib/mongodb'
 import Employee from '@/models/Employee'
@@ -15,37 +13,12 @@ export interface UserContext {
 }
 
 /**
- * Get user context from NextAuth session
+ * Get user context from NextAuth session (DEPRECATED - use JWT instead)
  * Used for routes that rely on OAuth authentication
  */
 export async function getUserFromSession(): Promise<UserContext | null> {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return null
-    }
-
-    await connectDB()
-    
-    const employee = await Employee.findOne({ email: session.user.email }).select('-password')
-    
-    if (!employee) {
-      return null
-    }
-
-    return {
-      id: employee._id.toString(),
-      email: employee.email,
-      department: employee.department,
-      role: employee.role,
-      name: employee.name,
-      accessLevel: employee.accessLevel || 'normal_user'
-    }
-  } catch (error) {
-    console.error('Error getting user from session:', error)
-    return null
-  }
+  // This function is deprecated - use getUserFromToken instead
+  return null
 }
 
 /**
@@ -58,31 +31,23 @@ export async function getUserFromToken(request: NextRequest): Promise<UserContex
     const token = authHeader?.replace('Bearer ', '') || 
                   request.cookies.get('auth-token')?.value
 
-    console.log('Token from request:', token ? 'Token found' : 'No token')
-    
     if (!token) {
-      console.log('No JWT token found in request headers or cookies')
       return null
     }
 
     if (!process.env.JWT_SECRET) {
-      console.error('JWT_SECRET environment variable is not set')
       return null
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
-    console.log('JWT decoded successfully for user:', decoded.email)
     
     await connectDB()
     
     const employee = await Employee.findById(decoded.userId).select('-password')
     
     if (!employee) {
-      console.log('Employee not found in database for JWT token')
       return null
     }
-
-    console.log('Employee found via JWT:', { id: employee._id.toString(), email: employee.email, department: employee.department, role: employee.role })
 
     return {
       id: employee._id.toString(),
@@ -107,19 +72,10 @@ export async function getUserContext(request?: NextRequest): Promise<UserContext
   if (request) {
     const userFromToken = await getUserFromToken(request)
     if (userFromToken) {
-      console.log('User authenticated via JWT token')
       return userFromToken
     }
   }
 
-  // Try session second (OAuth)
-  const userFromSession = await getUserFromSession()
-  if (userFromSession) {
-    console.log('User authenticated via NextAuth session')
-    return userFromSession
-  }
-
-  console.log('No authentication found - neither JWT nor session')
   return null
 }
 
