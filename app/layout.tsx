@@ -4,7 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ClientLayout } from "@/components/client-layout"
-import { NextAuthSessionProvider } from "@/components/session-provider"
+
 import { AuthGuard } from "@/components/auth-guard"
 import { QueryProvider } from "@/components/query-provider"
 import { Toaster } from "sonner"
@@ -23,18 +23,22 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <NextAuthSessionProvider >
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+        <ThemeProvider 
+          attribute="class" 
+          defaultTheme="light" 
+          enableSystem={false} 
+          disableTransitionOnChange
+          storageKey="cmms-theme"
+        >
           <QueryProvider>
             <AuthGuard>
-          <ClientLayout>{children}</ClientLayout>
+              <ClientLayout>{children}</ClientLayout>
             </AuthGuard>
           </QueryProvider>
-            <Toaster position="top-right" richColors closeButton />
+          <Toaster position="top-right" richColors closeButton />
         </ThemeProvider>
-        </NextAuthSessionProvider>
       </body>
     </html>
   )

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
+import { useAuthStore } from "@/stores/auth-store"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -19,8 +19,8 @@ interface ProfileCompletionBannerProps {
 }
 
 export function ProfileCompletionBanner({ className, profileStatus, onCompleteClick }: ProfileCompletionBannerProps) {
-  const { data: session } = useSession()
   const router = useRouter()
+  const { user } = useAuthStore()
   const [isVisible, setIsVisible] = useState(false)
   const [profileData, setProfileData] = useState<{
     isComplete: boolean
@@ -36,21 +36,26 @@ export function ProfileCompletionBanner({ className, profileStatus, onCompleteCl
       return
     }
 
-    // Fallback to session-based logic
-    if (session?.user?.email && session.user.profileCompleted === false) {
-      setIsVisible(true)
-      // Calculate missing fields based on session data
-      const missingFields = session.user.profileCompletionFields || []
-      const totalFields = 8 // Total required fields
+    // Calculate missing fields based on user data
+    if (user?.email) {
+      const missingFields = []
+      if (!user.name) missingFields.push('Name')
+      if (!user.skills?.length) missingFields.push('Skills')
+      if (!user.certifications?.length) missingFields.push('Certifications')
+      if (!user.emergencyContact?.name) missingFields.push('Emergency Contact')
+      if (!user.emergencyContact?.phone) missingFields.push('Emergency Phone')
+      
+      const totalFields = 5 // Total required fields
       const completionPercentage = Math.round(((totalFields - missingFields.length) / totalFields) * 100)
       
       setProfileData({
-        isComplete: false,
+        isComplete: missingFields.length === 0,
         missingFields,
         completionPercentage
       })
+      setIsVisible(missingFields.length > 0)
     }
-  }, [session, profileStatus])
+  }, [user, profileStatus])
 
   const handleCompleteProfile = () => {
     if (onCompleteClick) {

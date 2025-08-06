@@ -3,14 +3,15 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import jwt from 'jsonwebtoken'
 import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
+import Employee from '@/models/Employee'
 
 export interface UserContext {
   id: string
   email: string
   department: string
-  role: 'admin' | 'manager' | 'technician'
+  role: string
   name: string
+  accessLevel: 'super_admin' | 'department_admin' | 'normal_user'
 }
 
 /**
@@ -27,18 +28,19 @@ export async function getUserFromSession(): Promise<UserContext | null> {
 
     await connectDB()
     
-    const user = await User.findOne({ email: session.user.email }).select('-password')
+    const employee = await Employee.findOne({ email: session.user.email }).select('-password')
     
-    if (!user) {
+    if (!employee) {
       return null
     }
 
     return {
-      id: user._id.toString(),
-      email: user.email,
-      department: user.department,
-      role: user.role,
-      name: user.name
+      id: employee._id.toString(),
+      email: employee.email,
+      department: employee.department,
+      role: employee.role,
+      name: employee.name,
+      accessLevel: employee.accessLevel || 'normal_user'
     }
   } catch (error) {
     console.error('Error getting user from session:', error)
@@ -73,21 +75,22 @@ export async function getUserFromToken(request: NextRequest): Promise<UserContex
     
     await connectDB()
     
-    const user = await User.findById(decoded.userId).select('-password')
+    const employee = await Employee.findById(decoded.userId).select('-password')
     
-    if (!user) {
-      console.log('User not found in database for JWT token')
+    if (!employee) {
+      console.log('Employee not found in database for JWT token')
       return null
     }
 
-    console.log('User found via JWT:', { id: user._id.toString(), email: user.email, department: user.department, role: user.role })
+    console.log('Employee found via JWT:', { id: employee._id.toString(), email: employee.email, department: employee.department, role: employee.role })
 
     return {
-      id: user._id.toString(),
-      email: user.email,
-      department: user.department,
-      role: user.role,
-      name: user.name
+      id: employee._id.toString(),
+      email: employee.email,
+      department: employee.department,
+      role: employee.role,
+      name: employee.name,
+      accessLevel: employee.accessLevel || 'normal_user'
     }
   } catch (error) {
     console.error('Error getting user from token:', error)
@@ -125,8 +128,8 @@ export async function getUserContext(request?: NextRequest): Promise<UserContext
  * Admins can access all departments, others only their own
  */
 export function canAccessDepartment(user: UserContext, targetDepartment: string): boolean {
-  // Admins can access all departments
-  if (user.role === 'admin') {
+  // Super admins can access all departments
+  if (user.accessLevel === 'super_admin') {
     return true
   }
 
@@ -139,8 +142,8 @@ export function canAccessDepartment(user: UserContext, targetDepartment: string)
  * Returns array of departments the user can access
  */
 export function getDepartmentFilter(user: UserContext): string[] {
-  if (user.role === 'admin') {
-    // Admins can see all departments
+  if (user.accessLevel === 'super_admin') {
+    // Super admins can see all departments
     return []
   }
 

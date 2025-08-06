@@ -1,11 +1,20 @@
 export interface User {
-  id: number
+  id: string | number
   email: string
   password: string
   name: string
-  role: "admin" | "manager" | "technician"
+  role: string
   department: string
   avatar?: string
+  accessLevel?: 'super_admin' | 'department_admin' | 'normal_user'
+  employeeId?: string
+  shiftInfo?: {
+    shiftType: 'day' | 'night' | 'rotating' | 'on-call'
+    shiftStartTime: string
+    shiftEndTime: string
+    workDays: string[]
+    location: string
+  }
 }
 
 export interface AuthState {

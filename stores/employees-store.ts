@@ -3,6 +3,7 @@ import { devtools, persist } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
 import type { Employee, EmployeesState } from "@/types/employee"
 import { employeesApi } from "@/lib/employees-api"
+import { useAuthStore } from "@/stores/auth-store"
 
 export const useEmployeesStore = create<EmployeesState>()(
   devtools(
@@ -100,9 +101,15 @@ export const useEmployeesStore = create<EmployeesState>()(
           })
 
           try {
-            // Note: Department filtering is now handled by the API based on user authentication
-            // No need to pass department explicitly as it's extracted from the user session/token
-            const response = await employeesApi.getAll({ limit: 100 })
+            const user = useAuthStore.getState().user
+            const params: any = { limit: 100 }
+
+            // If not super_admin, filter by department
+            if (user?.accessLevel !== 'super_admin') {
+              params.department = user?.department
+            }
+
+            const response = await employeesApi.getAll(params)
             if (response.success) {
               set((state) => {
                 state.employees = response.data.employees

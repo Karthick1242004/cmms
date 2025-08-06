@@ -33,6 +33,16 @@ export interface PerformanceMetrics {
   rating: number; // 1-5 scale
 }
 
+// Shift information interface
+export interface ShiftInfo {
+  shiftType: 'day' | 'night' | 'rotating' | 'on-call';
+  shiftStartTime: string; // Format: "HH:MM"
+  shiftEndTime: string; // Format: "HH:MM"
+  workDays: string[]; // Array of days: ["Monday", "Tuesday", ...]
+  location: string; // Work location
+  effectiveDate?: string; // When this shift assignment starts
+}
+
 export interface Employee {
   id: string
   name: string
@@ -40,20 +50,21 @@ export interface Employee {
   phone: string
   department: string
   role: string
-  status: "active" | "inactive"
+  status: "active" | "inactive" | "on-leave"
   avatar?: string
+  employeeId?: string
+  joinDate?: string
+  supervisor?: string
+  accessLevel?: 'super_admin' | 'department_admin' | 'normal_user'
+  shiftInfo?: ShiftInfo
   createdAt?: string
   updatedAt?: string
 }
 
 export interface EmployeeDetail extends Employee {
   // Extended fields for detailed tracking
-  employeeId?: string; // Unique employee identifier
-  joinDate?: string;
-  supervisor?: string; // Employee ID of supervisor
   skills?: string[]; // Array of skills/competencies
   certifications?: string[]; // Array of certifications
-  workShift?: 'day' | 'night' | 'rotating' | 'on-call';
   emergencyContact?: {
     name: string;
     relationship: string;

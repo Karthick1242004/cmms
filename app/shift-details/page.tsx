@@ -35,9 +35,20 @@ const WORK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satu
 
 export default function ShiftDetailsPage() {
   const { user } = useAuthStore()
-  const isAdmin = user?.role === "admin"
+  const isAdmin = user?.accessLevel === 'super_admin'
 
   // React Query for data fetching
+  // Build query params including department filter for non-admin users
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams({ limit: '100' })
+    if (!isAdmin && user?.department) {
+      params.append('department', user.department)
+    }
+    return params.toString()
+  }, [isAdmin, user?.department])
+
+
+
   const { data: shiftDetailsData, isLoading, error } = useCommonQuery<{
     success: boolean;
     data: {
@@ -46,8 +57,8 @@ export default function ShiftDetailsPage() {
     };
     message: string;
   }>(
-    ['shift-details', 'list'],
-    '/shift-details?limit=100'
+    ['shift-details', 'list', queryParams],
+    `/shift-details?${queryParams}`
   )
 
   // Local state for UI
@@ -55,13 +66,15 @@ export default function ShiftDetailsPage() {
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [selectedShiftDetail, setSelectedShiftDetail] = useState<ShiftDetail | null>(null)
 
-  // Filter state
+  // Filter state - initialize department filter based on user's department
   const [filters, setFilters] = useState({
-    department: "all",
+    department: !isAdmin && user?.department ? user.department : "all",
     shiftType: "all",
     status: "all",
     location: "all",
   })
+
+
 
   // Form state
   const [employeeName, setEmployeeName] = useState("")

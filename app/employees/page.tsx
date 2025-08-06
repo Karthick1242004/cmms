@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useAuthStore } from "@/stores/auth-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -26,6 +27,7 @@ import { toast } from "sonner"
 
 export default function EmployeesPage() {
   const router = useRouter()
+  const { user } = useAuthStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [formData, setFormData] = useState<{
@@ -34,7 +36,7 @@ export default function EmployeesPage() {
     phone: string
     department: string
     role: string
-    status: "active" | "inactive"
+    status: "active" | "inactive" | "on-leave"
   }>({
     name: "",
     email: "",
@@ -317,17 +319,22 @@ export default function EmployeesPage() {
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(employee)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-red-600" 
-                          onClick={() => handleDelete(employee.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                        {(user?.accessLevel === 'super_admin' || 
+                          (user?.accessLevel === 'department_admin' && user?.department === employee.department)) && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleEdit(employee)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-red-600" 
+                              onClick={() => handleDelete(employee.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

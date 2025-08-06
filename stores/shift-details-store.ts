@@ -3,6 +3,7 @@ import { devtools } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
 import type { ShiftDetail, ShiftDetailsState } from "@/types/shift-detail"
 import { shiftDetailsApi } from "@/lib/shift-details-api"
+import { useAuthStore } from "@/stores/auth-store"
 
 export const useShiftDetailsStore = create<ShiftDetailsState>()(
   devtools(
@@ -142,16 +143,27 @@ export const useShiftDetailsStore = create<ShiftDetailsState>()(
             state.isLoading = true
           })
 
-          // Note: Department filtering is now handled by the API based on user authentication
-          // No need to pass department explicitly as it's extracted from the user session/token
-          const response = await shiftDetailsApi.getAll({
-            limit: 100 // Get all shift details for now
-          })
+          const user = useAuthStore.getState().user
+          const params: any = { limit: 100 }
+
+          // If not super_admin, filter by department
+          if (user?.accessLevel !== 'super_admin') {
+            params.department = user?.department
+          }
+
+          const response = await shiftDetailsApi.getAll(params)
           
           if (response.success) {
+            // Filter shift details based on user's department if not super_admin
+            const filteredData = user?.accessLevel !== 'super_admin'
+              ? response.data.shiftDetails.filter(
+                  (shift: ShiftDetail) => shift.department === user?.department
+                )
+              : response.data.shiftDetails
+
             set((state) => {
-              state.shiftDetails = response.data.shiftDetails
-              state.filteredShiftDetails = response.data.shiftDetails
+              state.shiftDetails = filteredData
+              state.filteredShiftDetails = filteredData
             })
             get().filterShiftDetails()
           }

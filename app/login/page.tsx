@@ -74,9 +74,16 @@ function LoginPageContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const success = await login(email, password)
+    
     if (success) {
-      // Force redirect to home page
-      window.location.href = "/"
+      // Clear form
+      setEmail("")
+      setPassword("")
+      
+      // Add a small delay to ensure auth state is fully updated
+      setTimeout(() => {
+        router.replace("/")
+      }, 200)
     }
   }
 
@@ -223,7 +230,7 @@ function LoginPageContent() {
               </div>
 
               {/* Google Sign In Button */}
-              <Button
+              {/* <Button
                 variant="outline"
                 onClick={handleGoogleSignIn}
                 className="w-full h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
@@ -248,7 +255,7 @@ function LoginPageContent() {
                   />
                 </svg>
                 Sign in with Google
-              </Button>
+              </Button> */}
 
               {/* Divider */}
               <div className="relative">
@@ -257,7 +264,7 @@ function LoginPageContent() {
                 </div>
                 <div className="relative flex justify-center text-sm">
                   <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
-                    OR CONTINUE WITH
+                    CONTINUE WITH
                   </span>
                 </div>
               </div>
@@ -273,14 +280,14 @@ function LoginPageContent() {
                   >
                     Login
                   </TabsTrigger>
-                  <TabsTrigger
+                  {/* <TabsTrigger
                     value="signup"
                     className={cn(
                       "data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white",
                     )}
                   >
                     Sign Up
-                  </TabsTrigger>
+                  </TabsTrigger> */}
                 </TabsList>
 
                 <TabsContent value="login" className="space-y-4 mt-6">

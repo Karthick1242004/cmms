@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -15,32 +15,31 @@ import { User, Mail, Phone, Calendar, MapPin, FileText, Upload, Loader2, Save } 
 import { useAuthStore } from "@/stores/auth-store"
 import { useAuthSync } from "@/hooks/use-auth-sync"
 import { toast } from "sonner"
-import { ProfileCompletionBanner } from "@/components/profile-completion-banner"
+
 
 interface ProfileData {
-  firstName: string
-  lastName: string
+  name: string
   email: string
-  phone: string
-  address: string
-  city: string
-  country: string
-  jobTitle: string
-  bio: string
-  notifications: {
-    email: boolean
-    sms: boolean
+  role: string
+  department: string
+  employeeId: string
+  accessLevel: 'super_admin' | 'department_admin' | 'normal_user'
+  shiftInfo?: {
+    shift: string
+    startTime: string
+    endTime: string
+    days: string[]
   }
-  preferences: {
-    compactView: boolean
-    darkMode: boolean
+  joinDate: string
+  supervisor?: string
+  skills: string[]
+  certifications: string[]
+  emergencyContact: {
+    name: string
+    relationship: string
+    phone: string
   }
-}
-
-interface ProfileStatus {
-  isComplete: boolean
-  missingFields: string[]
-  completionPercentage: number
+  status: 'active' | 'inactive' | 'on-leave'
 }
 
 export default function ProfilePage() {
@@ -48,63 +47,65 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [profileData, setProfileData] = useState<ProfileData>({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
-    phone: '',
-    address: '',
-    city: '',
-    country: '',
-    jobTitle: '',
-    bio: '',
-    notifications: {
-      email: true,
-      sms: false
+    role: '',
+    department: '',
+    employeeId: '',
+    accessLevel: 'normal_user',
+    joinDate: '',
+    skills: [],
+    certifications: [],
+    emergencyContact: {
+      name: '',
+      relationship: '',
+      phone: ''
     },
-    preferences: {
-      compactView: false,
-      darkMode: false
-    }
-  })
-  const [profileStatus, setProfileStatus] = useState<ProfileStatus>({
-    isComplete: false,
-    missingFields: [],
-    completionPercentage: 0
+    status: 'active'
   })
   
-  const { data: session, status } = useSession()
   const { user, isAuthenticated } = useAuthStore()
-  
-  // Sync NextAuth session with Zustand store
-  useAuthSync()
 
   // Fetch profile data from API
   const fetchProfileData = async () => {
     try {
       setIsLoading(true)
+      // Get auth token from localStorage
+      const token = localStorage.getItem('auth-token')
+      if (!token) {
+        throw new Error('No auth token found')
+      }
+
       const response = await fetch('/api/user/profile', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       })
 
       if (response.ok) {
         const data = await response.json()
         setProfileData({
-          firstName: data.user.firstName || '',
-          lastName: data.user.lastName || '',
+          name: data.user.name || '',
           email: data.user.email || '',
-          phone: data.user.phone || '',
-          address: data.user.address || '',
-          city: data.user.city || '',
-          country: data.user.country || '',
-          jobTitle: data.user.jobTitle || '',
-          bio: data.user.bio || '',
-          notifications: data.user.notifications || { email: true, sms: false },
-          preferences: data.user.preferences || { compactView: false, darkMode: false }
+          role: data.user.role || '',
+          department: data.user.department || '',
+          employeeId: data.user.employeeId || '',
+          accessLevel: data.user.accessLevel || 'normal_user',
+          shiftInfo: data.user.shiftInfo,
+          joinDate: data.user.joinDate || '',
+          supervisor: data.user.supervisor,
+          skills: data.user.skills || [],
+          certifications: data.user.certifications || [],
+          emergencyContact: data.user.emergencyContact || {
+            name: '',
+            relationship: '',
+            phone: ''
+          },
+          status: data.user.status || 'active'
         })
-        setProfileStatus(data.profileStatus || { isComplete: false, missingFields: [], completionPercentage: 0 })
+
       }
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -120,30 +121,25 @@ export default function ProfilePage() {
     
     try {
       setIsSaving(true)
+      // Get auth token from localStorage
+      const token = localStorage.getItem('auth-token')
+      if (!token) {
+        throw new Error('No auth token found')
+      }
+
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(profileData)
       })
 
       if (response.ok) {
         const data = await response.json()
-        const wasIncomplete = !profileStatus.isComplete
-        
-        setProfileStatus(data.profileStatus)
         setIsEditing(false)
-        
-        // Note: Profile completion status is managed by the backend
-        // The auth store will be updated on next login/session refresh
-        
-        // Show appropriate success message (only one toast)
-        if (data.profileStatus.isComplete && wasIncomplete) {
-          toast.success('🎉 Profile completed! You now have access to all features.')
-        } else {
-          toast.success('Profile updated successfully!')
-        }
+        toast.success('Profile updated successfully!')
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         toast.error(errorData.error || 'Failed to update profile')
@@ -181,10 +177,10 @@ export default function ProfilePage() {
 
   // Load profile data on component mount
   useEffect(() => {
-    if (status !== 'loading') {
+    if (isAuthenticated) {
       fetchProfileData()
     }
-  }, [status])
+  }, [isAuthenticated])
 
   // Helper function to get user's initials
   const getUserInitials = (name: string) => {
@@ -224,8 +220,8 @@ export default function ProfilePage() {
     }
   }
 
-  // Show loading state while session or profile is being fetched
-  if (status === 'loading' || isLoading) {
+  // Show loading state while profile is being fetched
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex items-center space-x-2">
@@ -236,18 +232,26 @@ export default function ProfilePage() {
     )
   }
 
-  // Get user data from profile data or fallback to session/store
+  // Get user data from profile data or fallback to store
   const userData = {
-    name: profileData.firstName && profileData.lastName 
-      ? `${profileData.firstName} ${profileData.lastName}` 
-      : user?.name || session?.user?.name || 'Unknown User',
-    firstName: profileData.firstName || '',
-    lastName: profileData.lastName || '',
-    email: profileData.email || user?.email || session?.user?.email || 'No email',
-    role: user?.role || session?.user?.role || 'user',
-    department: user?.department || session?.user?.department || 'General',
-    avatar: user?.avatar || session?.user?.image || null,
-    id: user?.id || 'N/A'
+    name: profileData.name || user?.name || 'Unknown User',
+    email: profileData.email || user?.email || 'No email',
+    role: profileData.role || user?.role || 'user',
+    department: profileData.department || user?.department || 'General',
+    avatar: user?.avatar || null,
+    employeeId: profileData.employeeId || user?.employeeId || 'N/A',
+    accessLevel: profileData.accessLevel || user?.accessLevel || 'normal_user',
+    shiftInfo: profileData.shiftInfo || user?.shiftInfo,
+    joinDate: profileData.joinDate || user?.joinDate || 'N/A',
+    supervisor: profileData.supervisor || user?.supervisor,
+    skills: profileData.skills || user?.skills || [],
+    certifications: profileData.certifications || user?.certifications || [],
+    emergencyContact: profileData.emergencyContact || user?.emergencyContact || {
+      name: '',
+      relationship: '',
+      phone: ''
+    },
+    status: profileData.status || user?.status || 'active'
   }
 
   return (
@@ -257,14 +261,7 @@ export default function ProfilePage() {
         <p className="text-muted-foreground">Manage your personal information and preferences</p>
       </div>
 
-      {/* Profile Completion Banner */}
-      {!profileStatus.isComplete && (
-        <ProfileCompletionBanner 
-          className="mb-6" 
-          profileStatus={profileStatus}
-          onCompleteClick={() => setIsEditing(true)}
-        />
-      )}
+
 
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="md:col-span-1 transition-all duration-300 hover:shadow-md">
@@ -307,7 +304,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center space-x-2 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>Logged in via {session?.user ? 'Google OAuth' : 'Email'}</span>
+                <span>Logged in via Email</span>
               </div>
             </div>
 
@@ -484,10 +481,10 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="loginMethod">Login Method</Label>
+                      <Label htmlFor="accessLevel">Access Level</Label>
                       <Input 
-                        id="loginMethod" 
-                        value={session?.user ? 'Google OAuth' : 'Email Authentication'}
+                        id="accessLevel" 
+                        value={userData.accessLevel}
                         readOnly={true}
                         className="bg-muted"
                       />
@@ -532,60 +529,68 @@ export default function ProfilePage() {
                 </TabsContent>
 
                 <TabsContent value="preferences" className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Notification Preferences</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="emailNotifications">Email Notifications</Label>
-                        <input
-                          type="checkbox"
-                          id="emailNotifications"
-                          checked={profileData.notifications.email}
-                          onChange={(e) => handleInputChange('notifications.email', e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                          disabled={!isEditing}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="smsNotifications">SMS Notifications</Label>
-                        <input
-                          type="checkbox"
-                          id="smsNotifications"
-                          checked={profileData.notifications.sms}
-                          onChange={(e) => handleInputChange('notifications.sms', e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                          disabled={!isEditing}
-                        />
+                                      <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Skills & Certifications</h3>
+                      <div className="space-y-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="skills">Skills</Label>
+                          <textarea
+                            id="skills"
+                            value={profileData.skills.join(", ")}
+                            onChange={(e) => handleInputChange('skills', e.target.value.split(",").map(s => s.trim()))}
+                            className="w-full min-h-[80px] p-2 border rounded"
+                            placeholder="Enter your skills (comma separated)"
+                            disabled={!isEditing}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="certifications">Certifications</Label>
+                          <textarea
+                            id="certifications"
+                            value={profileData.certifications.join(", ")}
+                            onChange={(e) => handleInputChange('certifications', e.target.value.split(",").map(s => s.trim()))}
+                            className="w-full min-h-[80px] p-2 border rounded"
+                            placeholder="Enter your certifications (comma separated)"
+                            disabled={!isEditing}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <Separator />
+                    <Separator />
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Display Preferences</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="compactView">Compact View</Label>
-                        <input
-                          type="checkbox"
-                          id="compactView"
-                          checked={profileData.preferences.compactView}
-                          onChange={(e) => handleInputChange('preferences.compactView', e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                          disabled={!isEditing}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="darkMode">Dark Mode</Label>
-                        <input
-                          type="checkbox"
-                          id="darkMode"
-                          checked={profileData.preferences.darkMode}
-                          onChange={(e) => handleInputChange('preferences.darkMode', e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                          disabled={!isEditing}
-                        />
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Emergency Contact</h3>
+                      <div className="space-y-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="emergencyContactName">Contact Name</Label>
+                          <Input
+                            id="emergencyContactName"
+                            value={profileData.emergencyContact?.name || ''}
+                            onChange={(e) => handleInputChange('emergencyContact.name', e.target.value)}
+                            placeholder="Emergency contact name"
+                            disabled={!isEditing}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="emergencyContactRelationship">Relationship</Label>
+                          <Input
+                            id="emergencyContactRelationship"
+                            value={profileData.emergencyContact?.relationship || ''}
+                            onChange={(e) => handleInputChange('emergencyContact.relationship', e.target.value)}
+                            placeholder="Relationship to emergency contact"
+                            disabled={!isEditing}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="emergencyContactPhone">Contact Phone</Label>
+                          <Input
+                            id="emergencyContactPhone"
+                            value={profileData.emergencyContact?.phone || ''}
+                            onChange={(e) => handleInputChange('emergencyContact.phone', e.target.value)}
+                            placeholder="Emergency contact phone number"
+                            disabled={!isEditing}
+                          />
                       </div>
                     </div>
                   </div>
@@ -626,7 +631,7 @@ export default function ProfilePage() {
             <CardContent>
               <div className="space-y-4">
                 {[
-                  { action: `Signed in via ${session?.user ? 'Google OAuth' : 'Email'}`, time: "Now" },
+                  { action: "Signed in via Email", time: "Now" },
                   { action: "Viewed profile page", time: "Just now" },
                   { action: "Accessed CMMS dashboard", time: "Today" },
                   { action: `Logged in as ${formatRole(userData.role)}`, time: "Today" },

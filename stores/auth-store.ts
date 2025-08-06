@@ -2,7 +2,6 @@ import { create } from "zustand"
 import { devtools, persist } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
 import type { User, AuthState } from "@/types/auth"
-import { signIn, signOut, useSession } from "next-auth/react"
 import { toast } from "sonner"
 
 // Hardcoded users
@@ -37,8 +36,8 @@ const USERS: User[] = [
 ]
 
 export const useAuthStore = create<AuthState>()(
-  devtools(
-    persist(
+  persist(
+    devtools(
       immer((set, get) => ({
         user: null,
         isAuthenticated: false,
@@ -46,12 +45,14 @@ export const useAuthStore = create<AuthState>()(
         error: null,
 
         login: async (email: string, password: string) => {
+          console.log('🏪 [AUTH-STORE] Starting login...')
           set((state) => {
             state.isLoading = true
             state.error = null
           })
 
           try {
+            console.log('🏪 [AUTH-STORE] Making API call to /api/auth/login')
             const response = await fetch('/api/auth/login', {
               method: 'POST',
               headers: {
@@ -61,18 +62,24 @@ export const useAuthStore = create<AuthState>()(
             })
 
             const data = await response.json()
+            console.log('🏪 [AUTH-STORE] API response:', { status: response.status, data })
 
             if (response.ok) {
-              // Convert MongoDB user to app User format
+              // Convert Employee data to app User format
               const user: User = {
-                id: parseInt(data.user.id) || Date.now(),
+                id: data.user.id || Date.now(),
                 email: data.user.email,
                 password: '', // Don't store password
                 name: data.user.name,
                 role: data.user.role,
                 department: data.user.department,
                 avatar: data.user.avatar,
+                accessLevel: data.user.accessLevel,
+                employeeId: data.user.employeeId,
+                shiftInfo: data.user.shiftInfo,
               }
+
+              console.log('🏪 [AUTH-STORE] Setting auth state...', { user })
 
               set((state) => {
                 state.user = user
@@ -80,16 +87,62 @@ export const useAuthStore = create<AuthState>()(
                 state.isLoading = false
               })
 
+              console.log('🏪 [AUTH-STORE] Auth state updated successfully')
+
               // Store token in localStorage
               if (data.token) {
                 localStorage.setItem('auth-token', data.token)
+                console.log('🏪 [AUTH-STORE] Token stored in localStorage')
               }
+
+              // Force trigger persistence by manually saving the state
+              const currentState = get()
+              console.log('🏪 [AUTH-STORE] Current state after update:', {
+                isAuthenticated: currentState.isAuthenticated,
+                user: currentState.user?.name,
+                isLoading: currentState.isLoading
+              })
+
+              // Verify persistence is working
+              setTimeout(() => {
+                const updatedState = get()
+                const persistedState = localStorage.getItem('auth-storage')
+                console.log('🏪 [AUTH-STORE] Persistence check:', {
+                  currentState: {
+                    isAuthenticated: updatedState.isAuthenticated,
+                    hasUser: !!updatedState.user
+                  },
+                  persistedState: persistedState
+                })
+
+                // If Zustand didn't persist correctly, manually save
+                if (persistedState) {
+                  try {
+                    const parsed = JSON.parse(persistedState)
+                    if (!parsed.state?.isAuthenticated || !parsed.state?.user) {
+                      console.log('🏪 [AUTH-STORE] Zustand persistence failed, manually saving...')
+                      const stateToSave = {
+                        state: {
+                          user: updatedState.user,
+                          isAuthenticated: updatedState.isAuthenticated
+                        },
+                        version: 0
+                      }
+                      localStorage.setItem('auth-storage', JSON.stringify(stateToSave))
+                      console.log('🏪 [AUTH-STORE] Manually saved state:', stateToSave)
+                    }
+                  } catch (e) {
+                    console.error('🏪 [AUTH-STORE] Error checking persisted state:', e)
+                  }
+                }
+              }, 100)
 
               // Show success toast
               toast.success(data.message || 'Login successful!', {
                 description: data.profileStatus?.isComplete ? 'Welcome back!' : 'Please complete your profile for the best experience.'
               })
 
+              console.log('🏪 [AUTH-STORE] Login completed successfully')
               return true
             } else {
               set((state) => {
@@ -98,20 +151,12 @@ export const useAuthStore = create<AuthState>()(
               })
 
               // Show error toast based on error type
-              if (data.type === 'oauth_required') {
+              if (data.type === 'user_not_found') {
                 toast.error(data.error, {
                   description: data.details,
                   action: {
-                    label: 'Use Google Sign-In',
-                    onClick: () => signIn('google')
-                  }
-                })
-              } else if (data.type === 'user_not_found') {
-                toast.error(data.error, {
-                  description: data.details,
-                  action: {
-                    label: 'Sign Up',
-                    onClick: () => window.location.href = '/login?tab=signup'
+                    label: 'Contact Admin',
+                    onClick: () => window.open('mailto:admin@company.com?subject=Account Access Request')
                   }
                 })
               } else {
@@ -209,28 +254,27 @@ export const useAuthStore = create<AuthState>()(
         },
 
         googleSignIn: async () => {
-          set((state) => {
-            state.isLoading = true
-            state.error = null
+          // Google sign-in is disabled - using employee authentication only
+          toast.info('Google Sign-In Disabled', {
+            description: 'Please use your employee email and password to login.'
           })
-
-          try {
-            await signIn("google", { callbackUrl: "/" })
-          } catch (error) {
-            set((state) => {
-              state.error = "Google sign-in failed. Please try again."
-              state.isLoading = false
-            })
-          }
         },
 
         logout: async () => {
-          await signOut({ callbackUrl: "/login" })
+          // Remove auth token from localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth-token')
+            localStorage.removeItem('auth-storage')
+          }
+          
           set((state) => {
             state.user = null
             state.isAuthenticated = false
             state.error = null
           })
+          
+          // Redirect to login page
+          window.location.href = '/login'
         },
 
         setLoading: (loading) =>
@@ -245,6 +289,7 @@ export const useAuthStore = create<AuthState>()(
 
         // Initialize auth state from localStorage
         initializeAuth: () => {
+          console.log('🏪 [AUTH-STORE] Initializing auth state...')
           set((state) => {
             state.isLoading = true
           })
@@ -253,25 +298,52 @@ export const useAuthStore = create<AuthState>()(
             const token = localStorage.getItem('auth-token')
             const storedState = localStorage.getItem('auth-storage')
             
+            console.log('🏪 [AUTH-STORE] LocalStorage check:', { 
+              hasToken: !!token, 
+              hasStoredState: !!storedState,
+              tokenValue: token?.substring(0, 20) + '...'
+            })
+            
             if (token && storedState) {
               try {
                 const parsedState = JSON.parse(storedState)
-                if (parsedState.state?.user && parsedState.state?.isAuthenticated) {
+                console.log('🏪 [AUTH-STORE] Parsed stored state:', parsedState)
+                
+                if (parsedState.state?.user && parsedState.state?.isAuthenticated === true) {
+                  console.log('🏪 [AUTH-STORE] Restoring auth state from localStorage')
                   set((state) => {
                     state.user = parsedState.state.user
                     state.isAuthenticated = parsedState.state.isAuthenticated
+                    state.isLoading = false
+                  })
+                  console.log('🏪 [AUTH-STORE] Auth state restored:', {
+                    isAuthenticated: parsedState.state.isAuthenticated,
+                    user: parsedState.state.user?.name
+                  })
+                  return // Don't set loading to false in timeout if we restored state
+                } else {
+                  console.log('🏪 [AUTH-STORE] No valid auth state found in storage:', {
+                    hasUser: !!parsedState.state?.user,
+                    isAuthenticated: parsedState.state?.isAuthenticated
                   })
                 }
               } catch (error) {
-                console.error('Failed to restore auth state:', error)
+                console.error('🏪 [AUTH-STORE] Failed to restore auth state:', error)
                 localStorage.removeItem('auth-token')
                 localStorage.removeItem('auth-storage')
               }
+            } else if (token) {
+              // We have a token but no stored state, try to validate the token
+              console.log('🏪 [AUTH-STORE] Have token but no stored state, clearing token')
+              localStorage.removeItem('auth-token')
+            } else {
+              console.log('🏪 [AUTH-STORE] No auth data found in localStorage')
             }
           }
 
           // Always set loading to false after initialization
           setTimeout(() => {
+            console.log('🏪 [AUTH-STORE] Setting isLoading to false (timeout)')
             set((state) => {
               state.isLoading = false
             })
@@ -286,6 +358,5 @@ export const useAuthStore = create<AuthState>()(
         }),
       },
     ),
-    { name: "auth-store" },
   ),
 )

@@ -1,56 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import jwt from 'jsonwebtoken'
 import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
+import Employee from '@/models/Employee'
+
+// Helper function to get user from JWT token
+async function getUserFromToken(request: NextRequest) {
+  const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
+                request.cookies.get('auth-token')?.value
+
+  if (!token) {
+    return null
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any
+    await connectDB()
+    return await Employee.findById(decoded.userId).select('-password')
+  } catch (error) {
+    return null
+  }
+}
 
 // GET user profile
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await getUserFromToken(request)
     
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    await connectDB()
-    
-    const user = await User.findOne({ email: session.user.email }).select('-password')
     
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-
-    // Check profile completion
-    const profileStatus = user.checkProfileCompletion()
-    await user.save()
 
     return NextResponse.json({
       user: {
         id: user._id,
         email: user.email,
         name: user.name,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        address: user.address,
-        city: user.city,
-        country: user.country,
         role: user.role,
         department: user.department,
-        jobTitle: user.jobTitle,
         employeeId: user.employeeId,
-        bio: user.bio,
-        avatar: user.avatar,
-        authMethod: user.authMethod,
-        profileCompleted: user.profileCompleted,
-        profileCompletionFields: user.profileCompletionFields,
-        notifications: user.notifications,
-        preferences: user.preferences,
-        createdAt: user.createdAt,
-        lastLoginAt: user.lastLoginAt
-      },
-      profileStatus
+        avatar: user.avatar || "/placeholder.svg?height=32&width=32&query=user",
+        accessLevel: user.accessLevel,
+        shiftInfo: user.shiftInfo,
+        joinDate: user.joinDate,
+        supervisor: user.supervisor,
+        skills: user.skills,
+        certifications: user.certifications,
+        emergencyContact: user.emergencyContact,
+        status: user.status
+      }
     })
 
   } catch (error) {
@@ -62,26 +63,20 @@ export async function GET(request: NextRequest) {
 // PUT update user profile
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await getUserFromToken(request)
     
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const updateData = await request.json()
-    
-    await connectDB()
-    
-    const user = await User.findOne({ email: session.user.email })
-    
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
 
-    // Update allowed fields
+    // Update allowed fields for employees
     const allowedFields = [
-      'firstName', 'lastName', 'phone', 'address', 'city', 'country',
-      'jobTitle', 'bio', 'notifications', 'preferences'
+      'name',
+      'skills',
+      'certifications',
+      'emergencyContact'
     ]
 
     allowedFields.forEach(field => {
@@ -90,14 +85,6 @@ export async function PUT(request: NextRequest) {
       }
     })
 
-    // Update name if firstName and lastName are provided
-    if (updateData.firstName || updateData.lastName) {
-      user.name = `${updateData.firstName || user.firstName || ''} ${updateData.lastName || user.lastName || ''}`.trim()
-    }
-
-    // Check profile completion after update
-    const profileStatus = user.checkProfileCompletion()
-    
     await user.save()
 
     return NextResponse.json({
@@ -106,25 +93,19 @@ export async function PUT(request: NextRequest) {
         id: user._id,
         email: user.email,
         name: user.name,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        address: user.address,
-        city: user.city,
-        country: user.country,
         role: user.role,
         department: user.department,
-        jobTitle: user.jobTitle,
         employeeId: user.employeeId,
-        bio: user.bio,
-        avatar: user.avatar,
-        authMethod: user.authMethod,
-        profileCompleted: user.profileCompleted,
-        profileCompletionFields: user.profileCompletionFields,
-        notifications: user.notifications,
-        preferences: user.preferences,
-      },
-      profileStatus
+        avatar: user.avatar || "/placeholder.svg?height=32&width=32&query=user",
+        accessLevel: user.accessLevel,
+        shiftInfo: user.shiftInfo,
+        joinDate: user.joinDate,
+        supervisor: user.supervisor,
+        skills: user.skills,
+        certifications: user.certifications,
+        emergencyContact: user.emergencyContact,
+        status: user.status
+      }
     })
 
   } catch (error) {

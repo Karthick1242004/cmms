@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
+import Employee from '@/models/Employee'
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,44 +36,26 @@ export async function POST(request: NextRequest) {
     // Connect to database
     await connectDB()
 
-    // Find user by email
-    const user = await User.findOne({ 
+    // Find employee by email
+    const employee = await Employee.findOne({ 
       email: email.toLowerCase(),
-      authMethod: 'email'
+      status: 'active' // Only allow active employees to login
     })
 
-    if (!user) {
-      // Check if user exists but with OAuth method
-      const oauthUser = await User.findOne({ 
-        email: email.toLowerCase(),
-        authMethod: 'oauth'
-      })
-      
-      if (oauthUser) {
-        return NextResponse.json(
-          { 
-            error: 'Please use Google Sign-In',
-            details: 'This account was created with Google. Please use the Google Sign-In button.',
-            type: 'oauth_required',
-            suggestion: 'google_signin'
-          },
-          { status: 401 }
-        )
-      }
-      
+    if (!employee) {
       return NextResponse.json(
         { 
           error: 'Account not found',
-          details: 'No account found with this email. Please check your email or sign up.',
+          details: 'No active employee account found with this email. Please check your email or contact your administrator.',
           type: 'user_not_found',
-          suggestion: 'signup'
+          suggestion: 'contact_admin'
         },
         { status: 401 }
       )
     }
 
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password)
+    // Check password using the employee model method
+    const isPasswordValid = await employee.comparePassword(password)
     if (!isPasswordValid) {
       return NextResponse.json(
         { 
@@ -86,51 +68,48 @@ export async function POST(request: NextRequest) {
     }
 
     // Update last login
-    user.lastLoginAt = new Date()
-    await user.save()
+    employee.lastLoginAt = new Date()
+    await employee.save()
 
-    // Check profile completion
-    const profileStatus = user.checkProfileCompletion()
+    // Check if employee has complete profile (basic check)
+    const profileStatus = {
+      isComplete: !!(employee.phone && employee.department && employee.role),
+      missingFields: []
+    }
 
     // Generate JWT token
     const token = jwt.sign(
       { 
-        userId: user._id,
-        email: user.email,
-        role: user.role
+        userId: employee._id,
+        email: employee.email,
+        role: employee.role,
+        department: employee.department,
+        accessLevel: employee.accessLevel
       },
       process.env.JWT_SECRET!,
       { expiresIn: '7d' }
     )
 
-    // Return user data (excluding password)
+    // Return employee data (excluding password)
     const userResponse = {
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      department: user.department,
-      authMethod: user.authMethod,
-      profileCompleted: user.profileCompleted,
-      profileCompletionFields: user.profileCompletionFields,
-      avatar: user.avatar,
-      phone: user.phone,
-      address: user.address,
-      city: user.city,
-      country: user.country,
-      jobTitle: user.jobTitle,
-      employeeId: user.employeeId,
-      bio: user.bio,
-      notifications: user.notifications,
-      preferences: user.preferences,
-      lastLoginAt: user.lastLoginAt
+      id: employee._id,
+      email: employee.email,
+      name: employee.name,
+      role: employee.role,
+      department: employee.department,
+      accessLevel: employee.accessLevel,
+      avatar: employee.avatar,
+      phone: employee.phone,
+      employeeId: employee.employeeId,
+      joinDate: employee.joinDate,
+      supervisor: employee.supervisor,
+      shiftInfo: employee.shiftInfo,
+      lastLoginAt: employee.lastLoginAt
     }
 
     return NextResponse.json({
       success: true,
-      message: `Welcome back, ${user.firstName || user.name}!`,
+      message: `Welcome back, ${employee.name}!`,
       user: userResponse,
       token,
       profileStatus,
