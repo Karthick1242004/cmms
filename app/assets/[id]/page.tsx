@@ -179,7 +179,6 @@ export default function AssetDetailPage() {
     "Metering/Events",
     "Personnel",
     "Warranty",
-    "Businesses",
     "Files",
     "Financials",
     "Purchase",
@@ -247,10 +246,17 @@ export default function AssetDetailPage() {
               </div>
               <div className="md:col-span-3 lg:col-span-3 flex flex-col items-center md:items-end space-y-3">
                 <div className="p-2 border rounded-md bg-white">
-                  <QrCode className="h-16 w-16" />
-                </div>
-                <div className="p-2 border rounded-md bg-white w-full max-w-[150px]">
-                  <Barcode className="h-10 w-full" />
+                  {asset.qrCodeSrc ? (
+                    <Image
+                      src={asset.qrCodeSrc}
+                      alt="QR Code"
+                      width={64}
+                      height={64}
+                      className="object-contain"
+                    />
+                  ) : (
+                    <QrCode className="h-16 w-16" />
+                  )}
                 </div>
               </div>
             </div>
@@ -450,35 +456,7 @@ export default function AssetDetailPage() {
                 </Card>
               </TabsContent>
 
-              {/* Businesses Tab */}
-              <TabsContent value="businesses" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Businesses</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {asset.businesses && asset.businesses.length > 0 ? (
-                      <div className="space-y-4">
-                        {asset.businesses.map((business: any, index: number) => (
-                          <div key={business.id || index} className="border rounded-lg p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              <DetailItem label="Name" value={business.name} />
-                              <DetailItem label="Type" value={business.type} />
-                              <DetailItem label="Contact Person" value={business.contactPerson} />
-                              <DetailItem label="Phone" value={business.phone} />
-                              <DetailItem label="Email" value={business.email} />
-                              <DetailItem label="Address" value={business.address} className="md:col-span-2 lg:col-span-3" />
-                              <DetailItem label="Relationship" value={business.relationship} className="md:col-span-2 lg:col-span-3" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground">No business data available for this asset.</p>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+
 
               {/* Files Tab */}
               <TabsContent value="files" className="mt-4">

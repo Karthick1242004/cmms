@@ -11,12 +11,14 @@ export interface Asset {
   purchasePrice?: number
   condition: "excellent" | "good" | "fair" | "poor" | "new" // Expanded condition
   imageSrc?: string // For list view thumbnail
+  qrCodeSrc?: string // QR code image URL
   categoryName?: string // More specific category like "Heavy Machinery"
 }
 
 export interface AssetDetail {
   id: string
   imageSrc?: string
+  qrCodeSrc?: string
   assetName: string
   serialNo?: string
   rfid?: string
@@ -65,7 +67,7 @@ export interface AssetDetail {
   meteringEvents?: any[]
   personnel?: any[]
   warrantyDetails?: any
-  businesses?: any[]
+
   files?: any[]
   financials?: any
   purchaseInfo?: any

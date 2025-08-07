@@ -21,6 +21,7 @@ import { AssetCreationForm } from "@/components/asset-creation-form"
 import { AssetEditForm } from "@/components/asset-edit-form"
 import { AssetsOverallReport } from "@/components/assets/assets-overall-report"
 import { useAssetsStore } from "@/stores/assets-store"
+import { useAuthStore } from "@/stores/auth-store"
 import type { Asset } from "@/types/asset"
 
 export default function AllAssetsPage() {
@@ -37,6 +38,12 @@ export default function AllAssetsPage() {
     fetchAssets,
     deleteAsset 
   } = useAssetsStore()
+  
+  // Use auth store for permissions
+  const { user } = useAuthStore()
+  
+  // Check permissions - only super admin and department admin can create/edit assets
+  const canModifyAssets = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -164,13 +171,14 @@ export default function AllAssetsPage() {
               <FileText className="mr-2 h-4 w-4" />
               Generate Report
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Asset
-                </Button>
-              </DialogTrigger>
+            {canModifyAssets && (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Asset
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                 <AssetCreationForm 
                   onSuccess={() => {
@@ -181,6 +189,7 @@ export default function AllAssetsPage() {
                 />
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </div>
 
@@ -305,7 +314,12 @@ export default function AllAssetsPage() {
           </div>
         ) : (
           <>
-            <AssetListTable assets={filteredAssets} onEdit={handleEdit} onDelete={handleDelete} />
+            <AssetListTable 
+              assets={filteredAssets} 
+              onEdit={canModifyAssets ? handleEdit : undefined} 
+              onDelete={canModifyAssets ? handleDelete : undefined} 
+              canModify={canModifyAssets}
+            />
             {filteredAssets.length === 0 && assets.length > 0 && (
               <p className="text-center text-muted-foreground py-8">No assets found matching your search and filters.</p>
             )}
@@ -317,17 +331,19 @@ export default function AllAssetsPage() {
       </PageContent>
 
       {/* Edit Asset Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-          {selectedAssetForEdit && (
-            <AssetEditForm
-              asset={selectedAssetForEdit}
-              onSuccess={handleEditSuccess}
-              onCancel={handleEditCancel}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {canModifyAssets && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+            {selectedAssetForEdit && (
+              <AssetEditForm
+                asset={selectedAssetForEdit}
+                onSuccess={handleEditSuccess}
+                onCancel={handleEditCancel}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Assets Overall Report */}
       {isReportOpen && (

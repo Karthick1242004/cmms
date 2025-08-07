@@ -12,9 +12,10 @@ interface AssetListTableProps {
   assets: Asset[]
   onEdit?: (asset: Asset) => void
   onDelete?: (assetId: string) => void
+  canModify?: boolean
 }
 
-export function AssetListTable({ assets, onEdit, onDelete }: AssetListTableProps) {
+export function AssetListTable({ assets, onEdit, onDelete, canModify = true }: AssetListTableProps) {
   const getStatusColor = (status: string | undefined) => {
     switch (status?.toLowerCase()) {
       case "operational":

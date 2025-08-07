@@ -10,11 +10,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Plus, X, Upload, Save, AlertCircle, Edit } from "lucide-react"
+import { Plus, X, Upload, Save, AlertCircle, Edit, Camera, QrCode, Scan } from "lucide-react"
 import { toast } from "sonner"
 import { useAssetsStore } from "@/stores/assets-store"
+import { useAuthStore } from "@/stores/auth-store"
 import { assetsApi } from "@/lib/assets-api"
+import { departmentsApi } from "@/lib/departments-api"
+import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary-config"
 import type { Asset, AssetDetail } from "@/types/asset"
+import type { Department } from "@/types/department"
 
 interface AssetFormData {
   // Basic Information
@@ -31,6 +35,14 @@ interface AssetFormData {
   department: string
   assetType: string
   condition: 'excellent' | 'good' | 'fair' | 'poor' | 'new'
+  
+  // Image Management
+  imageSrc: string
+  imageFile: File | null
+  qrCodeSrc: string
+  qrCodeFile: File | null
+  originalImageSrc: string // Track original for deletion
+  originalQrCodeSrc: string // Track original for deletion
   
   // Financial Information
   costPrice: number
@@ -55,7 +67,6 @@ interface AssetFormData {
   // Complex Objects
   meteringEvents: any[]
   personnel: any[]
-  businesses: any[]
   files: any[]
   partsBOM: any[]
   warrantyDetails: any
@@ -83,7 +94,23 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingAsset, setIsLoadingAsset] = useState(true)
   const [activeTab, setActiveTab] = useState("basic")
+  const [departments, setDepartments] = useState<Department[]>([])
+  
   const { updateAsset } = useAssetsStore()
+  const { user } = useAuthStore()
+  
+  // Check permissions - only super admin and department admin can edit assets
+  const canEditAsset = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
+  
+  if (!canEditAsset) {
+    return (
+      <div className="text-center p-6">
+        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold">Access Denied</h3>
+        <p className="text-muted-foreground">Only super administrators and department administrators can edit assets.</p>
+      </div>
+    )
+  }
   
   const [formData, setFormData] = useState<AssetFormData>({
     assetName: '',
@@ -99,6 +126,13 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
     department: '',
     assetType: 'Tangible',
     condition: 'new',
+    // Image Management
+    imageSrc: '',
+    imageFile: null,
+    qrCodeSrc: '',
+    qrCodeFile: null,
+    originalImageSrc: '',
+    originalQrCodeSrc: '',
     costPrice: 0,
     purchasePrice: 0,
     salesPrice: 0,
@@ -115,7 +149,6 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
     productionHoursDaily: 0,
     meteringEvents: [],
     personnel: [],
-    businesses: [],
     files: [],
     links: [],
     partsBOM: [],
@@ -124,6 +157,24 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
     purchaseInfo: {},
     associatedCustomer: {},
   })
+
+  // Fetch departments on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch departments
+        const deptResponse = await departmentsApi.getAll()
+        if (deptResponse.success) {
+          setDepartments(deptResponse.data.departments)
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error)
+        toast.error('Failed to load departments')
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Load asset details on component mount
   useEffect(() => {
@@ -147,9 +198,16 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
             manufacturer: assetDetail.manufacturer || '',
             description: assetDetail.description || '',
             location: assetDetail.location || '',
-            department: assetDetail.department || '',
+            department: user?.accessLevel === 'department_admin' ? user.department : (assetDetail.department || ''),
             assetType: assetDetail.assetType || 'Tangible',
             condition: assetDetail.condition || 'good',
+            // Image Management
+            imageSrc: assetDetail.imageSrc || '',
+            imageFile: null,
+            qrCodeSrc: assetDetail.qrCodeSrc || '',
+            qrCodeFile: null,
+            originalImageSrc: assetDetail.imageSrc || '',
+            originalQrCodeSrc: assetDetail.qrCodeSrc || '',
             costPrice: assetDetail.costPrice || 0,
             purchasePrice: assetDetail.purchasePrice || 0,
             salesPrice: assetDetail.salesPrice || 0,
@@ -463,19 +521,34 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="department">Department *</Label>
-                  <Select value={formData.department} onValueChange={(value) => handleInputChange('department', value)}>
+                  <Select 
+                    value={formData.department} 
+                    onValueChange={(value) => handleInputChange('department', value)}
+                    disabled={user?.accessLevel === 'department_admin'}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Maintenance">Maintenance</SelectItem>
-                      <SelectItem value="Operations">Operations</SelectItem>
-                      <SelectItem value="IT">IT</SelectItem>
-                      <SelectItem value="Finance">Finance</SelectItem>
-                      <SelectItem value="HR">HR</SelectItem>
-                      <SelectItem value="Safety">Safety</SelectItem>
+                      {user?.accessLevel === 'super_admin' 
+                        ? departments.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.name}>
+                              {dept.name}
+                            </SelectItem>
+                          ))
+                        : (
+                            <SelectItem value={user?.department || ''}>
+                              {user?.department}
+                            </SelectItem>
+                          )
+                      }
                     </SelectContent>
                   </Select>
+                  {user?.accessLevel === 'department_admin' && (
+                    <p className="text-sm text-muted-foreground">
+                      Department is auto-selected based on your role
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>

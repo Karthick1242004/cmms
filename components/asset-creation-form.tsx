@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,9 +10,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Plus, X, Upload, Save, AlertCircle } from "lucide-react"
+import { Plus, X, Upload, Save, AlertCircle, Camera, QrCode, Trash2, ImageIcon } from "lucide-react"
 import { toast } from "sonner"
 import { useAssetsStore } from "@/stores/assets-store"
+import { useAuthStore } from "@/stores/auth-store"
+import { departmentsApi } from "@/lib/departments-api"
+import type { Department } from "@/types/department"
+import type { Location } from "@/types/location"
+import { Html5QrcodeScanner } from "html5-qrcode"
+import { uploadToCloudinary } from "@/lib/cloudinary-config"
 
 interface AssetFormData {
   // Basic Information
@@ -29,6 +35,20 @@ interface AssetFormData {
   department: string
   assetType: string
   condition: 'excellent' | 'good' | 'fair' | 'poor' | 'new'
+  parentAsset: string
+  productName: string
+  assetClass: string
+  constructionYear: number
+  serviceStatus: string
+  lastEnquiryDate: string
+  lastEnquiryBy: string
+  shelfLifeInMonth: number
+  
+  // Image Information
+  imageSrc: string
+  imageFile: File | null
+  qrCodeSrc: string
+  qrCodeFile: File | null
   
   // Financial Information
   costPrice: number
@@ -46,20 +66,100 @@ interface AssetFormData {
   outOfOrder: 'Yes' | 'No'
   isActive: 'Yes' | 'No'
   allocated: string
+  allocatedOn: string
   uom: string
   size: string
   productionHoursDaily: number
+  deleted: 'Yes' | 'No'
   
   // Complex Objects
-  meteringEvents: any[]
-  personnel: any[]
-  businesses: any[]
-  files: any[]
-  partsBOM: any[]
-  warrantyDetails: any
-  financials: any
-  purchaseInfo: any
-  associatedCustomer: any
+  meteringEvents: Array<{
+    id: string
+    eventType: string
+    reading: number
+    unit: string
+    recordedDate: string
+    recordedBy: string
+    notes: string
+  }>
+  personnel: Array<{
+    id: string
+    name: string
+    role: string
+    email: string
+    phone: string
+    assignedDate: string
+    responsibilities: string[]
+  }>
+
+  files: Array<{
+    id: string
+    name: string
+    type: string
+    size: string
+    uploadDate: string
+    uploadedBy: string
+    category: string
+    description: string
+  }>
+  partsBOM: Array<{
+    id: string
+    partName: string
+    partNumber: string
+    quantity: number
+    unitCost: number
+    supplier: string
+    lastReplaced: string
+    nextMaintenanceDate: string
+  }>
+  warrantyDetails: {
+    provider: string
+    type: string
+    startDate: string
+    endDate: string
+    coverage: string
+    contactInfo: string
+    terms: string
+    claimHistory: Array<{
+      claimNumber: string
+      date: string
+      issue: string
+      status: string
+    }>
+  }
+  financials: {
+    totalCostOfOwnership: number
+    annualOperatingCost: number
+    depreciationRate: number
+    currentBookValue: number
+    maintenanceCostYTD: number
+    fuelCostYTD: number
+  }
+  purchaseInfo: {
+    purchaseOrderNumber: string
+    vendor: string
+    requestedBy: string
+    approvedBy: string
+    purchaseDate: string
+    deliveryDate: string
+    invoiceNumber: string
+  }
+  associatedCustomer: {
+    id: string
+    name: string
+    type: string
+    contactPerson: string
+    email: string
+    projects: string[]
+  }
+  log: Array<{
+    id: string
+    date: string
+    action: string
+    performedBy: string
+    details: string
+    category: string
+  }>
   
   // Links for Files section
   links: Array<{
@@ -79,9 +179,30 @@ interface AssetCreationFormProps {
 export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("basic")
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null)
+  
   const { addAsset } = useAssetsStore()
+  const { user } = useAuthStore()
+  
+  // Check permissions - only super admin and department admin can create assets
+  const canCreateAsset = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
+  
+  if (!canCreateAsset) {
+    return (
+      <div className="text-center p-6">
+        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold">Access Denied</h3>
+        <p className="text-muted-foreground">Only super administrators and department administrators can create assets.</p>
+      </div>
+    )
+  }
   
   const [formData, setFormData] = useState<AssetFormData>({
+    // Basic Information
     assetName: '',
     serialNo: '',
     rfid: '',
@@ -92,39 +213,243 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
     manufacturer: '',
     description: '',
     location: '',
-    department: '',
+    department: user?.accessLevel === 'department_admin' ? user.department : '',
     assetType: 'Tangible',
     condition: 'new',
+    parentAsset: '',
+    productName: '',
+    assetClass: 'Operating Assets',
+    constructionYear: new Date().getFullYear(),
+    serviceStatus: 'Operational',
+    lastEnquiryDate: '',
+    lastEnquiryBy: '',
+    shelfLifeInMonth: 0,
+    
+    // Image Information
+    imageSrc: '',
+    imageFile: null,
+    qrCodeSrc: '',
+    qrCodeFile: null,
+    
+    // Financial Information
     costPrice: 0,
     purchasePrice: 0,
     salesPrice: 0,
     expectedLifeSpan: 5,
+    
+    // Dates
     purchaseDate: '',
     commissioningDate: '',
     warrantyStart: '',
     endOfWarranty: '',
+    
+    // Additional Details
     outOfOrder: 'No',
     isActive: 'Yes',
     allocated: '',
-    uom: '',
-    size: '',
+    allocatedOn: '',
+    uom: 'Each',
+    size: 'Medium',
     productionHoursDaily: 0,
+    deleted: 'No',
+    
+    // Complex Objects
     meteringEvents: [],
     personnel: [],
-    businesses: [],
+
     files: [],
     links: [],
     partsBOM: [],
-    warrantyDetails: {},
-    financials: {},
-    purchaseInfo: {},
-    associatedCustomer: {}
+    warrantyDetails: {
+      provider: '',
+      type: '',
+      startDate: '',
+      endDate: '',
+      coverage: '',
+      contactInfo: '',
+      terms: '',
+      claimHistory: []
+    },
+    financials: {
+      totalCostOfOwnership: 0,
+      annualOperatingCost: 0,
+      depreciationRate: 0.1,
+      currentBookValue: 0,
+      maintenanceCostYTD: 0,
+      fuelCostYTD: 0
+    },
+    purchaseInfo: {
+      purchaseOrderNumber: '',
+      vendor: '',
+      requestedBy: user?.name || '',
+      approvedBy: '',
+      purchaseDate: '',
+      deliveryDate: '',
+      invoiceNumber: ''
+    },
+    associatedCustomer: {
+      id: '',
+      name: '',
+      type: '',
+      contactPerson: '',
+      email: '',
+      projects: []
+    },
+    log: []
   })
 
   const handleInputChange = (field: keyof AssetFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }))
+  }
+
+  // Fetch departments and locations on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch departments
+        const deptResponse = await departmentsApi.getAll()
+        if (deptResponse.success) {
+          setDepartments(deptResponse.data.departments)
+        }
+
+        // Fetch locations
+        const locResponse = await fetch('/api/locations')
+        if (locResponse.ok) {
+          const locData = await locResponse.json()
+          if (locData.success) {
+            setLocations(locData.data.locations)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        toast.error('Failed to load departments and locations')
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  // Cloudinary image upload function (now using centralized config)
+
+  // Handle image file selection
+  const handleImageUpload = (file: File, type: 'image' | 'qrCode') => {
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        if (type === 'image') {
+          setFormData(prev => ({
+            ...prev,
+            imageFile: file,
+            imageSrc: result
+          }))
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            qrCodeFile: file,
+            qrCodeSrc: result
+          }))
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // Remove image
+  const removeImage = (type: 'image' | 'qrCode') => {
+    if (type === 'image') {
+      setFormData(prev => ({
+        ...prev,
+        imageFile: null,
+        imageSrc: ''
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        qrCodeFile: null,
+        qrCodeSrc: ''
+      }))
+    }
+  }
+
+  // Start QR/Barcode scanner
+  const startScanner = (type: 'qr' | 'barcode') => {
+    setIsScanning(true)
+    
+    const config = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+      rememberLastUsedCamera: true,
+    }
+
+    const qrCodeScanner = new Html5QrcodeScanner("qr-reader", config, false)
+    
+    qrCodeScanner.render(
+      (decodedText) => {
+        // Handle successful scan
+        if (type === 'qr') {
+          setFormData(prev => ({ ...prev, rfid: decodedText }))
+          toast.success('QR Code scanned successfully!')
+        } else {
+          setFormData(prev => ({ ...prev, serialNo: decodedText }))
+          toast.success('Barcode scanned successfully!')
+        }
+        qrCodeScanner.clear()
+        setIsScanning(false)
+        setScanner(null)
+      },
+      (error) => {
+        // Handle scan error
+        console.warn(`Code scan error = ${error}`)
+      }
+    )
+    
+    setScanner(qrCodeScanner)
+  }
+
+  // Stop scanner
+  const stopScanner = () => {
+    if (scanner) {
+      scanner.clear()
+      setScanner(null)
+    }
+    setIsScanning(false)
+  }
+
+  // Add Parts/BOM item
+  const addPartsBOM = () => {
+    const newPart = {
+      id: `part_${Date.now()}`,
+      partName: '',
+      partNumber: '',
+      quantity: 1,
+      unitCost: 0,
+      supplier: '',
+      lastReplaced: '',
+      nextMaintenanceDate: ''
+    }
+    setFormData(prev => ({
+      ...prev,
+      partsBOM: [...prev.partsBOM, newPart]
+    }))
+  }
+
+  const updatePartsBOM = (index: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      partsBOM: prev.partsBOM.map((part, i) => 
+        i === index ? { ...part, [field]: value } : part
+      )
+    }))
+  }
+
+  const removePartsBOM = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      partsBOM: prev.partsBOM.filter((_, i) => i !== index)
     }))
   }
 
@@ -223,38 +548,7 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
     }))
   }
 
-  const addBusiness = () => {
-    const newBusiness = {
-      id: `business_${Date.now()}`,
-      name: '',
-      type: 'Supplier',
-      contactPerson: '',
-      phone: '',
-      email: '',
-      address: '',
-      relationship: ''
-    }
-    setFormData(prev => ({
-      ...prev,
-      businesses: [...prev.businesses, newBusiness]
-    }))
-  }
 
-  const updateBusiness = (index: number, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      businesses: prev.businesses.map((business, i) => 
-        i === index ? { ...business, [field]: value } : business
-      )
-    }))
-  }
-
-  const removeBusiness = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      businesses: prev.businesses.filter((_, i) => i !== index)
-    }))
-  }
 
   const addPartBOM = () => {
     const newPart = {
@@ -306,7 +600,41 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
     }
 
     setIsLoading(true)
+    setIsUploadingImage(true)
+    
     try {
+      let imageUrl = '/placeholder.svg?height=150&width=250'
+      let qrCodeUrl = ''
+
+      // Handle image files with debugging
+      if (formData.imageFile) {
+        console.log('🖼️ PROCESSING ASSET IMAGE')
+        console.log('Image file:', formData.imageFile)
+        try {
+          imageUrl = await uploadToCloudinary(formData.imageFile, 'assets/images')
+          console.log('🖼️ Asset image upload result:', imageUrl)
+          toast.success('Asset image uploaded to Cloudinary!')
+        } catch (error) {
+          console.error('🖼️ Asset image upload failed:', error)
+          toast.error('Asset image upload failed, using placeholder')
+        }
+      }
+
+      // Handle QR code files with debugging
+      if (formData.qrCodeFile) {
+        console.log('📱 PROCESSING QR CODE IMAGE')
+        console.log('QR code file:', formData.qrCodeFile)
+        try {
+          qrCodeUrl = await uploadToCloudinary(formData.qrCodeFile, 'assets/qrcodes')
+          console.log('📱 QR code upload result:', qrCodeUrl)
+          toast.success('QR code image uploaded to Cloudinary!')
+        } catch (error) {
+          console.error('📱 QR code upload failed:', error)
+          toast.error('QR code upload failed, using placeholder')
+        }
+      }
+
+      setIsUploadingImage(false)
       // Helper function to remove empty objects and arrays
       const cleanData = (obj: any): any => {
         const cleaned: any = {}
@@ -357,26 +685,83 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
         links: undefined // Remove links field since we're merging into files
       }
 
-      // Convert file objects to strings as backend expects
-      if (mergedFormData.files && mergedFormData.files.length > 0) {
-        mergedFormData.files = mergedFormData.files.map(file => 
-          typeof file === 'object' ? JSON.stringify(file) : file
+      // Keep files as objects for now - backend will handle the structure
+      // Remove the JSON.stringify conversion as it's causing type issues
+
+      // Transform and clean form data
+      const assetData = {
+        assetName: formData.assetName,
+        serialNo: formData.serialNo,
+        rfid: formData.rfid,
+        category: formData.category,
+        categoryName: formData.categoryName,
+        statusText: formData.statusText,
+        statusColor: formData.statusColor,
+        manufacturer: formData.manufacturer,
+        description: formData.description,
+        location: formData.location,
+        department: formData.department,
+        assetType: formData.assetType,
+        condition: formData.condition,
+        parentAsset: formData.parentAsset,
+        productName: formData.productName,
+        assetClass: formData.assetClass,
+        constructionYear: formData.constructionYear,
+        serviceStatus: formData.serviceStatus,
+        lastEnquiryDate: formData.lastEnquiryDate,
+        lastEnquiryBy: formData.lastEnquiryBy,
+        shelfLifeInMonth: formData.shelfLifeInMonth,
+        costPrice: formData.costPrice,
+        purchasePrice: formData.purchasePrice,
+        salesPrice: formData.salesPrice,
+        expectedLifeSpan: formData.expectedLifeSpan,
+        purchaseDate: formData.purchaseDate,
+        commissioningDate: formData.commissioningDate,
+        warrantyStart: formData.warrantyStart,
+        endOfWarranty: formData.endOfWarranty,
+        outOfOrder: formData.outOfOrder,
+        isActive: formData.isActive,
+        allocated: formData.allocated,
+        allocatedOn: formData.allocatedOn,
+        uom: formData.uom,
+        size: formData.size,
+        productionHoursDaily: formData.productionHoursDaily,
+        deleted: formData.deleted,
+        imageSrc: imageUrl,
+        qrCodeSrc: qrCodeUrl,
+        // Only include complex objects if they have meaningful data
+        partsBOM: formData.partsBOM.length > 0 ? formData.partsBOM : undefined,
+        meteringEvents: formData.meteringEvents.length > 0 ? formData.meteringEvents : undefined,
+        personnel: formData.personnel.length > 0 ? formData.personnel : undefined,
+
+        files: (formData.files && formData.files.length > 0) ? formData.files : undefined,
+        // Only include if not empty objects
+        warrantyDetails: (formData.warrantyDetails?.provider || formData.warrantyDetails?.type) ? formData.warrantyDetails : undefined,
+        financials: (formData.financials?.totalCostOfOwnership || formData.financials?.annualOperatingCost) ? formData.financials : undefined,
+        purchaseInfo: (formData.purchaseInfo?.purchaseOrderNumber || formData.purchaseInfo?.vendor) ? formData.purchaseInfo : undefined,
+        associatedCustomer: (formData.associatedCustomer?.name || formData.associatedCustomer?.id) ? formData.associatedCustomer : undefined,
+        log: formData.log.length > 0 ? formData.log : undefined
+      }
+
+      // Remove undefined values
+      const cleanedAssetData = Object.fromEntries(
+        Object.entries(assetData).filter(([_, value]) => value !== undefined)
+      )
+
+      // Final validation - ensure arrays are proper objects
+      if (cleanedAssetData.files && Array.isArray(cleanedAssetData.files)) {
+        cleanedAssetData.files = cleanedAssetData.files.map(file => 
+          typeof file === 'string' ? JSON.parse(file) : file
         )
       }
 
-      // Transform and clean form data
-      const assetData = cleanData({
-        ...mergedFormData, // Include all form data first (with merged files)
-        name: formData.assetName, // Override with correct field mappings
-        type: formData.category,
-        status: formData.statusText.toLowerCase().includes("available") ? "available" as const :
-                formData.statusText.toLowerCase().includes("maintenance") ? "maintenance" as const :
-                formData.statusText.toLowerCase().includes("out") ? "out-of-service" as const : "operational" as const,
-        assetTag: formData.serialNo,
-        imageSrc: "/placeholder.svg?height=150&width=250"
-      })
+      // Debug: log the final data structure
+      console.log('🚀 FINAL ASSET DATA TO BE SENT')
+      console.log('Image URL:', cleanedAssetData.imageSrc)
+      console.log('QR Code URL:', cleanedAssetData.qrCodeSrc)
+      console.log('Full asset data:', JSON.stringify(cleanedAssetData, null, 2))
 
-      await addAsset(assetData)
+      await addAsset(cleanedAssetData as any)
       toast.success('Asset created successfully!')
       onSuccess?.()
     } catch (error) {
@@ -384,6 +769,7 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
       toast.error('Failed to create asset. Please try again.')
     } finally {
       setIsLoading(false)
+      setIsUploadingImage(false)
     }
   }
 
@@ -415,11 +801,11 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="basic">Basic Info</TabsTrigger>
           <TabsTrigger value="financial">Financial</TabsTrigger>
           <TabsTrigger value="personnel">Personnel</TabsTrigger>
-          <TabsTrigger value="businesses">Businesses</TabsTrigger>
+          
           <TabsTrigger value="parts">Parts/BOM</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
@@ -443,12 +829,23 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
               
               <div className="space-y-2">
                 <Label htmlFor="serialNo">Serial Number</Label>
-                <Input 
-                  id="serialNo"
-                  value={formData.serialNo}
-                  onChange={(e) => handleInputChange('serialNo', e.target.value)}
-                  placeholder="e.g., HDWS-M-001"
-                />
+                <div className="flex gap-2">
+                  <Input 
+                    id="serialNo"
+                    value={formData.serialNo}
+                    onChange={(e) => handleInputChange('serialNo', e.target.value)}
+                    placeholder="e.g., HDWS-M-001"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => startScanner('barcode')}
+                    disabled={isScanning}
+                  >
+                    <QrCode className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -464,6 +861,27 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                     <SelectItem value="Products">Products</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rfid">RFID</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="rfid"
+                    value={formData.rfid}
+                    onChange={(e) => handleInputChange('rfid', e.target.value)}
+                    placeholder="e.g., RF123456789"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => startScanner('qr')}
+                    disabled={isScanning}
+                  >
+                    <QrCode className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -488,22 +906,50 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
 
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
-                <Input 
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  placeholder="e.g., Tool Crib A"
-                />
+                <Select value={formData.location} onValueChange={(value) => handleInputChange('location', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={location.name}>
+                        {location.name} - {location.type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="department">Department *</Label>
-                <Input 
-                  id="department"
-                  value={formData.department}
-                  onChange={(e) => handleInputChange('department', e.target.value)}
-                  placeholder="e.g., Maintenance"
-                />
+                <Select 
+                  value={formData.department} 
+                  onValueChange={(value) => handleInputChange('department', value)}
+                  disabled={user?.accessLevel === 'department_admin'}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {user?.accessLevel === 'super_admin' 
+                      ? departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.name}>
+                            {dept.name}
+                          </SelectItem>
+                        ))
+                      : (
+                          <SelectItem value={user?.department || ''}>
+                            {user?.department}
+                          </SelectItem>
+                        )
+                    }
+                  </SelectContent>
+                </Select>
+                {user?.accessLevel === 'department_admin' && (
+                  <p className="text-sm text-muted-foreground">
+                    Department is auto-selected based on your role
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -532,6 +978,142 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                   rows={3}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Image Upload</CardTitle>
+              <CardDescription>Upload asset image and QR code</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Asset Image Upload */}
+                <div className="space-y-4">
+                  <Label>Asset Image</Label>
+                  <div className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/50">
+                    {formData.imageSrc ? (
+                      <div className="relative w-full h-full">
+                        <img
+                          src={formData.imageSrc}
+                          alt="Asset preview"
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={() => removeImage('image')}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <div className="mt-4">
+                          <label htmlFor="asset-image">
+                            <Button type="button" variant="outline" asChild>
+                              <span>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload Image
+                              </span>
+                            </Button>
+                          </label>
+                          <input
+                            id="asset-image"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleImageUpload(file, 'image')
+                            }}
+                          />
+                        </div>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          PNG, JPG, GIF up to 10MB
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* QR Code Image Upload */}
+                <div className="space-y-4">
+                  <Label>QR Code Image</Label>
+                  <div className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/50">
+                    {formData.qrCodeSrc ? (
+                      <div className="relative w-full h-full">
+                        <img
+                          src={formData.qrCodeSrc}
+                          alt="QR Code preview"
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={() => removeImage('qrCode')}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <QrCode className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <div className="mt-4">
+                          <label htmlFor="qr-code-image">
+                            <Button type="button" variant="outline" asChild>
+                              <span>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload QR Code
+                              </span>
+                            </Button>
+                          </label>
+                          <input
+                            id="qr-code-image"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleImageUpload(file, 'qrCode')
+                            }}
+                          />
+                        </div>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          PNG, JPG, GIF up to 10MB
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* QR Scanner Section */}
+              {isScanning && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Label>Scanner</Label>
+                    <Button type="button" variant="outline" onClick={stopScanner}>
+                      Stop Scanner
+                    </Button>
+                  </div>
+                  <div id="qr-reader" className="w-full max-w-sm mx-auto"></div>
+                </div>
+              )}
+
+              {isUploadingImage && (
+                <div className="text-center">
+                  <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    Uploading images...
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -756,91 +1338,7 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
           </Card>
         </TabsContent>
 
-        <TabsContent value="businesses" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Business Relationships
-                <Button onClick={addBusiness} size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Business
-                </Button>
-              </CardTitle>
-              <CardDescription>Suppliers, service providers, and other business relationships</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {formData.businesses.map((business, index) => (
-                <Card key={business.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline">Business {index + 1}</Badge>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => removeBusiness(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor={`business-name-${index}`}>Business Name</Label>
-                      <Input 
-                        id={`business-name-${index}`}
-                        value={business.name}
-                        onChange={(e) => updateBusiness(index, 'name', e.target.value)}
-                        placeholder="Company name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`business-type-${index}`}>Type</Label>
-                      <Select 
-                        value={business.type} 
-                        onValueChange={(value) => updateBusiness(index, 'type', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Business type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Supplier">Supplier</SelectItem>
-                          <SelectItem value="Service Provider">Service Provider</SelectItem>
-                          <SelectItem value="Manufacturer">Manufacturer</SelectItem>
-                          <SelectItem value="Contractor">Contractor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`business-contact-${index}`}>Contact Person</Label>
-                      <Input 
-                        id={`business-contact-${index}`}
-                        value={business.contactPerson}
-                        onChange={(e) => updateBusiness(index, 'contactPerson', e.target.value)}
-                        placeholder="Contact person name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`business-phone-${index}`}>Phone</Label>
-                      <Input 
-                        id={`business-phone-${index}`}
-                        value={business.phone}
-                        onChange={(e) => updateBusiness(index, 'phone', e.target.value)}
-                        placeholder="+1-555-0200"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {formData.businesses.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertCircle className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                  <p>No business relationships defined yet</p>
-                  <p className="text-sm">Click "Add Business" to add suppliers or service providers</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+
 
         <TabsContent value="parts" className="space-y-6">
           <Card>
@@ -925,6 +1423,21 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                         value={part.lastReplaced}
                         onChange={(e) => updatePartBOM(index, 'lastReplaced', e.target.value)}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`part-next-maintenance-${index}`}>Next Maintenance</Label>
+                      <Input 
+                        id={`part-next-maintenance-${index}`}
+                        type="date"
+                        value={part.nextMaintenanceDate}
+                        onChange={(e) => updatePartBOM(index, 'nextMaintenanceDate', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Total Cost: ${((part.unitCost || 0) * (part.quantity || 0)).toFixed(2)}</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Unit Cost: ${part.unitCost || 0} × Quantity: {part.quantity || 0}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
