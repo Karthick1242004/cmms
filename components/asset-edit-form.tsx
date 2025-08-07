@@ -35,6 +35,16 @@ interface AssetFormData {
   department: string
   assetType: string
   condition: 'excellent' | 'good' | 'fair' | 'poor' | 'new'
+  parentAsset: string
+  productName: string
+  assetClass: string
+  constructionYear: number
+  serviceStatus: string
+  lastEnquiryDate: string
+  lastEnquiryBy: string
+  shelfLifeInMonth: number
+  allocatedOn: string
+  deleted: 'Yes' | 'No'
   
   // Image Management
   imageSrc: string
@@ -93,8 +103,10 @@ interface AssetEditFormProps {
 export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingAsset, setIsLoadingAsset] = useState(true)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [activeTab, setActiveTab] = useState("basic")
   const [departments, setDepartments] = useState<Department[]>([])
+  const [locations, setLocations] = useState<any[]>([])
   
   const { updateAsset } = useAssetsStore()
   const { user } = useAuthStore()
@@ -126,6 +138,16 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
     department: '',
     assetType: 'Tangible',
     condition: 'new',
+    parentAsset: '',
+    productName: '',
+    assetClass: 'Operating Assets',
+    constructionYear: new Date().getFullYear(),
+    serviceStatus: 'Operational',
+    lastEnquiryDate: '',
+    lastEnquiryBy: '',
+    shelfLifeInMonth: 0,
+    allocatedOn: '',
+    deleted: 'No',
     // Image Management
     imageSrc: '',
     imageFile: null,
@@ -201,6 +223,16 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
             department: user?.accessLevel === 'department_admin' ? user.department : (assetDetail.department || ''),
             assetType: assetDetail.assetType || 'Tangible',
             condition: assetDetail.condition || 'good',
+            parentAsset: assetDetail.parentAsset || '',
+            productName: assetDetail.productName || '',
+            assetClass: assetDetail.assetClass || 'Operating Assets',
+            constructionYear: assetDetail.constructionYear || new Date().getFullYear(),
+            serviceStatus: assetDetail.serviceStatus || 'Operational',
+            lastEnquiryDate: assetDetail.lastEnquiryDate || '',
+            lastEnquiryBy: assetDetail.lastEnquiryBy || '',
+            shelfLifeInMonth: assetDetail.shelfLifeInMonth || 0,
+            allocatedOn: assetDetail.allocatedOn || '',
+            deleted: assetDetail.deleted || 'No',
             // Image Management
             imageSrc: assetDetail.imageSrc || '',
             imageFile: null,
@@ -224,7 +256,6 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
             productionHoursDaily: assetDetail.productionHoursDaily || 0,
             meteringEvents: assetDetail.meteringEvents || [],
             personnel: assetDetail.personnel || [],
-            businesses: assetDetail.businesses || [],
             // Separate files from links when loading (files are now stored as JSON strings)
             files: (() => {
               const allFiles = assetDetail.files || []
@@ -310,6 +341,71 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
     }))
   }
 
+  // Image handling functions
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'asset' | 'qr') => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a valid image file (JPEG, PNG, or WebP)')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      toast.error('Image must be less than 5MB')
+      return
+    }
+
+    try {
+      setIsUploadingImage(true)
+      
+      // Create preview URL
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        if (type === 'asset') {
+          setFormData(prev => ({
+            ...prev,
+            imageFile: file,
+            imageSrc: result
+          }))
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            qrCodeFile: file,
+            qrCodeSrc: result
+          }))
+        }
+      }
+      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error('Error handling image upload:', error)
+      toast.error('Failed to process image')
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  const removeImage = (type: 'asset' | 'qr') => {
+    if (type === 'asset') {
+      setFormData(prev => ({
+        ...prev,
+        imageFile: null,
+        imageSrc: ''
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        qrCodeFile: null,
+        qrCodeSrc: ''
+      }))
+    }
+  }
+
   const handleSubmit = async () => {
     setIsLoading(true)
     try {
@@ -320,6 +416,50 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
       if (missingFields.length > 0) {
         toast.error(`Please fill in required fields: ${missingFields.join(', ')}`)
         return
+      }
+
+      console.log('🔄 PROCESSING IMAGE UPDATES')
+      let imageUrl = formData.imageSrc
+      let qrCodeUrl = formData.qrCodeSrc
+
+      // Handle asset image update
+      if (formData.imageFile) {
+        console.log('🖼️ UPLOADING NEW ASSET IMAGE')
+        try {
+          imageUrl = await uploadToCloudinary(formData.imageFile, 'assets/images')
+          console.log('🖼️ New asset image URL:', imageUrl)
+          toast.success('Asset image uploaded successfully!')
+          
+          // Delete old image if it exists and is different
+          if (formData.originalImageSrc && formData.originalImageSrc !== imageUrl && !formData.originalImageSrc.includes('placeholder')) {
+            console.log('🗑️ Deleting old asset image:', formData.originalImageSrc)
+            await deleteFromCloudinary(formData.originalImageSrc)
+          }
+        } catch (error) {
+          console.error('🖼️ Asset image upload failed:', error)
+          toast.error('Failed to upload asset image')
+          imageUrl = formData.originalImageSrc // Keep original on failure
+        }
+      }
+
+      // Handle QR code image update
+      if (formData.qrCodeFile) {
+        console.log('📱 UPLOADING NEW QR CODE IMAGE')
+        try {
+          qrCodeUrl = await uploadToCloudinary(formData.qrCodeFile, 'assets/qrcodes')
+          console.log('📱 New QR code URL:', qrCodeUrl)
+          toast.success('QR code image uploaded successfully!')
+          
+          // Delete old QR code if it exists and is different
+          if (formData.originalQrCodeSrc && formData.originalQrCodeSrc !== qrCodeUrl && !formData.originalQrCodeSrc.includes('placeholder')) {
+            console.log('🗑️ Deleting old QR code:', formData.originalQrCodeSrc)
+            await deleteFromCloudinary(formData.originalQrCodeSrc)
+          }
+        } catch (error) {
+          console.error('📱 QR code upload failed:', error)
+          toast.error('Failed to upload QR code image')
+          qrCodeUrl = formData.originalQrCodeSrc // Keep original on failure
+        }
       }
 
       // Prepare update data, filtering out empty objects and arrays
@@ -337,6 +477,19 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
         department: formData.department,
         assetType: formData.assetType,
         condition: formData.condition,
+        parentAsset: formData.parentAsset,
+        productName: formData.productName,
+        assetClass: formData.assetClass,
+        constructionYear: formData.constructionYear,
+        serviceStatus: formData.serviceStatus,
+        lastEnquiryDate: formData.lastEnquiryDate,
+        lastEnquiryBy: formData.lastEnquiryBy,
+        shelfLifeInMonth: formData.shelfLifeInMonth,
+        allocatedOn: formData.allocatedOn,
+        deleted: formData.deleted,
+        // Include image URLs
+        imageSrc: imageUrl,
+        qrCodeSrc: qrCodeUrl,
         costPrice: formData.costPrice,
         purchasePrice: formData.purchasePrice,
         salesPrice: formData.salesPrice,
@@ -354,7 +507,6 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
         // Only include arrays if they have content
         ...(formData.meteringEvents && formData.meteringEvents.length > 0 && { meteringEvents: formData.meteringEvents }),
         ...(formData.personnel && formData.personnel.length > 0 && { personnel: formData.personnel }),
-        ...(formData.businesses && formData.businesses.length > 0 && { businesses: formData.businesses }),
         // Merge existing files with new links into the files array
         ...(() => {
           const existingFiles = formData.files || []
@@ -457,10 +609,12 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="basic">Basic Information</TabsTrigger>
           <TabsTrigger value="technical">Technical Details</TabsTrigger>
           <TabsTrigger value="financial">Financial Information</TabsTrigger>
+          <TabsTrigger value="personnel">Personnel</TabsTrigger>
+          <TabsTrigger value="parts">Parts/BOM</TabsTrigger>
           <TabsTrigger value="additional">Additional Details</TabsTrigger>
         </TabsList>
 
@@ -608,6 +762,69 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="parentAsset">Parent Asset</Label>
+                  <Input
+                    id="parentAsset"
+                    value={formData.parentAsset}
+                    onChange={(e) => handleInputChange('parentAsset', e.target.value)}
+                    placeholder="Enter parent asset"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="productName">Product Name</Label>
+                  <Input
+                    id="productName"
+                    value={formData.productName}
+                    onChange={(e) => handleInputChange('productName', e.target.value)}
+                    placeholder="Enter product name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="assetClass">Asset Class</Label>
+                  <Select value={formData.assetClass} onValueChange={(value) => handleInputChange('assetClass', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select asset class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Operating Assets">Operating Assets</SelectItem>
+                      <SelectItem value="Non-Operating Assets">Non-Operating Assets</SelectItem>
+                      <SelectItem value="Current Assets">Current Assets</SelectItem>
+                      <SelectItem value="Fixed Assets">Fixed Assets</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="constructionYear">Construction Year</Label>
+                  <Input
+                    id="constructionYear"
+                    type="number"
+                    value={formData.constructionYear}
+                    onChange={(e) => handleInputChange('constructionYear', parseInt(e.target.value) || new Date().getFullYear())}
+                    min="1900"
+                    max="2100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="serviceStatus">Service Status</Label>
+                  <Select value={formData.serviceStatus} onValueChange={(value) => handleInputChange('serviceStatus', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select service status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Operational">Operational</SelectItem>
+                      <SelectItem value="Non-Operational">Non-Operational</SelectItem>
+                      <SelectItem value="Under Maintenance">Under Maintenance</SelectItem>
+                      <SelectItem value="Retired">Retired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
@@ -617,6 +834,125 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                   placeholder="Enter asset description"
                   rows={3}
                 />
+              </div>
+
+              {/* Image Upload Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Asset Image */}
+                <div className="space-y-3">
+                  <Label>Asset Image</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                    {formData.imageSrc ? (
+                      <div className="relative">
+                        <img
+                          src={formData.imageSrc}
+                          alt="Asset"
+                          className="w-full h-40 object-cover rounded-md"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={() => removeImage('asset')}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Camera className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <div className="mt-4">
+                          <label htmlFor="asset-image" className="cursor-pointer">
+                            <span className="mt-2 block text-sm font-medium text-muted-foreground">
+                              Click to upload asset image
+                            </span>
+                            <input
+                              id="asset-image"
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={(e) => handleImageUpload(e, 'asset')}
+                              disabled={isUploadingImage}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    {!formData.imageSrc && (
+                      <div className="mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => document.getElementById('asset-image')?.click()}
+                          disabled={isUploadingImage}
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Choose Image
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* QR Code Image */}
+                <div className="space-y-3">
+                  <Label>QR Code Image</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                    {formData.qrCodeSrc ? (
+                      <div className="relative">
+                        <img
+                          src={formData.qrCodeSrc}
+                          alt="QR Code"
+                          className="w-full h-40 object-cover rounded-md"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={() => removeImage('qr')}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <QrCode className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <div className="mt-4">
+                          <label htmlFor="qr-image" className="cursor-pointer">
+                            <span className="mt-2 block text-sm font-medium text-muted-foreground">
+                              Click to upload QR code image
+                            </span>
+                            <input
+                              id="qr-image"
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={(e) => handleImageUpload(e, 'qr')}
+                              disabled={isUploadingImage}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    {!formData.qrCodeSrc && (
+                      <div className="mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => document.getElementById('qr-image')?.click()}
+                          disabled={isUploadingImage}
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Choose QR Image
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -769,6 +1105,249 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
           </Card>
         </TabsContent>
 
+        <TabsContent value="personnel" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personnel</CardTitle>
+              <CardDescription>Staff assigned to this asset</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm font-medium">Assigned Personnel</h4>
+                <Button type="button" variant="outline" size="sm" onClick={() => {
+                  const newPerson = {
+                    id: `person-${Date.now()}`,
+                    name: '',
+                    role: '',
+                    email: '',
+                    phone: '',
+                    assignedDate: new Date().toISOString().split('T')[0],
+                    responsibilities: []
+                  }
+                  setFormData(prev => ({
+                    ...prev,
+                    personnel: [...prev.personnel, newPerson]
+                  }))
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Person
+                </Button>
+              </div>
+              
+              {formData.personnel.map((person: any, index: number) => (
+                <div key={person.id} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <h5 className="font-medium">Person {index + 1}</h5>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          personnel: prev.personnel.filter((_: any, i: number) => i !== index)
+                        }))
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Name</Label>
+                      <Input
+                        value={person.name}
+                        onChange={(e) => {
+                          const newPersonnel = [...formData.personnel]
+                          newPersonnel[index] = { ...person, name: e.target.value }
+                          setFormData(prev => ({ ...prev, personnel: newPersonnel }))
+                        }}
+                        placeholder="Enter person name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Role</Label>
+                      <Input
+                        value={person.role}
+                        onChange={(e) => {
+                          const newPersonnel = [...formData.personnel]
+                          newPersonnel[index] = { ...person, role: e.target.value }
+                          setFormData(prev => ({ ...prev, personnel: newPersonnel }))
+                        }}
+                        placeholder="Enter role"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input
+                        type="email"
+                        value={person.email}
+                        onChange={(e) => {
+                          const newPersonnel = [...formData.personnel]
+                          newPersonnel[index] = { ...person, email: e.target.value }
+                          setFormData(prev => ({ ...prev, personnel: newPersonnel }))
+                        }}
+                        placeholder="Enter email"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Phone</Label>
+                      <Input
+                        value={person.phone}
+                        onChange={(e) => {
+                          const newPersonnel = [...formData.personnel]
+                          newPersonnel[index] = { ...person, phone: e.target.value }
+                          setFormData(prev => ({ ...prev, personnel: newPersonnel }))
+                        }}
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {formData.personnel.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No personnel assigned. Click "Add Person" to assign staff to this asset.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="parts" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Parts Bill of Materials (BOM)</CardTitle>
+              <CardDescription>Parts and components for this asset</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm font-medium">Parts List</h4>
+                <Button type="button" variant="outline" size="sm" onClick={() => {
+                  const newPart = {
+                    id: `part-${Date.now()}`,
+                    partName: '',
+                    partNumber: '',
+                    quantity: 1,
+                    unitCost: 0,
+                    supplier: '',
+                    lastReplaced: '',
+                    nextMaintenanceDate: ''
+                  }
+                  setFormData(prev => ({
+                    ...prev,
+                    partsBOM: [...prev.partsBOM, newPart]
+                  }))
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Part
+                </Button>
+              </div>
+              
+              {formData.partsBOM.map((part: any, index: number) => (
+                <div key={part.id} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <h5 className="font-medium">Part {index + 1}</h5>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          partsBOM: prev.partsBOM.filter((_: any, i: number) => i !== index)
+                        }))
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Part Name</Label>
+                      <Input
+                        value={part.partName}
+                        onChange={(e) => {
+                          const newParts = [...formData.partsBOM]
+                          newParts[index] = { ...part, partName: e.target.value }
+                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
+                        }}
+                        placeholder="Enter part name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Part Number</Label>
+                      <Input
+                        value={part.partNumber}
+                        onChange={(e) => {
+                          const newParts = [...formData.partsBOM]
+                          newParts[index] = { ...part, partNumber: e.target.value }
+                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
+                        }}
+                        placeholder="Enter part number"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Quantity</Label>
+                      <Input
+                        type="number"
+                        value={part.quantity}
+                        onChange={(e) => {
+                          const newParts = [...formData.partsBOM]
+                          newParts[index] = { ...part, quantity: parseInt(e.target.value) || 1 }
+                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
+                        }}
+                        min="1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Unit Cost ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={part.unitCost}
+                        onChange={(e) => {
+                          const newParts = [...formData.partsBOM]
+                          newParts[index] = { ...part, unitCost: parseFloat(e.target.value) || 0 }
+                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
+                        }}
+                        min="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Supplier</Label>
+                      <Input
+                        value={part.supplier}
+                        onChange={(e) => {
+                          const newParts = [...formData.partsBOM]
+                          newParts[index] = { ...part, supplier: e.target.value }
+                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
+                        }}
+                        placeholder="Enter supplier"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {formData.partsBOM.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No parts added. Click "Add Part" to add components to this asset.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="additional" className="space-y-6">
           <Card>
             <CardHeader>
@@ -814,6 +1393,50 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                     type="date"
                     value={formData.endOfWarranty}
                     onChange={(e) => handleInputChange('endOfWarranty', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="lastEnquiryDate">Last Enquiry Date</Label>
+                  <Input
+                    id="lastEnquiryDate"
+                    type="date"
+                    value={formData.lastEnquiryDate}
+                    onChange={(e) => handleInputChange('lastEnquiryDate', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastEnquiryBy">Last Enquiry By</Label>
+                  <Input
+                    id="lastEnquiryBy"
+                    value={formData.lastEnquiryBy}
+                    onChange={(e) => handleInputChange('lastEnquiryBy', e.target.value)}
+                    placeholder="Enter person who made last enquiry"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="shelfLifeInMonth">Shelf Life (Months)</Label>
+                  <Input
+                    id="shelfLifeInMonth"
+                    type="number"
+                    value={formData.shelfLifeInMonth}
+                    onChange={(e) => handleInputChange('shelfLifeInMonth', parseInt(e.target.value) || 0)}
+                    min="0"
+                    placeholder="Enter shelf life in months"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="allocatedOn">Allocated On</Label>
+                  <Input
+                    id="allocatedOn"
+                    type="date"
+                    value={formData.allocatedOn}
+                    onChange={(e) => handleInputChange('allocatedOn', e.target.value)}
                   />
                 </div>
               </div>

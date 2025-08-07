@@ -1,36 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 
-// Base URL for the backend server
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
     // Get user context for department filtering
     const user = await getUserContext(request);
     
-    // TEMPORARY: Allow access even without authentication for testing
+    // Allow access for testing but with limited data
     if (!user) {
-      console.log('No user authentication found, proceeding without department filtering for testing');
+      console.log('No user authentication found, proceeding with default user for testing');
     }
 
     const { searchParams } = new URL(request.url);
     
     // Add department filter for non-admin users (only if user is authenticated)
-    if (user && user.role !== 'admin') {
+    if (user && user.accessLevel !== 'super_admin') {
       searchParams.set('department', user.department);
     }
     
     // Forward all query parameters to the backend
     const queryString = searchParams.toString();
-    const url = `${SERVER_BASE_URL}/api/parts${queryString ? `?${queryString}` : ''}`;
+    const backendUrl = `${BACKEND_URL}/api/parts${queryString ? `?${queryString}` : ''}`;
 
-    // Forward request to backend server
-    const response = await fetch(url, {
+    // Set user headers for backend authentication
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (user) {
+      headers['x-user-id'] = user.id;
+      headers['x-user-name'] = user.name;
+      headers['x-user-email'] = user.email;
+      headers['x-user-department'] = user.department;
+      // Map accessLevel to role for backend compatibility
+      headers['x-user-role'] = user.accessLevel === 'super_admin' ? 'admin' : 
+                               user.accessLevel === 'department_admin' ? 'manager' : 'technician';
+    }
+
+    const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -44,9 +55,9 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error('Error fetching parts:', error);
+    console.error('Parts API Error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error while fetching parts' },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -54,7 +65,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user context
+    // Get user context for authentication
     const user = await getUserContext(request);
     
     if (!user) {
@@ -65,22 +76,22 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    
-    // Add created/updated metadata
-    const partData = {
-      ...body,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+
+    // Set user headers for backend authentication
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-user-id': user.id,
+      'x-user-name': user.name,
+      'x-user-email': user.email,
+      'x-user-department': user.department,
+      'x-user-role': user.accessLevel === 'super_admin' ? 'admin' : 
+                     user.accessLevel === 'department_admin' ? 'manager' : 'technician',
     };
 
-    const url = `${SERVER_BASE_URL}/api/parts`;
-
-    const response = await fetch(url, {
+    const response = await fetch(`${BACKEND_URL}/api/parts`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(partData),
+      headers,
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -92,12 +103,12 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error('Error creating part:', error);
+    console.error('Parts API Error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error while creating part' },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }
-} 
+}

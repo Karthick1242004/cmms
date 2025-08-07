@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText } from "lucide-react"
+import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -34,7 +34,7 @@ export default function PartsPage() {
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   const { user } = useAuthStore()
-  const isAdmin = user?.role === "admin"
+  const isAdmin = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
 
   // Form state for create/edit
   const [formData, setFormData] = useState<Partial<Part>>({
@@ -51,17 +51,57 @@ export default function PartsPage() {
     unitPrice: 0,
     supplier: "",
     location: "",
+    totalValue: 0,
+    totalConsumed: 0,
+    averageMonthlyUsage: 0,
+    status: "active",
+    isStockItem: true,
+    isCritical: false,
   })
 
-  // Load sample data (in real app, this would fetch from API)
+  // Load parts from API
   useEffect(() => {
-    setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      setParts(sampleParts)
-      setIsLoading(false)
-    }, 500)
+    fetchParts()
   }, [])
+
+  const fetchParts = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/parts')
+      const data = await response.json()
+      
+      if (data.success) {
+        setParts(data.data.parts || [])
+      } else {
+        toast.error(data.message || 'Failed to fetch parts')
+      }
+    } catch (error) {
+      console.error('Error fetching parts:', error)
+      toast.error('Failed to fetch parts')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const syncPartsFromAssets = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/parts/sync')
+      const data = await response.json()
+      
+      if (data.success) {
+        toast.success(`Parts synced successfully! Created: ${data.data.createdCount}, Updated: ${data.data.updatedCount}`)
+        await fetchParts() // Refresh the parts list
+      } else {
+        toast.error(data.message || 'Failed to sync parts')
+      }
+    } catch (error) {
+      console.error('Error syncing parts:', error)
+      toast.error('Failed to sync parts')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filteredParts = parts.filter((part) => {
     const matchesSearch = debouncedSearchTerm === "" || 
@@ -366,6 +406,16 @@ export default function PartsPage() {
               <FileText className="mr-2 h-4 w-4" />
               Generate Report
             </Button>
+            {user?.accessLevel === 'super_admin' && (
+              <Button 
+                onClick={syncPartsFromAssets}
+                variant="outline"
+                disabled={isLoading}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Sync from Assets
+              </Button>
+            )}
             {isAdmin && (
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
@@ -521,6 +571,7 @@ export default function PartsPage() {
                     <TableHead className="text-xs font-medium py-2">Part Details</TableHead>
                     <TableHead className="text-xs font-medium py-2">SKU / Material Code</TableHead>
                     <TableHead className="text-xs font-medium py-2">Category</TableHead>
+                    <TableHead className="text-xs font-medium py-2">Linked Assets</TableHead>
                     <TableHead className="text-xs font-medium py-2">Stock Status</TableHead>
                     <TableHead className="text-xs font-medium py-2">Quantity</TableHead>
                     <TableHead className="text-xs font-medium py-2">Unit Price</TableHead>
@@ -557,6 +608,24 @@ export default function PartsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="py-2">
+                          <div className="space-y-1">
+                            {part.linkedAssets && part.linkedAssets.length > 0 ? (
+                              part.linkedAssets.slice(0, 2).map((asset, index) => (
+                                <Badge key={index} variant="outline" className="text-xs mr-1">
+                                  {asset.assetName}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No assets linked</span>
+                            )}
+                            {part.linkedAssets && part.linkedAssets.length > 2 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{part.linkedAssets.length - 2} more
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2">
                           <div className="flex items-center gap-2">
                             {stockStatus.icon}
                             {stockStatus.badge}
@@ -574,7 +643,7 @@ export default function PartsPage() {
                           <div className="text-xs font-medium">${part.unitPrice.toFixed(2)}</div>
                         </TableCell>
                         <TableCell className="py-2">
-                          <div className="text-xs font-medium">${(part.quantity * part.unitPrice).toFixed(2)}</div>
+                          <div className="text-xs font-medium">${part.totalValue ? part.totalValue.toFixed(2) : (part.quantity * part.unitPrice).toFixed(2)}</div>
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="text-xs">{part.supplier}</div>

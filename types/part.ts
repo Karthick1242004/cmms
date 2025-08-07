@@ -4,15 +4,50 @@ export interface Part {
   name: string
   sku: string // SKU code for inventory tracking
   materialCode: string // Material code for categorization
-  description: string
+  description?: string
   category: string
   department: string // Department that manages this part
-  linkedAssets: string[]
+  
+  // Asset references - optimized for querying
+  linkedAssets: Array<{
+    assetId: string
+    assetName: string
+    assetDepartment: string
+    quantityInAsset: number
+    lastUsed?: string
+    replacementFrequency?: number
+    criticalLevel?: 'low' | 'medium' | 'high'
+  }>
+  
+  // Inventory management
   quantity: number // Current stock quantity
   minStockLevel: number
   unitPrice: number
+  totalValue: number
+  
+  // Supply chain
   supplier: string
-  location?: string
+  supplierCode?: string
+  leadTime?: number
+  lastPurchaseDate?: string
+  lastPurchasePrice?: number
+  
+  // Location & Storage
+  location: string
+  alternativeLocations?: string[]
+  
+  // Usage tracking
+  totalConsumed: number
+  averageMonthlyUsage: number
+  lastUsedDate?: string
+  
+  // Status & metadata
+  status: 'active' | 'inactive' | 'discontinued'
+  isStockItem: boolean
+  isCritical: boolean
+  stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock'
+  departmentsServed: string[]
+  
   createdAt?: Date | string
   updatedAt?: Date | string
 }
