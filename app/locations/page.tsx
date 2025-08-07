@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -15,98 +15,33 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, MapPin, Building } from "lucide-react"
+import { Plus, Search, Edit, Trash2, MapPin, Building, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
 
-const initialLocations = [
-  {
-    id: 1,
-    name: "Building A - 1st Floor",
-    code: "BA-F1",
-    type: "Floor",
-    description: "Main floor with reception and offices",
-    parentLocation: "Building A",
-    assetCount: 15,
-    address: "123 Main Street, Building A",
-  },
-  {
-    id: 2,
-    name: "Building A - Conference Room A",
-    code: "BA-CRA",
-    type: "Room",
-    description: "Main conference room on 1st floor",
-    parentLocation: "Building A - 1st Floor",
-    assetCount: 3,
-    address: "123 Main Street, Building A",
-  },
-  {
-    id: 3,
-    name: "Building B - Warehouse 1",
-    code: "BB-WH1",
-    type: "Warehouse",
-    description: "Primary storage warehouse for parts",
-    parentLocation: "Building B",
-    assetCount: 78,
-    address: "456 Oak Avenue, Building B",
-  },
-  {
-    id: 4,
-    name: "Main Campus - Server Room",
-    code: "MC-SRV",
-    type: "Utility Room",
-    description: "Central server and networking equipment",
-    parentLocation: "Main Campus",
-    assetCount: 25,
-    address: "789 Pine Street, Admin Building",
-  },
-  {
-    id: 5,
-    name: "Building C - Lab 2B",
-    code: "BC-L2B",
-    type: "Laboratory",
-    description: "Research and Development Lab",
-    parentLocation: "Building C - 2nd Floor",
-    assetCount: 12,
-    address: "101 Innovation Drive, Building C",
-  },
-  {
-    id: 6,
-    name: "Building A - 2nd Floor",
-    code: "BA-F2",
-    type: "Floor",
-    description: "Second floor with department offices",
-    parentLocation: "Building A",
-    assetCount: 22,
-    address: "123 Main Street, Building A",
-  },
-  {
-    id: 7,
-    name: "Building B - Warehouse 2",
-    code: "BB-WH2",
-    type: "Warehouse",
-    description: "Secondary storage for large equipment",
-    parentLocation: "Building B",
-    assetCount: 45,
-    address: "456 Oak Avenue, Building B",
-  },
-  {
-    id: 8,
-    name: "Main Campus - Electrical Room",
-    code: "MC-ER",
-    type: "Utility Room",
-    description: "Main electrical distribution panels",
-    parentLocation: "Main Campus",
-    assetCount: 18,
-    address: "789 Pine Street, Admin Building",
-  },
-]
+interface Location {
+  id: string
+  name: string
+  code: string
+  type: string
+  description: string
+  department: string
+  parentLocation: string
+  assetCount: number
+  address: string
+  status: 'active' | 'inactive'
+  createdAt: string
+  updatedAt: string
+}
 
 export default function LocationsPage() {
-  const [locations, setLocations] = useState(initialLocations)
+  const [locations, setLocations] = useState<Location[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingLocation, setEditingLocation] = useState<any>(null)
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     code: "",
@@ -114,7 +49,42 @@ export default function LocationsPage() {
     description: "",
     parentLocation: "",
     address: "",
+    department: "",
   })
+
+  // Fetch locations from API
+  const fetchLocations = async () => {
+    try {
+      setIsLoading(true)
+      const token = localStorage.getItem('auth-token')
+      
+      const response = await fetch('/api/locations', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setLocations(data.data.locations || [])
+      } else {
+        console.error('Failed to fetch locations')
+        toast.error('Failed to load locations')
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error)
+      toast.error('Error loading locations')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Load locations on component mount
+  useEffect(() => {
+    fetchLocations()
+  }, [])
 
   const filteredLocations = locations.filter(
     (location) =>
@@ -132,6 +102,7 @@ export default function LocationsPage() {
       description: "",
       parentLocation: "",
       address: "",
+      department: "",
     })
     setEditingLocation(null)
   }
@@ -141,7 +112,7 @@ export default function LocationsPage() {
     setIsDialogOpen(true)
   }
 
-  const handleEdit = (location: any) => {
+  const handleEdit = (location: Location) => {
     setEditingLocation(location)
     setFormData({
       name: location.name,
@@ -150,47 +121,75 @@ export default function LocationsPage() {
       description: location.description,
       parentLocation: location.parentLocation,
       address: location.address,
+      department: location.department,
     })
     setIsDialogOpen(true)
   }
 
-  const handleSave = () => {
-    if (editingLocation) {
-      // Update existing location
-      setLocations(prev => prev.map(item => 
-        item.id === editingLocation.id 
-          ? {
-              ...item,
-              name: formData.name,
-              code: formData.code,
-              type: formData.type,
-              description: formData.description,
-              parentLocation: formData.parentLocation,
-              address: formData.address,
-            }
-          : item
-      ))
-    } else {
-      // Create new location
-      const newLocation = {
-        id: Math.max(...locations.map(l => l.id)) + 1,
-        name: formData.name,
-        code: formData.code,
-        type: formData.type,
-        description: formData.description,
-        parentLocation: formData.parentLocation,
-        address: formData.address,
-        assetCount: 0,
-      }
-      setLocations(prev => [...prev, newLocation])
-    }
+  const handleSave = async () => {
+    if (isSaving) return
     
-    setIsDialogOpen(false)
-    resetForm()
+    try {
+      setIsSaving(true)
+      const token = localStorage.getItem('auth-token')
+      
+      const url = editingLocation 
+        ? `/api/locations/${editingLocation.id}`
+        : '/api/locations'
+      
+      const method = editingLocation ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (response.ok) {
+        toast.success(editingLocation ? 'Location updated successfully!' : 'Location created successfully!')
+        setIsDialogOpen(false)
+        resetForm()
+        fetchLocations() // Refresh the list
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        toast.error(errorData.error || 'Failed to save location')
+      }
+    } catch (error) {
+      console.error('Error saving location:', error)
+      toast.error('Network error: Failed to save location')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleDelete = (locationId: number) => {
-    setLocations(prev => prev.filter(item => item.id !== locationId))
+  const handleDelete = async (locationId: string) => {
+    if (!confirm('Are you sure you want to delete this location?')) return
+    
+    try {
+      const token = localStorage.getItem('auth-token')
+      
+      const response = await fetch(`/api/locations/${locationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      })
+
+      if (response.ok) {
+        toast.success('Location deleted successfully!')
+        fetchLocations() // Refresh the list
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        toast.error(errorData.error || 'Failed to delete location')
+      }
+    } catch (error) {
+      console.error('Error deleting location:', error)
+      toast.error('Network error: Failed to delete location')
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -198,6 +197,17 @@ export default function LocationsPage() {
       ...prev,
       [field]: value
     }))
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Loading locations...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -256,6 +266,17 @@ export default function LocationsPage() {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="department" className="text-right">
+                  Department
+                </Label>
+                <Input 
+                  id="department" 
+                  className="col-span-3" 
+                  value={formData.department}
+                  onChange={(e) => handleInputChange("department", e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="parentLocation" className="text-right">
                   Parent Location
                 </Label>
@@ -290,8 +311,15 @@ export default function LocationsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" onClick={handleSave}>
-                {editingLocation ? "Update Location" : "Save Location"}
+              <Button type="submit" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  editingLocation ? "Update Location" : "Save Location"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -316,6 +344,7 @@ export default function LocationsPage() {
             <TableRow>
               <TableHead>Location</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Department</TableHead>
               <TableHead>Parent Location</TableHead>
               <TableHead>Assets</TableHead>
               <TableHead>Address</TableHead>
@@ -323,58 +352,73 @@ export default function LocationsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLocations.map((location) => (
-              <TableRow key={location.id}>
-                <TableCell>
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
-                      <MapPin className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium">{location.name}</div>
-                      <div className="text-sm text-muted-foreground">{location.code}</div>
-                      <div className="text-xs text-muted-foreground">{location.description}</div>
-                    </div>
+            {filteredLocations.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <div className="flex flex-col items-center space-y-2">
+                    <MapPin className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-muted-foreground">No locations found</p>
+                    <p className="text-sm text-muted-foreground">Create your first location to get started</p>
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{location.type}</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{location.parentLocation}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{location.assetCount} assets</Badge>
-                </TableCell>
-                <TableCell className="text-sm">{location.address}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(location)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-red-600"
-                        onClick={() => handleDelete(location.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredLocations.map((location) => (
+                <TableRow key={location.id}>
+                  <TableCell>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
+                        <MapPin className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium">{location.name}</div>
+                        <div className="text-sm text-muted-foreground">{location.code}</div>
+                        <div className="text-xs text-muted-foreground">{location.description}</div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{location.type}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{location.department}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Building className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{location.parentLocation || 'None'}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{location.assetCount} assets</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">{location.address}</TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(location)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-red-600"
+                          onClick={() => handleDelete(location.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
