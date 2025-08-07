@@ -189,7 +189,7 @@ function LoginPageContent() {
             <div className="h-10 w-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
               <Cog className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold">CMMS Platform</h1>
+            <h1 className="text-2xl font-bold">FMMS 360</h1>
           </div>
 
           {/* Bottom Quote */}
@@ -218,14 +218,14 @@ function LoginPageContent() {
                     <Cog className="h-6 w-6 text-primary-foreground" />
                   </div>
                   <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                    CMMS
+                    FMMS 360
                   </h1>
                 </div>
               </div>
 
               {/* Header */}
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">CMMS Platform</h2>
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">FMMS 360</h2>
                 <p className="text-gray-600 dark:text-gray-400">Sign in to access your maintenance management system</p>
               </div>
 

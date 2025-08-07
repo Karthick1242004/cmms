@@ -22,7 +22,7 @@ export function LoadingSpinner() {
 
         {/* Loading Text */}
         <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold text-foreground">Loading CMMS</h3>
+          <h3 className="text-lg font-semibold text-foreground">Loading FMMS 360</h3>
           <p className="text-sm text-muted-foreground animate-pulse">Please wait while we prepare your dashboard...</p>
         </div>
 

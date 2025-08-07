@@ -97,7 +97,7 @@ export function ProfileCompletionBanner({ className, profileStatus, onCompleteCl
         <div className="flex-1 space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-orange-800 dark:text-orange-200 font-medium">
-              Complete your profile to get the full CMMS experience
+              Complete your profile to get the full FMMS 360 experience
             </p>
             <Button
               variant="ghost"

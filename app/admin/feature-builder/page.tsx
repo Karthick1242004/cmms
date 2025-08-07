@@ -325,7 +325,7 @@ export default function FeatureBuilderPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Feature Builder</h1>
         <p className="text-muted-foreground mt-2">
-          Create custom features to extend your CMMS functionality without code modifications.
+          Create custom features to extend your FMMS 360 functionality without code modifications.
         </p>
       </div>
 

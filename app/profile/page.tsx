@@ -40,6 +40,14 @@ interface ProfileData {
     phone: string
   }
   status: 'active' | 'inactive' | 'on-leave'
+  firstName?: string
+  lastName?: string
+  phone?: string
+  address?: string
+  city?: string
+  country?: string
+  jobTitle?: string
+  bio?: string
 }
 
 export default function ProfilePage() {
@@ -153,7 +161,7 @@ export default function ProfilePage() {
   }
 
   // Handle form input changes
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: string, value: string | boolean | string[]) => {
     setProfileData(prev => {
       if (field.includes('.')) {
         const [parent, child] = field.split('.')
@@ -242,16 +250,16 @@ export default function ProfilePage() {
     employeeId: profileData.employeeId || user?.employeeId || 'N/A',
     accessLevel: profileData.accessLevel || user?.accessLevel || 'normal_user',
     shiftInfo: profileData.shiftInfo || user?.shiftInfo,
-    joinDate: profileData.joinDate || user?.joinDate || 'N/A',
-    supervisor: profileData.supervisor || user?.supervisor,
-    skills: profileData.skills || user?.skills || [],
-    certifications: profileData.certifications || user?.certifications || [],
-    emergencyContact: profileData.emergencyContact || user?.emergencyContact || {
+    joinDate: profileData.joinDate || 'N/A',
+    supervisor: profileData.supervisor,
+    skills: profileData.skills || [],
+    certifications: profileData.certifications || [],
+    emergencyContact: profileData.emergencyContact || {
       name: '',
       relationship: '',
       phone: ''
     },
-    status: profileData.status || user?.status || 'active'
+    status: profileData.status || 'active'
   }
 
   return (
@@ -296,7 +304,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center space-x-2 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
-                <span>ID: {userData.id}</span>
+                <span>ID: {userData.employeeId}</span>
               </div>
               <div className="flex items-center space-x-2 text-sm">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -475,7 +483,7 @@ export default function ProfilePage() {
                       <Label htmlFor="employeeId">Employee ID</Label>
                       <Input 
                         id="employeeId" 
-                        value={userData.id}
+                        value={userData.employeeId}
                         readOnly={true}
                         className="bg-muted"
                       />

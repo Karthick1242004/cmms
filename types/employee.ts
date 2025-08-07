@@ -62,6 +62,7 @@ export interface Employee {
 }
 
 export interface EmployeeDetail extends Employee {
+  workShift: string;
   // Extended fields for detailed tracking
   skills?: string[]; // Array of skills/competencies
   certifications?: string[]; // Array of certifications

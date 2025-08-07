@@ -389,7 +389,7 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
 
             {/* Report Footer */}
             <div className="border-t pt-6 text-center text-sm text-gray-500">
-              <p>This report was generated automatically by the CMMS Dashboard system.</p>
+              <p>This report was generated automatically by the FMMS 360 Dashboard system.</p>
               <p>For questions or concerns, please contact the HR department.</p>
             </div>
           </div>

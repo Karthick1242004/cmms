@@ -47,7 +47,7 @@ export const AppSidebar = memo(function AppSidebar() {
         <div className="flex flex-col space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-              CMMS
+              FMMS 360
             </h2>
             <Badge
               variant="outline"
