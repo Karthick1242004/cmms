@@ -59,6 +59,21 @@ export async function POST(request: NextRequest) {
     // Get user context for department assignment and audit trail
     const user = await getUserContext(request);
     
+    // Only super admins can create departments
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    if (user.accessLevel !== 'super_admin') {
+      return NextResponse.json(
+        { success: false, message: 'Only super administrators can create departments' },
+        { status: 403 }
+      );
+    }
+    
     const body = await request.json();
 
     // Prepare headers with user context

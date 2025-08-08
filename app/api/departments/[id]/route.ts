@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserContext } from '@/lib/auth-helpers';
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
@@ -8,6 +9,24 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Get user context for access control
+    const user = await getUserContext(request);
+    
+    // Only super admins can update departments
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    if (user.accessLevel !== 'super_admin') {
+      return NextResponse.json(
+        { success: false, message: 'Only super administrators can update departments' },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
     const body = await request.json();
 
@@ -19,12 +38,24 @@ export async function PUT(
       );
     }
 
+    // Prepare headers with user context
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add user context headers
+    if (user) {
+      headers['x-user-id'] = user.id;
+      headers['x-user-name'] = user.name;
+      headers['x-user-email'] = user.email;
+      headers['x-user-department'] = user.department;
+      headers['x-user-role'] = user.role;
+    }
+
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/departments/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(body),
     });
 
@@ -53,14 +84,44 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Get user context for access control
+    const user = await getUserContext(request);
+    
+    // Only super admins can delete departments
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    if (user.accessLevel !== 'super_admin') {
+      return NextResponse.json(
+        { success: false, message: 'Only super administrators can delete departments' },
+        { status: 403 }
+      );
+    }
+
     const { id } = params;
+
+    // Prepare headers with user context
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add user context headers
+    if (user) {
+      headers['x-user-id'] = user.id;
+      headers['x-user-name'] = user.name;
+      headers['x-user-email'] = user.email;
+      headers['x-user-department'] = user.department;
+      headers['x-user-role'] = user.role;
+    }
 
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/departments/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {

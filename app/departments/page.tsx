@@ -35,13 +35,14 @@ export default function DepartmentsPage() {
 
   // Auth state
   const { user } = useAuthStore()
-  const isAdmin = user?.role === "admin"
+  const isSuperAdmin = user?.accessLevel === 'super_admin'
 
   // Local state
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null)
   const [name, setName] = useState("")
+  const [code, setCode] = useState("")
   const [description, setDescription] = useState("")
   const [manager, setManager] = useState("")
   const [status, setStatus] = useState<DepartmentStatus>("active")
@@ -57,6 +58,7 @@ export default function DepartmentsPage() {
     
     return departments.filter((department) =>
       department.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      department.code.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       department.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       department.manager.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
     )
@@ -64,18 +66,20 @@ export default function DepartmentsPage() {
 
   // Handle dialog state
   const handleOpenDialog = (department: Department | null = null) => {
-    if (!isAdmin) return
+    if (!isSuperAdmin) return
     
     setEditingDepartment(department)
     
     if (department) {
       setName(department.name)
+      setCode(department.code)
       setDescription(department.description)
       setManager(department.manager)
       setStatus(department.status)
     } else {
       // Reset form for adding new
       setName("")
+      setCode("")
       setDescription("")
       setManager("")
       setStatus("active")
@@ -88,6 +92,7 @@ export default function DepartmentsPage() {
     if (!open) {
       setEditingDepartment(null)
       setName("")
+      setCode("")
       setDescription("")
       setManager("")
       setStatus("active")
@@ -96,8 +101,8 @@ export default function DepartmentsPage() {
   }
 
   const handleSubmit = async () => {
-    if (!name || !manager) {
-      toast.error("Department Name and Manager are required.")
+    if (!name || !code || !manager) {
+      toast.error("Department Name, Code, and Manager are required.")
       return
     }
     
@@ -107,7 +112,7 @@ export default function DepartmentsPage() {
     }
 
     try {
-      const departmentData = { name, description, manager, status }
+      const departmentData = { name, code, description, manager, status }
       
       if (editingDepartment) {
         await updateDepartmentMutation.mutateAsync({ 
@@ -133,7 +138,7 @@ export default function DepartmentsPage() {
 
   // Handle department deletion
   const handleDelete = async (id: string, name: string) => {
-    if (!isAdmin) return
+    if (!isSuperAdmin) return
     
     if (window.confirm(`Are you sure you want to delete the department "${name}"? This action cannot be undone.`)) {
       try {
@@ -195,13 +200,13 @@ export default function DepartmentsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Departments</h1>
           <p className="text-muted-foreground">
-            {isAdmin 
-              ? "Manage organizational departments and their responsibilities"
+            {isSuperAdmin 
+              ? "Manage organizational departments and their responsibilities (Super Admin Only)"
               : "View organizational departments and their details"
             }
           </p>
         </div>
-        {isAdmin && (
+        {isSuperAdmin && (
           <Button onClick={() => handleOpenDialog()}>
             <Plus className="mr-2 h-4 w-4" />
             Add Department
@@ -209,7 +214,7 @@ export default function DepartmentsPage() {
         )}
       </div>
 
-      {isAdmin && (
+      {isSuperAdmin && (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogContent className="sm:max-w-[480px]">
             <DialogHeader>
@@ -230,6 +235,20 @@ export default function DepartmentsPage() {
                   value={name} 
                   onChange={(e) => setName(e.target.value)} 
                   className="col-span-3"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="code" className="text-right">
+                  Code *
+                </Label>
+                <Input 
+                  id="code" 
+                  value={code} 
+                  onChange={(e) => setCode(e.target.value.toUpperCase())} 
+                  className="col-span-3"
+                  placeholder="e.g., IT, QA, PROD"
+                  maxLength={10}
                   disabled={isSubmitting}
                 />
               </div>
@@ -314,24 +333,26 @@ export default function DepartmentsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Department Name</TableHead>
+              <TableHead>Code</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Manager</TableHead>
               <TableHead>Employees</TableHead>
               <TableHead>Status</TableHead>
-              {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+              {isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredDepartments.map((department) => (
               <TableRow key={department.id} className="hover:bg-muted/50 transition-colors">
                 <TableCell className="font-medium">{department.name}</TableCell>
+                <TableCell className="font-mono text-sm">{department.code}</TableCell>
                 <TableCell className="min-w-[200px]">{department.description}</TableCell>
                 <TableCell>{department.manager}</TableCell>
                 <TableCell>{department.employeeCount}</TableCell>
                 <TableCell>
                   <Badge variant={department.status === "active" ? "default" : "secondary"}>{department.status}</Badge>
                 </TableCell>
-                {isAdmin && (
+                {isSuperAdmin && (
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
