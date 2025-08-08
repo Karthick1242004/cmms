@@ -61,17 +61,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user can create employees
+    if (user.accessLevel !== 'super_admin' && user.accessLevel !== 'department_admin') {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - Insufficient permissions to create employees' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     
-    // Add department to data (use user's department unless admin specifies different)
-    if (!body.department || user.role !== 'admin') {
+    // Apply department restrictions based on access level
+    if (user.accessLevel === 'department_admin') {
+      // Department admin can only create employees in their own department
       body.department = user.department;
+    } else if (user.accessLevel === 'super_admin') {
+      // Super admin can create employees in any department, but department must be specified
+      if (!body.department) {
+        return NextResponse.json(
+          { success: false, message: 'Department is required for employee creation' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Set default password if not provided
+    if (!body.password) {
+      body.password = 'temp123'; // Default temporary password
+    }
+
+    // Set default access level if not provided
+    if (!body.accessLevel) {
+      body.accessLevel = 'normal_user';
     }
     
     const response = await fetch(`${SERVER_API_URL}/api/employees`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-user-id': user.id,
+        'x-user-email': user.email,
+        'x-user-department': user.department,
+        'x-user-access-level': user.accessLevel,
       },
       body: JSON.stringify(body),
     });

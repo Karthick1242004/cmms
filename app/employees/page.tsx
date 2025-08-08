@@ -30,6 +30,8 @@ export default function EmployeesPage() {
   const { user } = useAuthStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [departments, setDepartments] = useState<Array<{id: string, name: string}>>([])
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false)
   const [formData, setFormData] = useState<{
     name: string
     email: string
@@ -37,6 +39,8 @@ export default function EmployeesPage() {
     department: string
     role: string
     status: "active" | "inactive" | "on-leave"
+    password: string
+    accessLevel: "super_admin" | "department_admin" | "normal_user"
   }>({
     name: "",
     email: "",
@@ -44,6 +48,8 @@ export default function EmployeesPage() {
     department: "",
     role: "",
     status: "active",
+    password: "",
+    accessLevel: "normal_user",
   })
 
   const {
@@ -59,7 +65,36 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     fetchEmployees()
+    fetchDepartments()
   }, [fetchEmployees])
+
+  // Check if user can create employees
+  const canCreateEmployees = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
+  
+  // Debug logging for user permissions
+  useEffect(() => {
+    console.log('User:', user)
+    console.log('Access Level:', user?.accessLevel)
+    console.log('Can Create Employees:', canCreateEmployees)
+  }, [user, canCreateEmployees])
+
+  const fetchDepartments = async () => {
+    if (!canCreateEmployees) return
+    
+    setIsLoadingDepartments(true)
+    try {
+      const response = await fetch('/api/departments')
+      const data = await response.json()
+      if (data.success) {
+        setDepartments(data.data.departments || [])
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+      toast.error('Failed to load departments')
+    } finally {
+      setIsLoadingDepartments(false)
+    }
+  }
 
   const handleSubmit = async () => {
     try {
@@ -86,6 +121,8 @@ export default function EmployeesPage() {
       department: employee.department,
       role: employee.role,
       status: employee.status,
+      password: "", // Don't pre-fill password for security
+      accessLevel: (employee as any).accessLevel || "normal_user",
     })
     setIsDialogOpen(true)
   }
@@ -104,11 +141,20 @@ export default function EmployeesPage() {
       name: "",
       email: "",
       phone: "",
-      department: "",
+      department: user?.accessLevel === 'department_admin' ? user.department : "",
       role: "",
       status: "active",
+      password: "",
+      accessLevel: "normal_user",
     })
     setEditingEmployee(null)
+  }
+
+  const handleCreateEmployee = () => {
+    console.log('Add Employee button clicked!')
+    resetForm()
+    setIsDialogOpen(true)
+    console.log('Dialog should be open now:', true)
   }
 
   const handleDialogClose = () => {
@@ -123,13 +169,13 @@ export default function EmployeesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Employees</h1>
           <p className="text-muted-foreground">Manage department employees and their responsibilities</p>
         </div>
+        {canCreateEmployees && (
+          <Button onClick={handleCreateEmployee}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Employee
+          </Button>
+        )}
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogTrigger asChild>
-            {/* <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Employee
-            </Button> */}
-          </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>{editingEmployee ? "Edit Employee" : "Add New Employee"}</DialogTitle>
@@ -176,13 +222,31 @@ export default function EmployeesPage() {
                 <Label htmlFor="department" className="text-right">
                   Department
                 </Label>
-                <Input
-                  id="department"
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="col-span-3"
-                  placeholder="e.g. Maintenance Engineering"
-                />
+                {user?.accessLevel === 'super_admin' ? (
+                  <Select 
+                    value={formData.department} 
+                    onValueChange={(value) => setFormData({ ...formData, department: value })}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.name}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="department"
+                    value={formData.department}
+                    className="col-span-3"
+                    disabled={user?.accessLevel === 'department_admin'}
+                    placeholder="Department"
+                  />
+                )}
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="role" className="text-right">
@@ -200,16 +264,54 @@ export default function EmployeesPage() {
                 <Label htmlFor="status" className="text-right">
                   Status
                 </Label>
-                <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData({ ...formData, status: value })}>
+                <Select value={formData.status} onValueChange={(value: "active" | "inactive" | "on-leave") => setFormData({ ...formData, status: value })}>
                   <SelectTrigger className="col-span-3">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="on-leave">On Leave</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {!editingEmployee && (
+                <>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="password" className="text-right">
+                      Password
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="col-span-3"
+                      placeholder="Temporary password"
+                    />
+                  </div>
+                  {user?.accessLevel === 'super_admin' && (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="accessLevel" className="text-right">
+                        Access Level
+                      </Label>
+                      <Select 
+                        value={formData.accessLevel} 
+                        onValueChange={(value: "super_admin" | "department_admin" | "normal_user") => setFormData({ ...formData, accessLevel: value })}
+                      >
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="normal_user">Normal User</SelectItem>
+                          <SelectItem value="department_admin">Department Admin</SelectItem>
+                          <SelectItem value="super_admin">Super Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={handleDialogClose}>

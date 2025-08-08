@@ -122,7 +122,7 @@ const EmployeeSchema = new Schema<IEmployee>({
     required: [true, 'Phone number is required'],
     trim: true,
     match: [
-      /^[\+]?[1-9][\d]{0,15}$/,
+      /^[\+]?[\d\s\-\(\)]{10,20}$/,
       'Please enter a valid phone number',
     ],
   },

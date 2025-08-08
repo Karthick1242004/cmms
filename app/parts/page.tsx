@@ -61,17 +61,31 @@ export default function PartsPage() {
 
   // Load parts from API
   useEffect(() => {
-    fetchParts()
+    fetchParts(true) // Enable auto-sync on first load
   }, [])
 
-  const fetchParts = async () => {
+  const fetchParts = async (autoSync = false) => {
     setIsLoading(true)
     try {
       const response = await fetch('/api/parts')
       const data = await response.json()
       
       if (data.success) {
-        setParts(data.data.parts || [])
+        const partsData = data.data.parts || []
+        setParts(partsData)
+        
+        // Auto-sync if no parts are found and autoSync is enabled (only for super admin)
+        if (autoSync && partsData.length === 0 && user?.accessLevel === 'super_admin') {
+          console.log('No parts found, automatically syncing from assets...')
+          await syncPartsFromAssets()
+          return // syncPartsFromAssets will call fetchParts again
+        }
+        
+        // For department admins, show a helpful message when no parts are found
+        if (autoSync && partsData.length === 0 && user?.accessLevel === 'department_admin') {
+          console.log('No parts found for department admin. Parts may need to be synced.')
+          toast.info('No parts found. Click "Sync from Assets" if you have assets with parts configured.')
+        }
       } else {
         toast.error(data.message || 'Failed to fetch parts')
       }

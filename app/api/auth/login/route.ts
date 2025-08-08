@@ -67,9 +67,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update last login
-    employee.lastLoginAt = new Date()
-    await employee.save()
+    // Update last login (using updateOne to avoid validation)
+    await Employee.updateOne(
+      { _id: employee._id },
+      { $set: { lastLoginAt: new Date() } }
+    )
 
     // Check if employee has complete profile (basic check)
     const profileStatus = {

@@ -64,7 +64,7 @@ export const quickActions = [
     title: "Create Work Order",
     iconName: "Wrench",
     color: "text-orange-600",
-    href: "/work-orders",
+    href: "/tickets",
   },
   {
     title: "Schedule Maintenance",

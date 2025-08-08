@@ -271,7 +271,7 @@ function LoginPageContent() {
 
               {/* Login/Signup Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
+                {/* <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
                   <TabsTrigger
                     value="login"
                     className={cn(
@@ -280,15 +280,15 @@ function LoginPageContent() {
                   >
                     Login
                   </TabsTrigger>
-                  {/* <TabsTrigger
+                  <TabsTrigger
                     value="signup"
                     className={cn(
                       "data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white",
                     )}
                   >
                     Sign Up
-                  </TabsTrigger> */}
-                </TabsList>
+                  </TabsTrigger>
+                </TabsList> */}
 
                 <TabsContent value="login" className="space-y-4 mt-6">
                   <form onSubmit={handleSubmit} className="space-y-4">

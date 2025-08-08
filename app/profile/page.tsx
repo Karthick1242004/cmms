@@ -641,7 +641,7 @@ export default function ProfilePage() {
                 {[
                   { action: "Signed in via Email", time: "Now" },
                   { action: "Viewed profile page", time: "Just now" },
-                  { action: "Accessed CMMS dashboard", time: "Today" },
+                  { action: "Accessed FMMS 360", time: "Today" },
                   { action: `Logged in as ${formatRole(userData.role)}`, time: "Today" },
                   { action: `Department: ${userData.department}`, time: "Profile info" },
                 ].map((activity, index) => (

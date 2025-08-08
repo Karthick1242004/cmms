@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Account created successfully! Welcome to CMMS.',
+      message: 'Account created successfully! Welcome to FMMS 360.',
       user: userResponse,
       profileStatus,
       type: 'success'
