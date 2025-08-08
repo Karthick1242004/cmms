@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     
-    // Add department filter for non-admin users (only if user is authenticated)
-    if (user && user.role !== 'admin') {
+    // Add department filter for non-super-admin users (only if user is authenticated)
+    if (user && user.accessLevel !== 'super_admin') {
       searchParams.set('department', user.department);
     }
     
@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Add department to data (use user's department unless admin specifies different)
+    // Add department to data (use user's department unless super admin specifies different)
     if (!body.department) {
-      if (user && user.role !== 'admin') {
+      if (user && user.accessLevel !== 'super_admin') {
         body.department = user.department;
       } else {
         body.department = body.department || 'General'; // Default department for testing
