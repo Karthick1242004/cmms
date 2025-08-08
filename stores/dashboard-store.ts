@@ -107,7 +107,7 @@ export const useDashboardStore = create<DashboardState>()(
                   title: "Create Work Order",
                   iconName: "Wrench",
                   color: "text-orange-600",
-                  href: "tickets",
+                  href: "/tickets",
                 },
                 {
                   title: "Schedule Maintenance",

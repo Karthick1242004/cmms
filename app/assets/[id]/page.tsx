@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import { useNavigation } from "@/hooks/use-navigation"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -61,6 +62,7 @@ const DetailItem: React.FC<DetailItemProps> = ({ label, value, className, icon: 
 export default function AssetDetailPage() {
   const params = useParams()
   const assetId = params.id as string
+  const { navigate } = useNavigation()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -210,7 +212,7 @@ export default function AssetDetailPage() {
             <Button variant="outline">
               <List className="mr-2 h-4 w-4" /> Equipment List
             </Button>
-            <Button>
+            <Button onClick={() => navigate("/tickets")}>
               <PlusCircle className="mr-2 h-4 w-4" /> Create Work Order
             </Button>
           </div>
