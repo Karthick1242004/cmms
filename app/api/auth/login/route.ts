@@ -36,17 +36,16 @@ export async function POST(request: NextRequest) {
     // Connect to database
     await connectDB()
 
-    // Find employee by email
+    // Find employee by email (allow any status - active, inactive, on-leave)
     const employee = await Employee.findOne({ 
-      email: email.toLowerCase(),
-      status: 'active' // Only allow active employees to login
+      email: email.toLowerCase()
     })
 
     if (!employee) {
       return NextResponse.json(
         { 
           error: 'Account not found',
-          details: 'No active employee account found with this email. Please check your email or contact your administrator.',
+          details: 'No employee account found with this email. Please check your email or contact your administrator.',
           type: 'user_not_found',
           suggestion: 'contact_admin'
         },

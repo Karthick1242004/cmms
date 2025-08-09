@@ -16,7 +16,7 @@ export async function GET(
     
     // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('No user authentication found, proceeding without permission checks for testing');
+      // proceed without permission checks for unauthenticated requests (testing mode)
     }
 
     // Forward request to backend server
@@ -67,7 +67,7 @@ export async function PUT(
     
     // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('No user authentication found, proceeding without permission checks for testing');
+      // proceed without permission checks for unauthenticated requests (testing mode)
     }
 
     const body = await request.json();
@@ -151,7 +151,7 @@ export async function DELETE(
     
     // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('No user authentication found, proceeding without permission checks for testing');
+      // proceed without permission checks for unauthenticated requests (testing mode)
     }
 
     // First, get the existing location to check permissions

@@ -15,10 +15,216 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 import { useDebounce } from "@/hooks/use-debounce"
 import { sampleParts } from "@/data/parts-sample"
 import type { Part } from "@/types/part"
+import type { Department } from "@/types/department"
+import type { Location } from "@/types/location"
 import { toast } from "sonner"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { useAuthStore } from "@/stores/auth-store"
 import { PartsInventoryReport } from "@/components/parts/parts-inventory-report"
+
+// Extracted form to prevent re-mount on every parent render (fixes input focus loss)
+function PartFormStandalone({
+  isEdit = false,
+  formData,
+  onInputChange,
+  onCancel,
+  onSubmit,
+  departments,
+  locations,
+  currentUserDepartment,
+  isSuperAdmin,
+}: {
+  isEdit?: boolean
+  formData: Partial<Part>
+  onInputChange: (field: keyof Part, value: any) => void
+  onCancel: () => void
+  onSubmit: () => void
+  departments: Department[]
+  locations: Location[]
+  currentUserDepartment: string
+  isSuperAdmin: boolean
+}) {
+  return (
+    <div className="grid gap-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="partNumber">Part Number *</Label>
+          <Input
+            id="partNumber"
+            value={formData.partNumber || ""}
+            onChange={(e) => onInputChange('partNumber', e.target.value)}
+            placeholder="e.g., HF-200-01"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="name">Part Name *</Label>
+          <Input
+            id="name"
+            value={formData.name || ""}
+            onChange={(e) => onInputChange('name', e.target.value)}
+            placeholder="e.g., Hydraulic Filter"
+          />
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="sku">SKU Code *</Label>
+          <div className="relative">
+            <Barcode className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="sku"
+              value={formData.sku || ""}
+              onChange={(e) => onInputChange('sku', e.target.value)}
+              placeholder="e.g., SKU-HF200"
+              className="pl-8"
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="materialCode">Material Code *</Label>
+          <Input
+            id="materialCode"
+            value={formData.materialCode || ""}
+            onChange={(e) => onInputChange('materialCode', e.target.value)}
+            placeholder="e.g., MAT-HYD-FLT"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="category">Category *</Label>
+          <Select value={formData.category || ""} onValueChange={(value) => onInputChange('category', value as any)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Filters">Filters</SelectItem>
+              <SelectItem value="Seals & Gaskets">Seals & Gaskets</SelectItem>
+              <SelectItem value="Belts & Chains">Belts & Chains</SelectItem>
+              <SelectItem value="Electrical">Electrical</SelectItem>
+              <SelectItem value="Lubricants">Lubricants</SelectItem>
+              <SelectItem value="Bearings">Bearings</SelectItem>
+              <SelectItem value="Valves">Valves</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="department">Department *</Label>
+          {isSuperAdmin ? (
+            <Select 
+              value={formData.department || ""} 
+              onValueChange={(value) => onInputChange('department', value as any)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.name}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              id="department"
+              value={currentUserDepartment}
+              disabled
+              className="bg-muted cursor-not-allowed"
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          value={formData.description || ""}
+          onChange={(e) => onInputChange('description', e.target.value)}
+          placeholder="Detailed description of the part"
+          rows={3}
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="quantity">Current Quantity</Label>
+          <Input
+            id="quantity"
+            type="number"
+            value={formData.quantity ?? 0}
+            onChange={(e) => onInputChange('quantity', parseInt(e.target.value) || 0)}
+            min="0"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="minStockLevel">Min Stock Level</Label>
+          <Input
+            id="minStockLevel"
+            type="number"
+            value={formData.minStockLevel ?? 0}
+            onChange={(e) => onInputChange('minStockLevel', parseInt(e.target.value) || 0)}
+            min="0"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="unitPrice">Unit Price ($)</Label>
+          <Input
+            id="unitPrice"
+            type="number"
+            step="0.01"
+            value={formData.unitPrice ?? 0}
+            onChange={(e) => onInputChange('unitPrice', parseFloat(e.target.value) || 0)}
+            min="0"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="supplier">Supplier</Label>
+          <Input
+            id="supplier"
+            value={formData.supplier || ""}
+            onChange={(e) => onInputChange('supplier', e.target.value)}
+            placeholder="e.g., Hydraulic Solutions Inc"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="location">Storage Location</Label>
+          <Select 
+            value={formData.location || ""} 
+            onValueChange={(value) => onInputChange('location', value as any)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select storage location" />
+            </SelectTrigger>
+            <SelectContent>
+              {locations.map((location) => (
+                <SelectItem key={location.id} value={location.name}>
+                  {location.name} ({location.code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4">
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button onClick={onSubmit}>
+          {isEdit ? 'Update Part' : 'Create Part'}
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export default function PartsPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -31,10 +237,13 @@ export default function PartsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedPart, setSelectedPart] = useState<Part | null>(null)
   const [isReportOpen, setIsReportOpen] = useState(false)
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   const { user } = useAuthStore()
   const isAdmin = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
+  const isSuperAdmin = user?.accessLevel === 'super_admin'
 
   // Form state for create/edit
   const [formData, setFormData] = useState<Partial<Part>>({
@@ -59,10 +268,19 @@ export default function PartsPage() {
     isCritical: false,
   })
 
-  // Load parts from API
+  // Load data from APIs
   useEffect(() => {
     fetchParts(true) // Enable auto-sync on first load
+    fetchDepartments()
+    fetchLocations()
   }, [])
+
+  // Auto-select department for non-super admin users
+  useEffect(() => {
+    if (user && !isSuperAdmin && user.department && !formData.department) {
+      setFormData(prev => ({ ...prev, department: user.department }))
+    }
+  }, [user, isSuperAdmin, formData.department])
 
   const fetchParts = async (autoSync = false) => {
     setIsLoading(true)
@@ -94,6 +312,36 @@ export default function PartsPage() {
       toast.error('Failed to fetch parts')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch('/api/departments')
+      const data = await response.json()
+      
+      if (data.success) {
+        setDepartments(data.data?.departments || [])
+      } else {
+        console.error('Failed to fetch departments:', data.message)
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+    }
+  }
+
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch('/api/locations')
+      const data = await response.json()
+      
+      if (data.success) {
+        setLocations(data.data?.locations || [])
+      } else {
+        console.error('Failed to fetch locations:', data.message)
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error)
     }
   }
 
@@ -201,7 +449,12 @@ export default function PartsPage() {
 
   const handleEdit = (part: Part) => {
     setSelectedPart(part)
-    setFormData(part)
+    // For non-super admin users, ensure department is set to their department
+    const editFormData = {
+      ...part,
+      department: isSuperAdmin ? part.department : (user?.department || part.department)
+    }
+    setFormData(editFormData)
     setIsEditDialogOpen(true)
   }
 
@@ -225,174 +478,7 @@ export default function PartsPage() {
     }
   }
 
-  const PartForm = ({ isEdit = false }: { isEdit?: boolean }) => (
-    <div className="grid gap-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="partNumber">Part Number *</Label>
-          <Input
-            id="partNumber"
-            value={formData.partNumber || ""}
-            onChange={(e) => handleInputChange('partNumber', e.target.value)}
-            placeholder="e.g., HF-200-01"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="name">Part Name *</Label>
-          <Input
-            id="name"
-            value={formData.name || ""}
-            onChange={(e) => handleInputChange('name', e.target.value)}
-            placeholder="e.g., Hydraulic Filter"
-          />
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="sku">SKU Code *</Label>
-          <div className="relative">
-            <Barcode className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="sku"
-              value={formData.sku || ""}
-              onChange={(e) => handleInputChange('sku', e.target.value)}
-              placeholder="e.g., SKU-HF200"
-              className="pl-8"
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="materialCode">Material Code *</Label>
-          <Input
-            id="materialCode"
-            value={formData.materialCode || ""}
-            onChange={(e) => handleInputChange('materialCode', e.target.value)}
-            placeholder="e.g., MAT-HYD-FLT"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="category">Category *</Label>
-          <Select value={formData.category || ""} onValueChange={(value) => handleInputChange('category', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Filters">Filters</SelectItem>
-              <SelectItem value="Seals & Gaskets">Seals & Gaskets</SelectItem>
-              <SelectItem value="Belts & Chains">Belts & Chains</SelectItem>
-              <SelectItem value="Electrical">Electrical</SelectItem>
-              <SelectItem value="Lubricants">Lubricants</SelectItem>
-              <SelectItem value="Bearings">Bearings</SelectItem>
-              <SelectItem value="Valves">Valves</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="department">Department *</Label>
-          <Select value={formData.department || ""} onValueChange={(value) => handleInputChange('department', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Maintenance">Maintenance</SelectItem>
-              <SelectItem value="HVAC">HVAC</SelectItem>
-              <SelectItem value="Operations">Operations</SelectItem>
-              <SelectItem value="Electrical">Electrical</SelectItem>
-              <SelectItem value="Plumbing">Plumbing</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description || ""}
-          onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Detailed description of the part"
-          rows={3}
-        />
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="quantity">Current Quantity</Label>
-          <Input
-            id="quantity"
-            type="number"
-            value={formData.quantity || 0}
-            onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 0)}
-            min="0"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="minStockLevel">Min Stock Level</Label>
-          <Input
-            id="minStockLevel"
-            type="number"
-            value={formData.minStockLevel || 0}
-            onChange={(e) => handleInputChange('minStockLevel', parseInt(e.target.value) || 0)}
-            min="0"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="unitPrice">Unit Price ($)</Label>
-          <Input
-            id="unitPrice"
-            type="number"
-            step="0.01"
-            value={formData.unitPrice || 0}
-            onChange={(e) => handleInputChange('unitPrice', parseFloat(e.target.value) || 0)}
-            min="0"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="supplier">Supplier</Label>
-          <Input
-            id="supplier"
-            value={formData.supplier || ""}
-            onChange={(e) => handleInputChange('supplier', e.target.value)}
-            placeholder="e.g., Hydraulic Solutions Inc"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="location">Storage Location</Label>
-          <Input
-            id="location"
-            value={formData.location || ""}
-            onChange={(e) => handleInputChange('location', e.target.value)}
-            placeholder="e.g., Warehouse A, Shelf 3B"
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2 pt-4">
-        <Button 
-          variant="outline" 
-          onClick={() => {
-            if (isEdit) {
-              setIsEditDialogOpen(false)
-            } else {
-              setIsCreateDialogOpen(false)
-            }
-          }}
-        >
-          Cancel
-        </Button>
-        <Button onClick={() => handleSubmit(isEdit)}>
-          {isEdit ? 'Update Part' : 'Create Part'}
-        </Button>
-      </div>
-    </div>
-  )
+  
 
   if (isLoading) {
     return (
@@ -445,7 +531,16 @@ export default function PartsPage() {
                       Add a new part to your inventory system
                     </DialogDescription>
                   </DialogHeader>
-                  <PartForm />
+                  <PartFormStandalone
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    onCancel={() => setIsCreateDialogOpen(false)}
+                    onSubmit={() => handleSubmit(false)}
+                    departments={departments}
+                    locations={locations}
+                    currentUserDepartment={user?.department || ""}
+                    isSuperAdmin={isSuperAdmin}
+                  />
                 </DialogContent>
               </Dialog>
             )}
@@ -708,7 +803,17 @@ export default function PartsPage() {
               Update part information
             </DialogDescription>
           </DialogHeader>
-          <PartForm isEdit={true} />
+          <PartFormStandalone
+            isEdit
+            formData={formData}
+            onInputChange={handleInputChange}
+            onCancel={() => setIsEditDialogOpen(false)}
+            onSubmit={() => handleSubmit(true)}
+            departments={departments}
+            locations={locations}
+            currentUserDepartment={user?.department || ""}
+            isSuperAdmin={isSuperAdmin}
+          />
         </DialogContent>
       </Dialog>
 

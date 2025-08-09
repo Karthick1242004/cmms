@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const user = await getUserContext(request);
     
     if (!user) {
-      console.log('No user authentication found, proceeding with default stats for testing');
+      // unauthenticated request; continue with limited headers
     }
 
     // Set user headers for backend authentication

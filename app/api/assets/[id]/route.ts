@@ -16,7 +16,7 @@ export async function GET(
     
     // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('No user authentication found, proceeding without permission checks for testing');
+      // unauthenticated request; skip permission checks
     }
 
     // Forward request to backend server
@@ -67,7 +67,7 @@ export async function PUT(
     
     // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('No user authentication found, proceeding without permission checks for testing');
+      // unauthenticated request; skip permission checks
     }
 
     const body = await request.json();
@@ -151,7 +151,7 @@ export async function DELETE(
     
     // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('No user authentication found, proceeding without permission checks for testing');
+      // unauthenticated request; skip permission checks
     }
 
     // First, get the existing asset to check permissions

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     
     // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('No user authentication found, proceeding without department filtering for testing');
+      // unauthenticated request; continue without department filter
     }
 
     const { searchParams } = new URL(request.url);

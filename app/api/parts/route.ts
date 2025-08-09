@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     
     // Allow access for testing but with limited data
     if (!user) {
-      console.log('No user authentication found, proceeding with default user for testing');
+      // unauthenticated request; continue with limited headers
     }
 
     const { searchParams } = new URL(request.url);
