@@ -397,53 +397,122 @@ export default function PartsPage() {
   }
 
   const handleSubmit = async (isEdit: boolean = false) => {
+    setIsLoading(true)
     try {
       // Validate required fields
-      const requiredFields = ['partNumber', 'name', 'sku', 'materialCode', 'category', 'department']
+      const requiredFields = ['partNumber', 'name', 'sku', 'materialCode', 'category', 'department', 'supplier', 'location']
       const missingFields = requiredFields.filter(field => !formData[field as keyof Part])
       
       if (missingFields.length > 0) {
         toast.error(`Please fill in required fields: ${missingFields.join(', ')}`)
+        setIsLoading(false)
         return
       }
 
-      // Simulate API call
-      if (isEdit && selectedPart) {
-        const updatedPart = { ...selectedPart, ...formData, updatedAt: new Date().toISOString() }
-        setParts(prev => prev.map(p => p.id === selectedPart.id ? updatedPart : p))
-        toast.success('Part updated successfully')
-        setIsEditDialogOpen(false)
-      } else {
-        const newPart: Part = {
-          ...formData as Part,
-          id: `part_${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-        setParts(prev => [...prev, newPart])
-        toast.success('Part created successfully')
-        setIsCreateDialogOpen(false)
+      // Get auth token for API calls
+      const token = localStorage.getItem('auth-token')
+      if (!token) {
+        toast.error('Authentication required. Please log in again.')
+        setIsLoading(false)
+        return
       }
 
-      // Reset form
-      setFormData({
-        partNumber: "",
-        name: "",
-        sku: "",
-        materialCode: "",
-        description: "",
-        category: "",
-        department: "",
-        linkedAssets: [],
-        quantity: 0,
-        minStockLevel: 0,
-        unitPrice: 0,
-        supplier: "",
-        location: "",
-      })
-      setSelectedPart(null)
+      // Prepare request data
+      const requestData = {
+        partNumber: formData.partNumber,
+        name: formData.name,
+        sku: formData.sku,
+        materialCode: formData.materialCode,
+        description: formData.description || '',
+        category: formData.category,
+        department: formData.department,
+        quantity: Number(formData.quantity) || 0,
+        minStockLevel: Number(formData.minStockLevel) || 0,
+        unitPrice: Number(formData.unitPrice) || 0,
+        supplier: formData.supplier,
+        location: formData.location,
+        isStockItem: formData.isStockItem ?? true,
+        isCritical: formData.isCritical ?? false
+      }
+
+      let response
+      if (isEdit && selectedPart) {
+        // Update existing part
+        response = await fetch(`/api/parts/${selectedPart.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(requestData)
+        })
+      } else {
+        // Create new part
+        response = await fetch('/api/parts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(requestData)
+        })
+      }
+
+      const data = await response.json()
+      
+      if (data.success) {
+        if (isEdit) {
+          // Update part in the list
+          setParts(prev => prev.map(p => p.id === selectedPart?.id ? data.data : p))
+          toast.success('Part updated successfully')
+          setIsEditDialogOpen(false)
+        } else {
+          // Add new part to the list
+          setParts(prev => [...prev, data.data])
+          toast.success('Part created successfully')
+          setIsCreateDialogOpen(false)
+        }
+
+        // Reset form
+        setFormData({
+          partNumber: "",
+          name: "",
+          sku: "",
+          materialCode: "",
+          description: "",
+          category: "",
+          department: !isSuperAdmin ? user?.department || "" : "",
+          linkedAssets: [],
+          quantity: 0,
+          minStockLevel: 0,
+          unitPrice: 0,
+          supplier: "",
+          location: "",
+          totalValue: 0,
+          totalConsumed: 0,
+          averageMonthlyUsage: 0,
+          status: "active",
+          isStockItem: true,
+          isCritical: false,
+        })
+        setSelectedPart(null)
+      } else {
+        // Handle API errors
+        if (response.status === 409) {
+          toast.error(`Duplicate ${data.message.toLowerCase()}`)
+        } else if (response.status === 403) {
+          toast.error('You do not have permission to perform this action')
+        } else if (response.status === 400 && data.errors) {
+          toast.error(`Validation errors: ${data.errors.join(', ')}`)
+        } else {
+          toast.error(data.message || 'Failed to save part')
+        }
+      }
     } catch (error) {
-      toast.error('Error saving part')
+      console.error('Error saving part:', error)
+      toast.error('Network error. Please check your connection and try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -459,9 +528,40 @@ export default function PartsPage() {
   }
 
   const handleDelete = async (partId: string) => {
-    if (window.confirm('Are you sure you want to delete this part?')) {
-      setParts(prev => prev.filter(p => p.id !== partId))
-      toast.success('Part deleted successfully')
+    if (!window.confirm('Are you sure you want to delete this part? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('auth-token')
+      if (!token) {
+        toast.error('Authentication required. Please log in again.')
+        return
+      }
+
+      const response = await fetch(`/api/parts/${partId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        // Remove part from the list
+        setParts(prev => prev.filter(p => p.id !== partId))
+        toast.success('Part deleted successfully')
+      } else {
+        if (response.status === 403) {
+          toast.error('You do not have permission to delete this part')
+        } else {
+          toast.error(data.message || 'Failed to delete part')
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting part:', error)
+      toast.error('Network error. Please check your connection and try again.')
     }
   }
 

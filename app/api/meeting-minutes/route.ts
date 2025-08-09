@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5001';
+const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 // Helper function to get user context from headers/session
 const getUserContext = async (request: NextRequest) => {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const searchParams = url.searchParams;
     
-    const backendUrl = `${BACKEND_URL}/api/meeting-minutes?${searchParams.toString()}`;
+    const backendUrl = `${SERVER_BASE_URL}/api/meeting-minutes?${searchParams.toString()}`;
     
     const response = await fetch(backendUrl, {
       method: 'GET',
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     const userContext = await getUserContext(request);
     const body = await request.json();
     
-    const backendUrl = `${BACKEND_URL}/api/meeting-minutes`;
+    const backendUrl = `${SERVER_BASE_URL}/api/meeting-minutes`;
     
     const response = await fetch(backendUrl, {
       method: 'POST',

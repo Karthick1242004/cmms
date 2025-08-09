@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5001';
+const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     
     // Forward all query parameters to the backend
     const queryString = searchParams.toString();
-    const backendUrl = `${BACKEND_URL}/api/parts${queryString ? `?${queryString}` : ''}`;
+    const backendUrl = `${SERVER_BASE_URL}/api/parts${queryString ? `?${queryString}` : ''}`;
 
     // Set user headers for backend authentication
     const headers: Record<string, string> = {
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
                      user.accessLevel === 'department_admin' ? 'manager' : 'technician',
     };
 
-    const response = await fetch(`${BACKEND_URL}/api/parts`, {
+    const response = await fetch(`${SERVER_BASE_URL}/api/parts`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),

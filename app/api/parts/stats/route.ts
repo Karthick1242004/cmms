@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5001';
+const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
                                user.accessLevel === 'department_admin' ? 'manager' : 'technician';
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/parts/stats`, {
+    const response = await fetch(`${SERVER_BASE_URL}/api/parts/stats`, {
       method: 'GET',
       headers,
     });
