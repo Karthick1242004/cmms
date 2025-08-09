@@ -107,7 +107,7 @@ export function MeetingMinutesForm({
         status: meetingMinutes.status,
         tags: meetingMinutes.tags,
         location: meetingMinutes.location || '',
-        duration: meetingMinutes.duration ? meetingMinutes.duration.toString() : '',
+        duration: typeof meetingMinutes.duration === 'number' ? meetingMinutes.duration : '',
         actionItems: meetingMinutes.actionItems,
         attachments: meetingMinutes.attachments,
       });
@@ -407,7 +407,12 @@ export function MeetingMinutesForm({
                 id="duration"
                 type="number"
                 value={formData.duration}
-                onChange={(e) => handleInputChange('duration', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange(
+                    'duration',
+                    e.target.value === '' ? '' : Number(e.target.value)
+                  )
+                }
                 placeholder="60"
                 min="1"
                 max="480"
@@ -678,12 +683,13 @@ export function MeetingMinutesForm({
         >
           {loading ? (
             <>
-              <LoadingSpinner className="mr-2 h-4 w-4" />
+              <LoadingSpinner />
               {meetingMinutes ? 'Updating...' : 'Creating...'}
             </>
           ) : (
             meetingMinutes ? 'Update Meeting Minutes' : 'Create Meeting Minutes'
           )}
+          
         </Button>
       </div>
     </div>
