@@ -112,4 +112,9 @@ export const navigation: NavigationItem[] = [
     href: "/notice-board",
     iconName: "MessageSquare",
   },
+  {
+    name: "Department Chat",
+    href: "/chat",
+    iconName: "MessageCircle",
+  },
 ]
