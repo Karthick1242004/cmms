@@ -1,49 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-
-// Base URL for the backend server
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
+import connectDB from '@/lib/mongodb';
+import Location from '@/models/Location';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user context for department filtering
-    const user = await getUserContext(request);
-    
-    // TEMPORARY: Allow access even without authentication for testing
-    if (!user) {
-      console.log('No user authentication found, proceeding without department filtering for testing');
-    }
+    await connectDB();
+
+    // Note: GET locations is public (no auth required). All users can view locations.
 
     const { searchParams } = new URL(request.url);
     
-    // Add department filter for non-super-admin users (only if user is authenticated)
-    if (user && user.accessLevel !== 'super_admin') {
-      searchParams.set('department', user.department);
+    // Parse query parameters
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const type = searchParams.get('type') || '';
+    const status = searchParams.get('status') || '';
+    
+    // Build filter query - no department filtering, all users see all locations
+    const filter: any = {};
+    
+    // Apply search filter
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { code: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
     
-    // Forward all query parameters to the backend
-    const queryString = searchParams.toString();
-    const url = `${SERVER_BASE_URL}/api/locations${queryString ? `?${queryString}` : ''}`;
-
-    // Forward request to backend server
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to fetch locations' },
-        { status: response.status }
-      );
+    // Apply type filter if provided
+    if (type) {
+      filter.type = type;
+    }
+    
+    // Apply status filter if provided
+    if (status) {
+      filter.status = status;
     }
 
-    const data = await response.json();
-    return NextResponse.json(data, { status: 200 });
-  } catch (error) {
+    // Calculate skip for pagination
+    const skip = (page - 1) * limit;
+
+    // Execute query with pagination
+    const [locations, totalCount] = await Promise.all([
+      Location.find(filter)
+        .sort({ name: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Location.countDocuments(filter)
+    ]);
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNext = page < totalPages;
+    const hasPrevious = page > 1;
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        locations,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalCount,
+          hasNext,
+          hasPrevious
+        }
+      },
+      message: 'Locations retrieved successfully'
+    });
+
+  } catch (error: any) {
     console.error('Error fetching locations:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error while fetching locations' },
@@ -54,9 +84,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user context for department assignment
+    await connectDB();
+
+    // Get user context
     const user = await getUserContext(request);
-    
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'Authentication required' },
@@ -66,50 +97,39 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Add department to data (use user's department unless super admin specifies different)
-    if (!body.department) {
-      if (user && user.accessLevel !== 'super_admin') {
-        body.department = user.department;
-      } else {
-        body.department = body.department || 'General'; // Default department for testing
-      }
-    }
-
-    // Add created by information if not provided
-    if (!body.createdBy && user) {
-      body.createdBy = user.name;
-      body.createdById = user.id;
-    }
-
     // Validate required fields
-    if (!body.name || !body.code || !body.type) {
+    if (!body.name || !body.code || !body.type || !body.department) {
       return NextResponse.json(
-        { success: false, message: 'Location name, code, and type are required' },
+        { success: false, message: 'Location name, code, type, and department are required' },
         { status: 400 }
       );
     }
 
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/locations`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    // Add created by information
+    body.createdBy = user.name;
+    body.createdById = user.id;
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    // Create new location
+    const location = new Location(body);
+    await location.save();
+
+    return NextResponse.json({
+      success: true,
+      data: location,
+      message: 'Location created successfully'
+    }, { status: 201 });
+
+  } catch (error: any) {
+    console.error('Error creating location:', error);
+    
+    if (error.code === 11000) {
+      // Duplicate key error (likely the code field)
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to create location' },
-        { status: response.status }
+        { success: false, message: 'Location code already exists. Please use a unique code.' },
+        { status: 409 }
       );
     }
 
-    const result = await response.json();
-    return NextResponse.json(result, { status: 201 });
-  } catch (error) {
-    console.error('Error creating location:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error while creating location' },
       { status: 500 }
