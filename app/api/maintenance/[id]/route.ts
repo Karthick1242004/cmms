@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserContext } from '@/lib/auth-helpers';
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
@@ -12,13 +13,23 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'schedule'; // schedule or record
 
-    const endpoint = type === 'record' ? 'maintenance-records' : 'maintenance-schedules';
+  const endpoint = type === 'record' ? 'maintenance/records' : 'maintenance/schedules';
+
+    // Get user context for authentication (with fallback for testing)
+    const user = await getUserContext(request);
+    
+    // TEMPORARY: Allow access even without authentication for testing
+    if (!user) {
+      // unauthenticated request; continue
+    }
 
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/${endpoint}/${id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'X-User-Department': user?.department || 'General',
+        'X-User-Name': user?.name || 'Test User',
       },
     });
 
@@ -51,7 +62,15 @@ export async function PUT(
     const body = await request.json();
     const { type, ...data } = body;
 
-    const endpoint = type === 'record' ? 'maintenance-records' : 'maintenance-schedules';
+    // Get user context for authentication (with fallback for testing)
+    const user = await getUserContext(request);
+    
+    // TEMPORARY: Allow access even without authentication for testing
+    if (!user) {
+      // unauthenticated request; use safe defaults
+    }
+
+    const endpoint = type === 'record' ? 'maintenance/records' : 'maintenance/schedules';
 
     // Validate required fields based on type
     if (type === 'schedule') {
@@ -68,6 +87,8 @@ export async function PUT(
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'X-User-Department': user?.department || 'General',
+        'X-User-Name': user?.name || 'Test User',
       },
       body: JSON.stringify(data),
     });
@@ -101,13 +122,23 @@ export async function DELETE(
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'schedule'; // schedule or record
 
-    const endpoint = type === 'record' ? 'maintenance-records' : 'maintenance-schedules';
+    // Get user context for authentication (with fallback for testing)
+    const user = await getUserContext(request);
+    
+    // TEMPORARY: Allow access even without authentication for testing
+    if (!user) {
+      // unauthenticated request; continue
+    }
+
+    const endpoint = type === 'record' ? 'maintenance/records' : 'maintenance/schedules';
 
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/${endpoint}/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
+        'X-User-Department': user?.department || 'General',
+        'X-User-Name': user?.name || 'Test User',
       },
     });
 
@@ -140,12 +171,22 @@ export async function PATCH(
     const body = await request.json();
     const { action, adminNotes } = body;
 
+    // Get user context for authentication (with fallback for testing)
+    const user = await getUserContext(request);
+    
+    // TEMPORARY: Allow access even without authentication for testing
+    if (!user) {
+      // unauthenticated request; use safe defaults
+    }
+
     // Handle admin verification
     if (action === 'verify') {
-      const response = await fetch(`${SERVER_BASE_URL}/api/maintenance-records/${id}/verify`, {
+      const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/records/${id}/verify`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'X-User-Department': user?.department || 'General',
+          'X-User-Name': user?.name || 'Test User',
         },
         body: JSON.stringify({ adminNotes }),
       });
