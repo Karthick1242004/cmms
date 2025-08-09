@@ -23,7 +23,10 @@ async function getUserFromToken(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const user = await getUserFromToken(request)
 
@@ -34,7 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    const { id } = params
+    const { id } = await context.params
     const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
                   request.cookies.get('auth-token')?.value
 

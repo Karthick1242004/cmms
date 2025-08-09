@@ -66,7 +66,41 @@ export const useEmployeesStore = create<EmployeesState>()(
         setSearchTerm: (term) =>
           set((state) => {
             state.searchTerm = term
-            get().filterEmployees()
+
+            const rawTerm = (term || '').trim()
+            const lower = rawTerm.toLowerCase()
+
+            if (lower.length === 0) {
+              state.filteredEmployees = state.employees
+              return
+            }
+
+            const normalize = (value: unknown) => (value ?? '').toString().toLowerCase()
+            const onlyDigits = (value: unknown) => (value ?? '').toString().replace(/\D/g, '')
+            const termDigits = onlyDigits(rawTerm)
+
+            state.filteredEmployees = state.employees.filter((employee) => {
+              const name = normalize(employee.name)
+              const email = normalize(employee.email)
+              const department = normalize(employee.department)
+              const role = normalize(employee.role)
+              const status = normalize(employee.status)
+              const employeeId = normalize(employee.employeeId)
+              const phone = normalize(employee.phone)
+
+              const matchesText =
+                name.includes(lower) ||
+                email.includes(lower) ||
+                department.includes(lower) ||
+                role.includes(lower) ||
+                status.includes(lower) ||
+                employeeId.includes(lower) ||
+                phone.includes(lower)
+
+              const matchesPhoneDigits = termDigits.length > 0 && onlyDigits(employee.phone).includes(termDigits)
+
+              return matchesText || matchesPhoneDigits
+            })
           }),
 
         setLoading: (loading) =>
@@ -86,13 +120,42 @@ export const useEmployeesStore = create<EmployeesState>()(
 
         filterEmployees: () =>
           set((state) => {
-            const term = state.searchTerm.toLowerCase()
-            state.filteredEmployees = state.employees.filter(
-              (employee) =>
-                employee.name.toLowerCase().includes(term) ||
-                employee.email.toLowerCase().includes(term) ||
-                employee.department.toLowerCase().includes(term),
-            )
+            const rawTerm = (state.searchTerm || '').trim()
+            const term = rawTerm.toLowerCase()
+
+            // If no search term, show all
+            if (term.length === 0) {
+              state.filteredEmployees = state.employees
+              return
+            }
+
+            const normalize = (value: unknown) => (value ?? '').toString().toLowerCase()
+            const onlyDigits = (value: unknown) => (value ?? '').toString().replace(/\D/g, '')
+            const termDigits = onlyDigits(rawTerm)
+
+            state.filteredEmployees = state.employees.filter((employee) => {
+              const name = normalize(employee.name)
+              const email = normalize(employee.email)
+              const department = normalize(employee.department)
+              const role = normalize(employee.role)
+              const status = normalize(employee.status)
+              const employeeId = normalize(employee.employeeId)
+              const phone = normalize(employee.phone)
+
+              const matchesText =
+                name.includes(term) ||
+                email.includes(term) ||
+                department.includes(term) ||
+                role.includes(term) ||
+                status.includes(term) ||
+                employeeId.includes(term) ||
+                phone.includes(term)
+
+              // Additionally support numeric search for phone numbers ignoring formatting
+              const matchesPhoneDigits = termDigits.length > 0 && onlyDigits(employee.phone).includes(termDigits)
+
+              return matchesText || matchesPhoneDigits
+            })
           }),
 
         fetchEmployees: async () => {

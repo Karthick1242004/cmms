@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
 import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
+import Employee from '@/models/Employee'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,33 +11,23 @@ export async function POST(request: NextRequest) {
       email,
       password,
       name,
-      
-      // Personal Information
-      firstName,
-      lastName,
       phone,
-      address,
-      city,
-      country,
       
       // Work Information
-      role = 'technician',
+      role = 'normal_user',
       department = 'General',
-      jobTitle,
       employeeId,
-      bio,
       
-      // Preferences
-      notifications = { email: true, sms: false },
-      preferences = { compactView: false, darkMode: false }
+      // Access level (for admin/user distinction)
+      accessLevel = 'normal_user'
     } = await request.json()
 
     // Enhanced Validation
-    if (!email || !password || !name) {
+    if (!email || !password || !name || !phone || !department || !role) {
       return NextResponse.json(
         { 
           error: 'Missing required fields',
-          details: 'Email, password, and name are required',
+          details: 'Email, password, name, phone, department, and role are required',
           type: 'validation_error'
         },
         { status: 400 }
@@ -79,16 +70,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate access level
+    if (!['super_admin', 'department_admin', 'normal_user'].includes(accessLevel)) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid access level',
+          details: 'Access level must be super_admin, department_admin, or normal_user',
+          type: 'validation_error'
+        },
+        { status: 400 }
+      )
+    }
+
     // Connect to database
     await connectDB()
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() })
-    if (existingUser) {
+    // Check if employee already exists
+    const existingEmployee = await Employee.findOne({ email: email.toLowerCase() })
+    if (existingEmployee) {
       return NextResponse.json(
         { 
           error: 'Account already exists',
-          details: `An account with email ${email} already exists. Please try logging in instead.`,
+          details: `An employee account with email ${email} already exists. Please try logging in instead.`,
           type: 'duplicate_user',
           suggestion: 'login'
         },
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // Check if employee ID is provided and unique
     if (employeeId) {
-      const existingEmployeeId = await User.findOne({ employeeId })
+      const existingEmployeeId = await Employee.findOne({ employeeId })
       if (existingEmployeeId) {
         return NextResponse.json(
           { 
@@ -111,70 +114,62 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Hash password
-    const saltRounds = 12
-    const hashedPassword = await bcrypt.hash(password, saltRounds)
-
-    // Create new user
-    const newUser = new User({
+    // Create new employee (password will be hashed by the pre-save middleware)
+    const newEmployee = new Employee({
       // Basic Information
       email: email.toLowerCase(),
-      password: hashedPassword,
+      password: password, // Will be hashed by pre-save middleware
       name,
-      
-      // Authentication
-      authMethod: 'email',
-      emailVerified: false,
-      
-      // Personal Information
-      firstName: firstName || name.split(' ')[0],
-      lastName: lastName || name.split(' ').slice(1).join(' '),
       phone,
-      address,
-      city,
-      country,
       
       // Work Information
       role,
       department,
-      jobTitle: jobTitle || role,
       employeeId: employeeId || `EMP-${Date.now()}`,
-      bio,
-      
-      // Preferences
-      notifications,
-      preferences,
+      accessLevel,
+      status: 'active',
       
       // Timestamps
       lastLoginAt: new Date()
     })
 
-    // Check profile completion
-    const profileStatus = newUser.checkProfileCompletion()
-    await newUser.save()
+    await newEmployee.save()
 
-    // Return user data (excluding password)
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: newEmployee._id,
+        email: newEmployee.email,
+        role: newEmployee.role,
+        department: newEmployee.department,
+        accessLevel: newEmployee.accessLevel
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: '7d' }
+    )
+
+    // Return employee data (excluding password)
     const userResponse = {
-      id: newUser._id,
-      email: newUser.email,
-      name: newUser.name,
-      firstName: newUser.firstName,
-      lastName: newUser.lastName,
-      role: newUser.role,
-      department: newUser.department,
-      authMethod: newUser.authMethod,
-      profileCompleted: newUser.profileCompleted,
-      profileCompletionFields: newUser.profileCompletionFields,
-      profileCompletionPercentage: profileStatus.completionPercentage,
-      avatar: newUser.avatar,
-      createdAt: newUser.createdAt
+      id: newEmployee._id,
+      email: newEmployee.email,
+      name: newEmployee.name,
+      role: newEmployee.role,
+      department: newEmployee.department,
+      accessLevel: newEmployee.accessLevel,
+      avatar: newEmployee.avatar,
+      phone: newEmployee.phone,
+      employeeId: newEmployee.employeeId,
+      joinDate: newEmployee.joinDate,
+      supervisor: newEmployee.supervisor,
+      shiftInfo: newEmployee.shiftInfo,
+      lastLoginAt: newEmployee.lastLoginAt
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Account created successfully! Welcome to FMMS 360.',
+      message: `Welcome ${newEmployee.name}! Your employee account has been created successfully.`,
       user: userResponse,
-      profileStatus,
+      token,
       type: 'success'
     }, { status: 201 })
 
@@ -199,7 +194,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Registration failed',
-        details: 'Something went wrong while creating your account. Please try again.',
+        details: 'Something went wrong while creating your employee account. Please try again.',
         type: 'server_error'
       },
       { status: 500 }
