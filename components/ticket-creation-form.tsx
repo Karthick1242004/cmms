@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,10 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { Calendar, Clock, Save, AlertCircle, FileText, User, Building2, X, Check } from "lucide-react"
+import { Calendar, Clock, Save, AlertCircle, FileText, User, Building2, X, Check, ChevronsUpDown } from "lucide-react"
 import { toast } from "sonner"
 import type { TicketFormData } from "@/types/ticket"
 import { useDepartments } from "@/hooks/use-departments"
+import { useLocations } from "@/hooks/use-locations"
+import { useEmployees } from "@/hooks/use-employees"
+import { useAuthStore } from "@/stores/auth-store"
 import {
   Command,
   CommandEmpty,
@@ -39,31 +42,64 @@ interface TicketCreationFormProps {
 export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: TicketCreationFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [openDepartments, setOpenDepartments] = useState(false)
-  
-  // Fetch departments from the database
+  const [openLocations, setOpenLocations] = useState(false)
+  const [openInCharge, setOpenInCharge] = useState(false)
+  const [openAssignedUsers, setOpenAssignedUsers] = useState(false)
+
+  // Get current user for auto-department selection
+  const { user } = useAuthStore()
+
+  // Initialize formData state (moved up to fix initialization error)
+  const [formData, setFormData] = useState<TicketFormData>(() => {
+    const initialDepartment = (user && user.accessLevel !== 'super_admin' && user.department)
+      ? user.department
+      : '';
+
+    return {
+      priority: 'Medium',
+      reportedVia: 'Web Portal',
+      company: '',
+      department: initialDepartment,
+      area: '',
+      inCharge: '',
+      equipmentId: initialAssetId || '',
+      reportType: {
+        service: false,
+        maintenance: false,
+        incident: false,
+        breakdown: false,
+      },
+      subject: '',
+      description: '',
+      solution: '',
+      isOpenTicket: false,
+      assignedDepartments: [],
+      assignedUsers: [],
+    };
+  });
+
+  // Fetch data from the database (now called after formData is initialized)
   const { data: departmentsData, isLoading: isLoadingDepartments, error: departmentsError } = useDepartments()
-  
-  const [formData, setFormData] = useState<TicketFormData>({
-    priority: 'Medium',
-    reportedVia: 'Web Portal',
-    company: '',
-    department: '',
-    area: '',
-    inCharge: '',
-    equipmentId: initialAssetId || '',
-    reportType: {
-      service: false,
-      maintenance: false,
-      incident: false,
-      breakdown: false,
-    },
-    subject: '',
-    description: '',
-    solution: '',
-    isOpenTicket: false,
-    assignedDepartments: [],
-    assignedUsers: [],
+  const { data: locationsData, isLoading: isLoadingLocations, error: locationsError } = useLocations()
+  const { data: employeesData, isLoading: isLoadingEmployees, error: employeesError } = useEmployees({
+    department: formData.department || undefined,
+    status: 'active'
   })
+  
+  const { data: assignedEmployeesData, isLoading: isLoadingAssignedEmployees } = useEmployees({
+    department: formData.assignedDepartments.length > 0 ? formData.assignedDepartments.join(',') : undefined,
+    status: 'active'
+  })
+
+  // Remove the useEffect for auto-department selection since it's now handled in initial state
+  // useEffect(() => {
+  //   if (user && user.accessLevel !== 'super_admin' && user.department && !formData.department) {
+  //     setFormData(prev => ({
+  //       ...prev,
+  //       department: user.department
+  //     }))
+  //   }
+  // }, [user, formData.department])
 
   const handleInputChange = (field: keyof TicketFormData, value: any) => {
     setFormData(prev => ({
@@ -89,11 +125,28 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
     }))
   }
 
-  const handleAssignedUsersChange = (users: string) => {
-    const userList = users.split(',').map(u => u.trim()).filter(u => u.length > 0)
+  const handleAssignedUsersChange = (users: string[]) => {
     setFormData(prev => ({
       ...prev,
-      assignedUsers: userList
+      assignedUsers: users
+    }))
+  }
+  
+  // Clear in-charge when department changes
+  const handleDepartmentChange = (department: string) => {
+    setFormData(prev => ({
+      ...prev,
+      department,
+      inCharge: '' // Clear in-charge when department changes
+    }))
+  }
+  
+  // Clear assigned users when assigned departments change
+  const handleAssignedDepartmentsChangeWithUserClear = (departments: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedDepartments: departments,
+      assignedUsers: [] // Clear assigned users when departments change
     }))
   }
 
@@ -239,8 +292,8 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
               <Label htmlFor="department">Department *</Label>
               <Select 
                 value={formData.department} 
-                onValueChange={(value) => handleInputChange('department', value)}
-                disabled={isLoadingDepartments}
+                onValueChange={handleDepartmentChange}
+                disabled={isLoadingDepartments || (user?.accessLevel !== 'super_admin' && user?.department)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={isLoadingDepartments ? "Loading departments..." : "Select department"} />
@@ -264,22 +317,113 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
           <div className="grid gap-4 md:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="area">Area *</Label>
-              <Input 
-                id="area"
-                value={formData.area}
-                onChange={(e) => handleInputChange('area', e.target.value)}
-                placeholder="Work area or location"
-              />
+              <Popover open={openLocations} onOpenChange={setOpenLocations}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between"
+                    disabled={isLoadingLocations}
+                  >
+                    {formData.area ? (
+                      locationsData?.data?.locations?.find(location => location.name === formData.area)?.name || formData.area
+                    ) : (
+                      isLoadingLocations ? "Loading locations..." : "Select location..."
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search locations..." />
+                    <CommandList>
+                      <CommandEmpty>No locations found.</CommandEmpty>
+                      <CommandGroup>
+                        {locationsData?.data?.locations?.map((location) => (
+                          <CommandItem
+                            key={location.id}
+                            value={location.name}
+                            onSelect={() => {
+                              handleInputChange('area', location.name)
+                              setOpenLocations(false)
+                            }}
+                          >
+                            <Check 
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.area === location.name ? "opacity-100" : "opacity-0"
+                              )} 
+                            />
+                            <div className="flex flex-col">
+                              <span>{location.name}</span>
+                              <span className="text-xs text-muted-foreground">{location.type} • {location.department}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {locationsError && (
+                <p className="text-xs text-red-500">Error loading locations: {locationsError}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="inCharge">In-charge *</Label>
-              <Input 
-                id="inCharge"
-                value={formData.inCharge}
-                onChange={(e) => handleInputChange('inCharge', e.target.value)}
-                placeholder="Person responsible"
-              />
+              <Popover open={openInCharge} onOpenChange={setOpenInCharge}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between"
+                    disabled={isLoadingEmployees || !formData.department}
+                  >
+                    {formData.inCharge ? (
+                      employeesData?.data?.employees?.find(employee => employee.name === formData.inCharge)?.name || formData.inCharge
+                    ) : (
+                      !formData.department ? "Select department first" :
+                      isLoadingEmployees ? "Loading employees..." : "Select in-charge..."
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search employees..." />
+                    <CommandList>
+                      <CommandEmpty>No employees found.</CommandEmpty>
+                      <CommandGroup>
+                        {employeesData?.data?.employees?.map((employee) => (
+                          <CommandItem
+                            key={employee.id}
+                            value={employee.name}
+                            onSelect={() => {
+                              handleInputChange('inCharge', employee.name)
+                              setOpenInCharge(false)
+                            }}
+                          >
+                            <Check 
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.inCharge === employee.name ? "opacity-100" : "opacity-0"
+                              )} 
+                            />
+                            <div className="flex flex-col">
+                              <span>{employee.name}</span>
+                              <span className="text-xs text-muted-foreground">{employee.role} • {employee.email}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {employeesError && (
+                <p className="text-xs text-red-500">Error loading employees: {employeesError}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -464,7 +608,7 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
                       )}
                     </div>
                   )}
-                  <X className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0">
@@ -482,12 +626,12 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
                             onSelect={() => {
                               if (isSelected) {
                                 // Remove department
-                                handleAssignedDepartmentsChange(
+                                handleAssignedDepartmentsChangeWithUserClear(
                                   formData.assignedDepartments.filter(d => d !== dept.name)
                                 )
                               } else {
                                 // Add department
-                                handleAssignedDepartmentsChange([...formData.assignedDepartments, dept.name])
+                                handleAssignedDepartmentsChangeWithUserClear([...formData.assignedDepartments, dept.name])
                               }
                             }}
                           >
@@ -515,7 +659,7 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
                     {dept}
                     <button
                       type="button"
-                      onClick={() => handleAssignedDepartmentsChange(
+                      onClick={() => handleAssignedDepartmentsChangeWithUserClear(
                         formData.assignedDepartments.filter(d => d !== dept)
                       )}
                       className="ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
@@ -536,14 +680,104 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
 
           <div className="space-y-2">
             <Label htmlFor="assignedUsers">Assigned Users</Label>
-            <Input 
-              id="assignedUsers"
-              value={formData.assignedUsers.join(', ')}
-              onChange={(e) => handleAssignedUsersChange(e.target.value)}
-              placeholder="e.g., John Smith, Sarah Wilson (comma-separated)"
-            />
+            <Popover open={openAssignedUsers} onOpenChange={setOpenAssignedUsers}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between"
+                  disabled={isLoadingAssignedEmployees || formData.assignedDepartments.length === 0}
+                >
+                  {formData.assignedUsers.length === 0 ? (
+                    formData.assignedDepartments.length === 0 
+                      ? "Select departments first"
+                      : isLoadingAssignedEmployees 
+                      ? "Loading employees..." 
+                      : "Select users..."
+                  ) : (
+                    <div className="flex flex-wrap gap-1 max-w-[300px]">
+                      {formData.assignedUsers.slice(0, 2).map((user) => (
+                        <Badge key={user} variant="secondary" className="text-xs">
+                          {user}
+                        </Badge>
+                      ))}
+                      {formData.assignedUsers.length > 2 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{formData.assignedUsers.length - 2} more
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0">
+                <Command>
+                  <CommandInput placeholder="Search employees..." />
+                  <CommandList>
+                    <CommandEmpty>No employees found.</CommandEmpty>
+                    <CommandGroup>
+                      {assignedEmployeesData?.data?.employees?.map((employee) => {
+                        const isSelected = formData.assignedUsers.includes(employee.name)
+                        return (
+                          <CommandItem
+                            key={employee.id}
+                            value={employee.name}
+                            onSelect={() => {
+                              if (isSelected) {
+                                // Remove user
+                                handleAssignedUsersChange(
+                                  formData.assignedUsers.filter(u => u !== employee.name)
+                                )
+                              } else {
+                                // Add user
+                                handleAssignedUsersChange([...formData.assignedUsers, employee.name])
+                              }
+                            }}
+                          >
+                            <Check 
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                isSelected ? "opacity-100" : "opacity-0"
+                              )} 
+                            />
+                            <div className="flex flex-col">
+                              <span>{employee.name}</span>
+                              <span className="text-xs text-muted-foreground">{employee.role} • {employee.department}</span>
+                            </div>
+                          </CommandItem>
+                        )
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            
+            {/* Show selected users as removable badges */}
+            {formData.assignedUsers.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {formData.assignedUsers.map((user) => (
+                  <Badge key={user} variant="secondary" className="text-xs">
+                    {user}
+                    <button
+                      type="button"
+                      onClick={() => handleAssignedUsersChange(
+                        formData.assignedUsers.filter(u => u !== user)
+                      )}
+                      className="ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                      title={`Remove ${user}`}
+                      aria-label={`Remove ${user}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            
             <p className="text-xs text-muted-foreground">
-              Enter user names separated by commas
+              Select users from assigned departments to receive notifications
             </p>
           </div>
 

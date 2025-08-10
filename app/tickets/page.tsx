@@ -213,12 +213,12 @@ export default function TicketsPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
+              {/* <DialogHeader>
                 <DialogTitle>Create New Ticket</DialogTitle>
                 <DialogDescription>
                   Report an issue or request service from your team
                 </DialogDescription>
-              </DialogHeader>
+              </DialogHeader> */}
               <TicketCreationForm 
                 onSuccess={() => {
                   setIsDialogOpen(false)
