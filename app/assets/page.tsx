@@ -36,7 +36,8 @@ export default function AllAssetsPage() {
     assets, 
     isLoading, 
     fetchAssets,
-    deleteAsset 
+    deleteAsset,
+    clearCache
   } = useAssetsStore()
   
   // Use auth store for permissions
@@ -59,6 +60,12 @@ export default function AllAssetsPage() {
     // Fetch assets from API
     fetchAssets()
   }, [])
+
+  // Debug log to see what assets are in the store
+  useEffect(() => {
+    console.log('Assets in store:', assets)
+    console.log('First asset department:', assets[0]?.department)
+  }, [assets])
 
   // Get unique values for filter options
   const uniqueTypes = Array.from(new Set(assets.map(asset => asset.type))).filter(Boolean)
@@ -177,6 +184,16 @@ export default function AllAssetsPage() {
             >
               <FileText className="mr-2 h-4 w-4" />
               Generate Report
+            </Button>
+            <Button 
+              onClick={() => {
+                clearCache()
+                fetchAssets()
+              }}
+              variant="outline"
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Refresh Data
             </Button>
             {canModifyAssets && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

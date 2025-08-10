@@ -34,7 +34,7 @@ export const useAssetsStore = create<AssetsState>()(
                 assetTag: response.data.serialNo,
                 type: response.data.category,
                 location: response.data.location || "N/A",
-                department: response.data.department,
+                department: response.data.department || "N/A",
                 status: response.data.statusText?.toLowerCase().includes("online") || response.data.statusText?.toLowerCase().includes("operational")
                   ? "operational"
                   : response.data.statusText?.toLowerCase().includes("maintenance")
@@ -74,7 +74,7 @@ export const useAssetsStore = create<AssetsState>()(
                 assetTag: response.data.serialNo,
                 type: response.data.category,
                 location: response.data.location || "N/A",
-                department: response.data.department,
+                department: response.data.department || "N/A",
                 status: response.data.statusText?.toLowerCase().includes("online") || response.data.statusText?.toLowerCase().includes("operational")
                   ? "operational"
                   : response.data.statusText?.toLowerCase().includes("maintenance")
@@ -149,13 +149,24 @@ export const useAssetsStore = create<AssetsState>()(
             state.selectedAsset = asset
           }),
 
+        // Clear cache and force refresh
+        clearCache: () => {
+          set((state) => {
+            state.assets = []
+            state.filteredAssets = []
+            state.searchTerm = ""
+            state.statusFilter = "all"
+            state.conditionFilter = "all"
+          })
+        },
+
         filterAssets: () =>
           set((state) => {
             const term = state.searchTerm.toLowerCase()
             let filtered = state.assets.filter(
               (asset) =>
                 asset.name.toLowerCase().includes(term) ||
-                asset.assetTag.toLowerCase().includes(term) ||
+                (asset.assetTag && asset.assetTag.toLowerCase().includes(term)) ||
                 asset.type.toLowerCase().includes(term) ||
                 asset.location.toLowerCase().includes(term) ||
                 asset.department.toLowerCase().includes(term),
@@ -188,7 +199,7 @@ export const useAssetsStore = create<AssetsState>()(
                 assetTag: detail.serialNo, // Or assetTag if available directly
                 type: detail.category, // Main category like "Equipment"
                 location: detail.location || "N/A",
-                department: detail.department, // Add department field
+                department: detail.department || "N/A", // Add department field with fallback
                 status:
                   detail.statusText?.toLowerCase().includes("online") || detail.statusText?.toLowerCase().includes("operational")
                     ? "operational"
@@ -207,6 +218,12 @@ export const useAssetsStore = create<AssetsState>()(
               // Debug log to see the transformed data
               console.log('Original API response:', response.data.assets)
               console.log('Transformed assets:', transformedAssets)
+
+              // Check for assets missing department field
+              const assetsWithoutDepartment = transformedAssets.filter(asset => !asset.department || asset.department === "N/A")
+              if (assetsWithoutDepartment.length > 0) {
+                console.warn('Assets missing department field:', assetsWithoutDepartment)
+              }
 
               set((state) => {
                 state.assets = transformedAssets

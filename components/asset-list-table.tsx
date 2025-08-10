@@ -96,7 +96,7 @@ export function AssetListTable({ assets, onEdit, onDelete, canModify = true }: A
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant="outline">{asset.department}</Badge>
+                <Badge variant="outline">{asset.department || "N/A"}</Badge>
               </TableCell>
               <TableCell>
                 <Badge variant={getStatusColor(asset.status)} className="capitalize">

@@ -107,5 +107,6 @@ export interface AssetsState {
   setSelectedAsset: (asset: Asset | null) => void
   filterAssets: (category?: string) => void // Add optional category for filtering
   fetchAssets: (filters?: any) => Promise<void> // Add optional filters parameter
+  clearCache: () => void // Clear cache and reset state
   // fetchAssetDetail: (id: string) => Promise<AssetDetail | null>
 }
