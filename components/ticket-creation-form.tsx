@@ -56,7 +56,7 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
       : '';
 
     return {
-      priority: 'Medium',
+      priority: 'medium', // Changed to lowercase to match backend expectations
       reportedVia: 'Web Portal',
       company: '',
       department: initialDepartment,
@@ -177,9 +177,32 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
 
     setIsLoading(true)
     try {
-      // Create ticket data
+      // Create ticket data with proper field mapping for backend
       const ticketData = {
-        ...formData,
+        // Map frontend fields to backend fields
+        title: formData.subject, // Backend expects 'title', frontend has 'subject'
+        description: formData.description,
+        priority: formData.priority.toLowerCase(), // Backend expects lowercase
+        category: formData.reportType.service ? 'service' : 
+                 formData.reportType.maintenance ? 'maintenance' : 
+                 formData.reportType.incident ? 'incident' : 
+                 formData.reportType.breakdown ? 'breakdown' : 'general',
+        company: formData.company,
+        department: formData.department,
+        area: formData.area,
+        inCharge: formData.inCharge,
+        equipmentId: formData.equipmentId || undefined,
+        reportedVia: formData.reportedVia,
+        isOpenTicket: formData.isOpenTicket,
+        assignedDepartments: formData.assignedDepartments,
+        assignedUsers: formData.assignedUsers,
+        solution: formData.solution,
+        // Add the reportType object that the backend needs for validation
+        reportType: formData.reportType,
+        // Add required backend fields
+        createdBy: user?.name || 'Unknown User',
+        loggedBy: user?.name || 'Unknown User',
+        status: 'open', // Changed to lowercase to match backend validation
         loggedDateTime: new Date().toISOString(),
       }
 
@@ -254,10 +277,10 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Critical">Critical</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
                 </SelectContent>
               </Select>
             </div>

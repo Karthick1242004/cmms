@@ -1,7 +1,7 @@
 export interface Ticket {
   id: string;
   ticketId: string; // Auto-generated unique ticket ID like TKT-2025-000001
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  priority: 'low' | 'medium' | 'high' | 'critical'; // Changed to lowercase to match backend
   loggedDateTime: string; // ISO date string
   loggedBy: string;
   reportedVia: 'Phone' | 'Email' | 'In-Person' | 'Mobile App' | 'Web Portal';
@@ -11,7 +11,7 @@ export interface Ticket {
   inCharge: string;
   equipmentId?: string; // Asset ID (optional)
   reviewedBy?: string;
-  status: 'Open' | 'In Progress' | 'Pending' | 'Resolved' | 'Closed';
+  status: 'open' | 'in-progress' | 'pending' | 'completed' | 'cancelled';
   ticketCloseDate?: string; // ISO date string
   totalTime?: number; // Total time in hours
   
@@ -54,7 +54,7 @@ export interface ActivityLogEntry {
 
 export interface TicketFormData {
   // Basic Information
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  priority: 'low' | 'medium' | 'high' | 'critical'; // Changed to lowercase to match backend
   reportedVia: 'Phone' | 'Email' | 'In-Person' | 'Mobile App' | 'Web Portal';
   company: string;
   department: string;

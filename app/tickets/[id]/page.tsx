@@ -52,8 +52,8 @@ export default function TicketDetailPage() {
   const [formData, setFormData] = useState({
     subject: "",
     description: "",
-    priority: "Medium" as const,
-    status: "Open" as const,
+    priority: "medium" as const,
+    status: "open" as const,
     department: "",
     area: "",
     inCharge: "",

@@ -107,7 +107,9 @@ export default function TicketsPage() {
     }
 
     if (reportTypeFilter !== 'all') {
-      filtered = filtered.filter(ticket => ticket.reportType[reportTypeFilter as keyof typeof ticket.reportType])
+      filtered = filtered.filter(ticket => 
+        ticket.reportType && ticket.reportType[reportTypeFilter as keyof typeof ticket.reportType]
+      )
     }
 
     if (showOpenTickets) {
@@ -127,27 +129,27 @@ export default function TicketsPage() {
 
   // Get priority color
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'Critical': return 'destructive'
-      case 'High': return 'destructive'
-      case 'Medium': return 'default'
-      case 'Low': return 'secondary'
+    switch (priority.toLowerCase()) {
+      case 'critical': return 'destructive'
+      case 'high': return 'destructive'
+      case 'medium': return 'default'
+      case 'low': return 'secondary'
       default: return 'secondary'
     }
   }
 
   // Get status icon and color
   const getStatusInfo = (status: string) => {
-    switch (status) {
-      case 'Open':
+    switch (status.toLowerCase()) {
+      case 'open':
         return { icon: <AlertCircle className="h-4 w-4" />, color: 'destructive' }
-      case 'In Progress':
+      case 'in-progress':
         return { icon: <Clock className="h-4 w-4" />, color: 'default' }
-      case 'Pending':
+      case 'pending':
         return { icon: <Clock className="h-4 w-4" />, color: 'secondary' }
-      case 'Resolved':
+      case 'completed':
         return { icon: <CheckCircle className="h-4 w-4" />, color: 'default' }
-      case 'Closed':
+      case 'cancelled':
         return { icon: <XCircle className="h-4 w-4" />, color: 'secondary' }
       default:
         return { icon: <AlertCircle className="h-4 w-4" />, color: 'secondary' }
@@ -263,11 +265,11 @@ export default function TicketsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="Open">Open</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Resolved">Resolved</SelectItem>
-                    <SelectItem value="Closed">Closed</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -280,10 +282,10 @@ export default function TicketsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Priorities</SelectItem>
-                    <SelectItem value="Critical">Critical</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -428,7 +430,7 @@ export default function TicketsPage() {
                           </TableCell>
                           <TableCell className="py-2">
                             <div className="flex flex-wrap gap-1">
-                              {Object.entries(ticket.reportType).map(([type, selected]) => 
+                              {ticket.reportType && Object.entries(ticket.reportType).map(([type, selected]) => 
                                 selected && (
                                   <Badge key={type} variant="secondary" className="text-xs capitalize">
                                     {type}
@@ -457,17 +459,17 @@ export default function TicketsPage() {
                               >
                                 <FileDown className="h-3 w-3" />
                               </Button>
-                              {ticket.status !== 'Closed' && (
+                              {ticket.status !== 'cancelled' && (
                                 <Select onValueChange={(status) => handleUpdateStatus(ticket.id, status)}>
                                   <SelectTrigger className="w-auto h-6 text-xs">
                                     <SelectValue placeholder="Status" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="Open">Open</SelectItem>
-                                    <SelectItem value="In Progress">In Progress</SelectItem>
-                                    <SelectItem value="Pending">Pending</SelectItem>
-                                    <SelectItem value="Resolved">Resolved</SelectItem>
-                                    <SelectItem value="Closed">Closed</SelectItem>
+                                    <SelectItem value="open">Open</SelectItem>
+                                    <SelectItem value="in-progress">In Progress</SelectItem>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
                                   </SelectContent>
                                 </Select>
                               )}
