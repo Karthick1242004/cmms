@@ -131,8 +131,8 @@ export function MaintenanceScheduleDetail({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Settings className="h-6 w-6 text-primary" />
@@ -165,284 +165,288 @@ export function MaintenanceScheduleDetail({
             </DialogTitle>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 print:hidden">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="parts">Parts & Checklist</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-            </TabsList>
+          <div className="flex-1 overflow-scroll">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col print:hidden">
+              <div className="px-6 pt-4">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="parts">Parts & Checklist</TabsTrigger>
+                  <TabsTrigger value="history">History</TabsTrigger>
+                </TabsList>
+              </div>
 
-            <ScrollArea className="flex-1 mt-4">
-              <TabsContent value="overview" className="space-y-6">
-                {/* Status and Actions */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <Wrench className="h-5 w-5" />
-                        Status & Schedule
-                      </span>
-                      <Button onClick={handleStartMaintenance} className="ml-auto print:hidden">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Start Maintenance
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Status</label>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(schedule.status)}
-                          <Badge variant={getStatusColor(schedule.status)} className="capitalize">
-                            {schedule.status}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Priority</label>
-                        <Badge variant={getPriorityColor(schedule.priority)} className="capitalize">
-                          {schedule.priority}
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Next Due</label>
-                        <div>
-                          <div className="text-sm font-medium">{formatDate(schedule.nextDueDate)}</div>
-                          <div className={`text-xs ${
-                            isOverdue(schedule.nextDueDate) ? 'text-red-600' : 
-                            daysUntilDue <= 3 ? 'text-orange-600' : 
-                            'text-muted-foreground'
-                          }`}>
-                            {isOverdue(schedule.nextDueDate) 
-                              ? `${Math.abs(daysUntilDue)} days overdue`
-                              : daysUntilDue === 0 
-                              ? 'Due today'
-                              : `${daysUntilDue} days remaining`
-                            }
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Est. Duration</label>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{schedule.estimatedDuration} hours</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Asset Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5" />
-                      Asset Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Asset Name</label>
-                          <p className="text-sm font-medium">{schedule.assetName}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Asset Tag</label>
-                          <p className="text-sm">{schedule.assetTag || "N/A"}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Asset Type</label>
-                          <p className="text-sm">{schedule.assetType}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Location</label>
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <p className="text-sm">{schedule.location}</p>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Department</label>
-                          <p className="text-sm">{schedule.department}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Assigned Technician</label>
-                          <div className="flex items-center gap-1">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <p className="text-sm">{schedule.assignedTechnician || "Unassigned"}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Schedule Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      Schedule Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Frequency</label>
-                          <Badge variant="outline" className="capitalize">
-                            {schedule.frequency === "custom" 
-                              ? `Every ${schedule.customFrequencyDays} days`
-                              : schedule.frequency
-                            }
-                          </Badge>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Start Date</label>
-                          <p className="text-sm">{formatDate(schedule.startDate)}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Last Completed</label>
-                          <p className="text-sm">
-                            {schedule.lastCompletedDate ? formatDate(schedule.lastCompletedDate) : "Never"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Total Parts</label>
-                          <div className="flex items-center gap-1">
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                            <p className="text-sm">{schedule.parts.length} parts</p>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Est. Total Time</label>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <p className="text-sm">{Math.round(totalEstimatedTime / 60)} hours</p>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Created</label>
-                          <p className="text-sm">{formatDateTime(schedule.createdAt)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Description */}
-                {schedule.description && (
+              <div className="flex-1 overflow-y-auto px-6 pb-6">
+                <TabsContent value="overview" className="space-y-6 mt-4">
+                  {/* Status and Actions */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        Description
+                      <CardTitle className="flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <Wrench className="h-5 w-5" />
+                          Status & Schedule
+                        </span>
+                        <Button onClick={handleStartMaintenance} className="ml-auto print:hidden">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Start Maintenance
+                        </Button>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm whitespace-pre-wrap">{schedule.description}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-muted-foreground">Status</label>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(schedule.status)}
+                            <Badge variant={getStatusColor(schedule.status)} className="capitalize">
+                              {schedule.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-muted-foreground">Priority</label>
+                          <Badge variant={getPriorityColor(schedule.priority)} className="capitalize">
+                            {schedule.priority}
+                          </Badge>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-muted-foreground">Next Due</label>
+                          <div>
+                            <div className="text-sm font-medium">{formatDate(schedule.nextDueDate)}</div>
+                            <div className={`text-xs ${
+                              isOverdue(schedule.nextDueDate) ? 'text-red-600' : 
+                              daysUntilDue <= 3 ? 'text-orange-600' : 
+                              'text-muted-foreground'
+                            }`}>
+                              {isOverdue(schedule.nextDueDate) 
+                                ? `${Math.abs(daysUntilDue)} days overdue`
+                                : daysUntilDue === 0 
+                                ? 'Due today'
+                                : `${daysUntilDue} days remaining`
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-muted-foreground">Est. Duration</label>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{schedule.estimatedDuration} hours</span>
+                          </div>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
-                )}
-              </TabsContent>
 
-              <TabsContent value="parts" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      Parts & Maintenance Checklist
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {schedule.parts.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No parts defined for this maintenance schedule</p>
+                  {/* Asset Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5" />
+                        Asset Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Asset Name</label>
+                            <p className="text-sm font-medium">{schedule.assetName}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Asset Tag</label>
+                            <p className="text-sm">{schedule.assetTag || "N/A"}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Asset Type</label>
+                            <p className="text-sm">{schedule.assetType}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Location</label>
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <p className="text-sm">{schedule.location}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Department</label>
+                            <p className="text-sm">{schedule.department}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Assigned Technician</label>
+                            <div className="flex items-center gap-1">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <p className="text-sm">{schedule.assignedTechnician || "Unassigned"}</p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {schedule.parts.map((part, partIndex) => (
-                          <Card key={part.id} className="border-l-4 border-l-primary">
-                            <CardHeader className="pb-3">
-                              <div className="flex items-center justify-between">
-                                <CardTitle className="text-base">{part.partName}</CardTitle>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline">SKU: {part.partSku}</Badge>
-                                  <Badge variant="secondary">{Math.round(part.estimatedTime / 60)}h</Badge>
-                                  {part.requiresReplacement && (
-                                    <Badge variant="destructive" className="text-xs">
-                                      Replacement Required
-                                    </Badge>
-                                  )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Schedule Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5" />
+                        Schedule Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Frequency</label>
+                            <Badge variant="outline" className="capitalize">
+                              {schedule.frequency === "custom" 
+                                ? `Every ${schedule.customFrequencyDays} days`
+                                : schedule.frequency
+                              }
+                            </Badge>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Start Date</label>
+                            <p className="text-sm">{formatDate(schedule.startDate)}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Last Completed</label>
+                            <p className="text-sm">
+                              {schedule.lastCompletedDate ? formatDate(schedule.lastCompletedDate) : "Never"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Total Parts</label>
+                            <div className="flex items-center gap-1">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                              <p className="text-sm">{schedule.parts.length} parts</p>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Est. Total Time</label>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <p className="text-sm">{Math.round(totalEstimatedTime / 60)} hours</p>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Created</label>
+                            <p className="text-sm">{formatDateTime(schedule.createdAt)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Description */}
+                  {schedule.description && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          Description
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm whitespace-pre-wrap">{schedule.description}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="parts" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5" />
+                        Parts & Maintenance Checklist
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {schedule.parts.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No parts defined for this maintenance schedule</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {schedule.parts.map((part, partIndex) => (
+                            <Card key={part.id} className="border-l-4 border-l-primary">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-base">{part.partName}</CardTitle>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline">SKU: {part.partSku}</Badge>
+                                    <Badge variant="secondary">{Math.round(part.estimatedTime / 60)}h</Badge>
+                                    {part.requiresReplacement && (
+                                      <Badge variant="destructive" className="text-xs">
+                                        Replacement Required
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                              {part.replacementFrequency && (
-                                <p className="text-sm text-muted-foreground">
-                                  Replace every {part.replacementFrequency} cycles
-                                  {part.lastReplacementDate && (
-                                    <span> • Last replaced: {formatDate(part.lastReplacementDate)}</span>
-                                  )}
-                                </p>
-                              )}
-                            </CardHeader>
-                            <CardContent>
-                              <div className="space-y-2">
-                                <h4 className="font-medium text-sm">Checklist Items:</h4>
-                                {part.checklistItems.map((item, itemIndex) => (
-                                  <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-sm font-medium">{item.description}</span>
-                                        {item.isRequired && (
-                                          <Badge variant="destructive" className="text-xs">Required</Badge>
+                                {part.replacementFrequency && (
+                                  <p className="text-sm text-muted-foreground">
+                                    Replace every {part.replacementFrequency} cycles
+                                    {part.lastReplacementDate && (
+                                      <span> • Last replaced: {formatDate(part.lastReplacementDate)}</span>
+                                    )}
+                                  </p>
+                                )}
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-2">
+                                  <h4 className="font-medium text-sm">Checklist Items:</h4>
+                                  {part.checklistItems.map((item, itemIndex) => (
+                                    <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-sm font-medium">{item.description}</span>
+                                          {item.isRequired && (
+                                            <Badge variant="destructive" className="text-xs">Required</Badge>
+                                          )}
+                                        </div>
+                                        {item.notes && (
+                                          <p className="text-xs text-muted-foreground mt-1">{item.notes}</p>
                                         )}
                                       </div>
-                                      {item.notes && (
-                                        <p className="text-xs text-muted-foreground mt-1">{item.notes}</p>
-                                      )}
+                                      <Badge variant="outline" className="capitalize">
+                                        {item.status}
+                                      </Badge>
                                     </div>
-                                    <Badge variant="outline" className="capitalize">
-                                      {item.status}
-                                    </Badge>
-                                  </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
-              <TabsContent value="history" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5" />
-                      Maintenance History
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Maintenance history will be shown here</p>
-                      <p className="text-xs mt-2">This feature will display past maintenance records for this schedule</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </ScrollArea>
-          </Tabs>
+                <TabsContent value="history" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        Maintenance History
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Maintenance history will be shown here</p>
+                        <p className="text-xs mt-2">This feature will display past maintenance records for this schedule</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
 
           {/* Print View - Comprehensive table-based report */}
           <div className="hidden print:block print:text-xs space-y-4">
