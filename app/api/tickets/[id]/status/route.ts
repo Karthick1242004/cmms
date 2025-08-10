@@ -63,9 +63,48 @@ export async function PATCH(
       }
     }
 
-    // Update the ticket status
-    const previousStatus = ticket.status;
-    ticket.status = body.status.toLowerCase();
+    // Status verification workflow:
+    // - Normal users: create a pending approval request
+    // - Department heads/super_admin: apply immediately or approve pending
+    const previousStatus = ticket.status
+    const requestedStatus = body.status.toLowerCase()
+
+    const isDepartmentHead = user?.accessLevel === 'super_admin' || user?.role === 'manager' || user?.accessLevel === 'department_admin'
+
+    if (!isDepartmentHead) {
+      // Normal user: mark as pending verification
+      ticket.statusApproval = {
+        pending: true,
+        requestedStatus,
+        requestedBy: user?.name || 'User',
+        requestedAt: new Date(),
+        verifiedBy: undefined,
+        verifiedAt: undefined,
+      }
+    } else {
+      // Department head/admin: if there is a pending request, finalize it
+      if (ticket.statusApproval?.pending && ticket.statusApproval.requestedStatus) {
+        ticket.status = ticket.statusApproval.requestedStatus
+        ticket.statusApproval = {
+          pending: false,
+          requestedStatus: undefined,
+          requestedBy: ticket.statusApproval.requestedBy,
+          requestedAt: ticket.statusApproval.requestedAt,
+          verifiedBy: user?.name || 'Approver',
+          verifiedAt: new Date(),
+        }
+      } else {
+        ticket.status = requestedStatus
+        ticket.statusApproval = {
+          pending: false,
+          requestedStatus: undefined,
+          requestedBy: undefined,
+          requestedAt: undefined,
+          verifiedBy: user?.name || 'Approver',
+          verifiedAt: new Date(),
+        }
+      }
+    }
 
     // Ensure legacy required fields are populated to satisfy schema validation
     if (!ticket.ticketId) {
@@ -86,13 +125,15 @@ export async function PATCH(
     }
 
     // Add activity log entry
-    if (body.remarks || previousStatus !== ticket.status) {
+    if (body.remarks || previousStatus !== ticket.status || ticket.statusApproval?.pending) {
       console.log('Adding activity log entry for status change');
       ticket.activityLog.push({
         date: new Date(),
         loggedBy: user?.name || 'System',
-        remarks: body.remarks || `Status changed from ${previousStatus} to ${ticket.status}`,
-        action: 'Status Change'
+        remarks: ticket.statusApproval?.pending
+          ? (body.remarks || `Status change to ${requestedStatus} requested. Awaiting verification.`)
+          : (body.remarks || `Status changed from ${previousStatus} to ${ticket.status}`),
+        action: ticket.statusApproval?.pending ? 'Comment' : 'Status Change'
       });
     }
 

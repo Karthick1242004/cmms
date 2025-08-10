@@ -58,6 +58,15 @@ export interface ITicket extends Document {
   // Timestamps
   createdAt: Date
   updatedAt: Date
+  // Status verification workflow
+  statusApproval?: {
+    pending: boolean
+    requestedStatus?: 'open' | 'in-progress' | 'pending' | 'completed' | 'cancelled'
+    requestedBy?: string
+    requestedAt?: Date
+    verifiedBy?: string
+    verifiedAt?: Date
+  }
 }
 
 const TicketSchema = new Schema<ITicket>({
@@ -217,6 +226,16 @@ const TicketSchema = new Schema<ITicket>({
       required: true
     }
   }]
+  ,
+  // Status verification workflow
+  statusApproval: {
+    pending: { type: Boolean, default: false },
+    requestedStatus: { type: String, enum: ['open', 'in-progress', 'pending', 'completed', 'cancelled'] },
+    requestedBy: { type: String, trim: true },
+    requestedAt: { type: Date },
+    verifiedBy: { type: String, trim: true },
+    verifiedAt: { type: Date }
+  }
 }, {
   timestamps: true
 })
@@ -239,15 +258,28 @@ TicketSchema.set('toJSON', {
   }
 })
 
-// Pre-save hook to generate ticketId
-TicketSchema.pre('save', async function(next) {
-  if (this.isNew && !this.ticketId) {
-    const year = new Date().getFullYear()
-    const count = await mongoose.model('Ticket').countDocuments() + 1
-    this.ticketId = `TKT-${year}-${count.toString().padStart(6, '0')}`
+// Generate ticketId before validation so 'required' validation passes
+TicketSchema.pre('validate', async function (next) {
+  try {
+    if (this.isNew && !this.ticketId) {
+      const year = new Date().getFullYear()
+      const Model = this.constructor as mongoose.Model<any>
+      const count = await Model.countDocuments({
+        createdAt: {
+          $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+          $lt: new Date(`${year + 1}-01-01T00:00:00.000Z`),
+        },
+      })
+      this.ticketId = `TKT-${year}-${String(count + 1).padStart(6, '0')}`
+    }
+    next()
+  } catch (err) {
+    next(err as any)
   }
-  
-  // Add creation activity log entry for new tickets
+})
+
+// Pre-save hook: add creation activity log entry for new tickets
+TicketSchema.pre('save', function(next) {
   if (this.isNew) {
     this.activityLog.push({
       date: new Date(),
@@ -256,7 +288,6 @@ TicketSchema.pre('save', async function(next) {
       action: 'Created'
     })
   }
-  
   next()
 })
 

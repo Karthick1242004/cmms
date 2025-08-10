@@ -182,14 +182,18 @@ export default function TicketsPage() {
         },
         body: JSON.stringify({
           status: newStatus,
-          remarks: `Status changed to ${newStatus}`
+          remarks: `Status changed to ${newStatus}`,
         }),
       })
 
       const result = await response.json()
       if (result.success) {
-        toast.success(`Ticket status updated to ${newStatus}`)
-        fetchTickets() // Refresh the list
+        const updated = result.data as Ticket
+        const isPending = (updated as any)?.statusApproval?.pending
+        toast.success(isPending ? 'Status change requested for verification' : `Ticket status updated to ${updated.status}`)
+
+        setTickets((prev) => prev.map((t) => (t.id === ticketId ? ({ ...t, ...updated } as Ticket) : t)))
+        setFilteredTickets((prev) => prev.map((t) => (t.id === ticketId ? ({ ...t, ...updated } as Ticket) : t)))
       } else {
         toast.error('Failed to update ticket status')
       }
@@ -460,9 +464,9 @@ export default function TicketsPage() {
                                 <FileDown className="h-3 w-3" />
                               </Button>
                               {ticket.status !== 'cancelled' && (
-                                <Select onValueChange={(status) => handleUpdateStatus(ticket.id, status)}>
+                                <Select value={ticket.status} onValueChange={(status) => handleUpdateStatus(ticket.id, status)}>
                                   <SelectTrigger className="w-auto h-6 text-xs">
-                                    <SelectValue placeholder="Status" />
+                                    <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="open">Open</SelectItem>
