@@ -53,6 +53,13 @@ export async function GET(request: NextRequest) {
       Location.countDocuments(filter)
     ]);
 
+    // Transform _id to id for frontend compatibility
+    const transformedLocations = locations.map(location => ({
+      ...location,
+      id: location._id,
+      _id: undefined
+    }));
+
     // Calculate pagination metadata
     const totalPages = Math.ceil(totalCount / limit);
     const hasNext = page < totalPages;
@@ -61,7 +68,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        locations,
+        locations: transformedLocations,
         pagination: {
           currentPage: page,
           totalPages,

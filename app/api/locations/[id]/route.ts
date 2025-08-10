@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-
-// Base URL for the backend server
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
+import connectDB from '@/lib/mongodb';
+import Location from '@/models/Location';
 
 export async function GET(
   request: NextRequest,
@@ -19,33 +18,31 @@ export async function GET(
       // proceed without permission checks for unauthenticated requests (testing mode)
     }
 
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/locations/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Connect to local MongoDB
+    await connectDB();
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    // Find location by ID
+    const location = await Location.findById(id);
+    
+    if (!location) {
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to fetch location' },
-        { status: response.status }
+        { success: false, message: 'Location not found' },
+        { status: 404 }
       );
     }
 
-    const data = await response.json();
-    
     // Check if user has access to this location's department (unless admin or no auth)
-    if (user && user.role !== 'admin' && data.data?.department !== user.department) {
+    if (user && user.role !== 'admin' && location.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Access denied - Location belongs to different department' },
         { status: 403 }
       );
     }
 
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      data: location
+    }, { status: 200 });
   } catch (error) {
     console.error('Error fetching location:', error);
     return NextResponse.json(
@@ -72,25 +69,21 @@ export async function PUT(
 
     const body = await request.json();
 
-    // First, get the existing location to check permissions
-    const existingLocationResponse = await fetch(`${SERVER_BASE_URL}/api/locations/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Connect to local MongoDB
+    await connectDB();
 
-    if (!existingLocationResponse.ok) {
+    // First, get the existing location to check permissions
+    const existingLocation = await Location.findById(id);
+    
+    if (!existingLocation) {
       return NextResponse.json(
         { success: false, message: 'Location not found' },
         { status: 404 }
       );
     }
-
-    const existingLocationData = await existingLocationResponse.json();
     
     // Check if user has access to this location's department (unless admin or no auth)
-    if (user && user.role !== 'admin' && existingLocationData.data?.department !== user.department) {
+    if (user && user.role !== 'admin' && existingLocation.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Access denied - Location belongs to different department' },
         { status: 403 }
@@ -111,25 +104,18 @@ export async function PUT(
       body.updatedById = user.id;
     }
 
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/locations/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    // Update the location
+    const updatedLocation = await Location.findByIdAndUpdate(
+      id,
+      body,
+      { new: true, runValidators: true }
+    );
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to update location' },
-        { status: response.status }
-      );
-    }
-
-    const result = await response.json();
-    return NextResponse.json(result, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      data: updatedLocation,
+      message: 'Location updated successfully'
+    }, { status: 200 });
   } catch (error) {
     console.error('Error updating location:', error);
     return NextResponse.json(
@@ -154,49 +140,34 @@ export async function DELETE(
       // proceed without permission checks for unauthenticated requests (testing mode)
     }
 
-    // First, get the existing location to check permissions
-    const existingLocationResponse = await fetch(`${SERVER_BASE_URL}/api/locations/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Connect to local MongoDB
+    await connectDB();
 
-    if (!existingLocationResponse.ok) {
+    // First, get the existing location to check permissions
+    const existingLocation = await Location.findById(id);
+    
+    if (!existingLocation) {
       return NextResponse.json(
         { success: false, message: 'Location not found' },
         { status: 404 }
       );
     }
-
-    const existingLocationData = await existingLocationResponse.json();
     
     // Check if user has access to this location's department (unless admin or no auth)
-    if (user && user.role !== 'admin' && existingLocationData.data?.department !== user.department) {
+    if (user && user.role !== 'admin' && existingLocation.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Access denied - Location belongs to different department' },
         { status: 403 }
       );
     }
 
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/locations/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Delete the location
+    await Location.findByIdAndDelete(id);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to delete location' },
-        { status: response.status }
-      );
-    }
-
-    const result = await response.json();
-    return NextResponse.json(result, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      message: 'Location deleted successfully'
+    }, { status: 200 });
   } catch (error) {
     console.error('Error deleting location:', error);
     return NextResponse.json(

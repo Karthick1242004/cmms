@@ -21,7 +21,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 
 interface Location {
-  id: string
+  id?: string
+  _id?: string
   name: string
   code: string
   type: string
@@ -33,6 +34,11 @@ interface Location {
   status: 'active' | 'inactive'
   createdAt: string
   updatedAt: string
+}
+
+// Helper function to get the correct ID field
+const getLocationId = (location: Location): string => {
+  return location.id || location._id || ''
 }
 
 export default function LocationsPage() {
@@ -68,6 +74,10 @@ export default function LocationsPage() {
 
       if (response.ok) {
         const data = await response.json()
+        // Temporary debug log to see the data structure
+        if (data.data.locations && data.data.locations.length > 0) {
+          console.log('First location data structure:', data.data.locations[0])
+        }
         setLocations(data.data.locations || [])
       } else {
         console.error('Failed to fetch locations')
@@ -133,8 +143,16 @@ export default function LocationsPage() {
       setIsSaving(true)
       const token = localStorage.getItem('auth-token')
       
+      // Use the helper function to get the correct ID
+      const locationId = editingLocation ? getLocationId(editingLocation) : ''
+      
+      if (editingLocation && !locationId) {
+        toast.error('Location ID not found. Please try again.')
+        return
+      }
+      
       const url = editingLocation 
-        ? `/api/locations/${editingLocation.id}`
+        ? `/api/locations/${locationId}`
         : '/api/locations'
       
       const method = editingLocation ? 'PUT' : 'POST'
@@ -155,7 +173,8 @@ export default function LocationsPage() {
         fetchLocations() // Refresh the list
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        toast.error(errorData.error || 'Failed to save location')
+        console.error('API Error:', errorData) // Debug log
+        toast.error(errorData.error || errorData.message || 'Failed to save location')
       }
     } catch (error) {
       console.error('Error saving location:', error)
@@ -408,7 +427,7 @@ export default function LocationsPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-red-600"
-                          onClick={() => handleDelete(location.id)}
+                          onClick={() => handleDelete(location.id || location._id || '')}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
