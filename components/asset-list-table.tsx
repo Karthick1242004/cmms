@@ -57,6 +57,7 @@ export function AssetListTable({ assets, onEdit, onDelete, canModify = true }: A
             <TableHead>Asset Name</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Location</TableHead>
+            <TableHead>Department</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Condition</TableHead>
             <TableHead>Purchase Info</TableHead>
@@ -93,6 +94,9 @@ export function AssetListTable({ assets, onEdit, onDelete, canModify = true }: A
                   <MapPinIcon className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
                   {asset.location}
                 </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline">{asset.department}</Badge>
               </TableCell>
               <TableCell>
                 <Badge variant={getStatusColor(asset.status)} className="capitalize">

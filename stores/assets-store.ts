@@ -157,7 +157,8 @@ export const useAssetsStore = create<AssetsState>()(
                 asset.name.toLowerCase().includes(term) ||
                 asset.assetTag.toLowerCase().includes(term) ||
                 asset.type.toLowerCase().includes(term) ||
-                asset.location.toLowerCase().includes(term),
+                asset.location.toLowerCase().includes(term) ||
+                asset.department.toLowerCase().includes(term),
             )
 
             if (state.statusFilter !== "all") {
@@ -187,6 +188,7 @@ export const useAssetsStore = create<AssetsState>()(
                 assetTag: detail.serialNo, // Or assetTag if available directly
                 type: detail.category, // Main category like "Equipment"
                 location: detail.location || "N/A",
+                department: detail.department, // Add department field
                 status:
                   detail.statusText?.toLowerCase().includes("online") || detail.statusText?.toLowerCase().includes("operational")
                     ? "operational"
@@ -201,6 +203,10 @@ export const useAssetsStore = create<AssetsState>()(
                 imageSrc: detail.imageSrc,
                 categoryName: detail.categoryName,
               }))
+
+              // Debug log to see the transformed data
+              console.log('Original API response:', response.data.assets)
+              console.log('Transformed assets:', transformedAssets)
 
               set((state) => {
                 state.assets = transformedAssets

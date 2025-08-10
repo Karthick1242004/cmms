@@ -52,6 +52,7 @@ export default function AllAssetsPage() {
     location: "all",
     condition: "all",
     priceRange: "all",
+    department: "all",
   })
 
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function AllAssetsPage() {
   const uniqueTypes = Array.from(new Set(assets.map(asset => asset.type))).filter(Boolean)
   const uniqueLocations = Array.from(new Set(assets.map(asset => asset.location))).filter(Boolean)
   const uniqueConditions = Array.from(new Set(assets.map(asset => asset.condition))).filter(Boolean)
+  const uniqueDepartments = Array.from(new Set(assets.map(asset => asset.department))).filter(Boolean)
 
   // Filter assets based on search term and filters
   const filteredAssets = useMemo(() => {
@@ -75,7 +77,8 @@ export default function AllAssetsPage() {
           asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (asset.assetTag && asset.assetTag.toLowerCase().includes(searchTerm.toLowerCase())) ||
           asset.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          asset.location.toLowerCase().includes(searchTerm.toLowerCase())
+          asset.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          asset.department.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -102,6 +105,9 @@ export default function AllAssetsPage() {
         return price >= min
       })
     }
+    if (filters.department && filters.department !== "all") {
+      filtered = filtered.filter(asset => asset.department === filters.department)
+    }
 
     return filtered
   }, [assets, searchTerm, filters])
@@ -122,6 +128,7 @@ export default function AllAssetsPage() {
       location: "all",
       condition: "all",
       priceRange: "all",
+      department: "all",
     })
     setSearchTerm("")
   }
@@ -211,7 +218,7 @@ export default function AllAssetsPage() {
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div className="space-y-2">
               <Label>Asset Type</Label>
               <Select value={filters.type} onValueChange={(value) => handleFilterChange("type", value)}>
@@ -292,6 +299,23 @@ export default function AllAssetsPage() {
                   <SelectItem value="5001-10000">$5,001 - $10,000</SelectItem>
                   <SelectItem value="10001-50000">$10,001 - $50,000</SelectItem>
                   <SelectItem value="50001">$50,000+</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <Select value={filters.department} onValueChange={(value) => handleFilterChange("department", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All departments</SelectItem>
+                  {uniqueDepartments.map((department) => (
+                    <SelectItem key={department} value={department}>
+                      {department}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
