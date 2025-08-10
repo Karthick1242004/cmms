@@ -11,8 +11,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Edit } from "lucide-react"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
-import { useAssetsStore } from "@/stores/assets-store"
 import { useAuthStore } from "@/stores/auth-store"
+import { useAssets } from "@/hooks/use-assets"
+import { useLocations } from "@/hooks/use-locations"
+import { useEmployees } from "@/hooks/use-employees"
+import { useDepartments } from "@/hooks/use-departments"
 import type { MaintenanceSchedule, MaintenancePart, MaintenanceChecklistItem } from "@/types/maintenance"
 
 interface MaintenanceScheduleFormProps {
@@ -22,14 +25,34 @@ interface MaintenanceScheduleFormProps {
 
 export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceScheduleFormProps) {
   const { addSchedule, updateSchedule, setScheduleDialogOpen, isScheduleDialogOpen } = useMaintenanceStore()
-  const { assets, fetchAssets } = useAssetsStore()
   const { user } = useAuthStore()
 
-  const [formData, setFormData] = useState({
+  // Determine if user is super admin
+  const isSuperAdmin = user?.accessLevel === 'super_admin'
+  
+  // State for department selection (for super admin)
+  const [selectedDepartment, setSelectedDepartment] = useState(
+    isSuperAdmin ? "" : user?.department || ""
+  )
+
+  type FormData = {
+    assetId: string
+    department: string
+    location: string
+    title: string
+    description: string
+    frequency: "daily" | "weekly" | "monthly" | "quarterly" | "annually" | "custom"
+    customFrequencyDays: number
+    startDate: string
+    nextDueDate: string
+    priority: "low" | "medium" | "high" | "critical"
+    estimatedDuration: number
+    assignedInspector: string
+  }
+
+  const [formData, setFormData] = useState<FormData>({
     assetId: "",
-    assetName: "",
-    assetTag: "",
-    assetType: "",
+    department: isSuperAdmin ? "" : user?.department || "",
     location: "",
     title: "",
     description: "",
@@ -39,22 +62,28 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     nextDueDate: "",
     priority: "medium",
     estimatedDuration: 2,
-    assignedTechnician: "",
+    assignedInspector: "",
+  })
+
+  // Fetch data with appropriate filters
+  const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments()
+  const { data: assetsData, isLoading: isLoadingAssets } = useAssets({
+    department: selectedDepartment || undefined
+  })
+  const { data: locationsData, isLoading: isLoadingLocations } = useLocations()
+  const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees({
+    department: selectedDepartment || undefined,
+    status: 'active'
   })
 
   const [parts, setParts] = useState<MaintenancePart[]>([])
 
-  useEffect(() => {
-    fetchAssets()
-  }, [fetchAssets])
-
+  // Initialize form with schedule data if editing
   useEffect(() => {
     if (schedule) {
       setFormData({
         assetId: schedule.assetId,
-        assetName: schedule.assetName,
-        assetTag: schedule.assetTag || "",
-        assetType: schedule.assetType,
+        department: schedule.department || "",
         location: schedule.location,
         title: schedule.title,
         description: schedule.description || "",
@@ -64,22 +93,36 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         nextDueDate: schedule.nextDueDate,
         priority: schedule.priority,
         estimatedDuration: schedule.estimatedDuration,
-        assignedTechnician: schedule.assignedTechnician || "",
+        assignedInspector: schedule.assignedTechnician || "",
       })
       setParts(schedule.parts)
+      
+      // Set selected department for super admin when editing
+      if (isSuperAdmin && schedule.department) {
+        setSelectedDepartment(schedule.department)
+      }
     }
-  }, [schedule])
+  }, [schedule, isSuperAdmin])
 
+  // Handle department change (for super admin)
+  const handleDepartmentChange = (department: string) => {
+    setSelectedDepartment(department)
+    setFormData(prev => ({
+      ...prev,
+      department,
+      assetId: "", // Reset asset selection when department changes
+      assignedInspector: "", // Reset inspector selection
+    }))
+  }
+
+  // Handle asset change
   const handleAssetChange = (assetId: string) => {
-    const selectedAsset = assets.find(asset => asset.id === assetId)
+    const selectedAsset = assetsData?.data?.assets.find(asset => asset.id === assetId)
     if (selectedAsset) {
       setFormData(prev => ({
         ...prev,
         assetId,
-        assetName: selectedAsset.name,
-        assetTag: selectedAsset.assetTag || "",
-        assetType: selectedAsset.type,
-        location: selectedAsset.location,
+        location: selectedAsset.location, // Auto-fill location from asset
       }))
     }
   }
@@ -155,8 +198,17 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Get selected asset details for additional fields
+    const selectedAsset = assetsData?.data?.assets.find(asset => asset.id === formData.assetId)
+    
     const scheduleData = {
       ...formData,
+      // Include asset details for backward compatibility
+      assetName: selectedAsset?.name || "",
+      assetTag: selectedAsset?.assetTag || "",
+      assetType: selectedAsset?.type || "",
+      // Map assignedInspector to assignedTechnician for API compatibility
+      assignedTechnician: formData.assignedInspector,
       status: "active" as const,
       createdBy: user?.email || "admin",
       parts,
@@ -173,9 +225,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     // Reset form
     setFormData({
       assetId: "",
-      assetName: "",
-      assetTag: "",
-      assetType: "",
+      department: isSuperAdmin ? "" : user?.department || "",
       location: "",
       title: "",
       description: "",
@@ -185,9 +235,10 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       nextDueDate: "",
       priority: "medium",
       estimatedDuration: 2,
-      assignedTechnician: "",
+      assignedInspector: "",
     })
     setParts([])
+    setSelectedDepartment(isSuperAdmin ? "" : user?.department || "")
   }
 
   return (
@@ -206,18 +257,50 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+            {/* Department Selection (Super Admin Only) */}
+            {isSuperAdmin && (
+              <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departmentsData?.data?.departments?.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Asset Selection */}
+            <div className={`space-y-2 ${isSuperAdmin ? '' : 'col-span-1'}`}>
               <Label htmlFor="asset">Asset</Label>
-              <Select value={formData.assetId} onValueChange={handleAssetChange}>
+              <Select 
+                value={formData.assetId} 
+                onValueChange={handleAssetChange}
+                disabled={isSuperAdmin && !selectedDepartment}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an asset" />
+                  <SelectValue placeholder={
+                    isSuperAdmin && !selectedDepartment 
+                      ? "Select department first" 
+                      : "Select an asset"
+                  } />
                 </SelectTrigger>
                 <SelectContent>
-                  {assets.map((asset) => (
-                    <SelectItem key={asset.id} value={asset.id}>
-                      {asset.name} ({asset.assetTag}) - {asset.location}
-                    </SelectItem>
-                  ))}
+                  {isLoadingAssets ? (
+                    <SelectItem value="loading" disabled>Loading assets...</SelectItem>
+                  ) : (
+                    assetsData?.data?.assets?.map((asset) => (
+                      <SelectItem key={asset.id} value={asset.id}>
+                        {asset.name} {asset.assetTag ? `(${asset.assetTag})` : ''} - {asset.location}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -235,7 +318,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
 
             <div className="space-y-2">
               <Label htmlFor="frequency">Frequency</Label>
-              <Select value={formData.frequency} onValueChange={(value) => setFormData(prev => ({ ...prev, frequency: value }))}>
+              <Select value={formData.frequency} onValueChange={(value: FormData["frequency"]) => setFormData(prev => ({ ...prev, frequency: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -266,7 +349,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
 
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
-              <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}>
+              <Select value={formData.priority} onValueChange={(value: FormData["priority"]) => setFormData(prev => ({ ...prev, priority: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -303,14 +386,57 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
               />
             </div>
 
+            {/* Location Selection */}
             <div className="space-y-2">
-              <Label htmlFor="technician">Assigned Technician</Label>
-              <Input
-                id="technician"
-                value={formData.assignedTechnician}
-                onChange={(e) => setFormData(prev => ({ ...prev, assignedTechnician: e.target.value }))}
-                placeholder="Technician name"
-              />
+              <Label htmlFor="location">Location</Label>
+              <Select 
+                value={formData.location} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingLocations ? (
+                    <SelectItem value="loading" disabled>Loading locations...</SelectItem>
+                  ) : (
+                    locationsData?.data?.locations?.map((location) => (
+                      <SelectItem key={location.id} value={location.name}>
+                        {location.name} - {location.type}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Assigned Inspector */}
+            <div className="space-y-2">
+              <Label htmlFor="inspector">Assigned Inspector</Label>
+              <Select 
+                value={formData.assignedInspector} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, assignedInspector: value }))}
+                disabled={isSuperAdmin && !selectedDepartment}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={
+                    isSuperAdmin && !selectedDepartment 
+                      ? "Select department first" 
+                      : "Select inspector"
+                  } />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingEmployees ? (
+                    <SelectItem value="loading" disabled>Loading employees...</SelectItem>
+                  ) : (
+                    employeesData?.data?.employees?.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.name}>
+                        {employee.name} - {employee.role}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

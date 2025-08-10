@@ -14,6 +14,10 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Plus, Trash2, Shield, AlertTriangle } from "lucide-react"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
+import { useAssets } from "@/hooks/use-assets"
+import { useLocations } from "@/hooks/use-locations"
+import { useEmployees } from "@/hooks/use-employees"
+import { useDepartments } from "@/hooks/use-departments"
 import type { SafetyInspectionSchedule, SafetyChecklistCategory, SafetyChecklistItem } from "@/types/safety-inspection"
 
 interface SafetyInspectionScheduleFormProps {
@@ -25,11 +29,34 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   const { user } = useAuthStore()
   const { addSchedule, updateSchedule, setScheduleDialogOpen, isScheduleDialogOpen } = useSafetyInspectionStore()
 
-  const [formData, setFormData] = useState({
+  // Determine if user is super admin
+  const isSuperAdmin = user?.accessLevel === 'super_admin'
+  
+  // State for department selection (for super admin)
+  const [selectedDepartment, setSelectedDepartment] = useState(
+    isSuperAdmin ? "" : user?.department || ""
+  )
+
+  type FormData = {
+    assetId: string
+    department: string
+    location: string
+    title: string
+    description: string
+    frequency: "daily" | "weekly" | "monthly" | "quarterly" | "annually" | "custom"
+    customFrequencyDays: number
+    startDate: string
+    nextDueDate: string
+    priority: "low" | "medium" | "high" | "critical"
+    riskLevel: "low" | "medium" | "high" | "critical"
+    estimatedDuration: number
+    assignedInspector: string
+    safetyStandards: string[]
+  }
+
+  const [formData, setFormData] = useState<FormData>({
     assetId: "",
-    assetName: "",
-    assetTag: "",
-    assetType: "",
+    department: isSuperAdmin ? "" : user?.department || "",
     location: "",
     title: "",
     description: "",
@@ -41,7 +68,18 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     riskLevel: "medium",
     estimatedDuration: 2,
     assignedInspector: "",
-    safetyStandards: [] as string[],
+    safetyStandards: [],
+  })
+
+  // Fetch data with appropriate filters
+  const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments()
+  const { data: assetsData, isLoading: isLoadingAssets } = useAssets({
+    department: selectedDepartment || undefined
+  })
+  const { data: locationsData, isLoading: isLoadingLocations } = useLocations()
+  const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees({
+    department: selectedDepartment || undefined,
+    status: 'active'
   })
 
   const [categories, setCategories] = useState<SafetyChecklistCategory[]>([])
@@ -52,9 +90,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     if (schedule) {
       setFormData({
         assetId: schedule.assetId,
-        assetName: schedule.assetName,
-        assetTag: schedule.assetTag || "",
-        assetType: schedule.assetType,
+        department: schedule.department || "",
         location: schedule.location,
         title: schedule.title,
         description: schedule.description || "",
@@ -69,8 +105,36 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
         safetyStandards: schedule.safetyStandards,
       })
       setCategories(schedule.checklistCategories)
+      
+      // Set selected department for super admin when editing
+      if (isSuperAdmin && schedule.department) {
+        setSelectedDepartment(schedule.department)
+      }
     }
-  }, [schedule])
+  }, [schedule, isSuperAdmin])
+
+  // Handle department change (for super admin)
+  const handleDepartmentChange = (department: string) => {
+    setSelectedDepartment(department)
+    setFormData(prev => ({
+      ...prev,
+      department,
+      assetId: "", // Reset asset selection when department changes
+      assignedInspector: "", // Reset inspector selection
+    }))
+  }
+
+  // Handle asset change
+  const handleAssetChange = (assetId: string) => {
+    const selectedAsset = assetsData?.data?.assets.find(asset => asset.id === assetId)
+    if (selectedAsset) {
+      setFormData(prev => ({
+        ...prev,
+        assetId,
+        location: selectedAsset.location, // Auto-fill location from asset
+      }))
+    }
+  }
 
   const addCategory = () => {
     const newCategory: SafetyChecklistCategory = {
@@ -182,8 +246,15 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Get selected asset details for additional fields
+    const selectedAsset = assetsData?.data?.assets.find(asset => asset.id === formData.assetId)
+    
     const scheduleData = {
       ...formData,
+      // Include asset details for backward compatibility
+      assetName: selectedAsset?.name || "",
+      assetTag: selectedAsset?.assetTag || "",
+      assetType: selectedAsset?.type || "",
       status: "active" as const,
       createdBy: user?.email || "admin",
       checklistCategories: categories,
@@ -200,9 +271,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     // Reset form
     setFormData({
       assetId: "",
-      assetName: "",
-      assetTag: "",
-      assetType: "",
+      department: isSuperAdmin ? "" : user?.department || "",
       location: "",
       title: "",
       description: "",
@@ -217,6 +286,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
       safetyStandards: [],
     })
     setCategories([])
+    setSelectedDepartment(isSuperAdmin ? "" : user?.department || "")
   }
 
   return (
@@ -228,7 +298,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            {schedule ? "Edit Safety Inspection Schedule" : "Create Safety Inspection Schedule"}
+            {schedule ? "Edit Safety Inspection Schedule" : "Crehate Safety Inspection Schedule"}
           </DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-8rem)]">
@@ -240,59 +310,77 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="assetId">Asset ID</Label>
-                    <Input
-                      id="assetId"
-                      value={formData.assetId}
-                      onChange={(e) => setFormData(prev => ({ ...prev, assetId: e.target.value }))}
-                      placeholder="Asset identifier"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="assetName">Asset Name</Label>
-                    <Input
-                      id="assetName"
-                      value={formData.assetName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, assetName: e.target.value }))}
-                      placeholder="Asset name"
-                      required
-                    />
+                  {/* Department Selection (Super Admin Only) */}
+                  {isSuperAdmin && (
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departmentsData?.data?.departments?.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.name}>
+                              {dept.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Asset Selection */}
+                  <div className={`space-y-2 ${isSuperAdmin ? '' : 'col-span-2'}`}>
+                    <Label htmlFor="asset">Asset</Label>
+                    <Select 
+                      value={formData.assetId} 
+                      onValueChange={handleAssetChange}
+                      disabled={isSuperAdmin && !selectedDepartment}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={
+                          isSuperAdmin && !selectedDepartment 
+                            ? "Select department first" 
+                            : "Select an asset"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingAssets ? (
+                          <SelectItem value="loading" disabled>Loading assets...</SelectItem>
+                        ) : (
+                          assetsData?.data?.assets?.map((asset) => (
+                            <SelectItem key={asset.id} value={asset.id}>
+                              {asset.name} {asset.assetTag ? `(${asset.assetTag})` : ''} - {asset.location}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="assetTag">Asset Tag</Label>
-                    <Input
-                      id="assetTag"
-                      value={formData.assetTag}
-                      onChange={(e) => setFormData(prev => ({ ...prev, assetTag: e.target.value }))}
-                      placeholder="Asset tag (optional)"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="assetType">Asset Type</Label>
-                    <Input
-                      id="assetType"
-                      value={formData.assetType}
-                      onChange={(e) => setFormData(prev => ({ ...prev, assetType: e.target.value }))}
-                      placeholder="Type of asset"
-                      required
-                    />
-                  </div>
-                </div>
-
+                {/* Location Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="Asset location"
-                    required
-                  />
+                  <Select 
+                    value={formData.location} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoadingLocations ? (
+                        <SelectItem value="loading" disabled>Loading locations...</SelectItem>
+                      ) : (
+                        locationsData?.data?.locations?.map((location) => (
+                          <SelectItem key={location.id} value={location.name}>
+                            {location.name} - {location.type}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -328,7 +416,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="frequency">Frequency</Label>
-                    <Select value={formData.frequency} onValueChange={(value) => setFormData(prev => ({ ...prev, frequency: value }))}>
+                    <Select value={formData.frequency} onValueChange={(value: FormData["frequency"]) => setFormData(prev => ({ ...prev, frequency: value }))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -359,7 +447,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
 
                   <div className="space-y-2">
                     <Label htmlFor="priority">Priority</Label>
-                    <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}>
+                    <Select value={formData.priority} onValueChange={(value: FormData["priority"]) => setFormData(prev => ({ ...prev, priority: value }))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -376,7 +464,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="riskLevel">Risk Level</Label>
-                    <Select value={formData.riskLevel} onValueChange={(value) => setFormData(prev => ({ ...prev, riskLevel: value }))}>
+                    <Select value={formData.riskLevel} onValueChange={(value: FormData["riskLevel"]) => setFormData(prev => ({ ...prev, riskLevel: value }))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -415,14 +503,33 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                     />
                   </div>
 
+                  {/* Assigned Inspector */}
                   <div className="space-y-2">
                     <Label htmlFor="inspector">Assigned Inspector</Label>
-                    <Input
-                      id="inspector"
-                      value={formData.assignedInspector}
-                      onChange={(e) => setFormData(prev => ({ ...prev, assignedInspector: e.target.value }))}
-                      placeholder="Inspector name"
-                    />
+                    <Select 
+                      value={formData.assignedInspector} 
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, assignedInspector: value }))}
+                      disabled={isSuperAdmin && !selectedDepartment}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={
+                          isSuperAdmin && !selectedDepartment 
+                            ? "Select department first" 
+                            : "Select inspector"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingEmployees ? (
+                          <SelectItem value="loading" disabled>Loading employees...</SelectItem>
+                        ) : (
+                          employeesData?.data?.employees?.map((employee) => (
+                            <SelectItem key={employee.id} value={employee.name}>
+                              {employee.name} - {employee.role}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -519,7 +626,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                               />
                               <Select
                                 value={item.riskLevel}
-                                onValueChange={(value) => updateChecklistItem(categoryIndex, itemIndex, { riskLevel: value })}
+                                onValueChange={(value: "low" | "medium" | "high" | "critical") => updateChecklistItem(categoryIndex, itemIndex, { riskLevel: value })}
                               >
                                 <SelectTrigger>
                                   <SelectValue />

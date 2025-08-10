@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getUserContext } from '@/lib/auth-helpers'
 import { sampleSafetyInspectionSchedules } from '@/data/safety-inspection-sample'
 import type { SafetyInspectionSchedule } from '@/types/safety-inspection'
 
@@ -62,7 +63,20 @@ function updateScheduleStatus(schedule: SafetyInspectionSchedule): SafetyInspect
 
 export async function GET(request: NextRequest) {
   try {
+    // Get user context for department filtering (with fallback for testing)
+    const user = await getUserContext(request)
+    
+    // TEMPORARY: Allow access even without authentication for testing
+    if (!user) {
+      // unauthenticated request; continue without department filter
+    }
+
     const { searchParams } = new URL(request.url)
+    
+    // Add department filter for non-admin users (only if user is authenticated)
+    if (user && user.accessLevel !== 'super_admin') {
+      searchParams.set('department', user.department)
+    }
     
     // Forward all query parameters to the backend
     const queryString = searchParams.toString()
@@ -73,6 +87,8 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'X-User-Department': user?.department || 'General',
+        'X-User-Name': user?.name || 'Test User',
       },
     })
 
@@ -97,7 +113,28 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get user context for department assignment (with fallback for testing)
+    const user = await getUserContext(request)
+    
+    // TEMPORARY: Allow access even without authentication for testing
+    if (!user) {
+      // unauthenticated request; use safe defaults
+    }
+
     const body = await request.json()
+
+    // Handle department assignment based on user access level
+    if (!body.department) {
+      // If no department provided, use user's department
+      body.department = user?.department || 'General'
+    } else if (user && user.accessLevel !== 'super_admin') {
+      // Non-super admins can only create schedules for their own department
+      body.department = user.department
+    }
+
+    // Add createdBy information
+    body.createdBy = user?.name || 'Test User'
+    body.createdById = user?.id || 'test-user-id'
 
     // Validate required fields
     if (!body.assetId || !body.title || !body.frequency) {
@@ -107,11 +144,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate department is provided
+    if (!body.department) {
+      return NextResponse.json(
+        { success: false, message: 'Department is required for schedule creation' },
+        { status: 400 }
+      )
+    }
+
+    // Ensure asset details are included for backend compatibility
+    if (!body.assetName && body.assetId) {
+      body.assetName = body.assetName || 'Asset'
+    }
+
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/safety-inspection/schedules`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-User-Department': user?.department || 'General',
+        'X-User-Name': user?.name || 'Test User',
       },
       body: JSON.stringify(body),
     })

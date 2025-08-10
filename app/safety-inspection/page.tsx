@@ -40,7 +40,7 @@ export default function SafetyInspectionPage() {
   } = useSafetyInspectionStore()
 
   const [activeTab, setActiveTab] = useState("schedules")
-  const isAdmin = user?.role === "admin"
+  const isAdmin = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
 
   useEffect(() => {
     initialize()

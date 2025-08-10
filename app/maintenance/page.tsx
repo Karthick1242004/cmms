@@ -72,7 +72,7 @@ export default function MaintenancePage() {
     }
   }, [searchTerm, statusFilter, priorityFilter, frequencyFilter, activeTab])
 
-  const isAdmin = user?.role === "admin"
+  const isAdmin = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
 
   return (
     <PageLayout>

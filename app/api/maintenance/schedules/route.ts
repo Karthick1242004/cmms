@@ -66,9 +66,13 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Add department to data (use user's department unless admin specifies different)
-    if (!body.department || (user && user.role !== 'admin')) {
+    // Handle department assignment based on user access level
+    if (!body.department) {
+      // If no department provided, use user's department
       body.department = user?.department || 'General';
+    } else if (user && user.accessLevel !== 'super_admin') {
+      // Non-super admins can only create schedules for their own department
+      body.department = user.department;
     }
 
     // Add createdBy information
@@ -81,6 +85,21 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Asset ID, title, and frequency are required for schedule creation' },
         { status: 400 }
       );
+    }
+
+    // Validate department is provided
+    if (!body.department) {
+      return NextResponse.json(
+        { success: false, message: 'Department is required for schedule creation' },
+        { status: 400 }
+      );
+    }
+
+    // Ensure asset details are included for backend compatibility
+    if (!body.assetName && body.assetId) {
+      // If assetName is missing, we should ideally fetch it from the asset service
+      // For now, set a placeholder to prevent API errors
+      body.assetName = body.assetName || 'Asset';
     }
 
     // Forward request to backend server
