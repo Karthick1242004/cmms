@@ -122,6 +122,9 @@ export async function GET(request: NextRequest) {
       inCharge: ticket.inCharge || 'Unknown',
       reportedVia: ticket.reportedVia || 'Web Portal',
       
+      // Ensure statusApproval is included in frontend data
+      statusApproval: ticket.statusApproval || { pending: false },
+      
       _id: undefined // Remove _id to avoid confusion
     }));
 

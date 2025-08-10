@@ -42,6 +42,16 @@ export interface Ticket {
   
   // Virtual fields (computed on frontend)
   timeSinceLogged?: string;
+  
+  // Status verification workflow
+  statusApproval?: {
+    pending: boolean;
+    requestedStatus?: 'open' | 'in-progress' | 'pending' | 'completed' | 'cancelled';
+    requestedBy?: string;
+    requestedAt?: string;
+    verifiedBy?: string;
+    verifiedAt?: string;
+  };
 }
 
 export interface ActivityLogEntry {

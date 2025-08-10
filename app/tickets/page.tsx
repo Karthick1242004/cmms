@@ -18,9 +18,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { TicketCreationForm } from "@/components/ticket-creation-form"
 import { TicketReport } from "@/components/ticket-report"
-import { Plus, Search, Filter, FileText, Clock, AlertCircle, CheckCircle, XCircle, Eye, FileDown } from "lucide-react"
+import { Plus, Search, Filter, FileText, Clock, AlertCircle, CheckCircle, XCircle, Eye, FileDown, Check, X } from "lucide-react"
 import { toast } from "sonner"
 import type { Ticket, TicketFilters } from "@/types/ticket"
+import { useAuthStore } from "@/stores/auth-store"
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
@@ -35,6 +36,8 @@ export default function TicketsPage() {
   const [showOpenTickets, setShowOpenTickets] = useState(false)
   const [selectedTicketForReport, setSelectedTicketForReport] = useState<Ticket | null>(null)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  
+  const { user } = useAuthStore()
 
   // Fetch tickets
   const fetchTickets = async () => {
@@ -173,13 +176,28 @@ export default function TicketsPage() {
     setIsReportDialogOpen(true)
   }
 
+  // Helper function to get auth headers
+  const getAuthHeaders = () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    
+    // Add JWT token if available
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth-token')
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+    }
+    
+    return headers
+  }
+
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
     try {
       const response = await fetch(`/api/tickets/${ticketId}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           status: newStatus,
           remarks: `Status changed to ${newStatus}`,
@@ -200,6 +218,40 @@ export default function TicketsPage() {
     } catch (error) {
       console.error('Error updating ticket status:', error)
       toast.error('Error updating ticket status')
+    }
+  }
+
+  // Check if user can approve status changes
+  const canApproveStatus = user?.accessLevel === 'super_admin' || 
+                          user?.role === 'manager' || 
+                          user?.accessLevel === 'department_admin'
+
+  // Handle status approval
+  const handleApproveStatus = async (ticketId: string, action: 'approve' | 'reject') => {
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/approve-status`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          action,
+          remarks: action === 'approve' ? 'Status change approved' : 'Status change rejected'
+        }),
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success(result.message)
+        
+        // Update UI with the server response
+        const updated = result.data as Ticket
+        setTickets((prev) => prev.map((t) => (t.id === ticketId ? ({ ...t, ...updated } as Ticket) : t)))
+        setFilteredTickets((prev) => prev.map((t) => (t.id === ticketId ? ({ ...t, ...updated } as Ticket) : t)))
+      } else {
+        toast.error(result.message || 'Failed to process approval')
+      }
+    } catch (error) {
+      console.error('Error processing approval:', error)
+      toast.error('Error processing approval')
     }
   }
 
@@ -417,10 +469,17 @@ export default function TicketsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="py-2">
-                            <Badge variant={statusInfo.color as any} className="flex items-center gap-1 w-fit text-xs">
-                              {statusInfo.icon}
-                              {ticket.status}
-                            </Badge>
+                            <div className="flex items-center gap-1">
+                              <Badge variant={statusInfo.color as any} className="flex items-center gap-1 w-fit text-xs">
+                                {statusInfo.icon}
+                                {ticket.status}
+                              </Badge>
+                              {(ticket as any)?.statusApproval?.pending && (
+                                <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
+                                  Pending Verification
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-xs py-2">{ticket.department}</TableCell>
                           <TableCell className="text-xs py-2">{ticket.loggedBy}</TableCell>
@@ -463,7 +522,34 @@ export default function TicketsPage() {
                               >
                                 <FileDown className="h-3 w-3" />
                               </Button>
-                              {ticket.status !== 'cancelled' && (
+                              {/* Show approval buttons for department heads/admins when there's a pending request */}
+                              {canApproveStatus && 
+                               (ticket as any)?.statusApproval?.pending && 
+                               (user?.accessLevel === 'super_admin' || ticket.department === user?.department) && (
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleApproveStatus(ticket.id, 'approve')}
+                                    className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                    title={`Approve status change to ${(ticket as any)?.statusApproval?.requestedStatus}`}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleApproveStatus(ticket.id, 'reject')}
+                                    className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    title="Reject status change"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                              {/* Status change dropdown - only show if not pending approval or user can't approve */}
+                              {ticket.status !== 'cancelled' && 
+                               (!(ticket as any)?.statusApproval?.pending || !canApproveStatus) && (
                                 <Select value={ticket.status} onValueChange={(status) => handleUpdateStatus(ticket.id, status)}>
                                   <SelectTrigger className="w-auto h-6 text-xs">
                                     <SelectValue />
