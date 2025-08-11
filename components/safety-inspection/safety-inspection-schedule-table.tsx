@@ -21,7 +21,7 @@ interface SafetyInspectionScheduleTableProps {
 }
 
 export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }: SafetyInspectionScheduleTableProps) {
-  const { deleteSchedule, setSelectedSchedule, setScheduleDialogOpen, setRecordDialogOpen } = useSafetyInspectionStore()
+  const { deleteSchedule, selectedSchedule, setSelectedSchedule, setScheduleDialogOpen, setRecordDialogOpen } = useSafetyInspectionStore()
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; schedule: SafetyInspectionSchedule | null }>({
     open: false,
     schedule: null
@@ -304,7 +304,7 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
       {/* Create Record Dialog */}
       <SafetyInspectionRecordForm
         trigger={<div />}
-        schedule={null}
+        schedule={selectedSchedule}
       />
 
       {/* Detail View Dialog */}

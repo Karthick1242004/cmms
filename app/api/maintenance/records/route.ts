@@ -16,9 +16,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     
-    // Add department filter for non-admin users (only if user is authenticated)
-    if (user && user.role !== 'admin') {
-      searchParams.set('department', user.department);
+    // Add department filter for non-super-admin users (only if user is authenticated)
+    // Super admins can see all records, others are filtered by their department unless explicitly querying
+    if (user && user.accessLevel !== 'super_admin') {
+      // If no department filter is provided in the query, use user's department
+      if (!searchParams.has('department')) {
+        searchParams.set('department', user.department);
+      }
     }
     
     // Forward all query parameters to the backend
@@ -66,8 +70,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Add department to data (use user's department unless admin specifies different)
-    if (!body.department || (user && user.role !== 'admin')) {
+    // Add department to data (use user's department unless super admin specifies different)
+    if (!body.department || (user && user.accessLevel !== 'super_admin')) {
       body.department = user?.department || 'General';
     }
 
@@ -82,6 +86,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Debug logging
+    console.log('Maintenance Record API - Creating record:', {
+      userAccessLevel: user?.accessLevel,
+      userDepartment: user?.department,
+      bodyDepartment: body.department,
+      bodyData: body
+    });
 
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/records`, {

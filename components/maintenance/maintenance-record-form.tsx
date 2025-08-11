@@ -38,20 +38,31 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
 
   useEffect(() => {
     // Initialize parts status from schedule
-    const initialPartsStatus: MaintenancePartRecord[] = schedule.parts.map(part => ({
-      partId: part.partId,
-      partName: part.partName,
-      replaced: false,
-      condition: "good",
-      timeSpent: part.estimatedTime,
-      checklistItems: part.checklistItems.map(item => ({
-        itemId: item.id,
-        description: item.description,
-        completed: false,
-        status: "completed",
-        notes: "",
-      }))
-    }))
+    console.log('Schedule parts for record:', schedule.parts)
+    
+    const initialPartsStatus: MaintenancePartRecord[] = schedule.parts.map(part => {
+      console.log('Processing part:', part)
+      return {
+        partId: part.partId || part.id, // Fallback to part.id if partId is missing
+        partName: part.partName,
+        replaced: false,
+        condition: "good",
+        timeSpent: part.estimatedTime,
+        checklistItems: part.checklistItems.map((item, index) => {
+          const itemId = item.id || `${part.id}_item_${index}_${Date.now()}`
+          console.log('Processing checklist item:', { item, generatedItemId: itemId })
+          return {
+            itemId,
+            description: item.description,
+            completed: false,
+            status: "completed" as const,
+            notes: "",
+          }
+        })
+      }
+    })
+    
+    console.log('Initial parts status:', initialPartsStatus)
     setPartsStatus(initialPartsStatus)
   }, [schedule])
 
@@ -103,6 +114,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       scheduleId: schedule.id,
       assetId: schedule.assetId,
       assetName: schedule.assetName,
+      department: schedule.department, // Add required department field
       completedDate: formData.completedDate,
       startTime: formData.startTime,
       endTime: formData.endTime,
@@ -116,6 +128,9 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       adminVerified: false,
     }
 
+    console.log('Submitting maintenance record:', recordData)
+    console.log('Parts status details:', JSON.stringify(partsStatus, null, 2))
+    
     addRecord(recordData)
     setRecordDialogOpen(false)
     

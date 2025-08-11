@@ -181,7 +181,7 @@ export default function EmployeeDetailPage() {
         </div>
       </PageHeader>
 
-      <div className="space-y-6">
+      <div className="space-y-6 !mt-5">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">

@@ -261,14 +261,13 @@ export default function TicketDetailPage() {
     <PageLayout>
       <PageHeader>
         <div className="flex mt-4 justify-between items-center">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => router.push("/tickets")}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Tickets
             </Button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{ticket.ticketId}</h1>

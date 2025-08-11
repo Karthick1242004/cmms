@@ -16,9 +16,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     
-    // Add department filter for non-admin users (only if user is authenticated)
-    if (user && user.role !== 'admin') {
-      searchParams.set('department', user.department);
+    // Add department filter for non-super-admin users (only if user is authenticated)
+    // Super admins can see all schedules, others are filtered by their department unless explicitly querying
+    if (user && user.accessLevel !== 'super_admin') {
+      // If no department filter is provided in the query, use user's department
+      if (!searchParams.has('department')) {
+        searchParams.set('department', user.department);
+      }
     }
     
     // Forward all query parameters to the backend
@@ -102,6 +106,54 @@ export async function POST(request: NextRequest) {
       body.assetName = body.assetName || 'Asset';
     }
 
+    // Handle empty values that might cause backend validation issues
+    if (!body.location || body.location.trim() === '') {
+      body.location = 'Not specified'; // Provide default value for empty location
+    }
+
+    // If parts array is empty, provide default empty array or remove it
+    if (!body.parts || body.parts.length === 0) {
+      body.parts = []; // Keep empty array, but ensure it's properly formatted
+    }
+
+    // Fix parts validation issues - ensure partId is populated for each part
+    if (body.parts && body.parts.length > 0) {
+      body.parts = body.parts.map((part: any, index: number) => {
+        // Generate partId if missing or empty
+        if (!part.partId || part.partId.trim() === '') {
+          part.partId = `PART_${Date.now()}_${index}`;
+        }
+        
+        // Ensure all required fields are present
+        return {
+          ...part,
+          partId: part.partId,
+          partName: part.partName || 'Unnamed Part',
+          partSku: part.partSku || '',
+          estimatedTime: part.estimatedTime || 30,
+          requiresReplacement: part.requiresReplacement || false,
+          checklistItems: part.checklistItems || []
+        };
+      });
+    }
+
+    // Debug logging
+    console.log('Maintenance Schedule API - Creating schedule:', {
+      userAccessLevel: user?.accessLevel,
+      userDepartment: user?.department,
+      bodyDepartment: body.department,
+      location: body.location,
+      partsLength: body.parts?.length || 0,
+      partsDetails: body.parts?.map((part: any) => ({
+        id: part.id,
+        partId: part.partId,
+        partName: part.partName,
+        partSku: part.partSku,
+        checklistItemsLength: part.checklistItems?.length || 0
+      })),
+      bodyData: body
+    });
+
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/schedules`, {
       method: 'POST',
@@ -115,6 +167,11 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('Backend validation error:', {
+        status: response.status,
+        errorData,
+        sentPayload: body
+      });
       return NextResponse.json(
         { success: false, message: errorData.message || 'Failed to create maintenance schedule' },
         { status: response.status }

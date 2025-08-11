@@ -139,9 +139,10 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   }
 
   const addPart = () => {
+    const timestamp = Date.now()
     const newPart: MaintenancePart = {
-      id: `part_${Date.now()}`,
-      partId: "",
+      id: `part_${timestamp}`,
+      partId: `PART_${timestamp}`, // Generate unique partId
       partName: "",
       partSku: "",
       estimatedTime: 30,
@@ -212,8 +213,12 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     // Get selected asset details for additional fields
     const selectedAsset = assetsData?.data?.assets.find(asset => asset.id === formData.assetId)
     
+    // Ensure location is set - use asset location if form location is empty
+    const finalLocation = formData.location || selectedAsset?.location || "Not specified"
+    
     const scheduleData = {
       ...formData,
+      location: finalLocation, // Ensure location is always set
       // Include asset details for backward compatibility
       assetName: selectedAsset?.name || "",
       assetTag: selectedAsset?.assetTag || "",
@@ -224,6 +229,13 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       createdBy: user?.email || "admin",
       parts,
     }
+
+    console.log('Maintenance Schedule Form - Submitting:', {
+      formData,
+      selectedAsset,
+      finalLocation,
+      scheduleData
+    })
 
     if (schedule) {
       updateSchedule(schedule.id, scheduleData)

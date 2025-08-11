@@ -22,9 +22,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     
-    // Add department filter for non-admin users
-    if (user.role !== 'admin') {
-      searchParams.set('department', user.department);
+    // Add department filter for non-super-admin users
+    if (user.accessLevel !== 'super_admin') {
+      // If no department filter is provided in the query, use user's department
+      if (!searchParams.has('department')) {
+        searchParams.set('department', user.department);
+      }
     }
     
     // Forward all query parameters to the backend
@@ -71,8 +74,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     
-    // Add department to data (use user's department unless admin specifies different)
-    if (!body.department || user.role !== 'admin') {
+    // Add department to data (use user's department unless super admin specifies different)
+    if (!body.department || user.accessLevel !== 'super_admin') {
       body.department = user.department;
     }
 
