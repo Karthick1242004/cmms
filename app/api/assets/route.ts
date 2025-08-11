@@ -16,14 +16,28 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     
-    // Add department filter for non-admin users (only if user is authenticated)
-    if (user && user.role !== 'admin') {
-      searchParams.set('department', user.department);
+    // Add department filter for non-super-admin users (only if user is authenticated)
+    // Super admins can see all assets, others are filtered by their department unless explicitly querying
+    if (user && user.accessLevel !== 'super_admin') {
+      // If no department filter is provided in the query, use user's department
+      if (!searchParams.has('department')) {
+        searchParams.set('department', user.department);
+      }
     }
     
     // Forward all query parameters to the backend
     const queryString = searchParams.toString();
     const url = `${SERVER_BASE_URL}/api/assets${queryString ? `?${queryString}` : ''}`;
+
+    // Debug logging
+    console.log('Assets API Route Debug:', {
+      originalUrl: request.url,
+      forwardedUrl: url,
+      queryString,
+      userAccessLevel: user?.accessLevel,
+      userDepartment: user?.department,
+      searchParams: Object.fromEntries(searchParams.entries())
+    });
 
     // Forward request to backend server
     const response = await fetch(url, {
@@ -64,9 +78,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Add department to data (use user's department unless admin specifies different)
+    // Add department to data (use user's department unless super admin specifies different)
     if (!body.department) {
-      if (user && user.role !== 'admin') {
+      if (user && user.accessLevel !== 'super_admin') {
         body.department = user.department;
       } else {
         body.department = body.department || 'General'; // Default department for testing

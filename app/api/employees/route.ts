@@ -16,13 +16,27 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     
-    // Add department filter for non-admin users
-    if (user.role !== 'admin') {
-      searchParams.set('department', user.department);
+    // Add department filter for non-super-admin users
+    // Super admins can see all employees, others are filtered by their department unless explicitly querying
+    if (user.accessLevel !== 'super_admin') {
+      // If no department filter is provided in the query, use user's department
+      if (!searchParams.has('department')) {
+        searchParams.set('department', user.department);
+      }
     }
     
     const queryString = searchParams.toString();
     const url = `${SERVER_API_URL}/api/employees${queryString ? `?${queryString}` : ''}`;
+
+    // Debug logging
+    console.log('Employees API Route Debug:', {
+      originalUrl: request.url,
+      forwardedUrl: url,
+      queryString,
+      userAccessLevel: user?.accessLevel,
+      userDepartment: user?.department,
+      searchParams: Object.fromEntries(searchParams.entries())
+    });
 
     const response = await fetch(url, {
       method: 'GET',

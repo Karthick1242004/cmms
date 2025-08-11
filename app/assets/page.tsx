@@ -169,6 +169,10 @@ export default function AllAssetsPage() {
     setSelectedAssetForEdit(null)
   }
 
+  const handleStatusChange = () => {
+    fetchAssets() // Refresh assets list after status change
+  }
+
   return (
     <PageLayout>
       <PageHeader>
@@ -359,6 +363,7 @@ export default function AllAssetsPage() {
               assets={filteredAssets} 
               onEdit={canModifyAssets ? handleEdit : undefined} 
               onDelete={canModifyAssets ? handleDelete : undefined} 
+              onStatusChange={handleStatusChange}
               canModify={canModifyAssets}
             />
             {filteredAssets.length === 0 && assets.length > 0 && (

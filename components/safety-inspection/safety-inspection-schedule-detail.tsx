@@ -119,7 +119,7 @@ export function SafetyInspectionScheduleDetail({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-scroll">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -135,14 +135,14 @@ export function SafetyInspectionScheduleDetail({
             </DialogTitle>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-y-scroll">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="checklist">Checklist</TabsTrigger>
               <TabsTrigger value="history">History</TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1 mt-4">
+            <ScrollArea className="flex-1 mt-4 overflow-scroll">
               <TabsContent value="overview" className="space-y-6">
                 {/* Status and Actions */}
                 <Card>

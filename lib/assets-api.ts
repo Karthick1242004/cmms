@@ -244,6 +244,29 @@ export const assetsApi = {
       }
     }
   },
+
+  // Update asset status only
+  updateAssetStatus: async (id: string, status: string, remarks?: string): Promise<AssetApiResponse> => {
+    try {
+      const response = await fetch(`/api/assets/${id}/status`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status, remarks }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error updating asset status:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }
+    }
+  },
 }
 
 export default assetsApi 

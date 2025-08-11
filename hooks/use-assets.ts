@@ -13,10 +13,41 @@ interface Asset {
   updatedAt: string
 }
 
+// Raw asset data from API
+interface ApiAsset {
+  id: string
+  assetName: string
+  serialNo: string
+  category: string
+  location: string
+  department: string
+  statusText: string
+  serviceStatus: string
+  purchaseDate?: string
+  createdAt: string
+  updatedAt: string
+}
+
 interface AssetsResponse {
   success: boolean
   data: {
     assets: Asset[]
+    pagination?: {
+      currentPage: number
+      totalPages: number
+      totalCount: number
+      hasNext: boolean
+      hasPrevious: boolean
+    }
+  }
+  message: string
+  error?: string
+}
+
+interface ApiAssetsResponse {
+  success: boolean
+  data: {
+    assets: ApiAsset[]
     pagination?: {
       currentPage: number
       totalPages: number
@@ -34,6 +65,21 @@ interface UseAssetsOptions {
   status?: string
   type?: string
   location?: string
+}
+
+// Helper function to map API status to our expected status
+function mapApiStatusToAssetStatus(statusText: string, serviceStatus: string): Asset['status'] {
+  const status = (statusText || serviceStatus || '').toLowerCase()
+  
+  if (status.includes('available') || status.includes('online') || status.includes('operational')) {
+    return 'operational'
+  } else if (status.includes('maintenance') || status.includes('service')) {
+    return 'maintenance'
+  } else if (status.includes('offline') || status.includes('broken') || status.includes('fault')) {
+    return 'out-of-service'
+  } else {
+    return 'available'
+  }
 }
 
 export function useAssets(options: UseAssetsOptions = {}) {
@@ -57,6 +103,14 @@ export function useAssets(options: UseAssetsOptions = {}) {
         const queryString = searchParams.toString()
         const url = `/api/assets${queryString ? `?${queryString}` : ''}`
         
+        // Debug logging
+        console.log('useAssets - API Call:', {
+          url,
+          queryString,
+          options,
+          department: options.department
+        })
+        
         const token = localStorage.getItem('auth-token')
         const response = await fetch(url, {
           method: 'GET',
@@ -70,8 +124,29 @@ export function useAssets(options: UseAssetsOptions = {}) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
 
-        const result = await response.json()
-        setData(result)
+        const result = await response.json() as ApiAssetsResponse
+        
+        // Transform API response to expected format
+        const transformedResponse: AssetsResponse = {
+          ...result,
+          data: {
+            ...result.data,
+            assets: result.data.assets.map((apiAsset: ApiAsset): Asset => ({
+              id: apiAsset.id,
+              name: apiAsset.assetName,
+              assetTag: apiAsset.serialNo || '',
+              type: apiAsset.category || '',
+              location: apiAsset.location || '',
+              department: apiAsset.department || '',
+              status: mapApiStatusToAssetStatus(apiAsset.statusText, apiAsset.serviceStatus),
+              purchaseDate: apiAsset.purchaseDate,
+              createdAt: apiAsset.createdAt,
+              updatedAt: apiAsset.updatedAt
+            }))
+          }
+        }
+        
+        setData(transformedResponse)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch assets')
         console.error('Error fetching assets:', err)

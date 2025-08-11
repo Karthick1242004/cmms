@@ -1,21 +1,76 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
+import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Edit, Trash2, DollarSign, Calendar, MapPinIcon } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Edit, Trash2, DollarSign, Calendar, MapPinIcon, RefreshCw } from "lucide-react"
+import { toast } from "sonner"
+import { assetsApi } from "@/lib/assets-api"
 import type { Asset } from "@/types/asset" // Using the simplified Asset type for list
 
 interface AssetListTableProps {
   assets: Asset[]
   onEdit?: (asset: Asset) => void
   onDelete?: (assetId: string) => void
+  onStatusChange?: () => void // Callback to refresh assets after status change
   canModify?: boolean
 }
 
-export function AssetListTable({ assets, onEdit, onDelete, canModify = true }: AssetListTableProps) {
+export function AssetListTable({ assets, onEdit, onDelete, onStatusChange, canModify = true }: AssetListTableProps) {
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
+  const [newStatus, setNewStatus] = useState('')
+  const [remarks, setRemarks] = useState('')
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  const statusOptions = [
+    { value: 'operational', label: 'Operational' },
+    { value: 'maintenance', label: 'Maintenance' },
+    { value: 'out-of-service', label: 'Out of Service' },
+    { value: 'available', label: 'Available' },
+    { value: 'in stock', label: 'In Stock' },
+    { value: 'new', label: 'New' },
+  ]
+
+  const handleStatusChange = async (asset: Asset, status: string) => {
+    if (!asset || !status) return
+
+    setIsUpdating(true)
+    try {
+      const response = await assetsApi.updateAssetStatus(asset.id, status, remarks)
+      
+      if (response.success) {
+        toast.success(`Asset status updated to "${status}" successfully`)
+        setIsStatusDialogOpen(false)
+        setSelectedAsset(null)
+        setNewStatus('')
+        setRemarks('')
+        onStatusChange?.() // Refresh the assets list
+      } else {
+        toast.error(response.error || 'Failed to update asset status')
+      }
+    } catch (error) {
+      console.error('Error updating asset status:', error)
+      toast.error('Failed to update asset status')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const openStatusDialog = (asset: Asset) => {
+    setSelectedAsset(asset)
+    setNewStatus(asset.status)
+    setRemarks('')
+    setIsStatusDialogOpen(true)
+  }
+
   const getStatusColor = (status: string | undefined) => {
     switch (status?.toLowerCase()) {
       case "operational":
@@ -99,9 +154,15 @@ export function AssetListTable({ assets, onEdit, onDelete, canModify = true }: A
                 <Badge variant="outline">{asset.department || "N/A"}</Badge>
               </TableCell>
               <TableCell>
-                <Badge variant={getStatusColor(asset.status)} className="capitalize">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`capitalize hover:bg-muted ${getStatusColor(asset.status)}`}
+                  onClick={() => openStatusDialog(asset)}
+                >
+                  <RefreshCw className="mr-1 h-3 w-3" />
                   {asset.status.replace("-", " ")}
-                </Badge>
+                </Button>
               </TableCell>
               <TableCell>
                 <Badge variant={getConditionColor(asset.condition)} className="capitalize">
@@ -148,6 +209,83 @@ export function AssetListTable({ assets, onEdit, onDelete, canModify = true }: A
           ))}
         </TableBody>
       </Table>
+
+      {/* Status Change Dialog */}
+      <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Asset Status</DialogTitle>
+          </DialogHeader>
+          
+          {selectedAsset && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Asset</Label>
+                <div className="text-sm text-muted-foreground">
+                  {selectedAsset.name} ({selectedAsset.assetTag || selectedAsset.id})
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Current Status</Label>
+                <Badge variant={getStatusColor(selectedAsset.status)} className="capitalize">
+                  {selectedAsset.status.replace("-", " ")}
+                </Badge>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-status">New Status</Label>
+                <Select value={newStatus} onValueChange={setNewStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select new status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="remarks">Remarks (Optional)</Label>
+                <Textarea
+                  id="remarks"
+                  placeholder="Enter any remarks for this status change..."
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsStatusDialogOpen(false)}
+                  disabled={isUpdating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => handleStatusChange(selectedAsset, newStatus)}
+                  disabled={isUpdating || !newStatus || newStatus === selectedAsset.status}
+                >
+                  {isUpdating ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Status'
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

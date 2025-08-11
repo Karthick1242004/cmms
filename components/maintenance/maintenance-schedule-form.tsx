@@ -76,6 +76,17 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     status: 'active'
   })
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Maintenance Form Debug:', {
+      isSuperAdmin,
+      selectedDepartment,
+      assetsData: assetsData?.data?.assets?.length || 0,
+      assetsLoading: isLoadingAssets,
+      departmentFromForm: formData.department
+    })
+  }, [isSuperAdmin, selectedDepartment, assetsData, isLoadingAssets, formData.department])
+
   const [parts, setParts] = useState<MaintenancePart[]>([])
 
   // Initialize form with schedule data if editing

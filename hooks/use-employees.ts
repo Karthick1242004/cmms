@@ -57,6 +57,14 @@ export function useEmployees(options: UseEmployeesOptions = {}) {
         const queryString = searchParams.toString()
         const url = `/api/employees${queryString ? `?${queryString}` : ''}`
         
+        // Debug logging
+        console.log('useEmployees - API Call:', {
+          url,
+          queryString,
+          options,
+          department: options.department
+        })
+        
         const token = localStorage.getItem('auth-token')
         const response = await fetch(url, {
           method: 'GET',

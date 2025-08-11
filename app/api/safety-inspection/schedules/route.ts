@@ -157,6 +157,9 @@ export async function POST(request: NextRequest) {
       body.assetName = body.assetName || 'Asset'
     }
 
+    // Debug: Log the body being sent
+    console.log('Safety Inspection Schedule POST body:', JSON.stringify(body, null, 2))
+
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/safety-inspection/schedules`, {
       method: 'POST',
@@ -168,16 +171,35 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     })
 
+    // Debug: Log the response
+    console.log('Backend response status:', response.status)
+    const responseText = await response.text()
+    console.log('Backend response:', responseText)
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to create safety inspection schedule' },
-        { status: response.status }
-      )
+      try {
+        const errorData = JSON.parse(responseText)
+        return NextResponse.json(
+          { success: false, message: errorData.message || 'Failed to create safety inspection schedule' },
+          { status: response.status }
+        )
+      } catch {
+        return NextResponse.json(
+          { success: false, message: 'Failed to create safety inspection schedule' },
+          { status: response.status }
+        )
+      }
     }
 
-    const result = await response.json()
-    return NextResponse.json(result, { status: 201 })
+    try {
+      const result = JSON.parse(responseText)
+      return NextResponse.json(result, { status: 201 })
+    } catch {
+      return NextResponse.json(
+        { success: false, message: 'Invalid response from backend' },
+        { status: 500 }
+      )
+    }
   } catch (error) {
     console.error('Error creating safety inspection schedule:', error)
     return NextResponse.json(

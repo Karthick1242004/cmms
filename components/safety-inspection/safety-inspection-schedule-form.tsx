@@ -246,6 +246,16 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate required fields
+    if (!formData.assetId) {
+      alert('Please select an asset')
+      return
+    }
+    if (!formData.title) {
+      alert('Please enter an inspection title')
+      return
+    }
+    
     // Get selected asset details for additional fields
     const selectedAsset = assetsData?.data?.assets.find(asset => asset.id === formData.assetId)
     
@@ -254,10 +264,28 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
       // Include asset details for backward compatibility
       assetName: selectedAsset?.name || "",
       assetTag: selectedAsset?.assetTag || "",
-      assetType: selectedAsset?.type || "",
+      assetType: selectedAsset?.type || "Equipment", // Provide default
       status: "active" as const,
-      createdBy: user?.email || "admin",
-      checklistCategories: categories,
+      createdBy: user?.email || user?.name || "admin",
+      checklistCategories: categories.length > 0 ? categories : [
+        // Default checklist category if none provided
+        {
+          id: `cat_default_${Date.now()}`,
+          categoryName: "General Safety",
+          description: "Basic safety inspection items",
+          required: true,
+          weight: 100,
+          checklistItems: [
+            {
+              id: `item_default_${Date.now()}`,
+              description: "Visual inspection for safety hazards",
+              isRequired: true,
+              riskLevel: "medium" as const,
+              status: "pending" as const,
+            }
+          ]
+        }
+      ],
     }
 
     if (schedule) {
@@ -298,7 +326,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            {schedule ? "Edit Safety Inspection Schedule" : "Crehate Safety Inspection Schedule"}
+            {schedule ? "Edit Safety Inspection Schedule" : "Create Safety Inspection Schedule"}
           </DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-8rem)]">
