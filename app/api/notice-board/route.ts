@@ -89,18 +89,7 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    console.log('📝 [CREATE-NOTICE] Enhanced body with user info:', {
-      originalBody: body,
-      enhancedBody: enhancedBody,
-      user: {
-        id: user.id,
-        name: user.name,
-        role: user.role,
-        email: user.email,
-        department: user.department,
-        accessLevel: user.accessLevel
-      }
-    });
+
 
     // Forward request to backend with user context
     const response = await fetch(`${SERVER_BASE_URL}/api/notice-board`, {
@@ -120,7 +109,6 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ [CREATE-NOTICE] Backend error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Backend request failed', details: errorText },
         { status: response.status }
@@ -128,10 +116,9 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('✅ [CREATE-NOTICE] Notice created successfully:', data);
     return NextResponse.json(data);
   } catch (error) {
-    console.error('❌ [CREATE-NOTICE] API Error:', error);
+    console.error('Notice Board API Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

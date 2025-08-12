@@ -112,7 +112,7 @@ export default function StockHistoryPage() {
   return (
     <PageLayout>
       <PageHeader>
-      <div className="flex justify-between items-center">
+      <div className="flex mt-4 justify-between items-center">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Inventory Transaction History</h1>
             <p className="text-muted-foreground">Track all parts inventory movements with SKU and material codes</p>

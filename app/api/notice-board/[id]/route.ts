@@ -71,20 +71,9 @@ export async function PUT(
     // Get user context for authentication and audit trail
     const user = await getUserContext(request);
     
-    console.log('🔍 [EDIT-NOTICE] getUserContext result:', user);
-    
     if (!user) {
-      console.log('❌ [EDIT-NOTICE] No user context found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    // Debug logging
-    console.log('🔐 [EDIT-NOTICE] User context:', { 
-      id: user.id, 
-      email: user.email, 
-      role: user.role, 
-      accessLevel: user.accessLevel 
-    });
 
     // Only super admins, department admins, or admin role can edit notices
     const hasEditPermission = 
@@ -93,15 +82,8 @@ export async function PUT(
       user.role === 'admin'; // Fallback for backward compatibility
     
     if (!hasEditPermission) {
-      console.log('🚫 [EDIT-NOTICE] Access denied:', { 
-        accessLevel: user.accessLevel, 
-        role: user.role,
-        hasEditPermission 
-      });
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
-    
-    console.log('✅ [EDIT-NOTICE] Access granted for user:', user.email);
     
     const body = await request.json();
 
@@ -156,19 +138,7 @@ export async function PUT(
       updatedAt: new Date().toISOString(),
     };
 
-    console.log('📝 [EDIT-NOTICE] Enhanced body with user info:', {
-      originalBody: body,
-      sanitizedBody: sanitizedBody,
-      enhancedBody: enhancedBody,
-      user: {
-        id: user.id,
-        name: user.name,
-        role: user.role,
-        email: user.email,
-        department: user.department,
-        accessLevel: user.accessLevel
-      }
-    });
+
 
     // Prepare headers with user context
     const headers: Record<string, string> = {
@@ -191,12 +161,6 @@ export async function PUT(
       headers['x-user-role-name'] = user.role;
     }
 
-    console.log('📤 [EDIT-NOTICE] Sending to backend:', {
-      url: `${SERVER_BASE_URL}/api/notice-board/${id}`,
-      headers: headers,
-      body: enhancedBody
-    });
-
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/notice-board/${id}`, {
       method: 'PUT',
@@ -205,11 +169,6 @@ export async function PUT(
     });
 
     const errorText = !response.ok ? await response.text().catch(() => '') : '';
-    console.log('📥 [EDIT-NOTICE] Backend response:', {
-      status: response.status,
-      statusText: response.statusText,
-      errorText,
-    });
 
     if (!response.ok) {
       let errorData: any = {};
