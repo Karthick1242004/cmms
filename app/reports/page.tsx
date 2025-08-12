@@ -28,25 +28,403 @@ import {
 export default function ReportsPage() {
   const [timeRange, setTimeRange] = useState("month")
 
-  // Export functionality
-  const handleExportReport = () => {
-    // Create a new window for the print-friendly report
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) return
+    // Export functionality with chart image capture
+  const handleExportReport = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    try {
+      // Get the button that was clicked
+      const exportButton = event.currentTarget as HTMLButtonElement;
+      
+      // Show loading state
+      const originalText = exportButton.textContent;
+      exportButton.disabled = true;
+      exportButton.textContent = 'Generating Report...';
 
-    // Generate the HTML content for the report
-    const reportHTML = generateReportHTML()
-    
-    printWindow.document.write(reportHTML)
-    printWindow.document.close()
-    
-    // Trigger print dialog after content loads
-    printWindow.onload = () => {
-      printWindow.print()
+      // Capture chart images
+      const chartImages = await captureChartImages();
+      
+      // Create a new window for the print-friendly report
+      const printWindow = window.open('', '_blank')
+      if (!printWindow) {
+        // Reset button state if window creation failed
+        exportButton.disabled = false;
+        exportButton.textContent = originalText;
+        return;
+      }
+
+      // Generate the HTML content for the report with chart images
+      const reportHTML = generateReportHTML(chartImages)
+      
+      printWindow.document.write(reportHTML)
+      printWindow.document.close()
+      
+      // Trigger print dialog after content loads
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+
+      // Reset button state
+      exportButton.disabled = false;
+      exportButton.textContent = originalText;
+    } catch (error) {
+      console.error('Error generating report:', error);
+      
+      // Reset button state in case of error
+      const exportButton = event.currentTarget as HTMLButtonElement;
+      exportButton.disabled = false;
+      exportButton.textContent = 'Export Report';
     }
   }
 
-  const generateReportHTML = () => {
+  // Function to capture chart images as base64
+  const captureChartImages = async (): Promise<Record<string, string>> => {
+    const chartImages: Record<string, string> = {};
+    
+    try {
+      // Create temporary canvas elements for each chart type
+      const canvasWidth = 400;
+      const canvasHeight = 300;
+
+      // Generate Cost Trend Chart (Line Chart)
+      const costCanvas = document.createElement('canvas');
+      costCanvas.width = canvasWidth;
+      costCanvas.height = canvasHeight;
+      const costCtx = costCanvas.getContext('2d');
+      if (costCtx) {
+        drawLineChart(costCtx, costTrendData, canvasWidth, canvasHeight, '#06b6d4');
+        chartImages.costTrend = costCanvas.toDataURL();
+      }
+
+      // Generate Completion Rate Chart (Bar Chart)
+      const completionCanvas = document.createElement('canvas');
+      completionCanvas.width = canvasWidth;
+      completionCanvas.height = canvasHeight;
+      const completionCtx = completionCanvas.getContext('2d');
+      if (completionCtx) {
+        drawBarChart(completionCtx, completionRateData, canvasWidth, canvasHeight, '#10b981');
+        chartImages.completionRate = completionCanvas.toDataURL();
+      }
+
+      // Generate Asset Uptime Chart (Area Chart)
+      const uptimeCanvas = document.createElement('canvas');
+      uptimeCanvas.width = canvasWidth;
+      uptimeCanvas.height = canvasHeight;
+      const uptimeCtx = uptimeCanvas.getContext('2d');
+      if (uptimeCtx) {
+        drawAreaChart(uptimeCtx, uptimeData, canvasWidth, canvasHeight, '#8b5cf6');
+        chartImages.assetUptime = uptimeCanvas.toDataURL();
+      }
+
+      // Generate Maintenance Type Pie Chart
+      const maintenanceCanvas = document.createElement('canvas');
+      maintenanceCanvas.width = canvasWidth;
+      maintenanceCanvas.height = canvasHeight;
+      const maintenanceCtx = maintenanceCanvas.getContext('2d');
+      if (maintenanceCtx) {
+        drawPieChart(maintenanceCtx, maintenanceTypeData, canvasWidth, canvasHeight);
+        chartImages.maintenanceType = maintenanceCanvas.toDataURL();
+      }
+
+      // Generate Asset Performance Pie Chart
+      const assetPerfCanvas = document.createElement('canvas');
+      assetPerfCanvas.width = canvasWidth;
+      assetPerfCanvas.height = canvasHeight;
+      const assetPerfCtx = assetPerfCanvas.getContext('2d');
+      if (assetPerfCtx) {
+        drawPieChart(assetPerfCtx, assetPerformanceData, canvasWidth, canvasHeight);
+        chartImages.assetPerformance = assetPerfCanvas.toDataURL();
+      }
+
+      // Generate Maintenance Metrics Pie Chart
+      const metricsCanvas = document.createElement('canvas');
+      metricsCanvas.width = canvasWidth;
+      metricsCanvas.height = canvasHeight;
+      const metricsCtx = metricsCanvas.getContext('2d');
+      if (metricsCtx) {
+        drawPieChart(metricsCtx, maintenanceMetricsData, canvasWidth, canvasHeight);
+        chartImages.maintenanceMetrics = metricsCanvas.toDataURL();
+      }
+
+      // Generate Inventory Donut Chart
+      const inventoryCanvas = document.createElement('canvas');
+      inventoryCanvas.width = canvasWidth;
+      inventoryCanvas.height = canvasHeight;
+      const inventoryCtx = inventoryCanvas.getContext('2d');
+      if (inventoryCtx) {
+        drawDonutChart(inventoryCtx, inventoryData, canvasWidth, canvasHeight);
+        chartImages.inventory = inventoryCanvas.toDataURL();
+      }
+
+    } catch (error) {
+      console.error('Error capturing chart images:', error);
+    }
+
+    return chartImages;
+  }
+
+  // Helper function to draw line chart
+  const drawLineChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number, color: string) => {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const padding = 60;
+    const chartWidth = width - 2 * padding;
+    const chartHeight = height - 2 * padding;
+    
+    // Find max value
+    const maxValue = Math.max(...data.map(d => d.cost || d.rate || d.uptime || d.value));
+    const minValue = Math.min(...data.map(d => d.cost || d.rate || d.uptime || d.value));
+    
+    // Draw axes
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, height - padding);
+    ctx.lineTo(width - padding, height - padding);
+    ctx.stroke();
+    
+    // Draw data line
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    data.forEach((item, index) => {
+      const x = padding + (index / (data.length - 1)) * chartWidth;
+      const y = height - padding - ((item.cost || item.rate || item.uptime || item.value) - minValue) / (maxValue - minValue) * chartHeight;
+      
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    ctx.stroke();
+    
+    // Draw points
+    ctx.fillStyle = color;
+    data.forEach((item, index) => {
+      const x = padding + (index / (data.length - 1)) * chartWidth;
+      const y = height - padding - ((item.cost || item.rate || item.uptime || item.value) - minValue) / (maxValue - minValue) * chartHeight;
+      
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+    
+    // Add title
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Trend Analysis', width / 2, 25);
+  }
+
+  // Helper function to draw bar chart
+  const drawBarChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number, color: string) => {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const padding = 60;
+    const chartWidth = width - 2 * padding;
+    const chartHeight = height - 2 * padding;
+    const barWidth = chartWidth / data.length * 0.6;
+    
+    const maxValue = Math.max(...data.map(d => d.rate || d.value));
+    
+    // Draw axes
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, height - padding);
+    ctx.lineTo(width - padding, height - padding);
+    ctx.stroke();
+    
+    // Draw bars
+    ctx.fillStyle = color;
+    data.forEach((item, index) => {
+      const x = padding + (index / data.length) * chartWidth + (chartWidth / data.length - barWidth) / 2;
+      const barHeight = ((item.rate || item.value) / maxValue) * chartHeight;
+      const y = height - padding - barHeight;
+      
+      ctx.fillRect(x, y, barWidth, barHeight);
+    });
+    
+    // Add title
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Bar Chart Analysis', width / 2, 25);
+  }
+
+  // Helper function to draw area chart
+  const drawAreaChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number, color: string) => {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const padding = 60;
+    const chartWidth = width - 2 * padding;
+    const chartHeight = height - 2 * padding;
+    
+    const maxValue = Math.max(...data.map(d => d.uptime || d.value));
+    const minValue = Math.min(...data.map(d => d.uptime || d.value));
+    
+    // Draw axes
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, height - padding);
+    ctx.lineTo(width - padding, height - padding);
+    ctx.stroke();
+    
+    // Draw area
+    ctx.fillStyle = color + '30'; // Add transparency
+    ctx.beginPath();
+    ctx.moveTo(padding, height - padding);
+    
+    data.forEach((item, index) => {
+      const x = padding + (index / (data.length - 1)) * chartWidth;
+      const y = height - padding - ((item.uptime || item.value) - minValue) / (maxValue - minValue) * chartHeight;
+      ctx.lineTo(x, y);
+    });
+    
+    ctx.lineTo(width - padding, height - padding);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Draw line
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    data.forEach((item, index) => {
+      const x = padding + (index / (data.length - 1)) * chartWidth;
+      const y = height - padding - ((item.uptime || item.value) - minValue) / (maxValue - minValue) * chartHeight;
+      
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    ctx.stroke();
+    
+    // Add title
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Area Chart Analysis', width / 2, 25);
+  }
+
+  // Helper function to draw pie chart
+  const drawPieChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number) => {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) / 2 - 80;
+    
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+    let currentAngle = -Math.PI / 2;
+    
+    // Draw pie slices
+    data.forEach((item, index) => {
+      const sliceAngle = (item.value / total) * 2 * Math.PI;
+      
+      ctx.fillStyle = item.fill || `hsl(${index * 60}, 70%, 60%)`;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+      ctx.closePath();
+      ctx.fill();
+      
+      currentAngle += sliceAngle;
+    });
+    
+    // Add labels
+    currentAngle = -Math.PI / 2;
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    
+    data.forEach((item) => {
+      const sliceAngle = (item.value / total) * 2 * Math.PI;
+      const labelAngle = currentAngle + sliceAngle / 2;
+      const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+      const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+      
+      const percentage = ((item.value / total) * 100).toFixed(0);
+      ctx.fillText(`${item.name || item.category}: ${percentage}%`, labelX, labelY);
+      
+      currentAngle += sliceAngle;
+    });
+    
+    // Add title
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Distribution Analysis', centerX, 25);
+  }
+
+  // Helper function to draw donut chart
+  const drawDonutChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number) => {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const outerRadius = Math.min(width, height) / 2 - 80;
+    const innerRadius = outerRadius * 0.5;
+    
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+    let currentAngle = -Math.PI / 2;
+    
+    // Draw donut slices
+    data.forEach((item, index) => {
+      const sliceAngle = (item.value / total) * 2 * Math.PI;
+      
+      ctx.fillStyle = item.fill || `hsl(${index * 60}, 70%, 60%)`;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, outerRadius, currentAngle, currentAngle + sliceAngle);
+      ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+      ctx.closePath();
+      ctx.fill();
+      
+      currentAngle += sliceAngle;
+    });
+    
+    // Add labels
+    currentAngle = -Math.PI / 2;
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    
+    data.forEach((item) => {
+      const sliceAngle = (item.value / total) * 2 * Math.PI;
+      const labelAngle = currentAngle + sliceAngle / 2;
+      const labelX = centerX + Math.cos(labelAngle) * ((outerRadius + innerRadius) / 2);
+      const labelY = centerY + Math.sin(labelAngle) * ((outerRadius + innerRadius) / 2);
+      
+      const percentage = ((item.value / total) * 100).toFixed(0);
+      ctx.fillText(`${percentage}%`, labelX, labelY);
+      
+      currentAngle += sliceAngle;
+    });
+    
+    // Add title
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Donut Chart Analysis', centerX, 25);
+  }
+
+  const generateReportHTML = (chartImages: Record<string, string> = {}) => {
     const currentDate = new Date().toLocaleDateString()
     const timeRangeText = timeRange === 'week' ? 'Last Week' : 
                          timeRange === 'month' ? 'Last Month' :
@@ -204,7 +582,10 @@ export default function ReportsPage() {
 
             <div class="section">
               <h2 class="section-title">📈 Cost Trend Analysis</h2>
-              <div class="chart-placeholder">Cost Trend Chart (Line Chart)</div>
+              ${chartImages.costTrend ? 
+                `<img src="${chartImages.costTrend}" alt="Cost Trend Chart" style="width: 100%; max-width: 500px; height: auto; margin: 15px auto; display: block; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                '<div class="chart-placeholder">Cost Trend Chart (Line Chart)</div>'
+              }
               <table class="data-table">
                 <thead>
                   <tr><th>Month</th><th>Cost ($)</th><th>Change</th></tr>
@@ -223,7 +604,10 @@ export default function ReportsPage() {
 
             <div class="section">
               <h2 class="section-title">📊 Work Order Completion Rates</h2>
-              <div class="chart-placeholder">Completion Rate Chart (Bar Chart)</div>
+              ${chartImages.completionRate ? 
+                `<img src="${chartImages.completionRate}" alt="Completion Rate Chart" style="width: 100%; max-width: 500px; height: auto; margin: 15px auto; display: block; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                '<div class="chart-placeholder">Completion Rate Chart (Bar Chart)</div>'
+              }
               <table class="data-table">
                 <thead>
                   <tr><th>Period</th><th>Completion Rate (%)</th><th>Status</th></tr>
@@ -242,7 +626,10 @@ export default function ReportsPage() {
 
             <div class="section">
               <h2 class="section-title">⏱️ Asset Uptime Analysis</h2>
-              <div class="chart-placeholder">Asset Uptime Chart (Area Chart)</div>
+              ${chartImages.assetUptime ? 
+                `<img src="${chartImages.assetUptime}" alt="Asset Uptime Chart" style="width: 100%; max-width: 500px; height: auto; margin: 15px auto; display: block; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                '<div class="chart-placeholder">Asset Uptime Chart (Area Chart)</div>'
+              }
               <table class="data-table">
                 <thead>
                   <tr><th>Day</th><th>Uptime (%)</th><th>Performance</th></tr>
@@ -261,7 +648,10 @@ export default function ReportsPage() {
 
             <div class="section">
               <h2 class="section-title">🔧 Maintenance Type Distribution</h2>
-              <div class="chart-placeholder">Maintenance Overview (Pie Chart)</div>
+              ${chartImages.maintenanceType ? 
+                `<img src="${chartImages.maintenanceType}" alt="Maintenance Type Distribution" style="width: 100%; max-width: 500px; height: auto; margin: 15px auto; display: block; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                '<div class="chart-placeholder">Maintenance Overview (Pie Chart)</div>'
+              }
               <table class="data-table">
                 <thead>
                   <tr><th>Maintenance Type</th><th>Tasks</th><th>Percentage</th></tr>
@@ -284,7 +674,10 @@ export default function ReportsPage() {
 
             <div class="section">
               <h2 class="section-title">🏭 Asset Performance Distribution</h2>
-              <div class="chart-placeholder">Asset Performance (Pie Chart)</div>
+              ${chartImages.assetPerformance ? 
+                `<img src="${chartImages.assetPerformance}" alt="Asset Performance Distribution" style="width: 100%; max-width: 500px; height: auto; margin: 15px auto; display: block; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                '<div class="chart-placeholder">Asset Performance (Pie Chart)</div>'
+              }
               <table class="data-table">
                 <thead>
                   <tr><th>Performance Level</th><th>Asset Count</th><th>Percentage</th></tr>
@@ -307,7 +700,10 @@ export default function ReportsPage() {
 
             <div class="section">
               <h2 class="section-title">📋 Key Performance Indicators</h2>
-              <div class="chart-placeholder">Maintenance Metrics (Pie Chart)</div>
+              ${chartImages.maintenanceMetrics ? 
+                `<img src="${chartImages.maintenanceMetrics}" alt="Maintenance Metrics" style="width: 100%; max-width: 500px; height: auto; margin: 15px auto; display: block; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                '<div class="chart-placeholder">Maintenance Metrics (Pie Chart)</div>'
+              }
               <table class="data-table">
                 <thead>
                   <tr><th>Metric</th><th>Value</th><th>Unit</th><th>Status</th></tr>
@@ -331,7 +727,10 @@ export default function ReportsPage() {
 
             <div class="section">
               <h2 class="section-title">📦 Inventory Analysis</h2>
-              <div class="chart-placeholder">Inventory Distribution (Donut Chart)</div>
+              ${chartImages.inventory ? 
+                `<img src="${chartImages.inventory}" alt="Inventory Distribution" style="width: 100%; max-width: 500px; height: auto; margin: 15px auto; display: block; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                '<div class="chart-placeholder">Inventory Distribution (Donut Chart)</div>'
+              }
               <table class="data-table">
                 <thead>
                   <tr><th>Category</th><th>Units</th><th>Percentage</th><th>Value ($)</th></tr>
@@ -672,7 +1071,7 @@ export default function ReportsPage() {
                     <ChartTooltip 
                       content={<ChartTooltipContent />}
                       formatter={(value, name) => [
-                        `${value}${name.includes('MTTR') || name.includes('MTBF') ? ' hrs' : '%'}`, 
+                        `${value}${String(name).includes('MTTR') || String(name).includes('MTBF') ? ' hrs' : '%'}`, 
                         name
                       ]}
                     />
