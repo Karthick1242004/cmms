@@ -29,15 +29,7 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString();
     const url = `${SERVER_BASE_URL}/api/assets${queryString ? `?${queryString}` : ''}`;
 
-    // Debug logging
-    console.log('Assets API Route Debug:', {
-      originalUrl: request.url,
-      forwardedUrl: url,
-      queryString,
-      userAccessLevel: user?.accessLevel,
-      userDepartment: user?.department,
-      searchParams: Object.fromEntries(searchParams.entries())
-    });
+
 
     // Forward request to backend server
     const response = await fetch(url, {

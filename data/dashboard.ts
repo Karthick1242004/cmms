@@ -1,7 +1,7 @@
 export const stats = [
   {
     title: "Total Assets",
-    value: "1,247",
+    value: "7",
     change: "+12%",
     iconName: "Package",
     color: "text-blue-600",

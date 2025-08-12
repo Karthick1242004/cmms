@@ -102,7 +102,15 @@ export default function Dashboard() {
   const [orderedStats, setOrderedStats] = useState<DashboardStat[]>(storeStats)
 
   useEffect(() => {
-    initializeData()
+    const loadData = async () => {
+      try {
+        await initializeData()
+      } catch (error) {
+        console.error('Failed to initialize dashboard data:', error)
+      }
+    }
+    
+    loadData()
   }, [initializeData])
 
   useEffect(() => {

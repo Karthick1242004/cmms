@@ -37,8 +37,8 @@ export async function GET(
 
     const data = await response.json();
     
-    // Check if user has access to this asset's department (unless admin or no auth)
-    if (user && user.role !== 'admin' && data.data?.department !== user.department) {
+    // Check if user has access to this asset's department (unless super admin or no auth)
+    if (user && user.accessLevel !== 'super_admin' && data.data?.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Access denied - Asset belongs to different department' },
         { status: 403 }
@@ -89,16 +89,16 @@ export async function PUT(
 
     const existingAssetData = await existingAssetResponse.json();
     
-    // Check if user has access to this asset's department (unless admin or no auth)
-    if (user && user.role !== 'admin' && existingAssetData.data?.department !== user.department) {
+    // Check if user has access to this asset's department (unless super admin or no auth)
+    if (user && user.accessLevel !== 'super_admin' && existingAssetData.data?.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Access denied - Asset belongs to different department' },
         { status: 403 }
       );
     }
 
-    // Prevent non-admin users from changing department
-    if (user && user.role !== 'admin' && body.department && body.department !== user.department) {
+    // Prevent non-super admin users from changing department
+    if (user && user.accessLevel !== 'super_admin' && body.department && body.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Cannot change asset department' },
         { status: 403 }
@@ -171,8 +171,8 @@ export async function DELETE(
 
     const existingAssetData = await existingAssetResponse.json();
     
-    // Check if user has access to this asset's department (unless admin or no auth)
-    if (user && user.role !== 'admin' && existingAssetData.data?.department !== user.department) {
+    // Check if user has access to this asset's department (unless super admin or no auth)
+    if (user && user.accessLevel !== 'super_admin' && existingAssetData.data?.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Access denied - Asset belongs to different department' },
         { status: 403 }

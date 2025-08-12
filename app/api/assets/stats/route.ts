@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     
-    // Add department filter for non-admin users (only if user is authenticated)
-    if (user && user.role !== 'admin') {
+    // Add department filter for non-super admin users (only if user is authenticated)
+    if (user && user.accessLevel !== 'super_admin') {
       searchParams.set('department', user.department);
     }
     

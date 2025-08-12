@@ -35,5 +35,5 @@ export interface DashboardState {
   setLoading: (loading: boolean) => void
   updateLastUpdated: () => void
   refreshDashboard: () => Promise<void>
-  initializeData: () => void
+  initializeData: () => Promise<void>
 }
