@@ -38,11 +38,24 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
 
   useEffect(() => {
     // Only initialize if schedule exists and has checklist categories
-    if (!schedule || !schedule.checklistCategories) {
+    if (!schedule) {
+      console.log('Safety Inspection Record Form: No schedule provided')
+      return
+    }
+
+    if (!schedule.checklistCategories) {
+      console.log('Safety Inspection Record Form: Schedule has no checklistCategories')
+      console.log('Schedule data:', schedule)
+      return
+    }
+
+    if (schedule.checklistCategories.length === 0) {
+      console.log('Safety Inspection Record Form: Schedule has empty checklistCategories array')
       return
     }
 
     // Initialize category results from schedule checklist categories
+    console.log('Safety Inspection Record Form: Initializing with', schedule.checklistCategories.length, 'categories')
     console.log('Schedule checklist categories for record:', schedule.checklistCategories)
     
     const initialCategoryResults: SafetyChecklistCategoryRecord[] = schedule.checklistCategories.map(category => {
@@ -95,12 +108,83 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
     return totalWeight > 0 ? Math.round(totalWeightedScore) : 0
   }
 
+  const updateCategoryResult = (categoryIndex: number, updates: Partial<SafetyChecklistCategoryRecord>) => {
+    const updatedCategories = [...categoryResults]
+    updatedCategories[categoryIndex] = { ...updatedCategories[categoryIndex], ...updates }
+    setCategoryResults(updatedCategories)
+  }
+
+  const updateChecklistItem = (
+    categoryIndex: number, 
+    itemIndex: number, 
+    updates: Partial<SafetyChecklistRecord>
+  ) => {
+    const updatedCategories = [...categoryResults]
+    updatedCategories[categoryIndex].checklistItems[itemIndex] = {
+      ...updatedCategories[categoryIndex].checklistItems[itemIndex],
+      ...updates
+    }
+    
+    // Recalculate category compliance score
+    const category = updatedCategories[categoryIndex]
+    const compliantItems = category.checklistItems.filter(item => 
+      item.completed && (item.status === 'compliant' || item.status === 'not_applicable')
+    ).length
+    const totalItems = category.checklistItems.length
+    category.categoryComplianceScore = totalItems > 0 ? Math.round((compliantItems / totalItems) * 100) : 0
+    
+    setCategoryResults(updatedCategories)
+  }
+
+  const addViolation = () => {
+    const newViolation: SafetyViolation = {
+      id: `violation_${Date.now()}`,
+      description: "",
+      riskLevel: "medium",
+      location: schedule.location,
+      correctiveAction: "",
+      priority: "moderate",
+      status: "open",
+    }
+    setViolations([...violations, newViolation])
+  }
+
+  const updateViolation = (index: number, updates: Partial<SafetyViolation>) => {
+    const updatedViolations = [...violations]
+    updatedViolations[index] = { ...updatedViolations[index], ...updates }
+    setViolations(updatedViolations)
+  }
+
+  const removeViolation = (index: number) => {
+    setViolations(violations.filter((_, i) => i !== index))
+  }
+
   const getCompletionStats = () => {
     const totalItems = categoryResults.reduce((sum, category) => sum + category.checklistItems.length, 0)
     const completedItems = categoryResults.reduce((sum, category) => 
       sum + category.checklistItems.filter(item => item.completed).length, 0
     )
     return { total: totalItems, completed: completedItems, percentage: totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0 }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "compliant": return <CheckCircle className="h-4 w-4" />
+      case "non_compliant": return <XCircle className="h-4 w-4" />
+      case "requires_attention": return <AlertTriangle className="h-4 w-4" />
+      case "not_applicable": return <SkipForward className="h-4 w-4" />
+      default: return <Clock className="h-4 w-4" />
+    }
+  }
+
+  const getRiskLevelColor = (riskLevel: string) => {
+    switch (riskLevel) {
+      case "low": return "bg-green-100 text-green-800"
+      case "medium": return "bg-yellow-100 text-yellow-800"
+      case "high": return "bg-orange-100 text-orange-800"
+      case "critical": return "bg-red-100 text-red-800"
+      default: return "bg-gray-100 text-gray-800"
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -146,6 +230,14 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
     }
 
     console.log('Submitting safety inspection record:', recordData)
+    console.log('Key validation fields:', {
+      scheduleId: recordData.scheduleId,
+      assetId: recordData.assetId,
+      inspector: recordData.inspector,
+      department: recordData.department
+    })
+    console.log('Schedule object for reference:', schedule)
+    console.log('User object for reference:', user)
     console.log('Category results details:', JSON.stringify(categoryResults, null, 2))
     
     addRecord(recordData)
@@ -169,7 +261,17 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
 
   // Don't render if no schedule is provided
   if (!schedule) {
+    console.log('SafetyInspectionRecordForm: No schedule provided')
     return null
+  }
+
+  if (!user) {
+    console.log('SafetyInspectionRecordForm: No user context available')
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        Unable to load user information. Please refresh the page and try again.
+      </div>
+    )
   }
 
   return (
@@ -177,7 +279,7 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
@@ -244,7 +346,259 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
             </div>
           </div>
 
-          {/* Basic form - Full implementation coming soon */}
+          {/* Asset Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Asset Information</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium">Asset:</span> {schedule.assetName}
+              </div>
+              <div>
+                <span className="font-medium">Location:</span> {schedule.location}
+              </div>
+              <div>
+                <span className="font-medium">Risk Level:</span> 
+                <Badge className={`ml-2 ${getRiskLevelColor(schedule.riskLevel)}`}>
+                  {schedule.riskLevel}
+                </Badge>
+              </div>
+              <div>
+                <span className="font-medium">Standards:</span> {schedule.safetyStandards.join(", ")}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Safety Checklist Categories */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Safety Checklist</h3>
+              <Badge variant="outline" className="text-sm">
+                {categoryResults.length} Categories
+              </Badge>
+            </div>
+
+            {categoryResults.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-8 text-muted-foreground">
+                  <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No checklist categories found for this safety inspection schedule.</p>
+                  <p className="text-xs mt-2">The schedule may not have been properly configured with safety checklist items.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              categoryResults.map((category, categoryIndex) => (
+              <Card key={category.categoryId}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">
+                      {category.categoryName} 
+                      <Badge className="ml-2" variant="outline">
+                        Weight: {category.weight}%
+                      </Badge>
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant={category.categoryComplianceScore >= 80 ? "default" : "destructive"}
+                      >
+                        {category.categoryComplianceScore}% Compliant
+                      </Badge>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <Input
+                          type="number"
+                          value={category.timeSpent}
+                          onChange={(e) => updateCategoryResult(categoryIndex, { timeSpent: parseInt(e.target.value) })}
+                          className="w-16 h-6 text-xs"
+                          min="0"
+                        />
+                        <span>min</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {category.checklistItems.map((item, itemIndex) => (
+                    <div key={item.itemId} className="border rounded-lg p-3 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Checkbox
+                              checked={item.completed}
+                              onCheckedChange={(checked) => 
+                                updateChecklistItem(categoryIndex, itemIndex, { completed: !!checked })
+                              }
+                            />
+                            <p className="text-sm font-medium">{item.description}</p>
+                            {item.safetyStandard && (
+                              <Badge variant="outline" className="text-xs">
+                                {item.safetyStandard}
+                              </Badge>
+                            )}
+                          </div>
+                          <Badge className={`${getRiskLevelColor(item.riskLevel)} text-xs`}>
+                            {item.riskLevel} risk
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Compliance Status</Label>
+                          <Select 
+                            value={item.status} 
+                            onValueChange={(value: any) => updateChecklistItem(categoryIndex, itemIndex, { status: value })}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="compliant">
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon("compliant")}
+                                  Compliant
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="non_compliant">
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon("non_compliant")}
+                                  Non-Compliant
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="requires_attention">
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon("requires_attention")}
+                                  Requires Attention
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="not_applicable">
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon("not_applicable")}
+                                  Not Applicable
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-xs">Notes</Label>
+                          <Textarea
+                            value={item.notes || ""}
+                            onChange={(e) => updateChecklistItem(categoryIndex, itemIndex, { notes: e.target.value })}
+                            placeholder="Add notes or observations..."
+                            className="min-h-[60px] text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+              ))
+            )}
+          </div>
+
+          {/* Safety Violations */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Safety Violations</h3>
+              <Button type="button" variant="outline" onClick={addViolation}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Violation
+              </Button>
+            </div>
+
+            {violations.map((violation, violationIndex) => (
+              <Card key={violation.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">Violation {violationIndex + 1}</CardTitle>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeViolation(violationIndex)}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      value={violation.description}
+                      onChange={(e) => updateViolation(violationIndex, { description: e.target.value })}
+                      placeholder="Describe the safety violation..."
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Risk Level</Label>
+                      <Select 
+                        value={violation.riskLevel} 
+                        onValueChange={(value: any) => updateViolation(violationIndex, { riskLevel: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="critical">Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Priority</Label>
+                      <Select 
+                        value={violation.priority} 
+                        onValueChange={(value: any) => updateViolation(violationIndex, { priority: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                          <SelectItem value="moderate">Moderate</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Location</Label>
+                      <Input
+                        value={violation.location}
+                        onChange={(e) => updateViolation(violationIndex, { location: e.target.value })}
+                        placeholder="Specific location of violation"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Corrective Action Required</Label>
+                    <Textarea
+                      value={violation.correctiveAction}
+                      onChange={(e) => updateViolation(violationIndex, { correctiveAction: e.target.value })}
+                      placeholder="Describe required corrective actions..."
+                      required
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* General Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">General Inspection Notes</Label>
             <Textarea

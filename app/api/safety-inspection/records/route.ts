@@ -74,6 +74,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     
+    console.log('POST /api/safety-inspection/records - Received body:', body)
+    console.log('POST /api/safety-inspection/records - User context:', user)
+    
     // Add department to data (use user's department unless super admin specifies different)
     if (!body.department || user.accessLevel !== 'super_admin') {
       body.department = user.department;
@@ -85,8 +88,20 @@ export async function POST(request: NextRequest) {
       body.inspectorId = user.id;
     }
     
+    console.log('POST /api/safety-inspection/records - After adding defaults:', {
+      scheduleId: body.scheduleId,
+      assetId: body.assetId,
+      inspector: body.inspector,
+      department: body.department
+    })
+    
     // Validate required fields
     if (!body.scheduleId || !body.assetId || !body.inspector) {
+      console.error('POST /api/safety-inspection/records - Validation failed:', {
+        scheduleId: body.scheduleId,
+        assetId: body.assetId,
+        inspector: body.inspector
+      })
       return NextResponse.json(
         { success: false, message: 'Schedule ID, asset ID, and inspector are required' },
         { status: 400 }
