@@ -26,11 +26,21 @@ export interface RecentActivitiesResponse {
  */
 export async function fetchDashboardStats(): Promise<DashboardStatsResponse> {
   try {
+    // Get auth token from localStorage
+    const authToken = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add Authorization header if token exists
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/dashboard/stats`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       credentials: 'include', // Include cookies for authentication
     });
 

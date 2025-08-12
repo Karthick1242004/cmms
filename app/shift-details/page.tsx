@@ -642,7 +642,7 @@ export default function ShiftDetailsPage() {
             </Select>
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label>Location</Label>
             <Select value={filters.location} onValueChange={(value) => handleFilterChange("location", value)}>
               <SelectTrigger>
@@ -657,7 +657,7 @@ export default function ShiftDetailsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
         </div>
       </div>
 

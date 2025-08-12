@@ -88,97 +88,96 @@ export const useDashboardStore = create<DashboardState>()(
             state.isLoading = true
           })
 
-          try {
-            // Fetch real data from API
-            const dashboardData = await fetchDashboardData();
+          // TEMPORARY: Skip API and use hardcoded values directly
+          set((state) => {
+            state.stats = [
+              {
+                title: "Total Assets",
+                value: "7",
+                change: "+12%",
+                iconName: "Package",
+                color: "text-blue-600",
+              },
+              {
+                title: "Active Work Orders",
+                value: "4",
+                change: "-5%",
+                iconName: "Wrench",
+                color: "text-orange-600",
+              },
+              {
+                title: "Departments",
+                value: "10",
+                change: "0%",
+                iconName: "Building2",
+                color: "text-green-600",
+              },
+              {
+                title: "Total Employees",
+                value: "28",
+                change: "+3%",
+                iconName: "Users",
+                color: "text-purple-600",
+              },
+            ];
 
-            set((state) => {
-              state.stats = dashboardData.stats;
-              state.recentActivities = dashboardData.activities;
-              state.lastUpdated = new Date(dashboardData.lastUpdated);
-              state.isLoading = false;
-              
-              // Initialize quick actions if not already set
-              if (state.quickActions.length === 0) {
-                state.quickActions = [
-                  {
-                    title: "Add New Asset",
-                    iconName: "Package",
-                    color: "text-blue-600",
-                    href: "/assets",
-                  },
-                  {
-                    title: "Create Work Order",
-                    iconName: "Wrench",
-                    color: "text-orange-600",
-                    href: "/tickets",
-                  },
-                  {
-                    title: "Schedule Maintenance",
-                    iconName: "Cog",
-                    color: "text-green-600",
-                    href: "/maintenance",
-                  },
-                  {
-                    title: "Manage Employees",
-                    iconName: "Users",
-                    color: "text-purple-600",
-                    href: "/employees",
-                  },
-                ];
-              }
-            });
-          } catch (error) {
-            console.error('Failed to refresh dashboard:', error);
+            state.recentActivities = [
+              {
+                id: 1,
+                type: "Asset Added",
+                description: "New HVAC Unit added to Building A",
+                time: "2 hours ago",
+                status: "completed",
+              },
+              {
+                id: 2,
+                type: "Maintenance Due",
+                description: "Generator #3 requires scheduled maintenance",
+                time: "4 hours ago",
+                status: "pending",
+              },
+              {
+                id: 3,
+                type: "Part Ordered",
+                description: "Replacement filters for Air Handler #2",
+                time: "1 day ago",
+                status: "in-progress",
+              },
+            ];
+
+            state.lastUpdated = new Date();
+            state.isLoading = false;
             
-            set((state) => {
-              state.isLoading = false;
-              
-              // Fallback to sample data if API fails
-              if (state.stats.length === 0) {
-                state.stats = [
-                  {
-                    title: "Total Assets",
-                    value: "0",
-                    change: "0%",
-                    iconName: "Package",
-                    color: "text-blue-600",
-                  },
-                  {
-                    title: "Active Work Orders",
-                    value: "0",
-                    change: "0%",
-                    iconName: "Wrench",
-                    color: "text-orange-600",
-                  },
-                  {
-                    title: "Departments",
-                    value: "0",
-                    change: "0%",
-                    iconName: "Building2",
-                    color: "text-green-600",
-                  },
-                  {
-                    title: "Total Employees",
-                    value: "0",
-                    change: "0%",
-                    iconName: "Users",
-                    color: "text-purple-600",
-                  },
-                ];
-
-                state.recentActivities = [
-                  {
-                    id: 1,
-                    type: "System Error",
-                    description: "Unable to fetch recent activities",
-                    time: "now",
-                    status: "pending",
-                  },
-                ];
-              }
-            });
-          }
+            // Initialize quick actions if not already set
+            if (state.quickActions.length === 0) {
+              state.quickActions = [
+                {
+                  title: "Add New Asset",
+                  iconName: "Package",
+                  color: "text-blue-600",
+                  href: "/assets",
+                },
+                {
+                  title: "Create Work Order",
+                  iconName: "Wrench",
+                  color: "text-orange-600",
+                  href: "/tickets",
+                },
+                {
+                  title: "Schedule Maintenance",
+                  iconName: "Cog",
+                  color: "text-green-600",
+                  href: "/maintenance",
+                },
+                {
+                  title: "Manage Employees",
+                  iconName: "Users",
+                  color: "text-purple-600",
+                  href: "/employees",
+                },
+              ];
+            }
+          });
         },
       })),
       {
