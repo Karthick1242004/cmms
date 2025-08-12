@@ -75,7 +75,7 @@ const priorityColors = {
 const availableRoles = ['admin', 'manager', 'technician'];
 
 export function NoticeBoardForm() {
-  const { isDialogOpen, setDialogOpen, createNotice, isCreating } = useNoticeBoardStore();
+  const { isDialogOpen, setDialogOpen, createNotice, isCreating, updateNotice, isUpdating, currentNotice } = useNoticeBoardStore();
   const { data: departmentsData, isLoading: isDepartmentsLoading } = useDepartments();
   
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
@@ -109,6 +109,7 @@ export function NoticeBoardForm() {
   const watchedExpiresAt = watch('expiresAt');
 
   const departments = departmentsData?.data?.departments || [];
+  const isEditMode = !!currentNotice;
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -120,6 +121,36 @@ export function NoticeBoardForm() {
       setNewTag('');
     }
   }, [isDialogOpen, reset]);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (isDialogOpen && currentNotice) {
+      // Convert the notice data to form format
+      const formData = {
+        title: currentNotice.title,
+        content: currentNotice.content,
+        type: currentNotice.type,
+        linkUrl: currentNotice.linkUrl || '',
+        fileName: currentNotice.fileName || '',
+        fileType: currentNotice.fileType || '',
+        priority: currentNotice.priority,
+        targetAudience: currentNotice.targetAudience,
+        targetDepartments: currentNotice.targetDepartments || [],
+        targetRoles: currentNotice.targetRoles || [],
+        expiresAt: currentNotice.expiresAt ? new Date(currentNotice.expiresAt) : undefined,
+        tags: currentNotice.tags || [],
+        isPublished: currentNotice.isPublished,
+      };
+
+      // Reset form with current notice data
+      reset(formData);
+      
+      // Set state variables
+      setSelectedDepartments(currentNotice.targetDepartments || []);
+      setSelectedRoles(currentNotice.targetRoles || []);
+      setTags(currentNotice.tags || []);
+    }
+  }, [isDialogOpen, currentNotice, reset]);
 
   // Update form values when selections change
   useEffect(() => {
@@ -136,11 +167,17 @@ export function NoticeBoardForm() {
 
   const onSubmit = async (data: NoticeBoardFormData) => {
     try {
-      await createNotice(data);
-      toast.success('Notice created successfully!');
+      if (isEditMode && currentNotice) {
+        await updateNotice(currentNotice.id, data);
+        toast.success('Notice updated successfully!');
+      } else {
+        await createNotice(data);
+        toast.success('Notice created successfully!');
+      }
       setDialogOpen(false);
     } catch (error) {
-      toast.error('Failed to create notice. Please try again.');
+      const action = isEditMode ? 'update' : 'create';
+      toast.error(`Failed to ${action} notice. Please try again.`);
     }
   };
 
@@ -514,12 +551,15 @@ export function NoticeBoardForm() {
           type="button"
           variant="outline"
           onClick={() => setDialogOpen(false)}
-          disabled={isSubmitting || isCreating}
+          disabled={isSubmitting || isCreating || isUpdating}
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting || isCreating}>
-          {isSubmitting || isCreating ? 'Creating...' : 'Create Notice'}
+        <Button type="submit" disabled={isSubmitting || isCreating || isUpdating}>
+          {isSubmitting || isCreating || isUpdating ? 
+            (isEditMode ? 'Updating...' : 'Creating...') : 
+            (isEditMode ? 'Update Notice' : 'Create Notice')
+          }
         </Button>
       </div>
     </form>

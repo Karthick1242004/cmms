@@ -31,25 +31,38 @@ export async function getUserFromToken(request: NextRequest): Promise<UserContex
     const token = authHeader?.replace('Bearer ', '') || 
                   request.cookies.get('auth-token')?.value
 
+    console.log('🔑 [AUTH-HELPERS] Auth header:', authHeader)
+    console.log('🔑 [AUTH-HELPERS] Extracted token:', token ? 'Present' : 'Missing')
+
     if (!token) {
+      console.log('❌ [AUTH-HELPERS] No token found')
       return null
     }
 
     if (!process.env.JWT_SECRET) {
+      console.log('❌ [AUTH-HELPERS] No JWT_SECRET found')
       return null
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
+    console.log('🔓 [AUTH-HELPERS] Decoded token:', { userId: decoded.userId })
     
     await connectDB()
     
     const employee = await Employee.findById(decoded.userId).select('-password')
+    console.log('👤 [AUTH-HELPERS] Found employee:', employee ? {
+      id: employee._id.toString(),
+      email: employee.email,
+      role: employee.role,
+      accessLevel: employee.accessLevel
+    } : 'Not found')
     
     if (!employee) {
+      console.log('❌ [AUTH-HELPERS] Employee not found in database')
       return null
     }
 
-    return {
+    const userContext = {
       id: employee._id.toString(),
       email: employee.email,
       department: employee.department,
@@ -57,8 +70,11 @@ export async function getUserFromToken(request: NextRequest): Promise<UserContex
       name: employee.name,
       accessLevel: employee.accessLevel || 'normal_user'
     }
+
+    console.log('✅ [AUTH-HELPERS] Returning user context:', userContext)
+    return userContext
   } catch (error) {
-    console.error('Error getting user from token:', error)
+    console.error('❌ [AUTH-HELPERS] Error getting user from token:', error)
     return null
   }
 }

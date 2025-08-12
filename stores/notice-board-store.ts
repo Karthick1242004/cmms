@@ -304,6 +304,13 @@ export const useNoticeBoardStore = create<NoticeBoardState>()(
           });
         },
 
+        setEditNotice: (notice: NoticeBoard) => {
+          set((state) => {
+            state.currentNotice = notice;
+            state.isDialogOpen = true;
+          });
+        },
+
         setFilters: (newFilters: Partial<NoticeBoardFilters>) => {
           set((state) => {
             state.filters = { ...state.filters, ...newFilters };

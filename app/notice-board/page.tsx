@@ -29,6 +29,7 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { toast } from 'sonner';
@@ -60,10 +61,12 @@ export default function NoticeBoardPage() {
     searchTerm,
     filters,
     pagination,
+    currentNotice,
     fetchNotices,
     setSearchTerm,
     setFilters,
     setDialogOpen,
+    setEditNotice,
     deleteNotice,
     togglePublishNotice,
   } = useNoticeBoardStore();
@@ -71,18 +74,22 @@ export default function NoticeBoardPage() {
   const [selectedNotice, setSelectedNotice] = useState<NoticeBoard | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  const isAdmin = user?.role === 'admin';
+  // Check if user can create notices (all authenticated users)
+  const canCreateNotice = !!user;
+  
+  // Check if user can delete/edit notices (super admin and department leads only)
+  const canManageNotices = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin';
 
   useEffect(() => {
     // Fetch notices based on user role
-    if (isAdmin) {
-      // Admins see all notices (published + unpublished)
+    if (canManageNotices) {
+      // Managers see all notices (published + unpublished)
       fetchNotices({ page: 1, limit: 10 });
     } else {
       // Regular users see only published notices
       fetchNotices({ page: 1, limit: 10, isPublished: true });
     }
-  }, [fetchNotices, isAdmin]);
+  }, [fetchNotices, canManageNotices]);
 
   const handleViewNotice = (notice: NoticeBoard) => {
     setSelectedNotice(notice);
@@ -91,8 +98,7 @@ export default function NoticeBoardPage() {
 
   const handleEditNotice = (notice: NoticeBoard) => {
     // Set the notice for editing and open the dialog
-    // Note: Edit functionality will be implemented when the form component supports it
-    toast.info('Edit functionality coming soon');
+    setEditNotice(notice);
   };
 
   const handleDeleteNotice = async (id: string) => {
@@ -170,7 +176,7 @@ export default function NoticeBoardPage() {
                 {notice.title}
               </CardTitle>
             </div>
-            {isAdmin && (
+            {canManageNotices && (
               <div className="flex items-center gap-1 ml-2">
                 <Button
                   variant="ghost"
@@ -241,7 +247,7 @@ export default function NoticeBoardPage() {
             </div>
           </div>
 
-          {isAdmin && (
+          {canManageNotices && (
             <div className="mt-3 pt-3 border-t flex items-center justify-between">
               <span className="text-xs text-gray-500">
                 By {notice.createdByName}
@@ -264,7 +270,7 @@ export default function NoticeBoardPage() {
     return (
       <PageLayout>
         <div className="flex items-center justify-center h-64">
-          <LoadingSpinner />
+          <Loader2 className="animate-spin text-white" />
         </div>
       </PageLayout>
     );
@@ -273,14 +279,14 @@ export default function NoticeBoardPage() {
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex mt-4 items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Notice Board</h1>
             <p className="text-muted-foreground">
               Stay updated with company announcements and important information
             </p>
           </div>
-          {isAdmin && (
+          {canCreateNotice && (
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Create Notice
@@ -293,7 +299,7 @@ export default function NoticeBoardPage() {
         {/* Filters and Search */}
         <div className="mb-6 space-y-4">
           {/* Notice Count Info */}
-          {/* {isAdmin && (
+          {/* {canManageNotices && (
             <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
               <strong>Notices:</strong> Showing {filteredNotices.length} of {pagination?.totalCount || 0} notices
               <span className="ml-2 text-xs text-blue-600">
@@ -381,7 +387,7 @@ export default function NoticeBoardPage() {
             <p className="text-gray-500 mb-4">
               {searchTerm ? 'Try adjusting your search terms.' : 'No notices have been published yet.'}
             </p>
-                      {isAdmin && !searchTerm && (
+                      {canCreateNotice && !searchTerm && (
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Create First Notice
@@ -501,7 +507,7 @@ export default function NoticeBoardPage() {
       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Create Notice</DialogTitle>
+            <DialogTitle>{currentNotice ? 'Edit Notice' : 'Create Notice'}</DialogTitle>
           </DialogHeader>
           <NoticeBoardForm />
         </DialogContent>

@@ -16,11 +16,19 @@ export async function GET(request: NextRequest) {
 
     // Add user context headers if available
     if (user) {
+      // Normalize role for backend compatibility
+      const roleForBackend =
+        user.accessLevel === 'super_admin' || user.accessLevel === 'department_admin'
+          ? 'admin'
+          : user.role;
+
       headers['x-user-id'] = user.id;
       headers['x-user-name'] = user.name;
       headers['x-user-email'] = user.email;
       headers['x-user-department'] = user.department;
-      headers['x-user-role'] = user.role;
+      headers['x-user-role'] = roleForBackend;
+      headers['x-user-role-name'] = user.role;
+      headers['x-user-access-level'] = user.accessLevel;
     }
 
     // Forward request to backend server

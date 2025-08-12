@@ -15,6 +15,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
     
+    // Normalize role for backend compatibility
+    const roleForBackend =
+      user.accessLevel === 'super_admin' || user.accessLevel === 'department_admin'
+        ? 'admin'
+        : user.role;
+
     // Forward request to backend with user context
     const response = await fetch(`${SERVER_BASE_URL}/api/notice-board?${queryString}`, {
       headers: {
@@ -22,8 +28,10 @@ export async function GET(request: NextRequest) {
         'x-user-id': user.id,
         'x-user-email': user.email,
         'x-user-department': user.department,
-        'x-user-role': user.role,
+        'x-user-role': roleForBackend,
+        'x-user-role-name': user.role,
         'x-user-name': user.name,
+        'x-user-access-level': user.accessLevel,
       },
     });
 
@@ -55,12 +63,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only admins can create notices
-    if (user.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
-    }
+    // All authenticated users can create notices
+    // (No additional role restrictions as requested)
 
     const body = await request.json();
+
+    // Normalize role for backend compatibility
+    const roleForBackend =
+      user.accessLevel === 'super_admin' || user.accessLevel === 'department_admin'
+        ? 'admin'
+        : user.role;
+
+    // Enhance the request body with user information to ensure proper attribution
+    const enhancedBody = {
+      ...body,
+      // Add user information to the request body for backend processing
+      createdBy: user.id,
+      createdByName: user.name,
+      createdByRole: user.role,
+      createdByEmail: user.email,
+      createdByDepartment: user.department,
+      // Add access level information
+      createdByAccessLevel: user.accessLevel,
+      // Add timestamp
+      createdAt: new Date().toISOString(),
+    };
+
+    console.log('📝 [CREATE-NOTICE] Enhanced body with user info:', {
+      originalBody: body,
+      enhancedBody: enhancedBody,
+      user: {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        email: user.email,
+        department: user.department,
+        accessLevel: user.accessLevel
+      }
+    });
 
     // Forward request to backend with user context
     const response = await fetch(`${SERVER_BASE_URL}/api/notice-board`, {
@@ -70,15 +110,17 @@ export async function POST(request: NextRequest) {
         'x-user-id': user.id,
         'x-user-email': user.email,
         'x-user-department': user.department,
-        'x-user-role': user.role,
+        'x-user-role': roleForBackend,
+        'x-user-role-name': user.role,
         'x-user-name': user.name,
+        'x-user-access-level': user.accessLevel,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(enhancedBody),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Backend error:', response.status, errorText);
+      console.error('❌ [CREATE-NOTICE] Backend error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Backend request failed', details: errorText },
         { status: response.status }
@@ -86,9 +128,10 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    console.log('✅ [CREATE-NOTICE] Notice created successfully:', data);
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Notice Board API Error:', error);
+    console.error('❌ [CREATE-NOTICE] API Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

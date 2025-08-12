@@ -17,6 +17,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAuthStore } from "@/stores/auth-store"
 import type { NavigationItem, NavigationState } from "@/types/navigation"
+import Logo from '@/public/vonelogo.png'
+import Image from "next/image"
 
 // Helper function to truncate text
 const truncateText = (text: string, maxLength: number) => {
@@ -46,6 +48,7 @@ export const AppSidebar = memo(function AppSidebar() {
       <SidebarHeader className="p-4 border-b bg-card/50">
         <div className="flex flex-col space-y-2">
           <div className="flex items-center justify-between">
+            <Image src={Logo} alt="FMMS 360" width={30} height={36} />
             <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
               FMMS 360
             </h2>

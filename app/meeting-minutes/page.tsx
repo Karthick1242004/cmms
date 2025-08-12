@@ -30,7 +30,8 @@ import {
   XCircle,
   Clock3,
   Archive,
-  Building2
+  Building2,
+  Loader2
 } from 'lucide-react';
 import { useMeetingMinutesList, useMeetingMinutesActions, useMeetingMinutesStats, useSelectedMeetingMinutes } from '@/stores/meeting-minutes-store';
 import { useDepartments } from '@/hooks/use-departments';
@@ -67,7 +68,8 @@ export default function MeetingMinutesPage() {
     name: user.name,
     email: user.email,
     department: user.department,
-    role: user.role === 'admin' ? 'admin' as const : 'user' as const,
+    role: (user.accessLevel === 'super_admin' || user.role === 'admin') ? 'admin' as const : 'user' as const,
+    accessLevel: user.accessLevel,
   } : null;
   
   // Store hooks
@@ -212,7 +214,7 @@ export default function MeetingMinutesPage() {
     return (
       <PageLayout>
         <div className="flex items-center justify-center h-64">
-          <LoadingSpinner />
+          <Loader2 className="animate-spin text-white" />
         </div>
       </PageLayout>
     );

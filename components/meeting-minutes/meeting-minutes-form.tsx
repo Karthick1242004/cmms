@@ -31,11 +31,13 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useMeetingMinutesActions } from '@/stores/meeting-minutes-store';
 import { useDepartments } from '@/hooks/use-departments';
+import { employeesApi } from '@/lib/employees-api';
 import type { 
   MeetingMinutes, 
   MeetingMinutesFormData, 
   ActionItem 
 } from '@/types/meeting-minutes';
+import type { Employee } from '@/types/employee';
 
 interface MeetingMinutesFormProps {
   meetingMinutes?: MeetingMinutes;
@@ -47,6 +49,7 @@ interface MeetingMinutesFormProps {
     email: string;
     department: string;
     role: 'admin' | 'user';
+    accessLevel?: 'super_admin' | 'department_admin' | 'normal_user';
   };
 }
 
@@ -86,6 +89,9 @@ export function MeetingMinutesForm({
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [timeInput, setTimeInput] = useState('');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
 
   // Hooks
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments();
@@ -115,8 +121,8 @@ export function MeetingMinutesForm({
       setSelectedDate(meetingDate);
       setTimeInput(format(meetingDate, 'HH:mm'));
     } else {
-      // Creating new meeting minutes - set default department for non-admin users
-      if (userContext.role !== 'admin') {
+      // Creating new meeting minutes - set default department for non-super-admin users
+      if (userContext.accessLevel !== 'super_admin') {
         setFormData(prev => ({
           ...prev,
           department: userContext.department,
@@ -138,6 +144,36 @@ export function MeetingMinutesForm({
       }));
     }
   }, [selectedDate, timeInput]);
+
+  // Fetch employees based on selected department
+  const fetchEmployees = async (department?: string) => {
+    if (!department) {
+      setEmployees([]);
+      return;
+    }
+    
+    try {
+      setIsLoadingEmployees(true);
+      const response = await employeesApi.getAll({ department });
+      if (response.success && response.data?.employees) {
+        setEmployees(response.data.employees);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      toast.error('Failed to load employees');
+    } finally {
+      setIsLoadingEmployees(false);
+    }
+  };
+
+  // Fetch employees when department changes
+  useEffect(() => {
+    if (formData.department) {
+      fetchEmployees(formData.department);
+    } else {
+      setEmployees([]);
+    }
+  }, [formData.department]);
 
   // Handlers
   const handleInputChange = (field: keyof MeetingMinutesFormData, value: any) => {
@@ -308,13 +344,13 @@ export function MeetingMinutesForm({
             {/* Department */}
             <div className="space-y-2">
               <Label htmlFor="department">Department *</Label>
-              {userContext.role === 'admin' ? (
+              {userContext.accessLevel === 'super_admin' ? (
                 <Select
                   value={formData.department}
                   onValueChange={(value) => handleInputChange('department', value)}
                   disabled={isLoadingDepartments}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-background border-input">
                     <Building2 className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
@@ -327,9 +363,9 @@ export function MeetingMinutesForm({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-md">
+                <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-md border">
                   <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span>{userContext.department}</span>
+                  <span className="text-foreground">{userContext.department}</span>
                 </div>
               )}
             </div>
@@ -488,17 +524,70 @@ export function MeetingMinutesForm({
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Add Attendee */}
-          <div className="flex space-x-2">
-            <Input
-              value={attendeeInput}
-              onChange={(e) => setAttendeeInput(e.target.value)}
-              placeholder="Enter attendee name"
-              onKeyPress={(e) => e.key === 'Enter' && handleAddAttendee()}
-              className="flex-1"
-            />
-            <Button type="button" onClick={handleAddAttendee} variant="outline">
-              <Plus className="h-4 w-4" />
-            </Button>
+          <div className="space-y-2">
+            <div className="flex space-x-2">
+              <div className="flex-1 relative">
+                <Popover open={showEmployeeDropdown} onOpenChange={setShowEmployeeDropdown}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline" 
+                      role="combobox"
+                      aria-expanded={showEmployeeDropdown}
+                      className="w-full justify-between"
+                      disabled={!formData.department || isLoadingEmployees}
+                    >
+                      {attendeeInput || "Select or type employee name..."}
+                      <Users className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput 
+                        placeholder="Search employees..." 
+                        value={attendeeInput}
+                        onValueChange={setAttendeeInput}
+                      />
+                      <CommandEmpty>
+                        {isLoadingEmployees ? "Loading employees..." : "No employees found."}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        <CommandList>
+                          {employees.map((employee) => (
+                            <CommandItem
+                              key={employee.id}
+                              value={employee.name}
+                              onSelect={(value) => {
+                                setAttendeeInput(value);
+                                setShowEmployeeDropdown(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.attendees.includes(employee.name) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span>{employee.name}</span>
+                                <span className="text-xs text-muted-foreground">{employee.role} - {employee.email}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandList>
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <Button type="button" onClick={handleAddAttendee} variant="outline">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {!formData.department && (
+              <p className="text-xs text-muted-foreground">
+                Please select a department first to see employees
+              </p>
+            )}
           </div>
 
           {/* Attendees List */}

@@ -169,6 +169,7 @@ export interface NoticeBoardState {
   // UI Actions
   setDialogOpen: (open: boolean) => void;
   setCurrentNotice: (notice: NoticeBoard | null) => void;
+  setEditNotice: (notice: NoticeBoard) => void;
   setFilters: (filters: Partial<NoticeBoardFilters>) => void;
   setSearchTerm: (term: string) => void;
   clearFilters: () => void;

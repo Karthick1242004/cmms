@@ -302,7 +302,7 @@ export function EmployeeAnalyticsCharts({ employeeId }: EmployeeAnalyticsChartsP
       </div>
 
       {/* Asset Workload Chart */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Asset Workload Distribution</CardTitle>
           <CardDescription>
@@ -321,7 +321,7 @@ export function EmployeeAnalyticsCharts({ employeeId }: EmployeeAnalyticsChartsP
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Detailed Asset Workload Table */}
       <Card>
