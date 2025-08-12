@@ -23,6 +23,7 @@ import {
 } from "recharts"
 import { employeesApi } from "@/lib/employees-api"
 import type { EmployeeAnalytics } from "@/types/employee"
+import { sampleEmployeeAnalyticsData } from "@/data/employee-analytics-sample"
 import { toast } from "sonner"
 
 interface EmployeeAnalyticsChartsProps {
@@ -45,6 +46,13 @@ export function EmployeeAnalyticsCharts({ employeeId }: EmployeeAnalyticsChartsP
     try {
       setIsLoading(true)
       setError(null)
+      
+      // Check if this is the sample employee (Srinath VV) and use sample data
+      if (employeeId === "689aad45e3d407a4e867a91e") {
+        setAnalytics(sampleEmployeeAnalyticsData)
+        setIsLoading(false)
+        return
+      }
       
       const response = await employeesApi.getEmployeeAnalytics(employeeId)
       

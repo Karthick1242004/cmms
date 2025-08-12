@@ -38,6 +38,7 @@ import { employeesApi } from "@/lib/employees-api"
 import type { EmployeeDetail } from "@/types/employee"
 import { EmployeeAnalyticsCharts } from "@/components/employees/employee-analytics-charts"
 import { EmployeePerformanceReport } from "../../../components/employees/employee-performance-report"
+import { sampleEmployeeAnalytics } from "@/data/employees-sample"
 import { toast } from "sonner"
 
 export default function EmployeeDetailPage() {
@@ -59,6 +60,13 @@ export default function EmployeeDetailPage() {
     try {
       setIsLoading(true)
       setError(null)
+      
+      // Check if this is the sample employee (Srinath VV) and use sample data
+      if (employeeId === "689aad45e3d407a4e867a91e") {
+        setEmployee(sampleEmployeeAnalytics)
+        setIsLoading(false)
+        return
+      }
       
       const response = await employeesApi.getEmployeeDetails(employeeId)
       
