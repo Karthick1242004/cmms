@@ -21,10 +21,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuthStore } from "@/stores/auth-store"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useCommonQuery, useCreateMutation, useUpdateMutation, useDeleteMutation, queryKeys } from "@/hooks/use-query"
+import { useDepartments } from "@/hooks/use-departments"
+import { useEmployees } from "@/hooks/use-employees"
+import { useLocations } from "@/hooks/use-locations"
+import { useToast } from "@/hooks/use-toast"
 import type { ShiftDetail } from "@/types/shift-detail"
 
 const DEPARTMENTS = ["Maintenance", "HVAC", "Electrical", "Plumbing", "Security", "Cleaning", "IT"]
-const LOCATIONS = ["Building A", "Building B", "Building C", "Building D", "All Buildings"]
 const SHIFT_TYPES = [
   { value: "day", label: "Day Shift" },
   { value: "night", label: "Night Shift" },
@@ -35,17 +38,18 @@ const WORK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satu
 
 export default function ShiftDetailsPage() {
   const { user } = useAuthStore()
-  const isAdmin = user?.accessLevel === 'super_admin'
+  const { toast } = useToast()
+  const isSuperAdmin = user?.accessLevel === 'super_admin'
 
   // React Query for data fetching
   // Build query params including department filter for non-admin users
   const queryParams = useMemo(() => {
     const params = new URLSearchParams({ limit: '100' })
-    if (!isAdmin && user?.department) {
+    if (!isSuperAdmin && user?.department) {
       params.append('department', user.department)
     }
     return params.toString()
-  }, [isAdmin, user?.department])
+  }, [isSuperAdmin, user?.department])
 
 
 
@@ -68,7 +72,7 @@ export default function ShiftDetailsPage() {
 
   // Filter state - initialize department filter based on user's department
   const [filters, setFilters] = useState({
-    department: !isAdmin && user?.department ? user.department : "all",
+    department: !isSuperAdmin && user?.department ? user.department : "all",
     shiftType: "all",
     status: "all",
     location: "all",
@@ -77,11 +81,12 @@ export default function ShiftDetailsPage() {
 
 
   // Form state
+  const [selectedDepartment, setSelectedDepartment] = useState("")
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("")
   const [employeeName, setEmployeeName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [department, setDepartment] = useState("")
-  const [role, setRole] = useState("")
   const [shiftType, setShiftType] = useState<"day" | "night" | "rotating" | "on-call">("day")
   const [shiftStartTime, setShiftStartTime] = useState("")
   const [shiftEndTime, setShiftEndTime] = useState("")
@@ -92,6 +97,28 @@ export default function ShiftDetailsPage() {
   const [joinDate, setJoinDate] = useState("")
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
+
+  // Fetch departments for super_admin users
+  const { data: departmentsData } = useDepartments()
+  const departments = departmentsData?.data?.departments || []
+
+  // Fetch locations for location dropdown
+  const { data: locationsData } = useLocations()
+  const locations = locationsData?.data?.locations || []
+
+  // Auto-select department for non-super_admin users
+  useEffect(() => {
+    if (!isSuperAdmin && user?.department) {
+      setSelectedDepartment(user.department)
+      setDepartment(user.department)
+    }
+  }, [isSuperAdmin, user?.department])
+
+  // Fetch employees based on selected department
+  const { data: employeesData } = useEmployees({
+    department: isSuperAdmin ? selectedDepartment : user?.department,
+  })
+  const employees = employeesData?.data?.employees || []
 
   // React Query mutations with automatic invalidation
   const createMutation = useCreateMutation<
@@ -105,9 +132,24 @@ export default function ShiftDetailsPage() {
         setDialogOpen(false)
         setSelectedShiftDetail(null)
       },
-      onError: (error) => {
+      onError: (error: any) => {
         console.error('Error creating shift detail:', error)
-        alert('Failed to create shift detail. Please try again.')
+        
+        // Handle duplicate shift detail error
+        if (error.status === 409) {
+          const errorMessage = error.message || 'Shift detail already exists for this employee. Please edit the existing shift detail instead of creating a new one.'
+          toast({
+            title: "Duplicate Shift Detail",
+            description: errorMessage,
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create shift detail. Please try again.",
+            variant: "destructive",
+          })
+        }
       }
     }
   )
@@ -204,11 +246,12 @@ export default function ShiftDetailsPage() {
 
   useEffect(() => {
     if (selectedShiftDetail) {
+      setSelectedDepartment(selectedShiftDetail.department)
+      setSelectedEmployeeId(selectedShiftDetail.employeeId.toString())
       setEmployeeName(selectedShiftDetail.employeeName)
       setEmail(selectedShiftDetail.email)
       setPhone(selectedShiftDetail.phone)
       setDepartment(selectedShiftDetail.department)
-      setRole(selectedShiftDetail.role)
       setShiftType(selectedShiftDetail.shiftType)
       setShiftStartTime(selectedShiftDetail.shiftStartTime)
       setShiftEndTime(selectedShiftDetail.shiftEndTime)
@@ -224,11 +267,15 @@ export default function ShiftDetailsPage() {
   }, [selectedShiftDetail, isDialogOpen])
 
   const resetForm = () => {
+    // Only reset department selection if super_admin, otherwise keep user's department
+    if (isSuperAdmin) {
+      setSelectedDepartment("")
+    }
+    setSelectedEmployeeId("")
     setEmployeeName("")
     setEmail("")
     setPhone("")
-    setDepartment("")
-    setRole("")
+    setDepartment(isSuperAdmin ? "" : user?.department || "")
     setShiftType("day")
     setShiftStartTime("")
     setShiftEndTime("")
@@ -239,19 +286,75 @@ export default function ShiftDetailsPage() {
     setJoinDate("")
   }
 
+  // Handle department selection for super_admin
+  const handleDepartmentChange = (dept: string) => {
+    setSelectedDepartment(dept)
+    setDepartment(dept)
+    // Reset employee selection when department changes
+    setSelectedEmployeeId("")
+    setEmployeeName("")
+    setEmail("")
+    setPhone("")
+  }
+
+  // Handle employee selection
+  const handleEmployeeChange = (employeeId: string) => {
+    setSelectedEmployeeId(employeeId)
+    const selectedEmployee = employees.find(emp => emp.employeeId === employeeId || emp.id === employeeId)
+    if (selectedEmployee) {
+      setEmployeeName(selectedEmployee.name)
+      setEmail(selectedEmployee.email)
+      setPhone(selectedEmployee.phone)
+      setDepartment(selectedEmployee.department)
+      
+      // Auto-map supervisor based on role hierarchy
+      const supervisorName = determineSupervisor(selectedEmployee, employees)
+      setSupervisor(supervisorName)
+    }
+  }
+
+  // Function to determine supervisor based on employee role and department
+  const determineSupervisor = (employee: any, allEmployees: any[]) => {
+    const employeeRole = employee.role?.toLowerCase() || ""
+    const employeeDepartment = employee.department
+
+    // If the selected employee is a department head/manager/supervisor, no supervisor needed
+    if (employeeRole.includes("head") || 
+        employeeRole.includes("manager") || 
+        employeeRole.includes("supervisor") ||
+        employee.accessLevel === "department_admin") {
+      return ""
+    }
+
+    // For normal users and team leads, find the department head/manager
+    const departmentHead = allEmployees.find(emp => 
+      emp.department === employeeDepartment && 
+      emp.employeeId !== employee.employeeId && // Don't assign self as supervisor
+      (emp.role?.toLowerCase().includes("head") || 
+       emp.role?.toLowerCase().includes("manager") ||
+       emp.accessLevel === "department_admin")
+    )
+
+    return departmentHead ? departmentHead.name : ""
+  }
+
   const handleSubmit = async () => {
     if (!employeeName || !email || !phone || !department || !shiftStartTime || !shiftEndTime) {
-      alert("Please fill in all required fields.")
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      })
       return
     }
 
     const shiftDetailData = {
-      employeeId: selectedShiftDetail?.employeeId || Date.now(),
+      employeeId: selectedEmployeeId ? (isNaN(parseInt(selectedEmployeeId)) ? Date.now() : parseInt(selectedEmployeeId)) : (selectedShiftDetail?.employeeId || Date.now()),
       employeeName,
       email,
       phone,
       department,
-      role,
+      role: "", // Remove role requirement, send empty string
       shiftType,
       shiftStartTime,
       shiftEndTime,
@@ -371,10 +474,10 @@ export default function ShiftDetailsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Shift Details</h1>
           <p className="text-muted-foreground">
-            {isAdmin ? "Manage employee shift schedules and assignments" : "View employee shift schedules and contact information"}
+            {isSuperAdmin ? "Manage employee shift schedules and assignments" : "View employee shift schedules and contact information"}
           </p>
         </div>
-        {isAdmin && (
+        {isSuperAdmin && (
           <Button onClick={() => handleOpenDialog()}>
             <Plus className="mr-2 h-4 w-4" />
             Add Shift Detail
@@ -382,7 +485,7 @@ export default function ShiftDetailsPage() {
         )}
       </div>
 
-      {isAdmin && (
+                      {isSuperAdmin && (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -394,65 +497,117 @@ export default function ShiftDetailsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="employeeName">Employee Name *</Label>
-                  <Input
-                    id="employeeName"
-                    value={employeeName}
-                    onChange={(e) => setEmployeeName(e.target.value)}
-                    placeholder="Enter employee name"
-                  />
+              {isSuperAdmin ? (
+                // Super Admin: Cascading Department → Employee selection
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="selectedDepartment">Department *</Label>
+                      <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departments.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.name}>
+                              {dept.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="selectedEmployee">Employee *</Label>
+                      <Select 
+                        value={selectedEmployeeId} 
+                        onValueChange={handleEmployeeChange}
+                        disabled={!selectedDepartment}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={selectedDepartment ? "Select employee" : "Select department first"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employees.map((emp) => (
+                            <SelectItem key={emp.id} value={emp.employeeId || emp.id}>
+                              {emp.name} ({emp.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Display selected employee details */}
+                  {selectedEmployeeId && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded">
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Employee Name</Label>
+                        <p className="text-sm font-medium">{employeeName}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Email</Label>
+                        <p className="text-sm">{email}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Phone</Label>
+                        <p className="text-sm">{phone}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Department</Label>
+                        <p className="text-sm">{department}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter email address"
-                  />
+              ) : (
+                // Non-Super Admin: Show department and employees from user's department only
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="userDepartment">Department</Label>
+                    <Input
+                      id="userDepartment"
+                      value={user?.department || ""}
+                      disabled
+                      className="bg-muted"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="selectedEmployee">Employee *</Label>
+                    <Select value={selectedEmployeeId} onValueChange={handleEmployeeChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select employee from your department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.employeeId || emp.id}>
+                            {emp.name} ({emp.role})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Display selected employee details */}
+                  {selectedEmployeeId && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded">
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Employee Name</Label>
+                        <p className="text-sm font-medium">{employeeName}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Email</Label>
+                        <p className="text-sm">{email}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Phone</Label>
+                        <p className="text-sm">{phone}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone *</Label>
-                  <Input
-                    id="phone"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Enter phone number"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Input
-                    id="role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    placeholder="Enter job role"
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Select value={department} onValueChange={setDepartment}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEPARTMENTS.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
                   <Select value={location} onValueChange={setLocation}>
@@ -460,13 +615,28 @@ export default function ShiftDetailsPage() {
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent>
-                      {LOCATIONS.map((loc) => (
-                        <SelectItem key={loc} value={loc}>
-                          {loc}
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.name}>
+                          {loc.name} ({loc.type})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="supervisor">Supervisor</Label>
+                  <Input
+                    id="supervisor"
+                    value={supervisor}
+                    onChange={(e) => setSupervisor(e.target.value)}
+                    placeholder={selectedEmployeeId ? "Auto-populated based on role" : "Enter supervisor name"}
+                    className={supervisor && selectedEmployeeId ? "bg-blue-50 border-blue-200" : ""}
+                  />
+                  {supervisor && selectedEmployeeId && (
+                    <p className="text-xs text-blue-600">
+                      Auto-assigned department head. You can edit if needed.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -523,16 +693,7 @@ export default function ShiftDetailsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="supervisor">Supervisor</Label>
-                  <Input
-                    id="supervisor"
-                    value={supervisor}
-                    onChange={(e) => setSupervisor(e.target.value)}
-                    placeholder="Enter supervisor name"
-                  />
-                </div>
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="joinDate">Join Date</Label>
                   <Input
@@ -650,9 +811,9 @@ export default function ShiftDetailsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All locations</SelectItem>
-                {LOCATIONS.map((loc) => (
-                  <SelectItem key={loc} value={loc}>
-                    {loc}
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id} value={loc.name}>
+                    {loc.name} ({loc.type})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -677,7 +838,7 @@ export default function ShiftDetailsPage() {
               <TableHead>Work Schedule</TableHead>
               <TableHead>Supervisor</TableHead>
               <TableHead>Status</TableHead>
-              {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+              {isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -753,7 +914,7 @@ export default function ShiftDetailsPage() {
                     {shift.status.replace("-", " ")}
                   </Badge>
                 </TableCell>
-                {isAdmin && (
+                {isSuperAdmin && (
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

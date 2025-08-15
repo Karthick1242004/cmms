@@ -154,16 +154,13 @@ export const useShiftDetailsStore = create<ShiftDetailsState>()(
           const response = await shiftDetailsApi.getAll(params)
           
           if (response.success) {
-            // Filter shift details based on user's department if not super_admin
-            const filteredData = user?.accessLevel !== 'super_admin'
-              ? response.data.shiftDetails.filter(
-                  (shift: ShiftDetail) => shift.department === user?.department
-                )
-              : response.data.shiftDetails
+            // Data is already filtered by the API based on user access level
+            // No need for additional client-side filtering since the API handles access control
+            const shiftDetailsData = response.data.shiftDetails || []
 
             set((state) => {
-              state.shiftDetails = filteredData
-              state.filteredShiftDetails = filteredData
+              state.shiftDetails = shiftDetailsData
+              state.filteredShiftDetails = shiftDetailsData
             })
             get().filterShiftDetails()
           }
