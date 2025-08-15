@@ -85,7 +85,7 @@ export function useDeleteDepartment() {
 
   return useMutation({
     mutationFn: departmentsApi.delete,
-    onSuccess: (_, deletedId) => {
+    onSuccess: (data, deletedId: string) => {
       // Remove the department from cache
       queryClient.removeQueries({ queryKey: departmentKeys.detail(deletedId) });
       
