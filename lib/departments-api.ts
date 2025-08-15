@@ -19,7 +19,20 @@ interface DepartmentResponse {
 
 interface SingleDepartmentResponse {
   success: boolean;
-  data: Department;
+  data: Department | {
+    department: Department;
+    employee?: {
+      id: string;
+      name: string;
+      email: string;
+      phone: string;
+      role: string;
+      department: string;
+      accessLevel: string;
+      status: string;
+      employeeId: string;
+    };
+  };
   message: string;
 }
 

@@ -46,6 +46,12 @@ export default function DepartmentsPage() {
   const [description, setDescription] = useState("")
   const [manager, setManager] = useState("")
   const [status, setStatus] = useState<DepartmentStatus>("active")
+  
+  // Manager employee fields (for new department creation only)
+  const [managerEmail, setManagerEmail] = useState("")
+  const [managerPhone, setManagerPhone] = useState("")
+  const [managerPassword, setManagerPassword] = useState("")
+  const [managerAccessLevel, setManagerAccessLevel] = useState<"department_admin" | "normal_user">("department_admin")
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -76,6 +82,11 @@ export default function DepartmentsPage() {
       setDescription(department.description)
       setManager(department.manager)
       setStatus(department.status)
+      // Clear manager employee fields when editing (not applicable)
+      setManagerEmail("")
+      setManagerPhone("")
+      setManagerPassword("")
+      setManagerAccessLevel("department_admin")
     } else {
       // Reset form for adding new
       setName("")
@@ -83,6 +94,11 @@ export default function DepartmentsPage() {
       setDescription("")
       setManager("")
       setStatus("active")
+      // Initialize manager employee fields for new department
+      setManagerEmail("")
+      setManagerPhone("")
+      setManagerPassword("temp123") // Default password
+      setManagerAccessLevel("department_admin")
     }
     
     setDialogOpen(true)
@@ -96,6 +112,11 @@ export default function DepartmentsPage() {
       setDescription("")
       setManager("")
       setStatus("active")
+      // Clear manager employee fields
+      setManagerEmail("")
+      setManagerPhone("")
+      setManagerPassword("")
+      setManagerAccessLevel("department_admin")
     }
     setDialogOpen(open)
   }
@@ -111,6 +132,25 @@ export default function DepartmentsPage() {
       return
     }
 
+    // Additional validation for new department creation (with manager employee)
+    if (!editingDepartment) {
+      if (!managerEmail || !managerPhone) {
+        toast.error("Manager email and phone are required for new departments.")
+        return
+      }
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(managerEmail)) {
+        toast.error("Please enter a valid email address for the manager.")
+        return
+      }
+      
+      if (managerPhone.length < 10) {
+        toast.error("Please enter a valid phone number for the manager.")
+        return
+      }
+    }
+
     try {
       const departmentData = { name, code, description, manager, status }
       
@@ -121,11 +161,24 @@ export default function DepartmentsPage() {
         })
         toast.success("Department updated successfully!")
       } else {
-        await createDepartmentMutation.mutateAsync({ 
+        // Create department with manager employee
+        const departmentWithManagerData = {
           ...departmentData, 
-          employeeCount: 0 
-        })
-        toast.success("Department created successfully!")
+          employeeCount: 1, // Will have 1 employee (the manager)
+          managerEmployee: {
+            name: manager,
+            email: managerEmail,
+            phone: managerPhone,
+            password: managerPassword || "temp123",
+            role: "Department Manager",
+            department: name,
+            accessLevel: managerAccessLevel,
+            status: "active"
+          }
+        }
+        
+        await createDepartmentMutation.mutateAsync(departmentWithManagerData)
+        toast.success("Department and manager employee created successfully!")
       }
       
       setDialogOpen(false)
@@ -216,7 +269,7 @@ export default function DepartmentsPage() {
 
       {isSuperAdmin && (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogContent className="sm:max-w-[480px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingDepartment ? "Edit" : "Add New"} Department</DialogTitle>
               <DialogDescription>
@@ -225,76 +278,152 @@ export default function DepartmentsPage() {
                   : "Create a new department for your organization."}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium">
                   Name *
                 </Label>
                 <Input 
                   id="name" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)} 
-                  className="col-span-3"
                   disabled={isSubmitting}
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="code" className="text-right">
-                  Code *
-                </Label>
-                <Input 
-                  id="code" 
-                  value={code} 
-                  onChange={(e) => setCode(e.target.value.toUpperCase())} 
-                  className="col-span-3"
-                  placeholder="e.g., IT, QA, PROD"
-                  maxLength={10}
-                  disabled={isSubmitting}
-                />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="code" className="text-sm font-medium">
+                    Code *
+                  </Label>
+                  <Input 
+                    id="code" 
+                    value={code} 
+                    onChange={(e) => setCode(e.target.value.toUpperCase())} 
+                    placeholder="e.g., IT, QA, PROD"
+                    maxLength={10}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status" className="text-sm font-medium">
+                    Status
+                  </Label>
+                  <Select 
+                    value={status} 
+                    onValueChange={(value: DepartmentStatus) => setStatus(value)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="manager" className="text-right">
+              
+              <div className="space-y-2">
+                <Label htmlFor="manager" className="text-sm font-medium">
                   Manager *
                 </Label>
                 <Input 
                   id="manager" 
                   value={manager} 
                   onChange={(e) => setManager(e.target.value)} 
-                  className="col-span-3"
                   disabled={isSubmitting}
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">
+              
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium">
                   Description *
                 </Label>
                 <Textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="col-span-3"
                   placeholder="Minimum 10 characters"
                   disabled={isSubmitting}
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="status" className="text-right">
-                  Status
-                </Label>
-                <Select 
-                  value={status} 
-                  onValueChange={(value: DepartmentStatus) => setStatus(value)}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              
+              {/* Manager Employee Details - Only show for new department creation */}
+              {!editingDepartment && (
+                <>
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-4">
+                      Manager Employee Details
+                    </h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="managerEmail" className="text-sm font-medium">
+                        Email *
+                      </Label>
+                      <Input 
+                        id="managerEmail" 
+                        type="email"
+                        value={managerEmail} 
+                        onChange={(e) => setManagerEmail(e.target.value)} 
+                        placeholder="manager@company.com"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="managerPhone" className="text-sm font-medium">
+                        Phone *
+                      </Label>
+                      <Input 
+                        id="managerPhone" 
+                        value={managerPhone} 
+                        onChange={(e) => setManagerPhone(e.target.value)} 
+                        placeholder="+1234567890"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="managerPassword" className="text-sm font-medium">
+                        Password
+                      </Label>
+                      <Input 
+                        id="managerPassword" 
+                        type="password"
+                        value={managerPassword} 
+                        onChange={(e) => setManagerPassword(e.target.value)} 
+                        placeholder="Default: temp123"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="managerAccessLevel" className="text-sm font-medium">
+                        Access Level
+                      </Label>
+                      <Select 
+                        value={managerAccessLevel} 
+                        onValueChange={(value: "department_admin" | "normal_user") => setManagerAccessLevel(value)}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select access level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="department_admin">Department Admin</SelectItem>
+                          <SelectItem value="normal_user">Normal User</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <DialogFooter>
               <Button 

@@ -3,6 +3,8 @@ import { getUserContext } from '@/lib/auth-helpers';
 import connectDB from '@/lib/mongodb';
 import Ticket from '@/models/Ticket';
 
+const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -19,7 +21,7 @@ export async function GET(
     const { id } = params;
     
     // Fetch ticket from local MongoDB
-    const ticket = await Ticket.findById(id).lean();
+    const ticket = await Ticket.findById(id).lean() as any;
 
     if (!ticket) {
       return NextResponse.json(
@@ -133,7 +135,7 @@ export async function PUT(
     }
 
     // Find the ticket
-    const ticket = await Ticket.findById(id);
+    const ticket = await Ticket.findById(id) as any;
     if (!ticket) {
       return NextResponse.json(
         { success: false, message: 'Ticket not found' },

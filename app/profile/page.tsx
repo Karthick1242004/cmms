@@ -84,7 +84,7 @@ export default function ProfilePage() {
         throw new Error('No auth token found')
       }
 
-      const response = await fetch('/api/user/profile', {
+      const response = await fetch('/api/profile', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -94,26 +94,43 @@ export default function ProfilePage() {
 
       if (response.ok) {
         const data = await response.json()
-        setProfileData({
-          name: data.user.name || '',
-          email: data.user.email || '',
-          role: data.user.role || '',
-          department: data.user.department || '',
-          employeeId: data.user.employeeId || '',
-          accessLevel: data.user.accessLevel || 'normal_user',
-          shiftInfo: data.user.shiftInfo,
-          joinDate: data.user.joinDate || '',
-          supervisor: data.user.supervisor,
-          skills: data.user.skills || [],
-          certifications: data.user.certifications || [],
-          emergencyContact: data.user.emergencyContact || {
-            name: '',
-            relationship: '',
-            phone: ''
-          },
-          status: data.user.status || 'active'
-        })
-
+        if (data.success && data.data?.user) {
+          const user = data.data.user
+          
+          // Split name into firstName and lastName if they're not provided separately
+          const nameParts = (user.name || '').split(' ')
+          const firstName = user.firstName || nameParts[0] || ''
+          const lastName = user.lastName || nameParts.slice(1).join(' ') || ''
+          
+          setProfileData({
+            name: user.name || '',
+            email: user.email || '',
+            role: user.role || '',
+            department: user.department || '',
+            employeeId: user.employeeId || '',
+            accessLevel: user.accessLevel || 'normal_user',
+            shiftInfo: user.shiftInfo,
+            joinDate: user.joinDate || '',
+            supervisor: user.supervisor,
+            skills: user.skills || [],
+            certifications: user.certifications || [],
+            emergencyContact: user.emergencyContact || {
+              name: '',
+              relationship: '',
+              phone: ''
+            },
+            status: user.status || 'active',
+            // Additional profile fields
+            firstName: firstName,
+            lastName: lastName,
+            phone: user.phone || '',
+            address: user.address || '',
+            city: user.city || '',
+            country: user.country || '',
+            jobTitle: user.jobTitle || '',
+            bio: user.bio || ''
+          })
+        }
       }
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -134,23 +151,33 @@ export default function ProfilePage() {
       if (!token) {
         throw new Error('No auth token found')
       }
-
-      const response = await fetch('/api/user/profile', {
+      const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(profileData)
+        body: JSON.stringify({
+          ...profileData,
+          // Let backend compute name; send name as empty if not provided
+          name: profileData.firstName || profileData.lastName ? '' : (profileData.name || ''),
+        })
       })
 
       if (response.ok) {
         const data = await response.json()
-        setIsEditing(false)
-        toast.success('Profile updated successfully!')
+        if (data.success) {
+          setIsEditing(false)
+          toast.success('Profile updated successfully!')
+          // Refresh profile data
+          fetchProfileData()
+        } else {
+          toast.error(data.message || 'Failed to update profile')
+        }
       } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        toast.error(errorData.error || 'Failed to update profile')
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
+        const firstError = Array.isArray(errorData.errors) && errorData.errors.length > 0 ? errorData.errors[0].msg : null
+        toast.error(firstError || errorData.message || 'Failed to update profile')
       }
     } catch (error) {
       console.error('Error saving profile:', error)

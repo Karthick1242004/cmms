@@ -38,11 +38,7 @@ The asset image upload feature requires an unsigned upload preset to be created 
 ### 4. Update Environment Variables
 Create or update your `.env.local` file:
 
-```bash
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=dqvgfjr6v
-NEXT_PUBLIC_CLOUDINARY_API_KEY=811261811966866
-CLOUDINARY_API_SECRET=BeMWsDfXcA28FCbq1MAfT39jI3o
-NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=cmms_assets
+
 ```
 
 ### 5. Test Upload Functionality

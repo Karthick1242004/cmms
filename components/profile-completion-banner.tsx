@@ -12,7 +12,6 @@ interface ProfileCompletionBannerProps {
   className?: string
   profileStatus?: {
     isComplete: boolean
-    missingFields: string[]
     completionPercentage: number
   }
   onCompleteClick?: () => void
@@ -28,33 +27,85 @@ export function ProfileCompletionBanner({ className, profileStatus, onCompleteCl
     completionPercentage: number
   } | null>(null)
 
+  // Fetch comprehensive profile data from API
+  const fetchProfileCompletion = async () => {
+    try {
+      const token = localStorage.getItem('auth-token')
+      if (!token) return
+
+      const response = await fetch('/api/profile', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data?.user) {
+          const user = data.data.user
+          calculateProfileCompletion(user)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile data:', error)
+      // Fallback to user data from auth store
+      if (user?.email) {
+        calculateProfileCompletion(user)
+      }
+    }
+  }
+
+  // Calculate profile completion based on comprehensive user data
+  const calculateProfileCompletion = (userData: any) => {
+    const missingFields = []
+    
+    // Essential fields (high priority)
+    if (!userData.name && !userData.firstName) missingFields.push('Name')
+    if (!userData.phone) missingFields.push('Phone')
+    if (!userData.address) missingFields.push('Address')
+    if (!userData.city) missingFields.push('City')
+    if (!userData.country) missingFields.push('Country')
+    if (!userData.jobTitle) missingFields.push('Job Title')
+    
+    // Professional fields
+    if (!userData.skills?.length) missingFields.push('Skills')
+    if (!userData.certifications?.length) missingFields.push('Certifications')
+    if (!userData.bio) missingFields.push('Bio')
+    
+    // Emergency contact
+    if (!userData.emergencyContact?.name) missingFields.push('Emergency Contact')
+    if (!userData.emergencyContact?.relationship) missingFields.push('Emergency Relationship')
+    if (!userData.emergencyContact?.phone) missingFields.push('Emergency Phone')
+    
+    const totalFields = 12 // Total tracked fields
+    const completedFields = totalFields - missingFields.length
+    const completionPercentage = Math.round((completedFields / totalFields) * 100)
+    
+    setProfileData({
+      isComplete: completionPercentage >= 100,
+      missingFields,
+      completionPercentage
+    })
+    
+    // Hide banner if progress is above 60% OR if it was dismissed recently
+    const dismissed = localStorage.getItem("profile-banner-dismissed")
+    const shouldHideDueToDismiss = dismissed && (Date.now() - parseInt(dismissed)) < (24 * 60 * 60 * 1000)
+    
+    setIsVisible(completionPercentage <= 60 && !shouldHideDueToDismiss)
+  }
+
   useEffect(() => {
     // Use passed in profileStatus if available
     if (profileStatus) {
       setProfileData(profileStatus)
-      setIsVisible(!profileStatus.isComplete)
+      setIsVisible(profileStatus.completionPercentage <= 60)
       return
     }
 
-    // Calculate missing fields based on user data
-    if (user?.email) {
-      const missingFields = []
-      if (!user.name) missingFields.push('Name')
-      if (!user.skills?.length) missingFields.push('Skills')
-      if (!user.certifications?.length) missingFields.push('Certifications')
-      if (!user.emergencyContact?.name) missingFields.push('Emergency Contact')
-      if (!user.emergencyContact?.phone) missingFields.push('Emergency Phone')
-      
-      const totalFields = 5 // Total required fields
-      const completionPercentage = Math.round(((totalFields - missingFields.length) / totalFields) * 100)
-      
-      setProfileData({
-        isComplete: missingFields.length === 0,
-        missingFields,
-        completionPercentage
-      })
-      setIsVisible(missingFields.length > 0)
-    }
+    // Fetch comprehensive profile data
+    fetchProfileCompletion()
   }, [user, profileStatus])
 
   const handleCompleteProfile = () => {
@@ -86,7 +137,7 @@ export function ProfileCompletionBanner({ className, profileStatus, onCompleteCl
     }
   }, [])
 
-  if (!isVisible || !profileData || profileData.isComplete) {
+  if (!isVisible || !profileData || profileData.completionPercentage > 60) {
     return null
   }
 
