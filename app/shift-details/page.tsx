@@ -662,7 +662,7 @@ export default function ShiftDetailsPage() {
                     id="shiftStartTime"
                     type="time"
                     value={shiftStartTime}
-                    onChange={(e) => setShiftStartTime(e.target.value)}
+                    onChange={(e) => setShiftStartTime(e.target.value)} 
                   />
                 </div>
                 <div className="space-y-2">
