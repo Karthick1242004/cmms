@@ -76,16 +76,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     status: 'active'
   })
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Maintenance Form Debug:', {
-      isSuperAdmin,
-      selectedDepartment,
-      assetsData: assetsData?.data?.assets?.length || 0,
-      assetsLoading: isLoadingAssets,
-      departmentFromForm: formData.department
-    })
-  }, [isSuperAdmin, selectedDepartment, assetsData, isLoadingAssets, formData.department])
+
 
   const [parts, setParts] = useState<MaintenancePart[]>([])
 
@@ -243,19 +234,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       parts,
     }
 
-    console.log('🚀 FRONTEND FORM - Maintenance Schedule Form Submitting:', {
-      formData,
-      selectedAsset,
-      finalLocation,
-      scheduleData,
-      assignedTechnician: scheduleData.assignedTechnician,
-      hasAssignedTechnician: !!scheduleData.assignedTechnician,
-      technicianLength: scheduleData.assignedTechnician?.length || 0,
-      // Debug the mapping issue
-      formDataAssignedInspector: formData.assignedInspector,
-      mappingWorking: formData.assignedInspector === scheduleData.assignedTechnician,
-      scheduleDataKeys: Object.keys(scheduleData)
-    })
+
 
     if (schedule) {
       updateSchedule(schedule.id, scheduleData)

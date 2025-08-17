@@ -1,7 +1,7 @@
 export interface WorkHistoryEntry {
   date: string;
   type: 'ticket' | 'maintenance' | 'daily-log' | 'safety-inspection';
-  referenceId: string;
+  referenceId?: string;
   title: string;
   description?: string;
   status: string;
@@ -9,6 +9,10 @@ export interface WorkHistoryEntry {
   assetName?: string;
   duration?: number; // hours
   priority?: string;
+  scheduleId?: string; // For maintenance and safety inspection schedules
+  recordId?: string; // For completed records
+  assignmentRole?: string; // Role in the assignment (e.g., "Assigned Technician")
+  completedDate?: string; // Date when task was completed (different from assignment date)
 }
 
 export interface AssetAssignment {

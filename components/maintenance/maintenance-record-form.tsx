@@ -51,10 +51,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
 
   useEffect(() => {
     // Initialize parts status from schedule
-    console.log('Schedule parts for record:', schedule.parts)
-    
     const initialPartsStatus: MaintenancePartRecord[] = schedule.parts.map(part => {
-      console.log('Processing part:', part)
       return {
         partId: part.partId || part.id, // Fallback to part.id if partId is missing
         partName: part.partName,
@@ -63,7 +60,6 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
         timeSpent: part.estimatedTime,
         checklistItems: part.checklistItems.map((item, index) => {
           const itemId = item.id || `${part.id}_item_${index}_${Date.now()}`
-          console.log('Processing checklist item:', { item, generatedItemId: itemId })
           return {
             itemId,
             description: item.description,
@@ -75,7 +71,6 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       }
     })
     
-    console.log('Initial parts status:', initialPartsStatus)
     setPartsStatus(initialPartsStatus)
   }, [schedule])
 
@@ -149,14 +144,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       adminVerified: false,
     }
 
-    console.log('Submitting maintenance record:', recordData)
-    console.log('Parts status details:', JSON.stringify(partsStatus, null, 2))
-    console.log('Duration calculation details:', {
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      completedDate: formData.completedDate,
-      actualDuration: actualDuration
-    })
+
     
     // Additional validation before submission
     if (!recordData.department) {

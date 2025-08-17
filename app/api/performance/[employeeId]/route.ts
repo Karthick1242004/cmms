@@ -132,7 +132,170 @@ export async function PATCH(
     
     let updateOperation: any = {};
     
+
+    
     switch (action) {
+      case 'maintenance_completion':
+        // Handle both work history and metrics update
+        if (!body.workHistoryEntry || !body.workHistoryEntry.type || !body.workHistoryEntry.title) {
+          return NextResponse.json({
+            success: false,
+            message: 'Maintenance completion must include work history entry with type and title'
+          }, { status: 400 });
+        }
+        
+        const completionEntry: WorkHistoryEntry = {
+          type: body.workHistoryEntry.type,
+          title: body.workHistoryEntry.title,
+          description: body.workHistoryEntry.description,
+          assetName: body.workHistoryEntry.assetName,
+          assetId: body.workHistoryEntry.assetId,
+          status: body.workHistoryEntry.status || 'completed',
+          date: body.workHistoryEntry.date || new Date().toISOString().split('T')[0],
+          duration: body.workHistoryEntry.duration || 1,
+          scheduleId: body.workHistoryEntry.scheduleId,
+          recordId: body.workHistoryEntry.recordId,
+          assignmentRole: body.workHistoryEntry.assignmentRole || 'Technician'
+        };
+        
+        updateOperation = {
+          $push: { workHistory: completionEntry },
+          $set: { updatedAt: new Date() }
+        };
+        
+        // Update performance metrics
+        if (body.metricsUpdate) {
+          const currentMetrics = existingRecord.performanceMetrics;
+          const metricsUpdate: any = {};
+          
+          if (body.metricsUpdate.totalTasksCompleted) {
+            metricsUpdate['performanceMetrics.totalTasksCompleted'] = 
+              currentMetrics.totalTasksCompleted + body.metricsUpdate.totalTasksCompleted;
+          }
+          
+          if (body.metricsUpdate.maintenanceCompleted) {
+            metricsUpdate['performanceMetrics.maintenanceCompleted'] = 
+              currentMetrics.maintenanceCompleted + body.metricsUpdate.maintenanceCompleted;
+          }
+          
+          if (body.metricsUpdate.totalWorkHours) {
+            metricsUpdate['totalWorkHours'] = 
+              existingRecord.totalWorkHours + body.metricsUpdate.totalWorkHours;
+          }
+          
+          if (body.metricsUpdate.lastActivityDate) {
+            metricsUpdate['performanceMetrics.lastActivityDate'] = body.metricsUpdate.lastActivityDate;
+          }
+          
+          // Calculate efficiency and update scores
+          const newTotalTasks = metricsUpdate['performanceMetrics.totalTasksCompleted'] || currentMetrics.totalTasksCompleted;
+          const newCompletedTasks = newTotalTasks; // Assuming all tracked tasks are completed
+          metricsUpdate['performanceMetrics.efficiency'] = newTotalTasks > 0 ? Math.round((newCompletedTasks / newTotalTasks) * 100) : 0;
+          
+          // Update productivity score (simple calculation based on tasks completed)
+          metricsUpdate['productivityScore'] = Math.min(100, Math.round((newTotalTasks / 10) * 100));
+          
+          // Update reliability score (based on completion rate)
+          metricsUpdate['reliabilityScore'] = metricsUpdate['performanceMetrics.efficiency'] || currentMetrics.efficiency;
+          
+          updateOperation.$set = { ...updateOperation.$set, ...metricsUpdate };
+        }
+        break;
+        
+      case 'update_work_history':
+        if (!body.scheduleId || !body.workHistoryUpdate) {
+          return NextResponse.json({
+            success: false,
+            message: 'Work history update requires scheduleId and workHistoryUpdate'
+          }, { status: 400 });
+        }
+        
+        // Find the existing work history entry by scheduleId
+        const workHistoryIndex = existingRecord.workHistory.findIndex(
+          (entry: any) => entry.scheduleId === body.scheduleId && entry.type === 'maintenance'
+        );
+        
+        if (workHistoryIndex === -1) {
+          console.warn(`Work history entry not found for schedule ${body.scheduleId}`);
+          return NextResponse.json({
+            success: false,
+            message: `Work history entry not found for schedule ${body.scheduleId}`
+          }, { status: 404 });
+        }
+        
+        // Prepare the update operation for the specific array element
+        const arrayUpdateFields: any = {};
+        
+        // Update specific fields in the work history entry
+        if (body.workHistoryUpdate.status) {
+          arrayUpdateFields[`workHistory.${workHistoryIndex}.status`] = body.workHistoryUpdate.status;
+        }
+        if (body.workHistoryUpdate.date) {
+          arrayUpdateFields[`workHistory.${workHistoryIndex}.date`] = body.workHistoryUpdate.date;
+        }
+        if (body.workHistoryUpdate.duration) {
+          arrayUpdateFields[`workHistory.${workHistoryIndex}.duration`] = body.workHistoryUpdate.duration;
+        }
+        if (body.workHistoryUpdate.recordId) {
+          arrayUpdateFields[`workHistory.${workHistoryIndex}.recordId`] = body.workHistoryUpdate.recordId;
+        }
+        if (body.workHistoryUpdate.description) {
+          arrayUpdateFields[`workHistory.${workHistoryIndex}.description`] = body.workHistoryUpdate.description;
+        }
+        if (body.workHistoryUpdate.completedDate) {
+          arrayUpdateFields[`workHistory.${workHistoryIndex}.completedDate`] = body.workHistoryUpdate.completedDate;
+        }
+        
+        updateOperation = {
+          $set: {
+            ...arrayUpdateFields,
+            updatedAt: new Date()
+          }
+        };
+        
+        // Update performance metrics only if task is being completed (status was pending, now completed)
+        const currentEntry = existingRecord.workHistory[workHistoryIndex];
+        const wasCompleted = currentEntry.status === 'completed';
+        const nowCompleted = body.workHistoryUpdate.status === 'completed';
+        
+        if (!wasCompleted && nowCompleted && body.metricsUpdate) {
+          const currentMetrics = existingRecord.performanceMetrics;
+          const metricsUpdate: any = {};
+          
+          if (body.metricsUpdate.totalTasksCompleted) {
+            metricsUpdate['performanceMetrics.totalTasksCompleted'] = 
+              currentMetrics.totalTasksCompleted + body.metricsUpdate.totalTasksCompleted;
+          }
+          
+          if (body.metricsUpdate.maintenanceCompleted) {
+            metricsUpdate['performanceMetrics.maintenanceCompleted'] = 
+              currentMetrics.maintenanceCompleted + body.metricsUpdate.maintenanceCompleted;
+          }
+          
+          if (body.metricsUpdate.totalWorkHours) {
+            metricsUpdate['totalWorkHours'] = 
+              existingRecord.totalWorkHours + body.metricsUpdate.totalWorkHours;
+          }
+          
+          if (body.metricsUpdate.lastActivityDate) {
+            metricsUpdate['performanceMetrics.lastActivityDate'] = body.metricsUpdate.lastActivityDate;
+          }
+          
+          // Calculate efficiency and update scores
+          const newTotalTasks = metricsUpdate['performanceMetrics.totalTasksCompleted'] || currentMetrics.totalTasksCompleted;
+          const newCompletedTasks = newTotalTasks; // Assuming all tracked tasks are completed
+          metricsUpdate['performanceMetrics.efficiency'] = newTotalTasks > 0 ? Math.round((newCompletedTasks / newTotalTasks) * 100) : 0;
+          
+          // Update productivity score (simple calculation based on tasks completed)
+          metricsUpdate['productivityScore'] = Math.min(100, Math.round((newTotalTasks / 10) * 100));
+          
+          // Update reliability score (based on completion rate)
+          metricsUpdate['reliabilityScore'] = metricsUpdate['performanceMetrics.efficiency'] || currentMetrics.efficiency;
+          
+          updateOperation.$set = { ...updateOperation.$set, ...metricsUpdate };
+        }
+        break;
+        
       case 'add_work_history':
         if (!data || !data.type || !data.title) {
           return NextResponse.json({

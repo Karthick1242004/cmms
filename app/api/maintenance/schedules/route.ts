@@ -7,17 +7,9 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 // Helper function to store maintenance performance data
 async function storeMaintenancePerformanceData(scheduleData: any, createdSchedule: any, user: any, request: NextRequest) {
   try {
-    console.log('🔧 PERFORMANCE FUNCTION CALLED - storeMaintenancePerformanceData with:', {
-      assignedTechnician: scheduleData.assignedTechnician,
-      scheduleId: createdSchedule.id,
-      assetName: scheduleData.assetName,
-      assetId: scheduleData.assetId
-    });
-    
     // Get employee details by name (since we store technician name, not ID)
     // Use the backend server directly to avoid authentication issues
     const employeeUrl = `${SERVER_BASE_URL}/api/employees?search=${encodeURIComponent(scheduleData.assignedTechnician)}&limit=1`;
-    console.log('🔍 FETCHING EMPLOYEE - URL:', employeeUrl);
     
     const employeeResponse = await fetch(employeeUrl, {
       method: 'GET',
@@ -28,30 +20,18 @@ async function storeMaintenancePerformanceData(scheduleData: any, createdSchedul
       },
     });
     
-    console.log('🔍 EMPLOYEE FETCH RESPONSE - Status:', employeeResponse.status);
-    
     if (!employeeResponse.ok) {
-      console.warn('❌ EMPLOYEE FETCH FAILED - Could not fetch employee details for performance tracking, status:', employeeResponse.status);
+      console.warn('Could not fetch employee details for performance tracking');
       return;
     }
     
     const employeeData = await employeeResponse.json();
-    console.log('🔍 EMPLOYEE SEARCH RESULT:', employeeData);
     const employee = employeeData?.data?.employees?.[0];
     
     if (!employee) {
-      console.warn(`❌ EMPLOYEE NOT FOUND for technician: "${scheduleData.assignedTechnician}"`);
-      console.log('Available employees in response:', employeeData?.data?.employees || []);
-      console.log('Response structure:', Object.keys(employeeData || {}));
+      console.warn(`Employee not found for technician: "${scheduleData.assignedTechnician}"`);
       return;
     }
-    
-    console.log('✅ EMPLOYEE FOUND for performance tracking:', {
-      id: employee.id,
-      name: employee.name,
-      email: employee.email,
-      department: employee.department
-    });
     
     // Create work history entry for the maintenance assignment
     const workHistoryEntry = {
@@ -88,9 +68,6 @@ async function storeMaintenancePerformanceData(scheduleData: any, createdSchedul
       currentAssignments: [scheduleData.assetId]
     };
     
-    console.log('📊 CALLING PERFORMANCE API - URL:', performanceUrl);
-    console.log('📊 PERFORMANCE API PAYLOAD:', JSON.stringify(performancePayload, null, 2));
-    
     const performanceResponse = await fetch(performanceUrl, {
       method: 'POST',
       headers: {
@@ -101,18 +78,9 @@ async function storeMaintenancePerformanceData(scheduleData: any, createdSchedul
       body: JSON.stringify(performancePayload),
     });
     
-    console.log('📊 PERFORMANCE API RESPONSE - Status:', performanceResponse.status);
-    
     if (!performanceResponse.ok) {
       const errorData = await performanceResponse.json().catch(() => ({}));
-      console.error('❌ PERFORMANCE API FAILED:', {
-        status: performanceResponse.status,
-        statusText: performanceResponse.statusText,
-        errorData
-      });
-    } else {
-      const responseData = await performanceResponse.json();
-      console.log('✅ PERFORMANCE API SUCCESS:', responseData);
+      console.error('Performance API failed:', errorData);
     }
     
   } catch (error) {
@@ -175,28 +143,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  console.log('🚀🚀🚀 MAINTENANCE SCHEDULE API - POST request received at', new Date().toISOString());
-  console.log('🚀🚀🚀 Request URL:', request.url);
-  
   try {
-    console.log('🚀 MAINTENANCE SCHEDULE API - Inside try block');
-    
     // Get user context for department assignment (with fallback for testing)
     const user = await getUserContext(request);
-    console.log('🚀 MAINTENANCE SCHEDULE API - User context obtained:', user ? 'User found' : 'No user');
     
     // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('🚀 MAINTENANCE SCHEDULE API - No user, continuing with defaults');
       // unauthenticated request; use safe defaults
     }
 
-    console.log('🚀 MAINTENANCE SCHEDULE API - About to parse request body');
     const body = await request.json();
-    console.log('🚀 MAINTENANCE SCHEDULE API - Request body parsed successfully');
-    console.log('📝 MAINTENANCE SCHEDULE API - Request body:', JSON.stringify(body, null, 2));
-    console.log('📝 ASSIGNED TECHNICIAN CHECK:', {
-      assignedTechnician: body.assignedTechnician,
       type: typeof body.assignedTechnician,
       length: body.assignedTechnician?.length,
       trimmed: body.assignedTechnician?.trim(),
@@ -293,19 +249,15 @@ export async function POST(request: NextRequest) {
     
     // Remove duplicated field to avoid backend confusion
     if (body.assignedInspector && body.assignedTechnician) {
-      console.log('🔧 REMOVING DUPLICATE assignedInspector field, keeping assignedTechnician');
       delete body.assignedInspector;
     }
     
     if (validationIssues.length > 0) {
-      console.error('❌ PRE-VALIDATION FAILED:', validationIssues);
       return NextResponse.json(
         { success: false, message: `Validation failed: ${validationIssues.join(', ')}` },
         { status: 400 }
       );
     }
-    
-    console.log('✅ PRE-VALIDATION PASSED');
 
     // Handle department assignment based on user access level
     if (!body.department) {
@@ -374,25 +326,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Debug logging
-    console.log('Maintenance Schedule API - Creating schedule:', {
-      userAccessLevel: user?.accessLevel,
-      userDepartment: user?.department,
-      bodyDepartment: body.department,
-      location: body.location,
-      partsLength: body.parts?.length || 0,
-      partsDetails: body.parts?.map((part: any) => ({
-        id: part.id,
-        partId: part.partId,
-        partName: part.partName,
-        partSku: part.partSku,
-        checklistItemsLength: part.checklistItems?.length || 0
-      })),
-      bodyData: body
-    });
-
     // Forward request to backend server
-    console.log('📡 MAINTENANCE SCHEDULE API - Sending to backend:', `${SERVER_BASE_URL}/api/maintenance/schedules`);
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/schedules`, {
       method: 'POST',
       headers: {
@@ -403,33 +337,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
     
-    console.log('📡 MAINTENANCE SCHEDULE API - Backend response status:', response.status);
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('❌ BACKEND VALIDATION ERROR:', {
-        status: response.status,
-        statusText: response.statusText,
-        url: response.url,
-        errorData,
-        sentPayload: body,
-        requestHeaders: {
-          'Content-Type': 'application/json',
-          'X-User-Department': user?.department || 'General',
-          'X-User-Name': user?.name || 'Test User',
-        }
-      });
-      
-      // Log specific validation details if available
-      if (errorData.details || errorData.errors || errorData.validationErrors) {
-        console.error('❌ SPECIFIC VALIDATION ERRORS:', {
-          details: errorData.details,
-          errors: errorData.errors,
-          validationErrors: errorData.validationErrors,
-          validationMessage: errorData.message
-        });
-      }
-      
       return NextResponse.json(
         { success: false, message: errorData.message || 'Failed to create maintenance schedule' },
         { status: response.status }
@@ -437,52 +346,21 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('📡 MAINTENANCE SCHEDULE API - Backend response data:', data);
     
     // Store performance data for assigned technician
-    console.log('🎯 PERFORMANCE TRACKING CHECK:', {
-      success: data.success,
-      assignedTechnician: body.assignedTechnician,
-      assignedTechnicianType: typeof body.assignedTechnician,
-      assignedTechnicianLength: body.assignedTechnician?.length,
-      hasData: !!data.data,
-      dataStructure: Object.keys(data || {}),
-      willTriggerPerformanceTracking: !!(data.success && body.assignedTechnician && body.assignedTechnician.trim() !== '' && data.data)
-    });
-    
     if (data.success && body.assignedTechnician && body.assignedTechnician.trim() !== '' && data.data) {
-      console.log('✅ PERFORMANCE TRACKING TRIGGERED - Attempting to store performance data for:', body.assignedTechnician);
       try {
         // Make a call to our performance API to store the assignment
         await storeMaintenancePerformanceData(body, data.data, user, request);
-        console.log('✅ PERFORMANCE TRACKING COMPLETED successfully');
       } catch (performanceError) {
-        console.error('❌ PERFORMANCE TRACKING FAILED:', performanceError);
+        console.error('Performance tracking failed:', performanceError);
         // Don't fail the main request if performance tracking fails
       }
-    } else {
-      console.log('⏭️ PERFORMANCE TRACKING SKIPPED - conditions not met:', {
-        success: data.success,
-        hasTechnician: !!body.assignedTechnician,
-        technicianValue: body.assignedTechnician,
-        technicianNotEmpty: body.assignedTechnician ? body.assignedTechnician.trim() !== '' : false,
-        hasData: !!data.data,
-        reason: !data.success ? 'Backend call failed' : 
-                !body.assignedTechnician ? 'No technician assigned' :
-                body.assignedTechnician.trim() === '' ? 'Empty technician name' :
-                !data.data ? 'No response data' : 'Unknown'
-      });
     }
     
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('❌❌❌ CRITICAL ERROR in maintenance schedule API:', error);
-    console.error('❌❌❌ Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      errorType: typeof error,
-      timestamp: new Date().toISOString()
-    });
+    console.error('Error in maintenance schedule API:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error while creating maintenance schedule' },
       { status: 500 }

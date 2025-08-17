@@ -106,16 +106,10 @@ export const maintenanceSchedulesApi = {
     return apiClient.get<SingleScheduleResponse>(`/maintenance/schedules/${id}`);
   },
 
-  // Create new schedule
-  create: async (schedule: Omit<MaintenanceSchedule, 'id' | 'createdAt' | 'updatedAt' | 'nextDueDate'>): Promise<SingleScheduleResponse> => {
-    console.log('🔗 MAINTENANCE API CLIENT - Sending schedule data:', {
-      assignedTechnician: schedule.assignedTechnician,
-      hasAssignedTechnician: !!schedule.assignedTechnician,
-      scheduleKeys: Object.keys(schedule),
-      fullSchedule: schedule
-    });
-    return apiClient.post<SingleScheduleResponse>('/maintenance/schedules', schedule);
-  },
+      // Create new schedule
+    create: async (schedule: Omit<MaintenanceSchedule, 'id' | 'createdAt' | 'updatedAt' | 'nextDueDate'>): Promise<SingleScheduleResponse> => {
+      return apiClient.post<SingleScheduleResponse>('/maintenance/schedules', schedule);
+    },
 
   // Update schedule
   update: async (id: string, updates: Partial<Omit<MaintenanceSchedule, 'id' | 'createdAt' | 'updatedAt'>>): Promise<SingleScheduleResponse> => {

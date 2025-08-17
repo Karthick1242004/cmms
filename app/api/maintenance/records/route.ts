@@ -5,14 +5,18 @@ import { getUserContext } from '@/lib/auth-helpers';
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 // Helper function to update maintenance performance data when a record is created (task completed)
-async function updateMaintenancePerformanceData(recordData: any, createdRecord: any, user: any) {
+async function updateMaintenancePerformanceData(recordData: any, createdRecord: any, user: any, request: NextRequest) {
   try {
     // Get employee details by name (since we store technician name, not ID)
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-    const employeeResponse = await fetch(`${baseUrl}/api/employees?search=${encodeURIComponent(recordData.technician)}&limit=1`, {
+    // Use the backend server directly to avoid authentication issues
+    const employeeUrl = `${SERVER_BASE_URL}/api/employees?search=${encodeURIComponent(recordData.technician)}&limit=1`;
+    
+    const employeeResponse = await fetch(employeeUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'X-User-Department': user?.department || 'General',
+        'X-User-Name': user?.name || 'System',
       },
     });
     
@@ -29,37 +33,49 @@ async function updateMaintenancePerformanceData(recordData: any, createdRecord: 
       return;
     }
     
-    // Add completed work history entry
-    const workHistoryEntry = {
-      type: 'maintenance' as const,
-      title: `Completed: ${recordData.assetName} Maintenance`,
-      description: recordData.notes || `Maintenance completed for ${recordData.assetName}`,
-      assetName: recordData.assetName,
-      status: recordData.status === 'completed' ? 'completed' as const : 'failed' as const,
-      date: recordData.completedDate || new Date().toISOString(),
-      duration: recordData.actualDuration,
-      scheduleId: recordData.scheduleId,
+    // Update existing work history entry instead of creating new one
+    const workHistoryUpdate = {
+      status: recordData.status === 'completed' ? 'completed' as const : 
+              recordData.status === 'partially_completed' ? 'completed' as const : 'failed' as const,
+      date: recordData.completedDate || new Date().toISOString().split('T')[0], // Update to completion date
+      duration: recordData.actualDuration || 1,
       recordId: createdRecord.id,
-      assignmentRole: 'Technician'
+      // Update description to include completion notes
+      description: recordData.notes || `Maintenance task completed for ${recordData.assetName || 'asset'}`,
+      // Mark as completed
+      completedDate: recordData.completedDate || new Date().toISOString().split('T')[0]
     };
     
-    // Update performance data by adding the work history entry
-    const performanceResponse = await fetch(`${baseUrl}/api/performance/${employee.id}`, {
+    // Update performance data by updating the existing work history entry
+    const performanceUrl = `${process.env.NEXTAUTH_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/performance/${employee.id}`;
+    
+    // Calculate performance metrics update
+    const isCompleted = workHistoryUpdate.status === 'completed';
+    const performanceUpdate = {
+      action: 'update_work_history',
+      scheduleId: recordData.scheduleId, // Use this to find the existing entry
+      workHistoryUpdate: workHistoryUpdate,
+      metricsUpdate: {
+        totalTasksCompleted: isCompleted ? 1 : 0,
+        maintenanceCompleted: isCompleted ? 1 : 0,
+        totalWorkHours: workHistoryUpdate.duration || 1,
+        lastActivityDate: workHistoryUpdate.date
+      }
+    };
+    
+    const performanceResponse = await fetch(performanceUrl, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': request.headers.get('Authorization') || '',
+        'Cookie': request.headers.get('Cookie') || '',
       },
-      body: JSON.stringify({
-        action: 'add_work_history',
-        data: workHistoryEntry
-      }),
+      body: JSON.stringify(performanceUpdate),
     });
     
     if (!performanceResponse.ok) {
       const errorData = await performanceResponse.json().catch(() => ({}));
       console.warn('Failed to update performance data:', errorData);
-    } else {
-      console.log('Performance data updated successfully for maintenance completion');
     }
     
   } catch (error) {
@@ -195,7 +211,7 @@ export async function POST(request: NextRequest) {
     if (data.success && body.technician && data.data) {
       try {
         // Update performance data to mark the maintenance task as completed
-        await updateMaintenancePerformanceData(body, data.data, user);
+        await updateMaintenancePerformanceData(body, data.data, user, request);
       } catch (performanceError) {
         console.error('Error updating performance data:', performanceError);
         // Don't fail the main request if performance tracking fails
