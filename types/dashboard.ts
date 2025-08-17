@@ -36,4 +36,5 @@ export interface DashboardState {
   updateLastUpdated: () => void
   refreshDashboard: () => Promise<void>
   initializeData: () => Promise<void>
+  forceRefresh: () => Promise<void>
 }

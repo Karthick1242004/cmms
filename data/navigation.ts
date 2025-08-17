@@ -69,30 +69,6 @@ export const navigation: NavigationItem[] = [
     iconName: "BarChart3",
   },
   {
-    name: "Settings",
-    href: "/settings",
-    iconName: "Settings",
-  },
-  {
-    name: "Profile",
-    href: "/profile",
-    iconName: "UserCog",
-  },
-  // New Admin Section for Feature Builder
-  // {
-  //   name: "Admin", // This could be a parent item if more admin features are added
-  //   href: "/admin", // Or directly to feature-builder if it's the only one
-  //   iconName: "ShieldCheck", // Example icon for Admin
-  //   subItems: [
-  //     {
-  //       name: "Feature Builder",
-  //       href: "/admin/feature-builder",
-  //       iconName: "LayoutDashboard", // Using a generic dashboard/layout icon
-  //     },
-  //     // Add other admin links here if needed
-  //   ],
-  // },
-  {
     name: "Safety Inspection",
     href: "/safety-inspection",
     iconName: "Shield",
@@ -117,4 +93,29 @@ export const navigation: NavigationItem[] = [
     href: "/chat",
     iconName: "MessageCircle",
   },
+  {
+    name: "Settings",
+    href: "/settings",
+    iconName: "Settings",
+  },
+  {
+    name: "Profile",
+    href: "/profile",
+    iconName: "UserCog",
+  },
+  // New Admin Section for Feature Builder
+  // {
+  //   name: "Admin", // This could be a parent item if more admin features are added
+  //   href: "/admin", // Or directly to feature-builder if it's the only one
+  //   iconName: "ShieldCheck", // Example icon for Admin
+  //   subItems: [
+  //     {
+  //       name: "Feature Builder",
+  //       href: "/admin/feature-builder",
+  //       iconName: "LayoutDashboard", // Using a generic dashboard/layout icon
+  //     },
+  //     // Add other admin links here if needed
+  //   ],
+  // },
+  
 ]

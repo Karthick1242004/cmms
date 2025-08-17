@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { useDashboardStore } from "@/stores/dashboard-store"
 import { useNavigation } from "@/hooks/use-navigation"
 import { cn } from "@/lib/utils"
-import { ArrowRight, GripVertical } from "lucide-react"
+import { ArrowRight, GripVertical, RefreshCw } from "lucide-react"
 import { getIcon } from "@/utils/icons"
 import {
   DndContext,
@@ -97,9 +98,11 @@ export default function Dashboard() {
     quickActions: storeActions,
     isLoading,
     initializeData,
+    forceRefresh,
   } = useDashboardStore()
 
   const [orderedStats, setOrderedStats] = useState<DashboardStat[]>(storeStats)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -111,7 +114,19 @@ export default function Dashboard() {
     }
     
     loadData()
-  }, [initializeData])
+
+    // Set up auto-refresh every 2 minutes
+    const refreshInterval = setInterval(async () => {
+      try {
+        await forceRefresh()
+      } catch (error) {
+        console.error('Auto-refresh failed:', error)
+      }
+    }, 2 * 60 * 1000) // 2 minutes
+
+    // Cleanup interval on unmount
+    return () => clearInterval(refreshInterval)
+  }, [initializeData, forceRefresh])
 
   useEffect(() => {
     setOrderedStats(storeStats)
@@ -142,6 +157,17 @@ export default function Dashboard() {
     navigate(href)
   }
 
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      await forceRefresh()
+    } catch (error) {
+      console.error('Manual refresh failed:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in p-6">
@@ -169,11 +195,23 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in p-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-          FMMS 360
-        </h1>
-        <p className="text-muted-foreground">Comprehensive maintenance management system overview</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+            FMMS 360
+          </h1>
+          <p className="text-muted-foreground">Comprehensive maintenance management system overview</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleManualRefresh}
+          disabled={isRefreshing || isLoading}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
       </div>
 
       {/* Stats Grid */}
