@@ -9,6 +9,7 @@ import { useNavigation } from "@/hooks/use-navigation"
 import { cn } from "@/lib/utils"
 import { ArrowRight, GripVertical, RefreshCw } from "lucide-react"
 import { getIcon } from "@/utils/icons"
+import { TrialBanner } from "@/components/trial-banner"
 import {
   DndContext,
   closestCenter,
@@ -214,6 +215,9 @@ export default function Dashboard() {
         </Button>
       </div>
 
+      {/* Trial Banner */}
+      
+
       {/* Stats Grid */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={orderedStats.map((stat) => stat.title)} strategy={rectSortingStrategy}>
@@ -305,7 +309,9 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+        
       </div>
+      {/* <TrialBanner variant="card" /> */}
     </div>
   )
 }

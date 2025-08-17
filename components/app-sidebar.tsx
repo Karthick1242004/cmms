@@ -16,6 +16,7 @@ import { memo } from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAuthStore } from "@/stores/auth-store"
+import { TrialStatusIndicator } from "@/components/trial-banner"
 import type { NavigationItem, NavigationState } from "@/types/navigation"
 import Logo from '@/public/vonelogo.png'
 import Image from "next/image"
@@ -238,6 +239,11 @@ export const AppSidebar = memo(function AppSidebar() {
             })}
           </div>
         </SidebarContent>
+
+        {/* Trial Status Indicator */}
+        {/* <div className="px-4 py-3 border-t border-border/50 bg-card/30">
+          <TrialStatusIndicator />
+        </div> */}
 
         {/* Footer */}
         <SidebarFooter className="p-4 border-t bg-card/50">

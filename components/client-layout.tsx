@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { Header } from "@/components/header"
 import { LoginNotificationsPopup } from "@/components/login-notifications-popup"
 import { ProfileCompletionBanner } from "@/components/profile-completion-banner"
+import { TrialBanner } from "@/components/trial-banner"
 import { Toaster } from "@/components/ui/toaster"
 import { useAuthStore } from "@/stores/auth-store"
 import { LoadingSpinner } from "@/components/loading-spinner"
@@ -59,6 +60,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
                   <div className="h-full overflow-y-auto custom-scrollbar">
                     <div className="space-y-4">
                       <ProfileCompletionBanner className="mx-6 mt-6" />
+                      <TrialBanner className="mx-6" variant="banner" />
                       <div className="px-6 pb-6">{children}</div>
                     </div>
                   </div>

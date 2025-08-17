@@ -42,6 +42,7 @@ import type { PerformanceRecord } from "@/types/performance"
 import { EmployeeAnalyticsCharts } from "@/components/employees/employee-analytics-charts"
 import { EmployeePerformanceReport } from "../../../components/employees/employee-performance-report"
 import { EmployeeAIAnalysisDialog } from "@/components/employees/employee-ai-analysis-dialog"
+import { TrialBanner } from "@/components/trial-banner"
 import { sampleEmployeeAnalytics } from "@/data/employees-sample"
 import { toast } from "sonner"
 
@@ -264,6 +265,9 @@ export default function EmployeeDetailPage() {
           </div>
         </div>
       </PageHeader>
+
+      {/* Trial Banner */}
+      <TrialBanner variant="card" />
 
       <div className="space-y-6 mt-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
