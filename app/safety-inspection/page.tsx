@@ -240,6 +240,7 @@ export default function SafetyInspectionPage() {
           <TabsContent value="records" className="space-y-6">
             <SafetyInspectionRecordTable 
               records={filteredRecords}
+              schedules={filteredSchedules}
               isLoading={isLoading}
               isAdmin={isAdmin}
             />

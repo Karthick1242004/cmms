@@ -294,8 +294,6 @@ export default function PartsPage() {
         
         // Auto-sync if no parts are found and autoSync is enabled (only for super admin)
         if (autoSync && partsData.length === 0 && user?.accessLevel === 'super_admin') {
-          console.log('No parts found, automatically syncing from assets...')
-          await syncPartsFromAssets()
           return // syncPartsFromAssets will call fetchParts again
         }
         
@@ -345,25 +343,25 @@ export default function PartsPage() {
     }
   }
 
-  const syncPartsFromAssets = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch('/api/parts/sync')
-      const data = await response.json()
+  // const syncPartsFromAssets = async () => {
+  //   setIsLoading(true)
+  //   try {
+  //     const response = await fetch('/api/parts/sync')
+  //     const data = await response.json()
       
-      if (data.success) {
-        toast.success(`Parts synced successfully! Created: ${data.data.createdCount}, Updated: ${data.data.updatedCount}`)
-        await fetchParts() // Refresh the parts list
-      } else {
-        toast.error(data.message || 'Failed to sync parts')
-      }
-    } catch (error) {
-      console.error('Error syncing parts:', error)
-      toast.error('Failed to sync parts')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  //     if (data.success) {
+  //       toast.success(`Parts synced successfully! Created: ${data.data.createdCount}, Updated: ${data.data.updatedCount}`)
+  //       await fetchParts() // Refresh the parts list
+  //     } else {
+  //       toast.error(data.message || 'Failed to sync parts')
+  //     }
+  //   } catch (error) {
+  //     console.error('Error syncing parts:', error)
+  //     toast.error('Failed to sync parts')
+  //   } finally {
+  //     setIsLoading(false)
+  //   }
+  // }
 
   const filteredParts = parts.filter((part) => {
     const matchesSearch = debouncedSearchTerm === "" || 
@@ -606,7 +604,7 @@ export default function PartsPage() {
               <FileText className="mr-2 h-4 w-4" />
               Generate Report
             </Button>
-            {user?.accessLevel === 'super_admin' && (
+            {/* {user?.accessLevel === 'super_admin' && (
               <Button 
                 onClick={syncPartsFromAssets}
                 variant="outline"
@@ -615,7 +613,7 @@ export default function PartsPage() {
                 <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 Sync from Assets
               </Button>
-            )}
+            )} */}
             {isAdmin && (
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>

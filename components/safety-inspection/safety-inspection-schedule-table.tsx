@@ -35,7 +35,7 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
     switch (priority) {
       case "low": return "secondary"
       case "medium": return "default"
-      case "high": return "warning"
+      case "high": return "destructive"
       case "critical": return "destructive"
       default: return "default"
     }
@@ -167,7 +167,12 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
                   {schedules.map((schedule) => {
                     const daysUntilDue = getDaysUntilDue(schedule.nextDueDate)
                     return (
-                      <TableRow key={schedule.id}>
+                      <TableRow 
+                        key={schedule.id} 
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => handleViewDetails(schedule)}
+                        title="Click to view details"
+                      >
                         <TableCell>
                           <div>
                             <div className="font-medium">{schedule.assetName}</div>
@@ -178,13 +183,9 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
                         </TableCell>
                         <TableCell>
                           <div>
-                            <button 
-                              onClick={() => handleViewDetails(schedule)}
-                              className="font-medium text-left hover:text-primary hover:underline cursor-pointer transition-colors"
-                              title="Click to view details"
-                            >
+                            <div className="font-medium">
                               {schedule.title}
-                            </button>
+                            </div>
                             {schedule.description && (
                               <div className="text-sm text-muted-foreground line-clamp-2">
                                 {schedule.description}
@@ -250,7 +251,7 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
                             <span className="text-sm">{schedule.assignedInspector || "Unassigned"}</span>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -298,7 +299,7 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
       {/* Edit Schedule Dialog */}
       <SafetyInspectionScheduleForm
         trigger={<div />}
-        schedule={null}
+        schedule={null as any}
       />
 
       {/* Create Record Dialog */}
