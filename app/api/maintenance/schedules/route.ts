@@ -153,13 +153,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-      type: typeof body.assignedTechnician,
-      length: body.assignedTechnician?.length,
-      trimmed: body.assignedTechnician?.trim(),
-      bodyKeys: Object.keys(body),
-      hasAssignedInspector: body.assignedInspector,
-      hasAssignedTechnicianField: 'assignedTechnician' in body
-    });
 
     // Pre-validation checks to catch common issues
     const validationIssues = [];
@@ -228,7 +221,7 @@ export async function POST(request: NextRequest) {
         validationIssues.push('parts must be an array');
       } else {
         // Check each part has required fields
-        body.parts.forEach((part, index) => {
+        body.parts.forEach((part: any, index: number) => {
           if (!part.partId || typeof part.partId !== 'string') {
             validationIssues.push(`parts[${index}].partId is required and must be a string`);
           }
