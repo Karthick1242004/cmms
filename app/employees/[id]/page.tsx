@@ -31,7 +31,8 @@ import {
   CheckCircle,
   Target,
   Award,
-  Loader2
+  Loader2,
+  Brain
 } from "lucide-react"
 import { PageLayout, PageHeader } from "@/components/page-layout"
 import { employeesApi } from "@/lib/employees-api"
@@ -40,6 +41,7 @@ import type { EmployeeDetail } from "@/types/employee"
 import type { PerformanceRecord } from "@/types/performance"
 import { EmployeeAnalyticsCharts } from "@/components/employees/employee-analytics-charts"
 import { EmployeePerformanceReport } from "../../../components/employees/employee-performance-report"
+import { EmployeeAIAnalysisDialog } from "@/components/employees/employee-ai-analysis-dialog"
 import { sampleEmployeeAnalytics } from "@/data/employees-sample"
 import { toast } from "sonner"
 
@@ -55,6 +57,7 @@ export default function EmployeeDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("overview")
   const [isReportOpen, setIsReportOpen] = useState(false)
+  const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false)
 
   useEffect(() => {
     fetchEmployeeDetails()
@@ -190,37 +193,43 @@ export default function EmployeeDetailPage() {
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex mt-4 flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mt-2">
+          {/* Left side - Back button and employee info */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push('/employees')}
+              className="shrink-0"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            <div className="flex items-center space-x-4">
-              <Avatar className="h-16 w-16">
+            
+            <div className="flex items-center gap-4 min-w-0">
+              <Avatar className="h-14 w-14 shrink-0">
                 <AvatarImage src={employee.avatar} alt={employee.name} />
-                <AvatarFallback>
+                <AvatarFallback className="text-lg font-semibold">
                   {employee.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">{employee.name}</h1>
-                <div className="flex items-center space-x-2 mt-1">
-                  <Badge variant={getStatusColor(employee.status)}>
+              
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl font-bold tracking-tight text-gray-900 mb-2">
+                  {employee.name}
+                </h1>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge variant={getStatusColor(employee.status)} className="text-xs px-2 py-1">
                     {employee.status}
                   </Badge>
-                  <span className="text-muted-foreground">•</span>
-                  <span className="text-muted-foreground">{employee.role}</span>
-                  <span className="text-muted-foreground">•</span>
-                  <span className="text-muted-foreground">{employee.department}</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-600 font-medium">{employee.role}</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-600">{employee.department}</span>
                   {usePerformanceData && (
                     <>
-                      <span className="text-muted-foreground">•</span>
-                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      <span className="text-gray-400">•</span>
+                      <Badge variant="outline" className="text-xs px-2 py-1 bg-emerald-50 text-emerald-700 border-emerald-200">
                         Live Performance Data
                       </Badge>
                     </>
@@ -229,15 +238,26 @@ export default function EmployeeDetailPage() {
               </div>
             </div>
           </div>
-          <div className="flex space-x-2">
+
+          {/* Right side - Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:shrink-0">
+            <Button 
+              onClick={() => setIsAIAnalysisOpen(true)}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-sm"
+              size="sm"
+            >
+              <Brain className="mr-2 h-4 w-4" />
+              AI Analysis
+            </Button>
             <Button 
               onClick={() => setIsReportOpen(true)}
               variant="outline"
+              size="sm"
             >
               <Download className="mr-2 h-4 w-4" />
               Export Report
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" size="sm">
               <Settings className="mr-2 h-4 w-4" />
               Edit Employee
             </Button>
@@ -245,26 +265,26 @@ export default function EmployeeDetailPage() {
         </div>
       </PageHeader>
 
-      <div className="space-y-6 !mt-5">
+      <div className="space-y-6 mt-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">
+          <TabsList className="grid w-full grid-cols-5 h-12">
+            <TabsTrigger value="overview" className="text-sm font-medium">
               <User className="mr-2 h-4 w-4" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="work-history">
+            <TabsTrigger value="work-history" className="text-sm font-medium">
               <Activity className="mr-2 h-4 w-4" />
               Work History
             </TabsTrigger>
-            <TabsTrigger value="performance">
+            <TabsTrigger value="performance" className="text-sm font-medium">
               <TrendingUp className="mr-2 h-4 w-4" />
               Performance
             </TabsTrigger>
-            <TabsTrigger value="analytics">
+            <TabsTrigger value="analytics" className="text-sm font-medium">
               <BarChart3 className="mr-2 h-4 w-4" />
               Analytics
             </TabsTrigger>
-            <TabsTrigger value="assets">
+            <TabsTrigger value="assets" className="text-sm font-medium">
               <Target className="mr-2 h-4 w-4" />
               Assets
             </TabsTrigger>
@@ -273,93 +293,93 @@ export default function EmployeeDetailPage() {
           <TabsContent value="overview" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {/* Basic Information Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
+              <Card className="border-0 shadow-sm bg-white">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900">
+                    <User className="h-4 w-4 text-gray-600" />
                     Basic Information
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{employee.email}</span>
+                <CardContent className="space-y-3 pt-0">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{employee.email}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{employee.phone}</span>
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{employee.phone}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Joined {formatDate(employee.joinDate)}</span>
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">Joined {formatDate(employee.joinDate)}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Briefcase className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{employee.workShift || 'Day'} Shift</span>
+                    <div className="flex items-center gap-3">
+                      <Briefcase className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{employee.workShift || 'Day'} Shift</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Performance Metrics Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
+              <Card className="border-0 shadow-sm bg-white">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900">
+                    <TrendingUp className="h-4 w-4 text-gray-600" />
                     Performance Metrics
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-0">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-center p-3 rounded-lg bg-blue-50">
+                      <div className="text-xl font-bold text-blue-700">
                         {employee.performanceMetrics.totalTasksCompleted}
                       </div>
-                      <div className="text-xs text-muted-foreground">Tasks Completed</div>
+                      <div className="text-xs text-blue-600 font-medium">Tasks Completed</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
+                    <div className="text-center p-3 rounded-lg bg-green-50">
+                      <div className="text-xl font-bold text-green-700">
                         {employee.performanceMetrics.efficiency}%
                       </div>
-                      <div className="text-xs text-muted-foreground">Efficiency</div>
+                      <div className="text-xs text-green-600 font-medium">Efficiency</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">
+                    <div className="text-center p-3 rounded-lg bg-purple-50">
+                      <div className="text-xl font-bold text-purple-700">
                         {employee.performanceMetrics.rating}/5
                       </div>
-                      <div className="text-xs text-muted-foreground">Rating</div>
+                      <div className="text-xs text-purple-600 font-medium">Rating</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">
+                    <div className="text-center p-3 rounded-lg bg-orange-50">
+                      <div className="text-xl font-bold text-orange-700">
                         {Math.round(employee.performanceMetrics.averageCompletionTime)}h
                       </div>
-                      <div className="text-xs text-muted-foreground">Avg. Time</div>
+                      <div className="text-xs text-orange-600 font-medium">Avg. Time</div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Recent Activity Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
+              <Card className="border-0 shadow-sm bg-white">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900">
+                    <Activity className="h-4 w-4 text-gray-600" />
                     Recent Activity
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
+                <CardContent className="pt-0">
+                  <div className="space-y-3">
                     {employee.workHistory.slice(0, 5).map((item, index) => (
-                      <div key={index} className="flex items-center space-x-2 p-2 rounded-lg border">
-                        {getWorkTypeIcon(item.type)}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{item.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDate(item.date)}
-                          </p>
+                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-gray-50 border border-gray-100">
+                        <div className="p-1.5 rounded-md bg-gray-100">
+                          {getWorkTypeIcon(item.type)}
                         </div>
-                        <Badge variant="outline" className="text-xs">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 leading-tight">{item.title}</p>
+                          <p className="text-xs text-gray-500 mt-1">{formatDate(item.date)}</p>
+                        </div>
+                        <Badge variant="outline" className="text-xs px-2 py-1 border-gray-200 text-gray-600">
                           {item.type.replace('-', ' ')}
                         </Badge>
                       </div>
@@ -373,14 +393,14 @@ export default function EmployeeDetailPage() {
             {((employee.skills && employee.skills.length > 0) || (employee.certifications && employee.certifications.length > 0)) && (
               <div className="grid gap-6 md:grid-cols-2">
                 {employee.skills && employee.skills.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Skills & Competencies</CardTitle>
+                  <Card className="border-0 shadow-sm bg-white">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base font-semibold text-gray-900">Skills & Competencies</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-0">
                       <div className="flex flex-wrap gap-2">
                         {employee.skills?.map((skill, index) => (
-                          <Badge key={index} variant="secondary">
+                          <Badge key={index} variant="secondary" className="text-xs px-3 py-1 bg-blue-50 text-blue-700 border-blue-200">
                             {skill}
                           </Badge>
                         ))}
@@ -390,19 +410,19 @@ export default function EmployeeDetailPage() {
                 )}
 
                 {employee.certifications && employee.certifications.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Award className="h-5 w-5" />
+                  <Card className="border-0 shadow-sm bg-white">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900">
+                        <Award className="h-4 w-4 text-gray-600" />
                         Certifications
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
+                    <CardContent className="pt-0">
+                      <div className="space-y-3">
                         {employee.certifications?.map((cert, index) => (
-                          <div key={index} className="flex items-center space-x-2 p-2 rounded-lg border">
+                          <div key={index} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
                             <Award className="h-4 w-4 text-yellow-600" />
-                            <span className="text-sm">{cert}</span>
+                            <span className="text-sm text-gray-700">{cert}</span>
                           </div>
                         ))}
                       </div>
@@ -414,20 +434,22 @@ export default function EmployeeDetailPage() {
 
             {/* Emergency Contact */}
             {employee.emergencyContact && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Emergency Contact</CardTitle>
+              <Card className="border-0 shadow-sm bg-white">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold text-gray-900">Emergency Contact</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{employee.emergencyContact.name}</span>
-                      <Badge variant="outline">{employee.emergencyContact.relationship}</Badge>
+                <CardContent className="pt-0">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <User className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-900">{employee.emergencyContact.name}</span>
+                      <Badge variant="outline" className="text-xs px-2 py-1 border-gray-200 text-gray-600">
+                        {employee.emergencyContact.relationship}
+                      </Badge>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{employee.emergencyContact.phone}</span>
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{employee.emergencyContact.phone}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -662,6 +684,14 @@ export default function EmployeeDetailPage() {
         <EmployeePerformanceReport 
           employee={employee}
           onClose={() => setIsReportOpen(false)}
+        />
+      )}
+
+      {isAIAnalysisOpen && (
+        <EmployeeAIAnalysisDialog
+          employee={employee}
+          isOpen={isAIAnalysisOpen}
+          onClose={() => setIsAIAnalysisOpen(false)}
         />
       )}
     </PageLayout>
