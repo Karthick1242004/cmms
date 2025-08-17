@@ -241,9 +241,9 @@ export const AppSidebar = memo(function AppSidebar() {
         </SidebarContent>
 
         {/* Trial Status Indicator */}
-        {/* <div className="px-4 py-3 border-t border-border/50 bg-card/30">
+        <div className="px-4 py-3 border-t border-border/50 bg-card/30">
           <TrialStatusIndicator />
-        </div> */}
+        </div>
 
         {/* Footer */}
         <SidebarFooter className="p-4 border-t bg-card/50">
