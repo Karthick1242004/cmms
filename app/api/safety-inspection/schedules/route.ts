@@ -9,6 +9,87 @@ let schedules = [...sampleSafetyInspectionSchedules]
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001'
 
+// Helper function to store safety inspection performance data
+async function storeSafetyInspectionPerformanceData(scheduleData: any, createdSchedule: any, user: any) {
+  try {
+    // Get employee details by name (since we store inspector name, not ID)
+    if (!scheduleData.assignedInspector) {
+      return; // No inspector assigned
+    }
+    
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    const employeeResponse = await fetch(`${baseUrl}/api/employees?search=${encodeURIComponent(scheduleData.assignedInspector)}&limit=1`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!employeeResponse.ok) {
+      console.warn('Could not fetch employee details for safety inspection performance tracking');
+      return;
+    }
+    
+    const employeeData = await employeeResponse.json();
+    const employee = employeeData?.data?.employees?.[0];
+    
+    if (!employee) {
+      console.warn(`Employee not found for inspector: ${scheduleData.assignedInspector}`);
+      return;
+    }
+    
+    // Create work history entry for the safety inspection assignment
+    const workHistoryEntry = {
+      type: 'safety-inspection' as const,
+      title: scheduleData.title,
+      description: scheduleData.description || `Safety inspection scheduled for ${scheduleData.assetName}`,
+      assetName: scheduleData.assetName,
+      status: 'pending' as const,
+      date: scheduleData.startDate || new Date().toISOString(),
+      scheduleId: createdSchedule.id,
+      assignmentRole: 'Assigned Inspector'
+    };
+    
+    // Create asset assignment entry
+    const assetAssignment = {
+      assetName: scheduleData.assetName,
+      assetId: scheduleData.assetId,
+      assignedDate: scheduleData.startDate || new Date().toISOString(),
+      status: 'active' as const,
+      role: 'primary' as const,
+      notes: `Safety inspection assignment: ${scheduleData.title}`
+    };
+    
+    // Store performance data
+    const performanceResponse = await fetch(`${baseUrl}/api/performance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        employeeId: employee.id,
+        employeeName: employee.name,
+        employeeEmail: employee.email,
+        department: employee.department,
+        role: employee.role,
+        workHistory: [workHistoryEntry],
+        assetAssignments: [assetAssignment],
+        currentAssignments: [scheduleData.assetId]
+      }),
+    });
+    
+    if (!performanceResponse.ok) {
+      const errorData = await performanceResponse.json().catch(() => ({}));
+      console.warn('Failed to store safety inspection performance data:', errorData);
+    } else {
+      console.log('Safety inspection performance data stored successfully');
+    }
+    
+  } catch (error) {
+    console.error('Error in storeSafetyInspectionPerformanceData:', error);
+  }
+}
+
 // Helper function to calculate next due date
 function calculateNextDueDate(startDate: string, frequency: string, customFrequencyDays?: number): string {
   const start = new Date(startDate)
@@ -193,6 +274,18 @@ export async function POST(request: NextRequest) {
 
     try {
       const result = JSON.parse(responseText)
+      
+      // Store performance data for assigned inspector
+      if (result.success && body.assignedInspector && result.data) {
+        try {
+          // Make a call to our performance API to store the assignment
+          await storeSafetyInspectionPerformanceData(body, result.data, user);
+        } catch (performanceError) {
+          console.error('Error storing safety inspection performance data:', performanceError);
+          // Don't fail the main request if performance tracking fails
+        }
+      }
+      
       return NextResponse.json(result, { status: 201 })
     } catch {
       return NextResponse.json(

@@ -28,11 +28,24 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
   const [formData, setFormData] = useState({
     completedDate: new Date().toISOString().split('T')[0],
     startTime: new Date().toTimeString().slice(0, 5),
-    endTime: "",
+    endTime: new Date(Date.now() + 60*60*1000).toTimeString().slice(0, 5), // Default to 1 hour later
     status: "completed" as const,
     overallCondition: "good" as const,
     notes: "",
   })
+
+  // Function to validate time range
+  const validateTimeRange = () => {
+    if (formData.startTime && formData.endTime) {
+      const start = new Date(`${formData.completedDate}T${formData.startTime}`)
+      const end = new Date(`${formData.completedDate}T${formData.endTime}`)
+      
+      if (end <= start) {
+        return false // End time must be after start time
+      }
+    }
+    return true
+  }
 
   const [partsStatus, setPartsStatus] = useState<MaintenancePartRecord[]>([])
 
@@ -85,9 +98,17 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
     if (formData.startTime && formData.endTime) {
       const start = new Date(`${formData.completedDate}T${formData.startTime}`)
       const end = new Date(`${formData.completedDate}T${formData.endTime}`)
-      return (end.getTime() - start.getTime()) / (1000 * 60 * 60) // hours
+      let duration = (end.getTime() - start.getTime()) / (1000 * 60 * 60) // hours
+      
+      // If duration is negative, assume the work spanned across midnight
+      if (duration < 0) {
+        duration = 24 + duration // Add 24 hours to handle cross-day scenarios
+      }
+      
+      // Ensure minimum duration is 0.1 hours (6 minutes)
+      return Math.max(duration, 0.1)
     }
-    return 0
+    return 1 // Default to 1 hour if times not provided
   }
 
   const getCompletionStats = () => {
@@ -114,7 +135,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       scheduleId: schedule.id,
       assetId: schedule.assetId,
       assetName: schedule.assetName,
-      department: schedule.department, // Add required department field
+      department: schedule.department || user?.department || "General", // Ensure department is always set
       completedDate: formData.completedDate,
       startTime: formData.startTime,
       endTime: formData.endTime,
@@ -130,6 +151,22 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
 
     console.log('Submitting maintenance record:', recordData)
     console.log('Parts status details:', JSON.stringify(partsStatus, null, 2))
+    console.log('Duration calculation details:', {
+      startTime: formData.startTime,
+      endTime: formData.endTime,
+      completedDate: formData.completedDate,
+      actualDuration: actualDuration
+    })
+    
+    // Additional validation before submission
+    if (!recordData.department) {
+      console.error('Department is missing, using fallback')
+      recordData.department = "General"
+    }
+    
+    if (actualDuration < 0) {
+      console.error('Negative duration detected, this should not happen')
+    }
     
     addRecord(recordData)
     setRecordDialogOpen(false)
@@ -138,7 +175,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
     setFormData({
       completedDate: new Date().toISOString().split('T')[0],
       startTime: new Date().toTimeString().slice(0, 5),
-      endTime: "",
+      endTime: new Date(Date.now() + 60*60*1000).toTimeString().slice(0, 5), // Default to 1 hour later
       status: "completed",
       overallCondition: "good",
       notes: "",

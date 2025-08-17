@@ -4,6 +4,69 @@ import { getUserContext } from '@/lib/auth-helpers';
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
+// Helper function to update maintenance performance data when a record is created (task completed)
+async function updateMaintenancePerformanceData(recordData: any, createdRecord: any, user: any) {
+  try {
+    // Get employee details by name (since we store technician name, not ID)
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    const employeeResponse = await fetch(`${baseUrl}/api/employees?search=${encodeURIComponent(recordData.technician)}&limit=1`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!employeeResponse.ok) {
+      console.warn('Could not fetch employee details for performance tracking');
+      return;
+    }
+    
+    const employeeData = await employeeResponse.json();
+    const employee = employeeData?.data?.employees?.[0];
+    
+    if (!employee) {
+      console.warn(`Employee not found for technician: ${recordData.technician}`);
+      return;
+    }
+    
+    // Add completed work history entry
+    const workHistoryEntry = {
+      type: 'maintenance' as const,
+      title: `Completed: ${recordData.assetName} Maintenance`,
+      description: recordData.notes || `Maintenance completed for ${recordData.assetName}`,
+      assetName: recordData.assetName,
+      status: recordData.status === 'completed' ? 'completed' as const : 'failed' as const,
+      date: recordData.completedDate || new Date().toISOString(),
+      duration: recordData.actualDuration,
+      scheduleId: recordData.scheduleId,
+      recordId: createdRecord.id,
+      assignmentRole: 'Technician'
+    };
+    
+    // Update performance data by adding the work history entry
+    const performanceResponse = await fetch(`${baseUrl}/api/performance/${employee.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'add_work_history',
+        data: workHistoryEntry
+      }),
+    });
+    
+    if (!performanceResponse.ok) {
+      const errorData = await performanceResponse.json().catch(() => ({}));
+      console.warn('Failed to update performance data:', errorData);
+    } else {
+      console.log('Performance data updated successfully for maintenance completion');
+    }
+    
+  } catch (error) {
+    console.error('Error in updateMaintenancePerformanceData:', error);
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get user context for department filtering (with fallback for testing)
@@ -87,6 +150,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate duration (ensure it's not negative or invalid)
+    if (body.actualDuration !== undefined && (body.actualDuration < 0 || isNaN(body.actualDuration))) {
+      console.warn('Invalid actualDuration detected:', body.actualDuration, 'Setting to 1 hour default');
+      body.actualDuration = 1; // Default to 1 hour
+    }
+
+    // Ensure department is set
+    if (!body.department) {
+      body.department = user?.department || 'General';
+      console.log('Department was missing, set to:', body.department);
+    }
+
     // Debug logging
     console.log('Maintenance Record API - Creating record:', {
       userAccessLevel: user?.accessLevel,
@@ -115,6 +190,18 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    
+    // Update performance data when maintenance record is created (task completed)
+    if (data.success && body.technician && data.data) {
+      try {
+        // Update performance data to mark the maintenance task as completed
+        await updateMaintenancePerformanceData(body, data.data, user);
+      } catch (performanceError) {
+        console.error('Error updating performance data:', performanceError);
+        // Don't fail the main request if performance tracking fails
+      }
+    }
+    
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('Error creating maintenance record:', error);

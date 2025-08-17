@@ -35,7 +35,9 @@ import {
 } from "lucide-react"
 import { PageLayout, PageHeader } from "@/components/page-layout"
 import { employeesApi } from "@/lib/employees-api"
+import { performanceApi } from "@/lib/performance-api"
 import type { EmployeeDetail } from "@/types/employee"
+import type { PerformanceRecord } from "@/types/performance"
 import { EmployeeAnalyticsCharts } from "@/components/employees/employee-analytics-charts"
 import { EmployeePerformanceReport } from "../../../components/employees/employee-performance-report"
 import { sampleEmployeeAnalytics } from "@/data/employees-sample"
@@ -47,6 +49,8 @@ export default function EmployeeDetailPage() {
   const employeeId = params.id as string
 
   const [employee, setEmployee] = useState<EmployeeDetail | null>(null)
+  const [performanceData, setPerformanceData] = useState<PerformanceRecord | null>(null)
+  const [usePerformanceData, setUsePerformanceData] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("overview")
@@ -68,10 +72,54 @@ export default function EmployeeDetailPage() {
         return
       }
       
+      // Try to fetch performance data first
+      try {
+        const performanceResponse = await performanceApi.getByEmployeeId(employeeId)
+        if (performanceResponse.success && performanceResponse.data) {
+          console.log('Using performance collection data for employee:', employeeId)
+          setPerformanceData(performanceResponse.data)
+          
+          // Convert performance data to EmployeeDetail format
+          const employeeFromPerformance: EmployeeDetail = {
+            id: performanceResponse.data.employeeId,
+            name: performanceResponse.data.employeeName,
+            email: performanceResponse.data.employeeEmail,
+            phone: '', // Not stored in performance data
+            department: performanceResponse.data.department,
+            role: performanceResponse.data.role,
+            status: 'active',
+            avatar: '/placeholder-user.jpg',
+            employeeId: performanceResponse.data.employeeId,
+            joinDate: '',
+            supervisor: '',
+            accessLevel: 'normal_user',
+            workShift: 'Day',
+            workHistory: performanceResponse.data.workHistory,
+            assetAssignments: performanceResponse.data.assetAssignments,
+            currentAssignments: performanceResponse.data.currentAssignments,
+            performanceMetrics: performanceResponse.data.performanceMetrics,
+            totalWorkHours: performanceResponse.data.totalWorkHours,
+            productivityScore: performanceResponse.data.productivityScore,
+            reliabilityScore: performanceResponse.data.reliabilityScore,
+            createdAt: performanceResponse.data.createdAt,
+            updatedAt: performanceResponse.data.updatedAt
+          }
+          
+          setEmployee(employeeFromPerformance)
+          setUsePerformanceData(true)
+          setIsLoading(false)
+          return
+        }
+      } catch (performanceError) {
+        console.log('Performance data not available, falling back to employee API')
+      }
+      
+      // Fallback to regular employee API
       const response = await employeesApi.getEmployeeDetails(employeeId)
       
       if (response.success) {
         setEmployee(response.data)
+        setUsePerformanceData(false)
       } else {
         setError(response.message || 'Failed to fetch employee details')
         toast.error('Failed to load employee details')
@@ -169,6 +217,14 @@ export default function EmployeeDetailPage() {
                   <span className="text-muted-foreground">{employee.role}</span>
                   <span className="text-muted-foreground">•</span>
                   <span className="text-muted-foreground">{employee.department}</span>
+                  {usePerformanceData && (
+                    <>
+                      <span className="text-muted-foreground">•</span>
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                        Live Performance Data
+                      </Badge>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

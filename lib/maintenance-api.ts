@@ -108,6 +108,12 @@ export const maintenanceSchedulesApi = {
 
   // Create new schedule
   create: async (schedule: Omit<MaintenanceSchedule, 'id' | 'createdAt' | 'updatedAt' | 'nextDueDate'>): Promise<SingleScheduleResponse> => {
+    console.log('🔗 MAINTENANCE API CLIENT - Sending schedule data:', {
+      assignedTechnician: schedule.assignedTechnician,
+      hasAssignedTechnician: !!schedule.assignedTechnician,
+      scheduleKeys: Object.keys(schedule),
+      fullSchedule: schedule
+    });
     return apiClient.post<SingleScheduleResponse>('/maintenance/schedules', schedule);
   },
 

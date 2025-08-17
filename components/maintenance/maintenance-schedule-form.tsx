@@ -210,6 +210,19 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Frontend validation to match backend requirements
+    if (formData.title.length < 5) {
+      console.error('❌ Frontend validation failed: Title must be at least 5 characters');
+      // Could add toast notification here
+      return;
+    }
+    
+    if (formData.title.length > 200) {
+      console.error('❌ Frontend validation failed: Title must be at most 200 characters');
+      // Could add toast notification here
+      return;
+    }
+    
     // Get selected asset details for additional fields
     const selectedAsset = assetsData?.data?.assets.find(asset => asset.id === formData.assetId)
     
@@ -230,11 +243,18 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       parts,
     }
 
-    console.log('Maintenance Schedule Form - Submitting:', {
+    console.log('🚀 FRONTEND FORM - Maintenance Schedule Form Submitting:', {
       formData,
       selectedAsset,
       finalLocation,
-      scheduleData
+      scheduleData,
+      assignedTechnician: scheduleData.assignedTechnician,
+      hasAssignedTechnician: !!scheduleData.assignedTechnician,
+      technicianLength: scheduleData.assignedTechnician?.length || 0,
+      // Debug the mapping issue
+      formDataAssignedInspector: formData.assignedInspector,
+      mappingWorking: formData.assignedInspector === scheduleData.assignedTechnician,
+      scheduleDataKeys: Object.keys(scheduleData)
     })
 
     if (schedule) {
@@ -334,9 +354,16 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="e.g., Monthly Filter Replacement"
+                placeholder="e.g., Monthly Filter Replacement (minimum 5 characters)"
                 required
+                minLength={5}
+                maxLength={200}
               />
+              {formData.title && formData.title.length < 5 && (
+                <p className="text-sm text-red-500 mt-1">
+                  Title must be at least 5 characters (currently {formData.title.length})
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

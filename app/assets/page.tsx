@@ -392,12 +392,11 @@ export default function AllAssetsPage() {
       )}
 
       {/* Assets Overall Report */}
-      {isReportOpen && (
-        <AssetsOverallReport 
-          assets={filteredAssets}
-          onClose={() => setIsReportOpen(false)}
-        />
-      )}
+      <AssetsOverallReport 
+        assets={filteredAssets}
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+      />
     </PageLayout>
   )
 }
