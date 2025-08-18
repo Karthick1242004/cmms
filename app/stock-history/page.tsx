@@ -1,361 +1,337 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Search, Package, TrendingUp, TrendingDown, RotateCcw, Plus, Filter, Calendar, Download } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { LoadingSpinner } from "@/components/loading-spinner"
-import { useDebounce } from "@/hooks/use-debounce"
-import { sampleStockTransactions, sampleParts } from "@/data/parts-sample"
-import type { StockTransaction } from "@/types/stock-transaction"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { toast } from "sonner"
-import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
+import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { StockTransactionForm } from "@/components/stock-transactions/stock-transaction-form";
+import { StockTransactionList } from "@/components/stock-transactions/stock-transaction-list";
+import { StockTransactionView } from "@/components/stock-transactions/stock-transaction-view";
+import { PageLayout } from "@/components/page-layout";
+import { AuthGuard } from "@/components/auth-guard";
+
+import type { StockTransaction, StockTransactionFormData } from "@/types/stock-transaction";
+import { useStockTransactionsStore } from "@/stores/stock-transactions-store";
+import { useAuthStore } from "@/stores/auth-store";
 
 export default function StockHistoryPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [departmentFilter, setDepartmentFilter] = useState("all")
-  const [categoryFilter, setCategoryFilter] = useState("all")
-  const [transactionTypeFilter, setTransactionTypeFilter] = useState("all")
-  const [transactions, setTransactions] = useState<StockTransaction[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const debouncedSearchTerm = useDebounce(searchTerm, 300)
-  
-  // Load sample data (in real app, this would fetch from API)
-  useEffect(() => {
-    setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      setTransactions(sampleStockTransactions)
-      setIsLoading(false)
-    }, 500)
-  }, [])
+  const { user } = useAuthStore();
+  const {
+    selectedTransaction,
+    isCreateDialogOpen,
+    isViewDialogOpen,
+    isDeleteDialogOpen,
+    isStatusUpdateDialogOpen,
+    isCreating,
+    isUpdating,
+    isDeleting,
+    setSelectedTransaction,
+    setCreateDialogOpen,
+    setViewDialogOpen,
+    setDeleteDialogOpen,
+    setStatusUpdateDialogOpen,
+    createTransaction,
+    updateTransactionStatus,
+    deleteTransaction,
+  } = useStockTransactionsStore();
 
-  const filteredTransactions = transactions.filter((transaction) => {
-    const matchesSearch = debouncedSearchTerm === "" || 
-      transaction.partName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      transaction.partNumber.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      transaction.sku.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      transaction.materialCode.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      transaction.reason.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      transaction.performedBy.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+  const [transactionToDelete, setTransactionToDelete] = useState<StockTransaction | null>(null);
+  const [transactionToUpdate, setTransactionToUpdate] = useState<StockTransaction | null>(null);
+  const [statusUpdateData, setStatusUpdateData] = useState({
+    status: '',
+    notes: '',
+  });
 
-    const matchesDepartment = departmentFilter === "all" || transaction.department === departmentFilter
-    const matchesCategory = categoryFilter === "all" || transaction.category === categoryFilter
-    const matchesType = transactionTypeFilter === "all" || transaction.transactionType === transactionTypeFilter
+  // Handle create new transaction
+  const handleCreateNew = () => {
+    setSelectedTransaction(null);
+    setCreateDialogOpen(true);
+  };
 
-    return matchesSearch && matchesDepartment && matchesCategory && matchesType
-  })
+  // Handle view transaction
+  const handleView = (transaction: StockTransaction) => {
+    setSelectedTransaction(transaction);
+    setViewDialogOpen(true);
+  };
 
-  // Calculate summary statistics
-  const totalTransactions = filteredTransactions.length
-  const totalValue = filteredTransactions.reduce((sum, txn) => sum + Math.abs(txn.totalValue), 0)
-  const inTransactions = filteredTransactions.filter(txn => txn.transactionType === 'in').length
-  const outTransactions = filteredTransactions.filter(txn => txn.transactionType === 'out').length
-  const adjustments = filteredTransactions.filter(txn => txn.transactionType === 'adjustment').length
+  // Handle edit transaction
+  const handleEdit = (transaction: StockTransaction) => {
+    setSelectedTransaction(transaction);
+    setCreateDialogOpen(true);
+  };
 
-  const getTransactionTypeIcon = (type: string) => {
-    switch (type) {
-      case 'in':
-        return <TrendingUp className="h-4 w-4 text-green-600" />
-      case 'out':
-        return <TrendingDown className="h-4 w-4 text-red-600" />
-      case 'adjustment':
-        return <RotateCcw className="h-4 w-4 text-blue-600" />
-      case 'transfer':
-        return <Package className="h-4 w-4 text-purple-600" />
-      default:
-        return <Package className="h-4 w-4 text-gray-600" />
+  // Handle delete transaction
+  const handleDelete = (transaction: StockTransaction) => {
+    setTransactionToDelete(transaction);
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle status update
+  const handleStatusUpdate = (transaction: StockTransaction) => {
+    setTransactionToUpdate(transaction);
+    setStatusUpdateData({
+      status: transaction.status === 'draft' ? 'pending' : 
+             transaction.status === 'pending' ? 'approved' : 
+             transaction.status === 'approved' ? 'completed' : 'completed',
+      notes: '',
+    });
+    setStatusUpdateDialogOpen(true);
+  };
+
+  // Form submission
+  const handleFormSubmit = async (data: StockTransactionFormData) => {
+    try {
+      await createTransaction(data);
+      setCreateDialogOpen(false);
+      setSelectedTransaction(null);
+      toast.success('Stock transaction created successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create stock transaction');
     }
-  }
+  };
 
-  const getTransactionTypeBadge = (type: string, quantity: number) => {
-    switch (type) {
-      case 'in':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">Stock In (+{quantity})</Badge>
-      case 'out':
-        return <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">Stock Out ({quantity})</Badge>
-      case 'adjustment':
-        return <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Adjustment ({quantity > 0 ? '+' : ''}{quantity})</Badge>
-      case 'transfer':
-        return <Badge variant="secondary" className="bg-purple-100 text-purple-800 hover:bg-purple-100">Transfer ({quantity})</Badge>
-      default:
-        return <Badge variant="outline">{type}</Badge>
+  // Form cancellation
+  const handleFormCancel = () => {
+    setCreateDialogOpen(false);
+    setSelectedTransaction(null);
+  };
+
+  // Confirm delete
+  const handleConfirmDelete = async () => {
+    if (!transactionToDelete) return;
+
+    try {
+      await deleteTransaction(transactionToDelete.id);
+      setDeleteDialogOpen(false);
+      setTransactionToDelete(null);
+      toast.success('Stock transaction deleted successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete stock transaction');
     }
-  }
+  };
 
-  const formatDateTime = (date: string, time: string) => {
-    const dateObj = new Date(`${date}T${time}`)
-    return dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
+  // Confirm status update
+  const handleConfirmStatusUpdate = async () => {
+    if (!transactionToUpdate) return;
 
-  const uniqueDepartments = [...new Set(transactions.map(txn => txn.department))]
-  const uniqueCategories = [...new Set(transactions.map(txn => txn.category))]
+    try {
+      await updateTransactionStatus(
+        transactionToUpdate.id,
+        statusUpdateData.status,
+        statusUpdateData.notes
+      );
+      setStatusUpdateDialogOpen(false);
+      setTransactionToUpdate(null);
+      setStatusUpdateData({ status: '', notes: '' });
+      toast.success('Transaction status updated successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update transaction status');
+    }
+  };
 
-  if (isLoading) {
-    return (
-      <PageLayout>
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner />
-      </div>
-      </PageLayout>
-    )
-  }
+  // Close dialogs
+  const handleCloseDialogs = () => {
+    setViewDialogOpen(false);
+    setDeleteDialogOpen(false);
+    setStatusUpdateDialogOpen(false);
+    setTransactionToDelete(null);
+    setTransactionToUpdate(null);
+    setStatusUpdateData({ status: '', notes: '' });
+  };
+
+  // Check if user can see internal notes
+  const canSeeInternalNotes = user?.role === 'manager' || user?.accessLevel === 'super_admin';
 
   return (
-    <PageLayout>
-      <PageHeader>
-      <div className="flex mt-4 justify-between items-center">
-        <div>
-            <h1 className="text-3xl font-bold tracking-tight">Inventory Transaction History</h1>
-            <p className="text-muted-foreground">Track all parts inventory movements with SKU and material codes</p>
-          </div>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                New Transaction
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+    <AuthGuard>
+      <PageLayout
+        title="Stock History"
+        description="Track and manage all inventory movements and stock transactions"
+      >
+        {/* Main Content */}
+        <StockTransactionList
+          onCreateNew={handleCreateNew}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onStatusUpdate={handleStatusUpdate}
+        />
+
+        {/* Create/Edit Dialog */}
+        <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create Stock Transaction</DialogTitle>
+              <DialogTitle>
+                {selectedTransaction ? 'Edit Stock Transaction' : 'Create Stock Transaction'}
+              </DialogTitle>
                 <DialogDescription>
-                  Record a new inventory movement
+                {selectedTransaction 
+                  ? 'Update the stock transaction details below.'
+                  : 'Record a new inventory movement or stock operation.'
+                }
                 </DialogDescription>
               </DialogHeader>
-              {/* Transaction form would go here */}
-              <div className="text-center text-muted-foreground py-8">
-                Transaction creation form will be implemented here
-              </div>
+            <StockTransactionForm
+              initialData={selectedTransaction ? {
+                transactionType: selectedTransaction.transactionType,
+                transactionDate: selectedTransaction.transactionDate,
+                referenceNumber: selectedTransaction.referenceNumber,
+                description: selectedTransaction.description,
+                sourceLocation: selectedTransaction.sourceLocation,
+                destinationLocation: selectedTransaction.destinationLocation,
+                supplier: selectedTransaction.supplier,
+                recipient: selectedTransaction.recipient,
+                recipientType: selectedTransaction.recipientType,
+                assetId: selectedTransaction.assetId,
+                assetName: selectedTransaction.assetName,
+                workOrderId: selectedTransaction.workOrderId,
+                workOrderNumber: selectedTransaction.workOrderNumber,
+                items: selectedTransaction.items,
+                priority: selectedTransaction.priority,
+                notes: selectedTransaction.notes,
+                internalNotes: selectedTransaction.internalNotes,
+              } : undefined}
+              onSubmit={handleFormSubmit}
+              onCancel={handleFormCancel}
+              isLoading={isCreating}
+            />
             </DialogContent>
           </Dialog>
-        </div>
-      </PageHeader>
 
-      <PageContent>
-      {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-              <div className="text-2xl font-bold">{totalTransactions}</div>
-              <p className="text-xs text-muted-foreground">Filtered results</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Stock In</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{inTransactions}</div>
-              <p className="text-xs text-muted-foreground">Receipts & purchases</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Stock Out</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-              <div className="text-2xl font-bold text-red-600">{outTransactions}</div>
-              <p className="text-xs text-muted-foreground">Issues & consumption</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-              <Package className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">${totalValue.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">Transaction value</p>
-          </CardContent>
-        </Card>
-      </div>
+        {/* View Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Stock Transaction Details</DialogTitle>
+              <DialogDescription>
+                View complete information about this stock transaction.
+              </DialogDescription>
+            </DialogHeader>
+            {selectedTransaction && (
+              <StockTransactionView
+                transaction={selectedTransaction}
+                showInternalNotes={canSeeInternalNotes}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
-      {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Filter className="h-4 w-4" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-5">
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Search</label>
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-3 w-3 text-muted-foreground" />
-          <Input
-                    placeholder="Search parts, SKU, material code..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-7 h-8 text-sm"
-          />
-        </div>
-              </div>
-              
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Department</label>
-        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All departments" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
-            {uniqueDepartments.map(dept => (
-              <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-              </div>
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Stock Transaction</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete transaction{' '}
+                <span className="font-semibold">{transactionToDelete?.transactionNumber}</span>?
+                This action cannot be undone and will permanently remove the transaction record.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCloseDialogs}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Transaction'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Category</label>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All categories" />
+        {/* Status Update Dialog */}
+        <Dialog open={isStatusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Update Transaction Status</DialogTitle>
+              <DialogDescription>
+                Update the status of transaction{' '}
+                <span className="font-semibold">{transactionToUpdate?.transactionNumber}</span>.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="status">New Status</Label>
+                <Select
+                  value={statusUpdateData.status}
+                  onValueChange={(value) =>
+                    setStatusUpdateData((prev) => ({ ...prev, status: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {uniqueCategories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
+                    {transactionToUpdate?.status === 'draft' && (
+                      <SelectItem value="pending">Pending Approval</SelectItem>
+                    )}
+                    {(transactionToUpdate?.status === 'pending' || 
+                      transactionToUpdate?.status === 'draft') && (
+                      <SelectItem value="approved">Approved</SelectItem>
+                    )}
+                    {(transactionToUpdate?.status === 'approved' || 
+                      transactionToUpdate?.status === 'pending') && (
+                      <SelectItem value="completed">Completed</SelectItem>
+                    )}
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Transaction Type</label>
-                <Select value={transactionTypeFilter} onValueChange={setTransactionTypeFilter}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="in">Stock In</SelectItem>
-                    <SelectItem value="out">Stock Out</SelectItem>
-                    <SelectItem value="adjustment">Adjustment</SelectItem>
-                    <SelectItem value="transfer">Transfer</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Actions</label>
-                <Button variant="outline" size="sm" className="w-full h-8 text-xs">
-                  <Download className="mr-1 h-3 w-3" />
-                  Export
-                </Button>
+              <div>
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Add notes about this status change..."
+                  value={statusUpdateData.notes}
+                  onChange={(e) =>
+                    setStatusUpdateData((prev) => ({ ...prev, notes: e.target.value }))
+                  }
+                />
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Transactions Table */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Package className="h-4 w-4" />
-              Stock Transactions ({filteredTransactions.length})
-            </CardTitle>
-            <CardDescription>
-              Complete history of all inventory movements
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-                    <TableHead className="text-xs font-medium py-2">Date & Time</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Part Details</TableHead>
-                    <TableHead className="text-xs font-medium py-2">SKU / Material Code</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Transaction</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Value</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Balance</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Reason</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Performed By</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-                  {filteredTransactions.map((transaction) => (
-                    <TableRow key={transaction.id} className="hover:bg-muted/50">
-                      <TableCell className="py-2">
-                        <div className="text-xs">
-                          <div className="font-medium">{transaction.date}</div>
-                          <div className="text-muted-foreground">{transaction.time}</div>
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button variant="outline" onClick={handleCloseDialogs}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmStatusUpdate}
+                disabled={!statusUpdateData.status || isUpdating}
+              >
+                {isUpdating ? 'Updating...' : 'Update Status'}
+              </Button>
                         </div>
-                      </TableCell>
-                      <TableCell className="py-2">
-                        <div className="text-xs">
-                          <div className="font-medium">{transaction.partName}</div>
-                          <div className="text-muted-foreground">{transaction.partNumber}</div>
-                          <div className="text-muted-foreground">{transaction.category} • {transaction.department}</div>
-                  </div>
-                </TableCell>
-                      <TableCell className="py-2">
-                        <div className="space-y-1">
-                          <Badge variant="outline" className="text-xs font-mono">
-                            {transaction.sku}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs font-mono">
-                            {transaction.materialCode}
-                          </Badge>
-                  </div>
-                </TableCell>
-                      <TableCell className="py-2">
-                        <div className="flex items-center gap-2">
-                          {getTransactionTypeIcon(transaction.transactionType)}
-                          {getTransactionTypeBadge(transaction.transactionType, transaction.quantity)}
-                  </div>
-                </TableCell>
-                      <TableCell className="py-2">
-                        <div className="text-xs">
-                          <div className="font-medium">${Math.abs(transaction.totalValue).toFixed(2)}</div>
-                          <div className="text-muted-foreground">${transaction.unitPrice.toFixed(2)} each</div>
-                        </div>
-                </TableCell>
-                      <TableCell className="py-2">
-                        <div className="text-xs font-medium">{transaction.balanceAfter}</div>
-                </TableCell>
-                      <TableCell className="py-2">
-                        <div className="text-xs max-w-xs">
-                          <div className="truncate">{transaction.reason}</div>
-                          {transaction.referenceNumber && (
-                            <div className="text-muted-foreground">{transaction.referenceNumber}</div>
-                          )}
-                        </div>
-                </TableCell>
-                      <TableCell className="py-2">
-                        <div className="text-xs">{transaction.performedBy}</div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-              {filteredTransactions.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  No transactions found matching your criteria
-      </div>
-              )}
-    </div>
-          </CardContent>
-        </Card>
-      </PageContent>
+          </DialogContent>
+        </Dialog>
     </PageLayout>
-  )
+    </AuthGuard>
+  );
 }

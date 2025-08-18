@@ -16,21 +16,31 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     
-    // Add department filter for non-admin users (only if user is authenticated)
-    if (user && user.role !== 'admin') {
-      searchParams.set('department', user.department);
-    }
+    // Per requirements: stock transactions can be seen by all users
+    // Do not add automatic department filtering
     
     // Forward all query parameters to the backend
     const queryString = searchParams.toString();
     const url = `${SERVER_BASE_URL}/api/stock-transactions${queryString ? `?${queryString}` : ''}`;
 
+    // Prepare headers including user context for backend
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Forward user context to backend if user is authenticated
+    if (user) {
+      headers['x-user-id'] = user.id?.toString() || 'unknown';
+      headers['x-user-name'] = user.name || 'Unknown User';
+      headers['x-user-email'] = user.email || 'unknown@example.com';
+      headers['x-user-department'] = user.department || 'Unknown';
+      headers['x-user-role'] = user.role || 'technician';
+    }
+
     // Forward request to backend server
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -82,6 +92,11 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-user-id': user.id?.toString() || 'unknown',
+        'x-user-name': user.name || 'Unknown User',
+        'x-user-email': user.email || 'unknown@example.com',
+        'x-user-department': user.department || 'Unknown',
+        'x-user-role': user.role || 'technician',
       },
       body: JSON.stringify(transactionData),
     });
