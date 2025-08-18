@@ -107,41 +107,41 @@ export default function ReportsPage() {
   // Fallback data function
   const getFallbackReportData = () => ({
     overview: {
-      maintenanceCosts: 24685,
-      completionRate: 87,
-      assetUptime: 94.3,
-      totalAssets: 150,
-      totalTickets: 45,
-      totalMaintenanceRecords: 32
+      maintenanceCosts: 0,
+      completionRate: 0,
+      assetUptime: 0,
+      totalAssets: 1,
+      totalTickets: 0,
+      totalMaintenanceRecords: 0
     },
     charts: {
       costTrend: [
-        { month: "Jan", cost: 18500 },
-        { month: "Feb", cost: 22100 },
-        { month: "Mar", cost: 19800 },
-        { month: "Apr", cost: 25200 },
-        { month: "May", cost: 21600 },
-        { month: "Jun", cost: 24685 }
+        { month: "Jan", cost: 0 },
+        { month: "Feb", cost: 0 },
+        { month: "Mar", cost: 0 },
+        { month: "Apr", cost: 0 },
+        { month: "May", cost: 0 },
+        { month: "Jun", cost: 0 }
       ],
       completionRate: [
-        { week: "Week 1", rate: 92 },
-        { week: "Week 2", rate: 89 },
-        { week: "Week 3", rate: 91 },
-        { week: "Week 4", rate: 87 }
+        { week: "Week 1", rate: 0 },
+        { week: "Week 2", rate: 0 },
+        { week: "Week 3", rate: 0 },
+        { week: "Week 4", rate: 0 }
       ],
       uptime: [
-        { day: "Mon", uptime: 96.2 },
-        { day: "Tue", uptime: 94.8 },
-        { day: "Wed", uptime: 95.1 },
-        { day: "Thu", uptime: 93.5 },
-        { day: "Fri", uptime: 94.9 },
-        { day: "Sat", uptime: 96.8 },
-        { day: "Sun", uptime: 94.3 }
+        { day: "Mon", uptime: 0 },
+        { day: "Tue", uptime: 0 },
+        { day: "Wed", uptime: 0 },
+        { day: "Thu", uptime: 0 },
+        { day: "Fri", uptime: 0 },
+        { day: "Sat", uptime: 0 },
+        { day: "Sun", uptime: 0 }
       ],
       maintenanceTypes: [
-        { name: "Preventive", value: 315, fill: "#06b6d4" },
-        { name: "Corrective", value: 135, fill: "#f59e0b" },
-        { name: "Predictive", value: 95, fill: "#10b981" }
+        { name: "Preventive", value: 0, fill: "#06b6d4" },
+        { name: "Corrective", value: 0, fill: "#f59e0b" },
+        { name: "Predictive", value: 0, fill: "#10b981" }
       ]
     }
   })
@@ -197,9 +197,71 @@ export default function ReportsPage() {
       printWindow.document.write(reportHTML)
       printWindow.document.close()
       
-      // Trigger print dialog after content loads
+      // Add print button and styling to the report
       printWindow.onload = () => {
-        printWindow.print()
+        // Add print button and styling to the report window
+        const printButton = printWindow.document.createElement('div');
+        printButton.className = 'print-controls';
+        printButton.innerHTML = `
+          <div style="
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+            user-select: none;
+            border: 2px solid #1d4ed8;
+          " 
+          onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.2)'"
+          onmouseout="this.style.background='#3b82f6'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+          onclick="window.print()"
+          title="Click to print or save as PDF"
+          >
+            🖨️ Print Report
+          </div>
+          
+          <div style="
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            background: #6b7280;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            user-select: none;
+            border: 1px solid #4b5563;
+          " 
+          onmouseover="this.style.background='#4b5563'; this.style.boxShadow='0 4px 16px rgba(0,0,0,0.15)'"
+          onmouseout="this.style.background='#6b7280'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'"
+          onclick="window.close()"
+          title="Close this report window"
+          >
+            ❌ Close
+          </div>
+        `;
+        
+        printWindow.document.body.appendChild(printButton);
+        
+        // Auto-close window after 5 minutes of inactivity
+        setTimeout(() => {
+          if (!printWindow.closed) {
+            printWindow.close()
+          }
+        }, 300000) // 5 minutes
       }
 
       // Reset button state
@@ -207,8 +269,8 @@ export default function ReportsPage() {
       exportButton.textContent = originalText;
       
       toast({
-        title: "Success",
-        description: "Report generated successfully with real-time data!",
+        title: "Report Generated",
+        description: "Report opened in new window. Use the Print button to print or save as PDF.",
         variant: "default"
       });
 
@@ -730,6 +792,10 @@ export default function ReportsPage() {
               .section {
                 page-break-inside: avoid;
               }
+              /* Hide print button when printing */
+              .print-controls {
+                display: none !important;
+              }
             }
           </style>
         </head>
@@ -787,27 +853,7 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div class="section">
-              <h2 class="section-title">📈 Cost Trend Analysis</h2>
-              ${chartImages.costTrend ? 
-                `<img src="${chartImages.costTrend}" alt="Cost Trend Chart" style="width: 100%; max-width: 500px; height: auto; margin: 15px auto; display: block; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
-                '<div class="chart-placeholder">Cost Trend Chart (Line Chart)</div>'
-              }
-              <table class="data-table">
-                <thead>
-                  <tr><th>Period</th><th>Cost ($)</th><th>Change</th></tr>
-                </thead>
-                <tbody>
-                  ${charts.costTrend.map((item: any, index: number) => `
-                    <tr>
-                      <td>${item.month || item.period || `Period ${index + 1}`}</td>
-                      <td>$${(item.cost || 0).toLocaleString()}</td>
-                      <td>${index > 0 ? (((item.cost - charts.costTrend[index-1].cost) / charts.costTrend[index-1].cost * 100).toFixed(1) + '%') : '-'}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
+            
 
             <div class="section">
               <h2 class="section-title">📊 Work Order Completion Rates</h2>
@@ -1088,24 +1134,24 @@ export default function ReportsPage() {
 
   // Additional data for specific tabs (loaded on demand)
   const assetPerformanceData = reportData?.assets?.performance || [
-    { name: "Excellent", value: 245, fill: "#10b981" },
-    { name: "Good", value: 186, fill: "#06b6d4" },
-    { name: "Fair", value: 98, fill: "#f59e0b" },
-    { name: "Poor", value: 34, fill: "#ef4444" },
+    { name: "Good", value: 1, fill: "#06b6d4" },
+    { name: "Out of Service", value: 0, fill: "#ef4444" },
+    { name: "Under Maintenance", value: 0, fill: "#f59e0b" },
+    { name: "Operational", value: 0, fill: "#10b981" },
   ]
 
   const maintenanceMetricsData = reportData?.maintenance?.metrics || [
-    { name: "MTTR", value: 4.2, fill: "#8b5cf6" },
-    { name: "MTBF", value: 168.5, fill: "#06b6d4" },
-    { name: "Availability", value: 94.3, fill: "#10b981" },
-    { name: "Reliability", value: 96.1, fill: "#f59e0b" },
+    { name: "MTTR", value: 0, fill: "#8b5cf6" },
+    { name: "MTBF", value: 0, fill: "#06b6d4" },
+    { name: "Availability", value: 0, fill: "#10b981" },
+    { name: "Reliability", value: 0, fill: "#f59e0b" },
   ]
 
   const inventoryData = reportData?.inventory?.distribution || [
-    { category: "Critical Parts", value: 1250, fill: "#ef4444" },
-    { category: "Standard Parts", value: 3420, fill: "#06b6d4" },
-    { category: "Consumables", value: 2180, fill: "#10b981" },
-    { category: "Tools", value: 890, fill: "#f59e0b" },
+    { category: "Critical Parts", value: 0, fill: "#ef4444" },
+    { category: "Standard Parts", value: 0, fill: "#06b6d4" },
+    { category: "Consumables", value: 0, fill: "#10b981" },
+    { category: "Tools", value: 0, fill: "#f59e0b" },
   ]
 
   const chartConfig = {

@@ -310,29 +310,88 @@ function generateInventoryReport(partsData: any, timeRanges: any) {
 
 // Helper functions for data generation
 function generateCostTrendData(records: any[], timeRanges: any) {
-  // Generate monthly cost data for the past 6 months
+  // Generate real cost data from maintenance records or zero values
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  return months.map((month, index) => ({
-    month,
-    cost: 18000 + Math.random() * 8000 + index * 1000
-  }));
+  const currentDate = new Date();
+  
+  return months.map((month, index) => {
+    // Calculate the date for this month (past 6 months)
+    const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - (5 - index), 1);
+    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+    
+    // Filter maintenance records for this month
+    const monthRecords = records.filter((record: any) => {
+      const recordDate = new Date(record.completedDate || record.createdAt || record.date);
+      return recordDate >= monthStart && recordDate <= monthEnd;
+    });
+    
+    // Calculate total costs for this month
+    const totalCost = monthRecords.reduce((sum: number, record: any) => {
+      // Calculate parts cost
+      const partsCost = record.partsStatus?.reduce((partSum: number, part: any) => 
+        partSum + (part.cost || 0), 0) || 0;
+      
+      // Calculate labor cost (assume $50/hour if not provided)
+      const laborCost = (record.actualDuration || record.estimatedDuration || 0) * 50;
+      
+      return sum + partsCost + laborCost;
+    }, 0);
+    
+    return {
+      month,
+      cost: Math.round(totalCost) || 0 // Use 0 if no cost data available
+    };
+  });
 }
 
 function generateCompletionRateData(tickets: any[], records: any[], timeRanges: any) {
-  // Generate weekly completion rate data
-  return [
-    { week: 'Week 1', rate: 88 + Math.floor(Math.random() * 8) },
-    { week: 'Week 2', rate: 85 + Math.floor(Math.random() * 10) },
-    { week: 'Week 3', rate: 87 + Math.floor(Math.random() * 8) },
-    { week: 'Week 4', rate: 84 + Math.floor(Math.random() * 10) }
-  ];
+  // Generate real weekly completion rate data or zero values
+  const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+  const currentDate = new Date();
+  
+  return weeks.map((week, index) => {
+    // Calculate the date range for this week (past 4 weeks)
+    const weekStart = new Date(currentDate.getTime() - (4 - index) * 7 * 24 * 60 * 60 * 1000);
+    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    // Filter work orders for this week
+    const weekTickets = tickets.filter((ticket: any) => {
+      const ticketDate = new Date(ticket.loggedDateTime || ticket.createdAt);
+      return ticketDate >= weekStart && ticketDate <= weekEnd;
+    });
+    
+    const weekRecords = records.filter((record: any) => {
+      const recordDate = new Date(record.completedDate || record.createdAt);
+      return recordDate >= weekStart && recordDate <= weekEnd;
+    });
+    
+    // Calculate completion rate
+    const totalItems = weekTickets.length + weekRecords.length;
+    const completedItems = weekTickets.filter((t: any) => t.status === 'completed').length + 
+                          weekRecords.filter((r: any) => r.status === 'completed').length;
+    
+    const rate = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+    
+    return {
+      week,
+      rate: rate || 0 // Use 0 if no data available
+    };
+  });
 }
 
 function generateUptimeData(assets: any[], timeRanges: any) {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  
+  // Calculate average uptime based on operational assets
+  const operationalAssets = assets.filter((a: any) => 
+    a.status === 'operational' || a.statusText === 'Online' || a.status === 'active'
+  );
+  const baseUptime = assets.length > 0 ? (operationalAssets.length / assets.length) * 100 : 0;
+  
   return days.map(day => ({
     day,
-    uptime: 92 + Math.random() * 6
+    uptime: Math.round(baseUptime * 10) / 10 || 0 // Use real uptime or 0 if no data
   }));
 }
 
@@ -420,12 +479,12 @@ function generateFallbackData(reportType: string, timeRange: string) {
     },
     charts: {
       costTrend: [
-        { month: "Jan", cost: 18500 },
-        { month: "Feb", cost: 22100 },
-        { month: "Mar", cost: 19800 },
-        { month: "Apr", cost: 25200 },
-        { month: "May", cost: 21600 },
-        { month: "Jun", cost: 24685 }
+        { month: "Jan", cost: 0 },
+        { month: "Feb", cost: 0 },
+        { month: "Mar", cost: 0 },
+        { month: "Apr", cost: 0 },
+        { month: "May", cost: 0 },
+        { month: "Jun", cost: 0 }
       ],
       completionRate: [
         { week: "Week 1", rate: 92 },
