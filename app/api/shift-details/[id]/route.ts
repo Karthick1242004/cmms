@@ -1,76 +1,100 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import { getUserContext } from '@/lib/auth-helpers';
+import connectDB from '@/lib/mongodb';
+import mongoose from 'mongoose';
 
-// Base URL for the backend server
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
+// Define ShiftDetail schema for the shiftdetails collection
+const ShiftDetailSchema = new mongoose.Schema({
+  employeeId: { type: String, required: true },
+  employeeName: { type: String, required: true },
+  email: { type: String, required: true },
+  phone: { type: String, required: true },
+  department: { type: String, required: true },
+  role: { type: String, default: 'Employee' },
+  status: { type: String, default: 'active' },
+  supervisor: { type: String, default: '' },
+  shiftType: { type: String, required: true },
+  shiftStartTime: { type: String, required: true },
+  shiftEndTime: { type: String, required: true },
+  workDays: [{ type: String }],
+  location: { type: String, default: 'Not assigned' },
+  joinDate: { type: String },
+  avatar: { type: String, default: '/placeholder-user.jpg' },
+  effectiveDate: { type: String },
+  createdAt: { type: String, default: () => new Date().toISOString() },
+  updatedAt: { type: String, default: () => new Date().toISOString() }
+}, {
+  collection: 'shiftdetails' // Explicitly specify collection name
+});
+
+// Create or get the model
+const ShiftDetail = mongoose.models.ShiftDetail || mongoose.model('ShiftDetail', ShiftDetailSchema);
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
-
-    // Fetch employee by ID instead of shift detail
-    const response = await fetch(`${SERVER_BASE_URL}/api/employees/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    // Get user context for authorization
+    const user = await getUserContext(request);
+    if (!user) {
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to fetch employee for shift detail' },
-        { status: response.status }
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
       );
     }
 
-    const employeeData = await response.json();
-    
-    if (!employeeData.success) {
-      return NextResponse.json(
-        { success: false, message: 'Failed to fetch employee data' },
-        { status: 500 }
-      );
-    }
+    const { id } = await params;
 
-    const employee = employeeData.data;
-    
-    // Check if employee has shift info
-    if (!employee.shiftInfo) {
+    // Connect to MongoDB
+    await connectDB();
+
+    // Fetch shift detail by ID from shiftdetails collection
+    const shiftDetail = await ShiftDetail.findById(id).lean() as any;
+
+    if (!shiftDetail) {
       return NextResponse.json(
-        { success: false, message: 'Employee does not have shift information' },
+        { success: false, message: 'Shift detail not found' },
         { status: 404 }
       );
     }
 
-    // Transform employee data to shift details format
-    const shiftDetail = {
-      id: employee.employeeId || employee.id,
-      employeeId: employee.employeeId || employee.id,
-      employeeName: employee.name,
-      email: employee.email,
-      phone: employee.phone,
-      department: employee.department,
-      role: employee.role,
-      shiftType: employee.shiftInfo.shiftType,
-      shiftStartTime: employee.shiftInfo.shiftStartTime,
-      shiftEndTime: employee.shiftInfo.shiftEndTime,
-      workDays: employee.shiftInfo.workDays || [],
-      supervisor: employee.supervisor || '',
-      location: employee.shiftInfo.location || 'Not assigned',
-      status: employee.status,
-      joinDate: employee.joinDate,
-      avatar: employee.avatar,
-      effectiveDate: employee.shiftInfo.effectiveDate,
+    // Check department access for non-super_admin users
+    if (user.accessLevel !== 'super_admin' && shiftDetail.department !== user.department) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - Access denied to this shift detail' },
+        { status: 403 }
+      );
+    }
+
+    // Transform data to match expected format
+    const formattedShiftDetail = {
+      id: shiftDetail._id.toString(),
+      employeeId: shiftDetail.employeeId,
+      employeeName: shiftDetail.employeeName,
+      email: shiftDetail.email,
+      phone: shiftDetail.phone,
+      department: shiftDetail.department,
+      role: shiftDetail.role,
+      shiftType: shiftDetail.shiftType,
+      shiftStartTime: shiftDetail.shiftStartTime,
+      shiftEndTime: shiftDetail.shiftEndTime,
+      workDays: shiftDetail.workDays || [],
+      supervisor: shiftDetail.supervisor || '',
+      location: shiftDetail.location || 'Not assigned',
+      status: shiftDetail.status,
+      joinDate: shiftDetail.joinDate,
+      avatar: shiftDetail.avatar || '/placeholder-user.jpg',
+      effectiveDate: shiftDetail.effectiveDate || shiftDetail.createdAt,
+      createdAt: shiftDetail.createdAt,
+      updatedAt: shiftDetail.updatedAt
     };
 
     const response_data = {
       success: true,
-      data: shiftDetail,
-      message: 'Shift detail retrieved successfully from employee data',
+      data: formattedShiftDetail,
+      message: 'Shift detail retrieved successfully from shiftdetails collection',
     };
 
     return NextResponse.json(response_data, { status: 200 });
@@ -86,10 +110,19 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    // Get user context for authorization
+    const user = await getUserContext(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
     const body = await request.json();
 
     // Validate at least one field is provided for update
@@ -100,85 +133,94 @@ export async function PUT(
       );
     }
 
-    // Transform shift details format to employee update format
-    const employeeUpdate: any = {};
-    
-    // Map basic employee fields
-    if (body.employeeName) employeeUpdate.name = body.employeeName;
-    if (body.email) employeeUpdate.email = body.email;
-    if (body.phone) employeeUpdate.phone = body.phone;
-    if (body.department) employeeUpdate.department = body.department;
-    if (body.role !== undefined) employeeUpdate.role = body.role || 'Employee';
-    if (body.supervisor !== undefined) employeeUpdate.supervisor = body.supervisor || '';
-    if (body.status) employeeUpdate.status = body.status;
+    // Connect to MongoDB
+    await connectDB();
 
-    // Map shift info fields
-    const shiftFields = ['shiftType', 'shiftStartTime', 'shiftEndTime', 'workDays', 'location'];
-    const hasShiftUpdates = shiftFields.some(field => body[field] !== undefined);
-    
-    if (hasShiftUpdates) {
-      employeeUpdate.shiftInfo = {};
-      if (body.shiftType !== undefined) employeeUpdate.shiftInfo.shiftType = body.shiftType;
-      if (body.shiftStartTime !== undefined) employeeUpdate.shiftInfo.shiftStartTime = body.shiftStartTime;
-      if (body.shiftEndTime !== undefined) employeeUpdate.shiftInfo.shiftEndTime = body.shiftEndTime;
-      if (body.workDays !== undefined) employeeUpdate.shiftInfo.workDays = body.workDays;
-      if (body.location !== undefined) employeeUpdate.shiftInfo.location = body.location;
-      
-      // Update effective date when shift info changes
-      employeeUpdate.shiftInfo.effectiveDate = new Date();
-    }
-
-    // Update employee via employees endpoint
-    const response = await fetch(`${SERVER_BASE_URL}/api/employees/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(employeeUpdate),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    // First, find the existing shift detail to check permissions
+    const existingShiftDetail = await ShiftDetail.findById(id).lean() as any;
+    if (!existingShiftDetail) {
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to update employee shift details' },
-        { status: response.status }
+        { success: false, message: 'Shift detail not found' },
+        { status: 404 }
       );
     }
 
-    const employeeData = await response.json();
-    
-    if (!employeeData.success) {
+    // Check department access for non-super_admin users
+    if (user.accessLevel !== 'super_admin' && existingShiftDetail.department !== user.department) {
       return NextResponse.json(
-        { success: false, message: 'Failed to update employee data' },
+        { success: false, message: 'Unauthorized - Access denied to this shift detail' },
+        { status: 403 }
+      );
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      updatedAt: new Date().toISOString()
+    };
+
+    // Map fields from request body to database fields
+    if (body.employeeName !== undefined) updateData.employeeName = body.employeeName;
+    if (body.email !== undefined) updateData.email = body.email;
+    if (body.phone !== undefined) updateData.phone = body.phone;
+    if (body.department !== undefined) updateData.department = body.department;
+    if (body.role !== undefined) updateData.role = body.role || 'Employee';
+    if (body.supervisor !== undefined) updateData.supervisor = body.supervisor || '';
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.shiftType !== undefined) updateData.shiftType = body.shiftType;
+    if (body.shiftStartTime !== undefined) updateData.shiftStartTime = body.shiftStartTime;
+    if (body.shiftEndTime !== undefined) updateData.shiftEndTime = body.shiftEndTime;
+    if (body.workDays !== undefined) updateData.workDays = body.workDays;
+    if (body.location !== undefined) updateData.location = body.location;
+    if (body.joinDate !== undefined) updateData.joinDate = body.joinDate;
+
+    // Update effective date when shift-related fields change
+    const shiftFields = ['shiftType', 'shiftStartTime', 'shiftEndTime', 'workDays', 'location'];
+    const hasShiftUpdates = shiftFields.some(field => body[field] !== undefined);
+    if (hasShiftUpdates) {
+      updateData.effectiveDate = new Date().toISOString();
+    }
+
+    // Update the shift detail in the shiftdetails collection
+    const updatedShiftDetail = await ShiftDetail.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).lean() as any;
+
+    if (!updatedShiftDetail) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to update shift detail' },
         { status: 500 }
       );
     }
 
-    const updatedEmployee = employeeData.data;
+    // Transform response to match expected format
+    const formattedResponse = {
+      id: updatedShiftDetail._id.toString(),
+      employeeId: updatedShiftDetail.employeeId,
+      employeeName: updatedShiftDetail.employeeName,
+      email: updatedShiftDetail.email,
+      phone: updatedShiftDetail.phone,
+      department: updatedShiftDetail.department,
+      role: updatedShiftDetail.role,
+      shiftType: updatedShiftDetail.shiftType,
+      shiftStartTime: updatedShiftDetail.shiftStartTime,
+      shiftEndTime: updatedShiftDetail.shiftEndTime,
+      workDays: updatedShiftDetail.workDays || [],
+      supervisor: updatedShiftDetail.supervisor || '',
+      location: updatedShiftDetail.location || 'Not assigned',
+      status: updatedShiftDetail.status,
+      joinDate: updatedShiftDetail.joinDate,
+      avatar: updatedShiftDetail.avatar || '/placeholder-user.jpg',
+      effectiveDate: updatedShiftDetail.effectiveDate || updatedShiftDetail.createdAt,
+      createdAt: updatedShiftDetail.createdAt,
+      updatedAt: updatedShiftDetail.updatedAt
+    };
 
-    // Transform response back to shift details format
     const shiftDetailResponse = {
       success: true,
-      data: {
-        id: updatedEmployee.employeeId || updatedEmployee.id,
-        employeeId: updatedEmployee.employeeId || updatedEmployee.id,
-        employeeName: updatedEmployee.name,
-        email: updatedEmployee.email,
-        phone: updatedEmployee.phone,
-        department: updatedEmployee.department,
-        role: updatedEmployee.role,
-        shiftType: updatedEmployee.shiftInfo?.shiftType,
-        shiftStartTime: updatedEmployee.shiftInfo?.shiftStartTime,
-        shiftEndTime: updatedEmployee.shiftInfo?.shiftEndTime,
-        workDays: updatedEmployee.shiftInfo?.workDays || [],
-        supervisor: updatedEmployee.supervisor || '',
-        location: updatedEmployee.shiftInfo?.location || 'Not assigned',
-        status: updatedEmployee.status,
-        joinDate: updatedEmployee.joinDate,
-        avatar: updatedEmployee.avatar,
-        effectiveDate: updatedEmployee.shiftInfo?.effectiveDate,
-      },
-      message: 'Employee shift details updated successfully',
+      data: formattedResponse,
+      message: 'Shift detail updated successfully in shiftdetails collection',
     };
     
     // Revalidate relevant paths after successful update
@@ -186,8 +228,6 @@ export async function PUT(
     revalidatePath('/api/shift-details');
     revalidatePath(`/api/shift-details/${id}`);
     revalidatePath('/api/shift-details/stats');
-    revalidatePath('/employees');
-    revalidatePath(`/api/employees/${id}`);
     revalidatePath('/'); // Dashboard might show shift details stats
     
     return NextResponse.json(shiftDetailResponse, { status: 200 });
@@ -203,44 +243,53 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
-
-    // Remove shift info from employee instead of deleting the entire employee
-    const employeeUpdate = {
-      shiftInfo: null, // Remove shift information
-    };
-
-    const response = await fetch(`${SERVER_BASE_URL}/api/employees/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(employeeUpdate),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    // Get user context for authorization
+    const user = await getUserContext(request);
+    if (!user) {
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to remove shift details from employee' },
-        { status: response.status }
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
       );
     }
 
-    const employeeData = await response.json();
-    
-    if (!employeeData.success) {
+    const { id } = await params;
+
+    // Connect to MongoDB
+    await connectDB();
+
+    // First, find the existing shift detail to check permissions
+    const existingShiftDetail = await ShiftDetail.findById(id).lean() as any;
+    if (!existingShiftDetail) {
       return NextResponse.json(
-        { success: false, message: 'Failed to remove shift information from employee' },
+        { success: false, message: 'Shift detail not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check department access for non-super_admin users
+    if (user.accessLevel !== 'super_admin' && existingShiftDetail.department !== user.department) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - Access denied to this shift detail' },
+        { status: 403 }
+      );
+    }
+
+    // Delete the shift detail from the shiftdetails collection
+    const deletedShiftDetail = await ShiftDetail.findByIdAndDelete(id);
+
+    if (!deletedShiftDetail) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to delete shift detail' },
         { status: 500 }
       );
     }
 
     const deleteResponse = {
       success: true,
-      message: 'Shift details removed from employee successfully',
+      message: 'Shift detail deleted successfully from shiftdetails collection',
     };
     
     // Revalidate relevant paths after successful deletion
@@ -248,8 +297,6 @@ export async function DELETE(
     revalidatePath('/api/shift-details');
     revalidatePath(`/api/shift-details/${id}`);
     revalidatePath('/api/shift-details/stats');
-    revalidatePath('/employees');
-    revalidatePath(`/api/employees/${id}`);
     revalidatePath('/'); // Dashboard might show shift details stats
     
     return NextResponse.json(deleteResponse, { status: 200 });
