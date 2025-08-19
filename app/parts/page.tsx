@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw } from "lucide-react"
+import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -33,6 +33,9 @@ function PartFormStandalone({
   locations,
   currentUserDepartment,
   isSuperAdmin,
+  availableAssets,
+  existingCategories,
+  onAddNewCategory,
 }: {
   isEdit?: boolean
   formData: Partial<Part>
@@ -43,7 +46,61 @@ function PartFormStandalone({
   locations: Location[]
   currentUserDepartment: string
   isSuperAdmin: boolean
+  availableAssets: Array<{ id: string; name: string; department: string }>
+  existingCategories: string[]
+  onAddNewCategory: (categoryName: string) => void
 }) {
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [selectedAssets, setSelectedAssets] = useState<Array<{ assetId: string; assetName: string; assetDepartment: string; quantityInAsset: number }>>(
+    formData.linkedAssets || []
+  )
+
+  // Filter assets based on selected department
+  const departmentAssets = availableAssets.filter(asset => 
+    asset.department === (formData.department || currentUserDepartment)
+  )
+
+  const handleAddNewCategory = () => {
+    if (newCategoryName.trim()) {
+      const categoryName = newCategoryName.trim()
+      onInputChange('category', categoryName)
+      onAddNewCategory(categoryName) // Add to parent's newly added categories
+      setNewCategoryName("")
+      setShowNewCategoryInput(false)
+    }
+  }
+
+  const handleAssetToggle = (asset: { id: string; name: string; department: string }) => {
+    const existingAsset = selectedAssets.find(a => a.assetId === asset.id)
+    
+    if (existingAsset) {
+      // Remove asset
+      const updatedAssets = selectedAssets.filter(a => a.assetId !== asset.id)
+      setSelectedAssets(updatedAssets)
+      onInputChange('linkedAssets', updatedAssets)
+    } else {
+      // Add asset
+      const newAsset = {
+        assetId: asset.id,
+        assetName: asset.name,
+        assetDepartment: asset.department,
+        quantityInAsset: 1
+      }
+      const updatedAssets = [...selectedAssets, newAsset]
+      setSelectedAssets(updatedAssets)
+      onInputChange('linkedAssets', updatedAssets)
+    }
+  }
+
+  const handleAssetQuantityChange = (assetId: string, quantity: number) => {
+    const updatedAssets = selectedAssets.map(asset =>
+      asset.assetId === assetId ? { ...asset, quantityInAsset: quantity } : asset
+    )
+    setSelectedAssets(updatedAssets)
+    onInputChange('linkedAssets', updatedAssets)
+  }
+
   return (
     <div className="grid gap-4">
       <div className="grid grid-cols-2 gap-4">
@@ -95,20 +152,62 @@ function PartFormStandalone({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="category">Category *</Label>
-          <Select value={formData.category || ""} onValueChange={(value) => onInputChange('category', value as any)}>
+          <Select value={formData.category || ""} onValueChange={(value) => {
+            if (value === "add_new") {
+              setShowNewCategoryInput(true)
+            } else {
+              onInputChange('category', value as any)
+            }
+          }}>
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Filters">Filters</SelectItem>
-              <SelectItem value="Seals & Gaskets">Seals & Gaskets</SelectItem>
-              <SelectItem value="Belts & Chains">Belts & Chains</SelectItem>
-              <SelectItem value="Electrical">Electrical</SelectItem>
-              <SelectItem value="Lubricants">Lubricants</SelectItem>
-              <SelectItem value="Bearings">Bearings</SelectItem>
-              <SelectItem value="Valves">Valves</SelectItem>
+              {existingCategories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+              <SelectItem value="add_new" className="text-blue-600 font-medium">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Category
+              </SelectItem>
             </SelectContent>
           </Select>
+          
+          {showNewCategoryInput && (
+            <div className="flex gap-2 mt-2">
+              <Input
+                placeholder="Enter new category name"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAddNewCategory()
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleAddNewCategory}
+                disabled={!newCategoryName.trim()}
+              >
+                Add
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setShowNewCategoryInput(false)
+                  setNewCategoryName("")
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="department">Department *</Label>
@@ -148,6 +247,77 @@ function PartFormStandalone({
           placeholder="Detailed description of the part"
           rows={3}
         />
+      </div>
+
+      {/* Linked Assets Section */}
+      <div className="space-y-2">
+        <Label>Linked Assets</Label>
+        <div className="border rounded-lg p-4 space-y-3">
+          {departmentAssets.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {formData.department ? 
+                `No assets found for ${formData.department} department` : 
+                "Select a department to view available assets"
+              }
+            </p>
+          ) : (
+            <>
+              <div className="text-sm text-muted-foreground mb-3">
+                Available assets in {formData.department || currentUserDepartment} department:
+              </div>
+              <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                {departmentAssets.map((asset) => {
+                  const isSelected = selectedAssets.some(a => a.assetId === asset.id)
+                  return (
+                    <div key={asset.id} className="flex items-center justify-between p-2 border rounded-md">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleAssetToggle(asset)}
+                          className="rounded"
+                        />
+                        <span className="text-sm font-medium">{asset.name}</span>
+                      </div>
+                      {isSelected && (
+                        <div className="flex items-center space-x-2">
+                          <Label className="text-xs">Qty:</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={selectedAssets.find(a => a.assetId === asset.id)?.quantityInAsset || 1}
+                            onChange={(e) => handleAssetQuantityChange(asset.id, parseInt(e.target.value) || 1)}
+                            className="w-16 h-6 text-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+          
+          {selectedAssets.length > 0 && (
+            <div className="mt-3 pt-3 border-t">
+              <div className="text-sm font-medium mb-2">Selected Assets ({selectedAssets.length}):</div>
+              <div className="flex flex-wrap gap-1">
+                {selectedAssets.map((asset) => (
+                  <Badge key={asset.assetId} variant="secondary" className="text-xs">
+                    {asset.assetName} (Qty: {asset.quantityInAsset})
+                    <button
+                      type="button"
+                      onClick={() => handleAssetToggle({ id: asset.assetId, name: asset.assetName, department: asset.assetDepartment })}
+                      className="ml-1 text-red-500 hover:text-red-700"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -239,6 +409,8 @@ export default function PartsPage() {
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [departments, setDepartments] = useState<Department[]>([])
   const [locations, setLocations] = useState<Location[]>([])
+  const [availableAssets, setAvailableAssets] = useState<Array<{ id: string; name: string; department: string }>>([])
+  const [newlyAddedCategories, setNewlyAddedCategories] = useState<string[]>([])
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   const { user } = useAuthStore()
@@ -273,6 +445,7 @@ export default function PartsPage() {
     fetchParts(true) // Enable auto-sync on first load
     fetchDepartments()
     fetchLocations()
+    fetchAssets()
   }, [])
 
   // Auto-select department for non-super admin users
@@ -343,6 +516,28 @@ export default function PartsPage() {
     }
   }
 
+  const fetchAssets = async () => {
+    try {
+      const response = await fetch('/api/assets')
+      const data = await response.json()
+      
+      if (data.success) {
+        const assetsList = data.data?.assets || []
+        // Transform assets to simple structure for dropdown
+        const transformedAssets = assetsList.map((asset: any) => ({
+          id: asset.id,
+          name: asset.assetName || asset.name,
+          department: asset.department || "N/A"
+        }))
+        setAvailableAssets(transformedAssets)
+      } else {
+        console.error('Failed to fetch assets:', data.message)
+      }
+    } catch (error) {
+      console.error('Error fetching assets:', error)
+    }
+  }
+
   // const syncPartsFromAssets = async () => {
   //   setIsLoading(true)
   //   try {
@@ -386,12 +581,19 @@ export default function PartsPage() {
   const totalValue = filteredParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0)
   const uniqueDepartments = [...new Set(parts.map(part => part.department))]
   const uniqueCategories = [...new Set(parts.map(part => part.category))]
+  const existingCategories = [...new Set([...parts.map(part => part.category).filter(Boolean), ...newlyAddedCategories])]
 
   const handleInputChange = (field: keyof Part, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }))
+  }
+
+  const handleAddNewCategory = (categoryName: string) => {
+    if (!newlyAddedCategories.includes(categoryName)) {
+      setNewlyAddedCategories(prev => [...prev, categoryName])
+    }
   }
 
   const handleSubmit = async (isEdit: boolean = false) => {
@@ -638,6 +840,9 @@ export default function PartsPage() {
                     locations={locations}
                     currentUserDepartment={user?.department || ""}
                     isSuperAdmin={isSuperAdmin}
+                    availableAssets={availableAssets}
+                    existingCategories={existingCategories}
+                    onAddNewCategory={handleAddNewCategory}
                   />
                 </DialogContent>
               </Dialog>
@@ -911,6 +1116,9 @@ export default function PartsPage() {
             locations={locations}
             currentUserDepartment={user?.department || ""}
             isSuperAdmin={isSuperAdmin}
+            availableAssets={availableAssets}
+            existingCategories={existingCategories}
+            onAddNewCategory={handleAddNewCategory}
           />
         </DialogContent>
       </Dialog>
