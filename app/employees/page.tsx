@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores/auth-store"
 import { Button } from "@/components/ui/button"
@@ -18,10 +18,11 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, Search, Edit, Trash2, Phone, Mail, Loader2, Eye } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Phone, Mail, Loader2, Eye, EyeOff } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useEmployeesStore } from "@/stores/employees-store"
+
+import { useEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from "@/hooks/use-employees-query"
 import { Employee } from "@/types/employee"
 import { toast } from "sonner"
 
@@ -52,21 +53,42 @@ export default function EmployeesPage() {
     accessLevel: "normal_user",
   })
 
-  const {
-    filteredEmployees,
-    isLoading,
-    searchTerm,
-    setSearchTerm,
-    fetchEmployees,
-    addEmployee,
-    updateEmployee,
-    deleteEmployee,
-  } = useEmployeesStore()
+  const [showPassword, setShowPassword] = useState(false)
+  const [passwordChanged, setPasswordChanged] = useState(false)
+
+  // TanStack Query hooks
+  const { user: authUser } = useAuthStore()
+  const employeeParams = authUser?.accessLevel !== 'super_admin' ? { department: authUser?.department } : {}
+  const { data: employeesData, isLoading, error } = useEmployees(employeeParams)
+  const createEmployeeMutation = useCreateEmployee()
+  const updateEmployeeMutation = useUpdateEmployee()
+  const deleteEmployeeMutation = useDeleteEmployee()
+
+  // Local search state
+  const [searchTerm, setSearchTerm] = useState("")
+
+  // Extract employees from API response
+  const employees = employeesData?.data?.employees || []
+  
+  // Filter employees based on search term
+  const filteredEmployees = useMemo(() => {
+    if (!searchTerm.trim()) return employees
+    
+    const term = searchTerm.toLowerCase()
+    return employees.filter((employee) => {
+      return (
+        employee.name.toLowerCase().includes(term) ||
+        employee.email.toLowerCase().includes(term) ||
+        employee.department.toLowerCase().includes(term) ||
+        employee.role.toLowerCase().includes(term) ||
+        employee.phone.includes(term)
+      )
+    })
+  }, [employees, searchTerm])
 
   useEffect(() => {
-    fetchEmployees()
     fetchDepartments()
-  }, [fetchEmployees])
+  }, [])
 
   // Check if user can create employees
   const canCreateEmployees = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
@@ -99,16 +121,22 @@ export default function EmployeesPage() {
   const handleSubmit = async () => {
     try {
       if (editingEmployee) {
-        await updateEmployee(editingEmployee.id, formData)
+        // For updates, only include password if it was changed
+        const updateData = { ...formData }
+        if (!passwordChanged) {
+          delete updateData.password
+        }
+        await updateEmployeeMutation.mutateAsync({ id: editingEmployee.id, updates: updateData })
         toast.success("Employee updated successfully")
       } else {
-        await addEmployee(formData)
+        await createEmployeeMutation.mutateAsync(formData)
         toast.success("Employee created successfully")
       }
       setIsDialogOpen(false)
       resetForm()
     } catch (error) {
-      toast.error("Failed to save employee")
+      const errorMessage = error instanceof Error ? error.message : "Failed to save employee"
+      toast.error(errorMessage)
     }
   }
 
@@ -124,15 +152,18 @@ export default function EmployeesPage() {
       password: "", // Don't pre-fill password for security
       accessLevel: (employee as any).accessLevel || "normal_user",
     })
+    setPasswordChanged(false)
+    setShowPassword(false)
     setIsDialogOpen(true)
   }
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteEmployee(id)
+      await deleteEmployeeMutation.mutateAsync(id)
       toast.success("Employee deleted successfully")
     } catch (error) {
-      toast.error("Failed to delete employee")
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete employee"
+      toast.error(errorMessage)
     }
   }
 
@@ -148,6 +179,15 @@ export default function EmployeesPage() {
       accessLevel: "normal_user",
     })
     setEditingEmployee(null)
+    setPasswordChanged(false)
+    setShowPassword(false)
+  }
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, password: e.target.value })
+    if (editingEmployee && !passwordChanged) {
+      setPasswordChanged(true)
+    }
   }
 
   const handleCreateEmployee = () => {
@@ -161,6 +201,49 @@ export default function EmployeesPage() {
     setIsDialogOpen(false)
     resetForm()
   }
+
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in p-6">
+        {/* Skeleton Loader */}
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded w-64 mb-2"></div>
+          <div className="h-4 bg-muted rounded w-96"></div>
+        </div>
+        <div className="animate-pulse">
+          <div className="h-10 bg-muted rounded w-full"></div>
+        </div>
+        <div className="border rounded-lg">
+          <div className="animate-pulse p-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex space-x-4 py-4 border-b border-muted last:border-b-0">
+                <div className="h-4 bg-muted rounded flex-1"></div>
+                <div className="h-4 bg-muted rounded flex-1"></div>
+                <div className="h-4 bg-muted rounded flex-1"></div>
+                <div className="h-4 bg-muted rounded w-20"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="space-y-6 animate-fade-in p-6">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">Error loading employees: {error.message}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Determine if any mutation is in progress
+  const isSubmitting = createEmployeeMutation.isPending || updateEmployeeMutation.isPending
 
   return (
     <div className="space-y-6">
@@ -275,50 +358,77 @@ export default function EmployeesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {!editingEmployee && (
-                <>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="password" className="text-right">
-                      Password
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="col-span-3"
-                      placeholder="Temporary password"
-                    />
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="password" className="text-right">
+                  Password
+                </Label>
+                <div className="col-span-3 relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handlePasswordChange}
+                    className="pr-10"
+                    placeholder={editingEmployee ? "Enter new password (leave empty to keep current)" : "Temporary password"}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              {editingEmployee && passwordChanged && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div></div>
+                  <div className="col-span-3 text-xs text-orange-600 bg-orange-50 p-2 rounded border">
+                    ⚠️ Password will be updated when you save changes
                   </div>
-                  {user?.accessLevel === 'super_admin' && (
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="accessLevel" className="text-right">
-                        Access Level
-                      </Label>
-                      <Select 
-                        value={formData.accessLevel} 
-                        onValueChange={(value: "super_admin" | "department_admin" | "normal_user") => setFormData({ ...formData, accessLevel: value })}
-                      >
-                        <SelectTrigger className="col-span-3">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="normal_user">Normal User</SelectItem>
-                          <SelectItem value="department_admin">Department Admin</SelectItem>
-                          <SelectItem value="super_admin">Super Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </>
+                </div>
+              )}
+              {user?.accessLevel === 'super_admin' && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="accessLevel" className="text-right">
+                    Access Level
+                  </Label>
+                  <Select 
+                    value={formData.accessLevel} 
+                    onValueChange={(value: "super_admin" | "department_admin" | "normal_user") => setFormData({ ...formData, accessLevel: value })}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal_user">Normal User</SelectItem>
+                      <SelectItem value="department_admin">Department Admin</SelectItem>
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={handleDialogClose}>
+              <Button 
+                variant="outline" 
+                onClick={handleDialogClose}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
-              <Button type="submit" onClick={handleSubmit}>
-                {editingEmployee ? "Update Employee" : "Save Employee"}
+              <Button 
+                type="submit" 
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : (editingEmployee ? "Update Employee" : "Save Employee")}
               </Button>
             </DialogFooter>
           </DialogContent>

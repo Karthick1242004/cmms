@@ -1,41 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
-
-// Helper function to get user context from headers/session
-const getUserContext = async (request: NextRequest) => {
-  // TODO: Replace with actual authentication logic
-  // This is a mock implementation
-  return {
-    id: 'user123',
-    name: 'John Doe',
-    email: 'john@example.com',
-    department: 'Engineering',
-    role: 'admin' as const, // or 'user'
-  };
-};
+import { getUserContext } from '@/lib/auth-helpers';
+import { connectToDatabase } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
-    const userContext = await getUserContext(request);
+    // Get user context for authentication
+    const user = await getUserContext(request);
     
-    const backendUrl = `${SERVER_BASE_URL}/api/departments/stats`;
+    // Connect directly to MongoDB
+    const { db } = await connectToDatabase();
     
-    const response = await fetch(backendUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        // Pass user context to backend
-        'x-user-id': userContext.id,
-        'x-user-name': userContext.name,
-        'x-user-email': userContext.email,
-        'x-user-department': userContext.department,
-        'x-user-role': userContext.role,
+    // Get all departments
+    const departments = await db.collection('departments').find({}).toArray();
+    
+    // Calculate department statistics
+    const departmentStats = await Promise.all(
+      departments.map(async (dept) => {
+        const employeeCount = await db.collection('employees').countDocuments({
+          department: dept.name
+        });
+        
+        const activeEmployeeCount = await db.collection('employees').countDocuments({
+          department: dept.name,
+          status: 'active'
+        });
+        
+        return {
+          departmentId: dept._id.toString(),
+          departmentName: dept.name,
+          employeeCount,
+          activeEmployeeCount,
+          inactiveEmployeeCount: employeeCount - activeEmployeeCount
+        };
+      })
+    );
+    
+    // Calculate overall statistics
+    const totalDepartments = departments.length;
+    const totalEmployees = await db.collection('employees').countDocuments();
+    const totalActiveEmployees = await db.collection('employees').countDocuments({ status: 'active' });
+    const averageEmployeesPerDepartment = totalDepartments > 0 ? Math.round(totalEmployees / totalDepartments) : 0;
+    
+    return NextResponse.json({
+      success: true,
+      data: {
+        totalDepartments,
+        totalEmployees,
+        totalActiveEmployees,
+        averageEmployeesPerDepartment,
+        departmentStats
       },
-    });
-
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+      message: 'Department statistics retrieved successfully'
+    }, { status: 200 });
   } catch (error) {
     console.error('Error fetching department stats:', error);
     return NextResponse.json(

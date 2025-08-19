@@ -1,50 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-
-// Base URL for the backend server
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
+import { connectToDatabase } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
     // Get user context for department filtering and user headers
     const user = await getUserContext(request);
     
-    const { searchParams } = new URL(request.url);
+    // Connect directly to MongoDB
+    const { db } = await connectToDatabase();
     
-    // Forward all query parameters to the backend
-    const queryString = searchParams.toString();
-    const url = `${SERVER_BASE_URL}/api/departments${queryString ? `?${queryString}` : ''}`;
+    // Fetch departments from database
+    const departments = await db.collection('departments').find({}).toArray();
+    
+    // Calculate real-time employee counts for each department
+    const departmentsWithCounts = await Promise.all(
+      departments.map(async (dept) => {
+        // Count employees in this department
+        const employeeCount = await db.collection('employees').countDocuments({
+          department: dept.name
+        });
+        
+        return {
+          id: dept._id.toString(),
+          name: dept.name,
+          code: dept.code,
+          description: dept.description,
+          manager: dept.manager,
+          employeeCount, // Real-time count from employees collection
+          status: dept.status,
+          createdAt: dept.createdAt,
+          updatedAt: dept.updatedAt
+        };
+      })
+    );
 
-    // Prepare headers with user context
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    // Sort departments by name for consistent ordering
+    departmentsWithCounts.sort((a, b) => a.name.localeCompare(b.name));
 
-    // Add user context headers if available
-    if (user) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-name'] = user.name;
-      headers['x-user-email'] = user.email;
-      headers['x-user-department'] = user.department;
-      headers['x-user-role'] = user.role;
-    }
-
-    // Forward request to backend server
-    const response = await fetch(url, {
-      method: 'GET',
-      headers,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to fetch departments' },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      data: {
+        departments: departmentsWithCounts,
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalCount: departmentsWithCounts.length,
+          hasNext: false,
+          hasPrevious: false
+        }
+      },
+      message: 'Departments retrieved successfully'
+    }, { status: 200 });
   } catch (error) {
     console.error('Error fetching departments:', error);
     return NextResponse.json(
@@ -75,38 +82,59 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-
-    // Prepare headers with user context
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+    
+    // Connect directly to MongoDB
+    const { db } = await connectToDatabase();
+    
+    // Prepare department data
+    const departmentData = {
+      name: body.name,
+      code: body.code,
+      description: body.description,
+      manager: body.manager,
+      status: body.status || 'active',
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
-    // Add user context headers if available
-    if (user) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-name'] = user.name;
-      headers['x-user-email'] = user.email;
-      headers['x-user-department'] = user.department;
-      headers['x-user-role'] = user.role;
+    // Insert department into database
+    const result = await db.collection('departments').insertOne(departmentData);
+    
+    // If manager employee data is provided, create the employee
+    if (body.managerEmployee) {
+      const employeeData = {
+        ...body.managerEmployee,
+        employeeId: `EMP-${Date.now()}`,
+        joinDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      // Hash the password before storing
+      const bcrypt = require('bcrypt');
+      if (employeeData.password) {
+        employeeData.password = await bcrypt.hash(employeeData.password, 12);
+      }
+      
+      await db.collection('employees').insertOne(employeeData);
     }
 
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/departments`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
+    // Return the created department with real-time employee count
+    const employeeCount = await db.collection('employees').countDocuments({
+      department: departmentData.name
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to create department' },
-        { status: response.status }
-      );
-    }
+    const createdDepartment = {
+      id: result.insertedId.toString(),
+      ...departmentData,
+      employeeCount
+    };
 
-    const result = await response.json();
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      data: createdDepartment,
+      message: 'Department created successfully'
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating department:', error);
     return NextResponse.json(

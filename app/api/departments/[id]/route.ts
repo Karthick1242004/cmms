@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-
-// Base URL for the backend server
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
+import { connectToDatabase } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 export async function PUT(
   request: NextRequest,
@@ -38,37 +37,50 @@ export async function PUT(
       );
     }
 
-    // Prepare headers with user context
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    // Connect directly to MongoDB
+    const { db } = await connectToDatabase();
 
-    // Add user context headers
-    if (user) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-name'] = user.name;
-      headers['x-user-email'] = user.email;
-      headers['x-user-department'] = user.department;
-      headers['x-user-role'] = user.role;
-    }
-
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/departments/${id}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
+    // Check if department exists
+    const existingDepartment = await db.collection('departments').findOne({ _id: new ObjectId(id) });
+    if (!existingDepartment) {
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to update department' },
-        { status: response.status }
+        { success: false, message: 'Department not found' },
+        { status: 404 }
       );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data, { status: 200 });
+    // Update department data
+    const updateData = {
+      name: body.name,
+      code: body.code,
+      description: body.description,
+      manager: body.manager,
+      status: body.status,
+      updatedAt: new Date()
+    };
+
+    await db.collection('departments').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    // Calculate real-time employee count
+    const employeeCount = await db.collection('employees').countDocuments({
+      department: body.name
+    });
+
+    const updatedDepartment = {
+      id: id,
+      ...updateData,
+      employeeCount,
+      createdAt: existingDepartment.createdAt
+    };
+
+    return NextResponse.json({
+      success: true,
+      data: updatedDepartment,
+      message: 'Department updated successfully'
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Error updating department:', error);
@@ -104,36 +116,37 @@ export async function DELETE(
 
     const { id } = params;
 
-    // Prepare headers with user context
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    // Connect directly to MongoDB
+    const { db } = await connectToDatabase();
 
-    // Add user context headers
-    if (user) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-name'] = user.name;
-      headers['x-user-email'] = user.email;
-      headers['x-user-department'] = user.department;
-      headers['x-user-role'] = user.role;
-    }
-
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/departments/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
+    // Check if department exists
+    const department = await db.collection('departments').findOne({ _id: new ObjectId(id) });
+    if (!department) {
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to delete department' },
-        { status: response.status }
+        { success: false, message: 'Department not found' },
+        { status: 404 }
       );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data, { status: 200 });
+    // Check if department has employees
+    const employeeCount = await db.collection('employees').countDocuments({
+      department: department.name
+    });
+
+    if (employeeCount > 0) {
+      return NextResponse.json(
+        { success: false, message: `Cannot delete department "${department.name}" because it has ${employeeCount} employee(s). Please reassign or remove employees first.` },
+        { status: 400 }
+      );
+    }
+
+    // Delete the department
+    await db.collection('departments').deleteOne({ _id: new ObjectId(id) });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Department deleted successfully'
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Error deleting department:', error);
@@ -151,24 +164,41 @@ export async function GET(
   try {
     const { id } = params;
 
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/departments/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Connect directly to MongoDB
+    const { db } = await connectToDatabase();
 
-    if (!response.ok) {
-      const errorData = await response.json();
+    // Fetch department from database
+    const department = await db.collection('departments').findOne({ _id: new ObjectId(id) });
+
+    if (!department) {
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to fetch department' },
-        { status: response.status }
+        { success: false, message: 'Department not found' },
+        { status: 404 }
       );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data, { status: 200 });
+    // Calculate real-time employee count
+    const employeeCount = await db.collection('employees').countDocuments({
+      department: department.name
+    });
+
+    const departmentWithCount = {
+      id: department._id.toString(),
+      name: department.name,
+      code: department.code,
+      description: department.description,
+      manager: department.manager,
+      employeeCount,
+      status: department.status,
+      createdAt: department.createdAt,
+      updatedAt: department.updatedAt
+    };
+
+    return NextResponse.json({
+      success: true,
+      data: departmentWithCount,
+      message: 'Department retrieved successfully'
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Error fetching department:', error);
