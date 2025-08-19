@@ -15,6 +15,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    // Derive the current origin so internal fetches work in production too
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'http';
+    const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const selfOrigin = `${forwardedProto}://${forwardedHost}`;
     const timeRange = searchParams.get('timeRange') || 'month'; // week, month, quarter, year
     const reportType = searchParams.get('type') || 'overview'; // overview, assets, maintenance, inventory
     
@@ -55,8 +59,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fallback: Generate reports data from existing endpoints
-    const reportsData = await generateReportsData(user, timeRange, reportType, headers);
+    // Fallback: Generate reports data from existing endpoints (using correct base)
+    const reportsData = await generateReportsData(user, timeRange, reportType, headers, selfOrigin);
     
     return NextResponse.json({
       success: true,
@@ -74,7 +78,13 @@ export async function GET(request: NextRequest) {
 }
 
 // Helper function to generate reports data from existing endpoints
-async function generateReportsData(user: any, timeRange: string, reportType: string, headers: Record<string, string>) {
+async function generateReportsData(
+  user: any,
+  timeRange: string,
+  reportType: string,
+  headers: Record<string, string>,
+  selfOrigin: string
+) {
   const now = new Date();
   const timeRanges = getTimeRangeFilters(timeRange, now);
   
@@ -87,19 +97,19 @@ async function generateReportsData(user: any, timeRange: string, reportType: str
       partsResponse
     ] = await Promise.allSettled([
       // Fetch maintenance records
-      fetch(`http://localhost:3000/api/maintenance?type=records&startDate=${timeRanges.startDate}&endDate=${timeRanges.endDate}`, {
+      fetch(`${selfOrigin}/api/maintenance?type=records&startDate=${timeRanges.startDate}&endDate=${timeRanges.endDate}`, {
         headers: { ...headers, 'x-internal-request': 'true' }
       }),
       // Fetch tickets
-      fetch(`http://localhost:3000/api/tickets?startDate=${timeRanges.startDate}&endDate=${timeRanges.endDate}`, {
+      fetch(`${selfOrigin}/api/tickets?startDate=${timeRanges.startDate}&endDate=${timeRanges.endDate}`, {
         headers: { ...headers, 'x-internal-request': 'true' }
       }),
       // Fetch assets
-      fetch(`http://localhost:3000/api/assets`, {
+      fetch(`${selfOrigin}/api/assets`, {
         headers: { ...headers, 'x-internal-request': 'true' }
       }),
       // Fetch parts
-      fetch(`http://localhost:3000/api/parts`, {
+      fetch(`${selfOrigin}/api/parts`, {
         headers: { ...headers, 'x-internal-request': 'true' }
       })
     ]);
