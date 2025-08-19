@@ -1,28 +1,20 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
 import { 
   Dialog, 
   DialogContent, 
-  DialogDescription, 
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog"
 import { 
   FileText, 
   Printer, 
-  Download, 
-  Calendar, 
-  Clock, 
-  User, 
-  Building, 
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Clock
 } from "lucide-react"
 import type { Ticket } from "@/types/ticket"
 
@@ -34,7 +26,6 @@ interface TicketReportProps {
 
 export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-  const reportRef = useRef<HTMLDivElement>(null)
 
   // Format date and time
   const formatDateTime = (dateString: string) => {
@@ -105,19 +96,443 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
 
   // Handle print
   const handlePrint = () => {
-    window.print()
+    // Generate the report HTML
+    const reportHTML = generateReportHTML()
+    
+    // Open in new window
+    const newWindow = window.open('about:blank', '_blank')
+    if (newWindow) {
+      newWindow.document.write(reportHTML)
+      newWindow.document.close()
+    }
   }
 
-  // Handle PDF download (simplified version - in production, you'd use a proper PDF library)
+  // Handle PDF download
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true)
     
-    // Simple implementation - opens print dialog
-    // In production, you'd use libraries like jsPDF or react-pdf
-    setTimeout(() => {
-      window.print()
+    // Generate the report HTML
+    const reportHTML = generateReportHTML()
+    
+    // Open in new window
+    const newWindow = window.open('about:blank', '_blank')
+    if (newWindow) {
+      newWindow.document.write(reportHTML)
+      newWindow.document.close()
+    }
+    
       setIsGeneratingPDF(false)
-    }, 500)
+  }
+
+  const generateReportHTML = () => {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+  const createdDateTime = formatDateTime(ticket.loggedDateTime)
+  const priorityInfo = getPriorityInfo(ticket.priority)
+  const statusInfo = getStatusInfo(ticket.status)
+  const activeReportTypes = getActiveReportTypes()
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Service Ticket Report - ${ticket.ticketId}</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #fff;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+          }
+          
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #3b82f6;
+          }
+          
+          .header h1 {
+            font-size: 28px;
+            color: #1e40af;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+          }
+          
+          .header .subtitle {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 4px;
+          }
+          
+          .header .date {
+            font-size: 12px;
+            color: #9ca3af;
+          }
+          
+          .section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+          }
+          
+          .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+            text-transform: uppercase;
+          }
+          
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+          }
+          
+          .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+          }
+          
+          .info-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+          }
+          
+          .info-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+          }
+          
+          .info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1e293b;
+          }
+          
+          .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          .priority-critical { background: #fee2e2; color: #dc2626; }
+          .priority-high { background: #fed7aa; color: #ea580c; }
+          .priority-medium { background: #fef3c7; color: #d97706; }
+          .priority-low { background: #dcfce7; color: #16a34a; }
+          
+          .status-open { background: #fee2e2; color: #dc2626; }
+          .status-in-progress { background: #dbeafe; color: #2563eb; }
+          .status-pending { background: #fef3c7; color: #d97706; }
+          .status-resolved { background: #dcfce7; color: #16a34a; }
+          .status-closed { background: #f1f5f9; color: #64748b; }
+          
+          .content-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 60px;
+          }
+          
+          .content-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+          }
+          
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          
+          th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          
+          th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #374151;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          td {
+            font-size: 13px;
+          }
+          
+          .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #e2e8f0;
+            color: #64748b;
+            margin: 2px;
+          }
+          
+          .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+          }
+          
+          .btn {
+            padding: 8px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #fff;
+            color: #374151;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+          }
+          
+          .btn:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+          }
+          
+          .btn-primary {
+            background: #3b82f6;
+            color: #fff;
+            border-color: #3b82f6;
+          }
+          
+          .btn-primary:hover {
+            background: #2563eb;
+          }
+          
+          @media print {
+            .controls { display: none; }
+            body { padding: 0; }
+            .section { page-break-inside: avoid; }
+          }
+          
+          @media (max-width: 768px) {
+            .grid {
+              grid-template-columns: 1fr;
+            }
+            .grid-4 {
+              grid-template-columns: repeat(2, 1fr);
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="controls">
+          <button class="btn btn-primary" onclick="window.print()">🖨️ Print Report</button>
+          <button class="btn" onclick="window.close()">✕ Close</button>
+        </div>
+
+        <div class="header">
+          <h1>🎫 Service Ticket Report</h1>
+          <p class="subtitle">Ticket ID: ${ticket.ticketId}</p>
+          <p class="date">Generated on ${currentDate}</p>
+        </div>
+        
+        <div class="section">
+          <h2 class="section-title">📋 Ticket Information</h2>
+          <div class="grid">
+            <div class="info-card">
+              <div class="info-label">Ticket ID</div>
+              <div class="info-value" style="font-family: monospace; font-weight: bold;">${ticket.ticketId}</div>
+                </div>
+            <div class="info-card">
+              <div class="info-label">Priority</div>
+              <div class="status-badge priority-${ticket.priority.toLowerCase()}">
+                ${ticket.priority}
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Status</div>
+              <div class="status-badge status-${ticket.status.toLowerCase().replace(' ', '-')}">
+                ${ticket.status}
+                  </div>
+                </div>
+            <div class="info-card">
+              <div class="info-label">Logged Date & Time</div>
+              <div class="info-value">
+                ${createdDateTime.date}<br>
+                <small style="color: #6b7280;">${createdDateTime.time}</small>
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Logged By</div>
+              <div class="info-value">${ticket.loggedBy}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Reported Via</div>
+              <div class="info-value">${ticket.reportedVia}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Company</div>
+              <div class="info-value">${ticket.company}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Department</div>
+              <div class="info-value">${ticket.department}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Area</div>
+              <div class="info-value">${ticket.area}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">In-Charge</div>
+              <div class="info-value">${ticket.inCharge}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Equipment ID</div>
+              <div class="info-value">${ticket.equipmentId || 'N/A'}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Reviewed By</div>
+              <div class="info-value">${ticket.reviewedBy || 'N/A'}</div>
+                  </div>
+            <div class="info-card">
+              <div class="info-label">Total Time</div>
+              <div class="info-value">${ticket.totalTime ? `${ticket.totalTime} hours` : 'N/A'}</div>
+                </div>
+            <div class="info-card">
+              <div class="info-label">Ticket Close Date</div>
+              <div class="info-value">${ticket.ticketCloseDate ? formatDate(ticket.ticketCloseDate) : 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+
+        <div class="section">
+          <h2 class="section-title">🏷️ Report Type & Access</h2>
+          <div class="grid">
+            <div class="info-card">
+              <div class="info-label">Report Type</div>
+              <div>
+                ${activeReportTypes.length > 0 
+                  ? activeReportTypes.map(type => `<span class="badge">${type}</span>`).join('')
+                  : '<span class="info-value" style="color: #6b7280;">No type selected</span>'
+                }
+              </div>
+                </div>
+            <div class="info-card">
+              <div class="info-label">Assigned Departments</div>
+                <div>
+                ${ticket.assignedDepartments && ticket.assignedDepartments.length > 0
+                  ? ticket.assignedDepartments.map(dept => `<span class="badge">${dept}</span>`).join('')
+                  : '<span class="info-value" style="color: #6b7280;">None assigned</span>'
+                }
+              </div>
+                </div>
+                </div>
+          ${ticket.isOpenTicket ? `
+            <div style="margin-top: 15px;">
+              <div class="status-badge" style="background: #e0e7ff; color: #3730a3;">
+                📋 Open Ticket (Visible to all departments)
+              </div>
+            </div>
+          ` : ''}
+              </div>
+
+        <div class="section">
+          <h2 class="section-title">📝 Subject</h2>
+          <div class="content-box">
+            <div style="font-weight: 600; font-size: 16px;">${ticket.subject}</div>
+                </div>
+              </div>
+
+        <div class="section">
+          <h2 class="section-title">📄 Description</h2>
+          <div class="content-box">
+            <div class="content-text">${ticket.description}</div>
+                  </div>
+                </div>
+        
+        <div class="section">
+          <h2 class="section-title">💡 Solution</h2>
+          <div class="content-box">
+            <div class="content-text">${ticket.solution || 'No solution provided yet'}</div>
+                </div>
+              </div>
+
+        ${ticket.activityLog && ticket.activityLog.length > 0 ? `
+        <div class="section">
+          <h2 class="section-title">📊 Activity Log</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Duration</th>
+                <th>Logged By</th>
+                <th>Remarks / Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ticket.activityLog.map(activity => `
+                <tr>
+                  <td>${formatDate(activity.date)}</td>
+                  <td>${activity.duration ? `${activity.duration} min` : 'N/A'}</td>
+                  <td>${activity.loggedBy}</td>
+                  <td>${activity.remarks}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+                </div>
+        ` : ''}
+        
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+          <p><strong>END OF SERVICE TICKET REPORT</strong></p>
+          <p>Report Generated: ${currentDate} | Ticket ID: ${ticket.ticketId} | Classification: Internal Use Only</p>
+          <p>For any queries regarding this ticket, please contact: ${ticket.inCharge}</p>
+              </div>
+      </body>
+      </html>
+    `
   }
 
   const createdDateTime = formatDateTime(ticket.loggedDateTime)
@@ -127,248 +542,59 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Ticket Report - {ticket.ticketId}
-          </DialogTitle>
-          <DialogDescription>
-            Complete ticket information report
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* Action Buttons - Hidden when printing */}
-        <div className="flex gap-2 mb-4 print:hidden">
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleDownloadPDF}
-            disabled={isGeneratingPDF}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            {isGeneratingPDF ? "Generating..." : "Download PDF"}
-          </Button>
-        </div>
-
-
-
-        {/* Report Content */}
-        <div ref={reportRef} className="space-y-6 print:space-y-4 print:text-sm">
-          {/* Header */}
-          <div className="text-center border-b pb-4 print:pb-2">
-            <div className="flex justify-center items-start mb-2">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold">SERVICE TICKET REPORT</h1>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Generated on {formatDate(new Date().toISOString())}
-                </div>
-              </div>
-              {/* <div className="w-20 h-16 border border-dashed border-gray-300 flex items-center justify-center text-xs text-muted-foreground">
-                Logo Image
-              </div> */}
-            </div>
-          </div>
-
-          {/* Main Information Grid */}
-          <div className="grid grid-cols-2 gap-6 print:gap-4">
-            {/* Left Column */}
-            <div className="space-y-4 print:space-y-3">
-              <div className="grid grid-cols-2 gap-4 print:gap-2">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Ticket ID</div>
-                  <div className="font-mono font-semibold">{ticket.ticketId}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Priority</div>
-                  <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-md ${priorityInfo.bgColor}`}>
-                    {priorityInfo.icon}
-                    <span className={`font-medium ${priorityInfo.color}`}>{ticket.priority}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 print:gap-2">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Logged Date Time</div>
-                  <div className="text-sm">
-                    <div>{createdDateTime.date}</div>
-                    <div className="text-muted-foreground">{createdDateTime.time}</div>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Logged By</div>
-                  <div className="flex items-center gap-1">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span>{ticket.loggedBy}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">Reported Via</div>
-                <div>{ticket.reportedVia}</div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 print:gap-2">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Company</div>
-                  <div>{ticket.company}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Department</div>
-                  <div className="flex items-center gap-1">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span>{ticket.department}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 print:gap-2">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Area</div>
-                  <div>{ticket.area}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">In-Charge</div>
-                  <div>{ticket.inCharge}</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 print:gap-2">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Equipment ID</div>
-                  <div>{ticket.equipmentId || "N/A"}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Reviewed By</div>
-                  <div>{ticket.reviewedBy || "N/A"}</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 print:gap-2">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Status</div>
-                  <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-md ${statusInfo.bgColor}`}>
-                    {statusInfo.icon}
-                    <span className={`font-medium ${statusInfo.color}`}>{ticket.status}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Ticket Close Date</div>
-                  <div>{ticket.ticketCloseDate ? formatDate(ticket.ticketCloseDate) : "N/A"}</div>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">Total Time</div>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{ticket.totalTime ? `${ticket.totalTime} hours` : "N/A"}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - Report Type and Access Control */}
-            <div className="space-y-4 print:space-y-3">
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-2">Report Type</div>
-                <div className="flex flex-wrap gap-2">
-                  {activeReportTypes.map((type) => (
-                    <Badge key={type} variant="secondary" className="text-xs">
-                      {type}
-                    </Badge>
-                  ))}
-                  {activeReportTypes.length === 0 && (
-                    <span className="text-sm text-muted-foreground">No type selected</span>
-                  )}
-                </div>
-              </div>
-
-              {ticket.assignedDepartments.length > 0 && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-2">Assigned Departments</div>
-                  <div className="flex flex-wrap gap-1">
-                    {ticket.assignedDepartments.map((dept) => (
-                      <Badge key={dept} variant="outline" className="text-xs">
-                        {dept}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {ticket.isOpenTicket && (
-                <div>
-                  <Badge variant="secondary" className="text-xs">
-                    📋 Open Ticket (Visible to all departments)
-                  </Badge>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Subject */}
-          <div>
-            <div className="text-sm font-medium text-muted-foreground mb-2">Subject</div>
-            <div className="p-3 bg-muted/30 rounded-md">
-              <p className="font-medium">{ticket.subject}</p>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <div className="text-sm font-medium text-muted-foreground mb-2">Description</div>
-            <div className="p-3 bg-muted/30 rounded-md min-h-[100px]">
-              <p className="whitespace-pre-wrap">{ticket.description}</p>
-            </div>
-          </div>
-
-          {/* Solution */}
-          <div>
-            <div className="text-sm font-medium text-muted-foreground mb-2">Solution</div>
-            <div className="p-3 bg-muted/30 rounded-md min-h-[100px]">
-              <p className="whitespace-pre-wrap">{ticket.solution || "No solution provided yet"}</p>
-            </div>
-          </div>
-
-          {/* Activity Log */}
-          {ticket.activityLog && ticket.activityLog.length > 0 && (
+          <DialogTitle className="flex items-center gap-3">
+            <FileText className="h-6 w-6 text-primary" />
             <div>
-              <div className="text-sm font-medium text-muted-foreground mb-2">Activity Log</div>
-              <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2 text-xs font-medium text-muted-foreground border-b pb-1">
-                  <div>Date</div>
-                  <div>Duration</div>
-                  <div>Logged By</div>
-                  <div>Remarks / Notes</div>
+              <h2 className="text-xl font-semibold">Service Ticket Report</h2>
+              <p className="text-sm text-muted-foreground">Generate comprehensive ticket report</p>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <FileText className="h-8 w-8 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-blue-900">Ticket ID: {ticket.ticketId}</h3>
+                <p className="text-sm text-blue-700">{ticket.subject}</p>
+                <div className="flex items-center gap-4 mt-2 text-xs text-blue-600">
+                  <span>Priority: {ticket.priority}</span>
+                  <span>Status: {ticket.status}</span>
+                  <span>Logged by: {ticket.loggedBy}</span>
                 </div>
-                {ticket.activityLog.slice(0, 5).map((activity, index) => (
-                  <div key={index} className="grid grid-cols-4 gap-2 text-sm border-b pb-2">
-                    <div>{formatDate(activity.date)}</div>
-                    <div>{activity.duration ? `${activity.duration} min` : "N/A"}</div>
-                    <div>{activity.loggedBy}</div>
-                    <div className="truncate" title={activity.remarks}>{activity.remarks}</div>
-                  </div>
-                ))}
-                {ticket.activityLog.length > 5 && (
-                  <div className="text-xs text-muted-foreground text-center py-2">
-                    ... and {ticket.activityLog.length - 5} more entries
-                  </div>
-                )}
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Footer */}
-          <div className="mt-8 pt-4 border-t text-center text-xs text-muted-foreground print:mt-4">
-            <p>This report was generated automatically on {formatDate(new Date().toISOString())}</p>
-            <p className="mt-1">For any queries regarding this ticket, please contact: {ticket.inCharge}</p>
+          <p className="text-sm text-gray-600">
+            Generate a comprehensive service ticket report that includes all ticket information, 
+            activity log, and technical details. The report will open in a new window with print functionality.
+          </p>
+          
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <div className="font-semibold text-green-600">{ticket.department}</div>
+              <div className="text-green-500">Department</div>
+            </div>
+            <div className="text-center p-3 bg-orange-50 rounded-lg">
+              <div className="font-semibold text-orange-600">{ticket.area}</div>
+              <div className="text-orange-500">Area</div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-4">
+            <Button onClick={handlePrint} className="flex-1">
+              <Printer className="mr-2 h-4 w-4" />
+              Generate Report
+            </Button>
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
           </div>
         </div>
       </DialogContent>
