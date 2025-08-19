@@ -151,7 +151,11 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
             </TableHeader>
             <TableBody>
               {schedules.map((schedule) => (
-                <TableRow key={schedule.id}>
+                <TableRow 
+                  key={schedule.id} 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => handleViewDetails(schedule)}
+                >
                   <TableCell>
                     <div>
                       <div className="font-medium">{schedule.assetName}</div>
@@ -162,13 +166,9 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
                   </TableCell>
                   <TableCell>
                     <div>
-                      <button 
-                        onClick={() => handleViewDetails(schedule)}
-                        className="font-medium text-left hover:text-primary hover:underline cursor-pointer transition-colors"
-                        title="Click to view details"
-                      >
+                      <div className="font-medium text-left">
                         {schedule.title}
-                      </button>
+                      </div>
                       {schedule.description && (
                         <div className="text-sm text-muted-foreground line-clamp-2">
                           {schedule.description}
@@ -224,7 +224,7 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
                       <span>{schedule.estimatedDuration}h</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">

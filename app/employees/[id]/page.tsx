@@ -258,10 +258,10 @@ export default function EmployeeDetailPage() {
               <Download className="mr-2 h-4 w-4" />
               Export Report
             </Button>
-            <Button variant="outline" size="sm">
+            {/* <Button variant="outline" size="sm">
               <Settings className="mr-2 h-4 w-4" />
               Edit Employee
-            </Button>
+            </Button> */}
           </div>
         </div>
       </PageHeader>

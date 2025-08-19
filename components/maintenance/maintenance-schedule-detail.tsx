@@ -111,18 +111,439 @@ export function MaintenanceScheduleDetail({
   }
 
   const handlePrint = () => {
-    window.print()
+    // Generate the report HTML
+    const reportHTML = generateReportHTML()
+    
+    // Open in new window
+    const newWindow = window.open('about:blank', '_blank')
+    if (newWindow) {
+      newWindow.document.write(reportHTML)
+      newWindow.document.close()
+    }
   }
 
   const handleDownloadReport = async () => {
     setIsGeneratingReport(true)
     
-    // Simple implementation - opens print dialog
-    // In production, you'd use libraries like jsPDF or react-pdf
-    setTimeout(() => {
-      window.print()
+    // Generate the report HTML
+    const reportHTML = generateReportHTML()
+    
+    // Open in new window
+    const newWindow = window.open('about:blank', '_blank')
+    if (newWindow) {
+      newWindow.document.write(reportHTML)
+      newWindow.document.close()
+    }
+    
       setIsGeneratingReport(false)
-    }, 500)
+  }
+
+  const generateReportHTML = () => {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Maintenance Schedule Detailed Report - ${schedule.title}</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #fff;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+          }
+          
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #3b82f6;
+          }
+          
+          .header h1 {
+            font-size: 28px;
+            color: #1e40af;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+          }
+          
+          .header .subtitle {
+            font-size: 16px;
+            color: #374151;
+            margin-bottom: 4px;
+            font-weight: 600;
+          }
+          
+          .header .date {
+            font-size: 12px;
+            color: #9ca3af;
+          }
+          
+          .section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+          }
+          
+          .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+            text-transform: uppercase;
+          }
+          
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+          }
+          
+          th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #000;
+          }
+          
+          th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+          }
+          
+          td {
+            font-size: 13px;
+          }
+          
+          .info-label {
+            background: #f8fafc;
+            font-weight: 600;
+            width: 25%;
+          }
+          
+          .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          .status-active { background: #dbeafe; color: #1e40af; }
+          .status-completed { background: #d1fae5; color: #059669; }
+          .status-overdue { background: #fee2e2; color: #dc2626; }
+          .status-pending { background: #fef3c7; color: #d97706; }
+          
+          .priority-low { background: #f0fdf4; color: #22c55e; }
+          .priority-medium { background: #fef3c7; color: #eab308; }
+          .priority-high { background: #fef2f2; color: #ef4444; }
+          .priority-critical { background: #fdf2f8; color: #ec4899; }
+          
+          .overdue-text {
+            color: #dc2626;
+            font-weight: bold;
+          }
+          
+          .warning-text {
+            color: #ea580c;
+            font-weight: bold;
+          }
+          
+          .part-header {
+            background: #e5e7eb;
+            font-weight: bold;
+            padding: 8px 12px;
+            border: 1px solid #000;
+            margin-bottom: 8px;
+          }
+          
+          .checklist-table {
+            margin-top: 10px;
+          }
+          
+          .checklist-table th {
+            background: #dbeafe;
+            color: #1e40af;
+          }
+          
+          .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+          }
+          
+          .btn {
+            padding: 8px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #fff;
+            color: #374151;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+          }
+          
+          .btn:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+          }
+          
+          .btn-primary {
+            background: #3b82f6;
+            color: #fff;
+            border-color: #3b82f6;
+          }
+          
+          .btn-primary:hover {
+            background: #2563eb;
+          }
+          
+          @media print {
+            .controls { display: none; }
+            body { padding: 0; }
+            .section { page-break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="controls">
+          <button class="btn btn-primary" onclick="window.print()">🖨️ Print Report</button>
+          <button class="btn" onclick="window.close()">✕ Close</button>
+        </div>
+        
+        <div class="header">
+          <h1>🔧 Maintenance Schedule Detailed Report</h1>
+          <p class="subtitle">${schedule.title}</p>
+          <p class="date">Generated on ${currentDate}</p>
+          <p class="date">${schedule.assetName}</p>
+        </div>
+        
+        <div class="section">
+          <h2 class="section-title">📋 Schedule Information</h2>
+          <table>
+            <tbody>
+              <tr>
+                <td class="info-label">Schedule Title</td>
+                <td>${schedule.title}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Asset Name</td>
+                <td>${schedule.assetName}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Asset Tag</td>
+                <td>${schedule.assetTag || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Asset Type</td>
+                <td>${schedule.assetType}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Location</td>
+                <td>${schedule.location}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Department</td>
+                <td>${schedule.department}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Status</td>
+                <td>
+                  <span class="status-badge status-${schedule.status}">${schedule.status.toUpperCase()}</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="info-label">Priority</td>
+                <td>
+                  <span class="status-badge priority-${schedule.priority}">${schedule.priority.toUpperCase()}</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="info-label">Frequency</td>
+                <td class="capitalize">
+                  ${schedule.frequency === "custom" 
+                    ? `Every ${schedule.customFrequencyDays} days`
+                    : schedule.frequency
+                  }
+                </td>
+              </tr>
+              <tr>
+                <td class="info-label">Next Due Date</td>
+                <td class="${isOverdue(schedule.nextDueDate) ? 'overdue-text' : daysUntilDue <= 7 ? 'warning-text' : ''}">
+                  ${formatDate(schedule.nextDueDate)}
+                  ${isOverdue(schedule.nextDueDate) 
+                    ? ` (OVERDUE by ${Math.abs(daysUntilDue)} days)`
+                    : daysUntilDue <= 7 
+                    ? ` (${daysUntilDue} days remaining)`
+                    : ''
+                  }
+                </td>
+              </tr>
+              <tr>
+                <td class="info-label">Start Date</td>
+                <td>${formatDate(schedule.startDate)}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Last Completed</td>
+                <td>${schedule.lastCompletedDate ? formatDate(schedule.lastCompletedDate) : 'Never'}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Estimated Duration</td>
+                <td>${schedule.estimatedDuration} hours</td>
+              </tr>
+              <tr>
+                <td class="info-label">Assigned Technician</td>
+                <td>${schedule.assignedTechnician || 'Unassigned'}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Total Parts</td>
+                <td>${schedule.parts.length} parts</td>
+              </tr>
+              <tr>
+                <td class="info-label">Total Estimated Time</td>
+                <td>${totalEstimatedTime} hours</td>
+              </tr>
+              <tr>
+                <td class="info-label">Created Date</td>
+                <td>${formatDateTime(schedule.createdAt)}</td>
+              </tr>
+              <tr>
+                <td class="info-label">Last Updated</td>
+                <td>${formatDateTime(schedule.updatedAt)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        ${schedule.description ? `
+        <div class="section">
+          <h2 class="section-title">📄 Description</h2>
+          <table>
+            <tbody>
+              <tr>
+                <td style="padding: 15px; white-space: pre-wrap;">${schedule.description}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+        
+        <div class="section">
+          <h2 class="section-title">🔧 Parts & Maintenance Checklist (${schedule.parts.length} parts)</h2>
+          ${schedule.parts.length === 0 ? `
+            <table>
+              <tbody>
+                <tr>
+                  <td style="text-align: center; padding: 30px; color: #6b7280;">
+                    No parts defined for this maintenance schedule
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          ` : `
+            ${schedule.parts.map((part, partIndex) => `
+              <div style="margin-bottom: 25px;">
+                <div class="part-header">
+                  PART ${partIndex + 1}: ${part.partName} (SKU: ${part.partSku})
+                </div>
+                
+                <table style="margin-bottom: 15px;">
+                  <tbody>
+                    <tr>
+                      <td class="info-label">Part Name</td>
+                      <td>${part.partName}</td>
+                      <td class="info-label">SKU</td>
+                      <td>${part.partSku}</td>
+                    </tr>
+                    <tr>
+                      <td class="info-label">Estimated Time</td>
+                      <td>${part.estimatedTime} hours</td>
+                      <td class="info-label">Replacement Required</td>
+                      <td>${part.requiresReplacement ? 'Yes' : 'No'}</td>
+                    </tr>
+                    ${part.replacementFrequency ? `
+                    <tr>
+                      <td class="info-label">Replacement Frequency</td>
+                      <td>Every ${part.replacementFrequency} cycles</td>
+                      <td class="info-label">Last Replacement</td>
+                      <td>${part.lastReplacementDate ? formatDate(part.lastReplacementDate) : 'Never'}</td>
+                    </tr>
+                    ` : ''}
+                  </tbody>
+                </table>
+                
+                <h4 style="margin-bottom: 8px; font-weight: 600;">Checklist Items (${part.checklistItems.length} items):</h4>
+                <table class="checklist-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 8%;">#</th>
+                      <th>Description</th>
+                      <th style="width: 12%;">Required</th>
+                      <th style="width: 12%;">Status</th>
+                      <th style="width: 25%;">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${part.checklistItems.map((item, itemIndex) => `
+                      <tr>
+                        <td style="text-align: center; font-weight: bold;">${itemIndex + 1}</td>
+                        <td>${item.description}</td>
+                        <td style="text-align: center;">
+                          <span class="status-badge ${item.isRequired ? 'status-overdue' : ''}">
+                            ${item.isRequired ? 'YES' : 'NO'}
+                          </span>
+                        </td>
+                        <td style="text-align: center;">
+                          <span class="status-badge status-${item.status}">${item.status.toUpperCase()}</span>
+                        </td>
+                        <td>${item.notes || 'N/A'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `).join('')}
+          `}
+        </div>
+        
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+          <p><strong>END OF MAINTENANCE SCHEDULE REPORT</strong></p>
+          <p>Report Generated: ${currentDate} | Schedule ID: ${schedule.id} | Classification: Internal Use Only</p>
+          <p>This report contains confidential maintenance data. Please handle according to company data security policies.</p>
+        </div>
+      </body>
+      </html>
+    `
   }
 
   const daysUntilDue = getDaysUntilDue(schedule.nextDueDate)
@@ -185,10 +606,10 @@ export function MaintenanceScheduleDetail({
                           <Wrench className="h-5 w-5" />
                           Status & Schedule
                         </span>
-                        <Button onClick={handleStartMaintenance} className="ml-auto print:hidden">
+                        {/* <Button onClick={handleStartMaintenance} className="ml-auto print:hidden">
                           <Settings className="h-4 w-4 mr-2" />
                           Start Maintenance
-                        </Button>
+                        </Button> */}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -448,231 +869,7 @@ export function MaintenanceScheduleDetail({
             </Tabs>
           </div>
 
-          {/* Print View - Comprehensive table-based report */}
-          <div className="hidden print:block print:text-xs space-y-4">
-            {/* Report Header */}
-            <div className="text-center border-b-2 border-black pb-4 mb-6">
-              <h1 className="text-2xl font-bold uppercase">MAINTENANCE SCHEDULE DETAILED REPORT</h1>
-              <p className="mt-2 text-sm">Generated on {formatDateTime(new Date().toISOString())}</p>
-              <p className="text-sm font-medium">{schedule.title}</p>
-            </div>
 
-            {/* Schedule Information Table */}
-            <div className="mb-6">
-              <h2 className="text-lg font-bold mb-3 border-b border-gray-400">SCHEDULE INFORMATION</h2>
-              <table className="w-full border-collapse border border-black text-xs">
-                <tbody>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100 w-1/3">Schedule Title</td>
-                    <td className="border border-black p-2">{schedule.title}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Asset Name</td>
-                    <td className="border border-black p-2">{schedule.assetName}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Asset Tag</td>
-                    <td className="border border-black p-2">{schedule.assetTag || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Asset Type</td>
-                    <td className="border border-black p-2">{schedule.assetType}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Location</td>
-                    <td className="border border-black p-2">{schedule.location}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Department</td>
-                    <td className="border border-black p-2">{schedule.department}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Status</td>
-                    <td className="border border-black p-2">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${
-                        schedule.status === 'active' ? 'bg-green-200 text-green-800' :
-                        schedule.status === 'overdue' ? 'bg-red-200 text-red-800' :
-                        schedule.status === 'completed' ? 'bg-blue-200 text-blue-800' :
-                        'bg-gray-200 text-gray-800'
-                      }`}>
-                        {schedule.status.toUpperCase()}
-                      </span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Priority</td>
-                    <td className="border border-black p-2">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${
-                        schedule.priority === 'critical' ? 'bg-red-200 text-red-800' :
-                        schedule.priority === 'high' ? 'bg-orange-200 text-orange-800' :
-                        schedule.priority === 'medium' ? 'bg-yellow-200 text-yellow-800' :
-                        'bg-gray-200 text-gray-800'
-                      }`}>
-                        {schedule.priority.toUpperCase()}
-                      </span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Frequency</td>
-                    <td className="border border-black p-2 capitalize">
-                      {schedule.frequency === "custom" 
-                        ? `Every ${schedule.customFrequencyDays} days`
-                        : schedule.frequency
-                      }
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Next Due Date</td>
-                    <td className="border border-black p-2 font-bold ${isOverdue(schedule.nextDueDate) ? 'text-red-700' : 'text-green-700'}">
-                      {formatDate(schedule.nextDueDate)}
-                      {isOverdue(schedule.nextDueDate) && <span className="ml-2 text-red-700">(OVERDUE by {Math.abs(daysUntilDue)} days)</span>}
-                      {!isOverdue(schedule.nextDueDate) && daysUntilDue <= 7 && <span className="ml-2 text-orange-700">({daysUntilDue} days remaining)</span>}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Start Date</td>
-                    <td className="border border-black p-2">{formatDate(schedule.startDate)}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Last Completed</td>
-                    <td className="border border-black p-2">
-                      {schedule.lastCompletedDate ? formatDate(schedule.lastCompletedDate) : "Never"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Estimated Duration</td>
-                    <td className="border border-black p-2">{schedule.estimatedDuration} hours</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Assigned Technician</td>
-                    <td className="border border-black p-2">{schedule.assignedTechnician || "Unassigned"}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Total Parts</td>
-                    <td className="border border-black p-2">{schedule.parts.length} parts</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Total Estimated Time</td>
-                    <td className="border border-black p-2">{Math.round(totalEstimatedTime / 60)} hours</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Created Date</td>
-                    <td className="border border-black p-2">{formatDateTime(schedule.createdAt)}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-black p-2 font-bold bg-gray-100">Last Updated</td>
-                    <td className="border border-black p-2">{formatDateTime(schedule.updatedAt)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Description Section */}
-            {schedule.description && (
-              <div className="mb-6">
-                <h2 className="text-lg font-bold mb-3 border-b border-gray-400">DESCRIPTION</h2>
-                <div className="border border-black p-3">
-                  <p className="text-sm whitespace-pre-wrap">{schedule.description}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Parts and Checklist Table */}
-            <div className="mb-6 print:break-before-page">
-              <h2 className="text-lg font-bold mb-3 border-b border-gray-400">PARTS & MAINTENANCE CHECKLIST ({schedule.parts.length} parts)</h2>
-              {schedule.parts.length === 0 ? (
-                <div className="border border-black p-4 text-center">
-                  <p>No parts defined for this maintenance schedule</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {schedule.parts.map((part, partIndex) => (
-                    <div key={part.id} className="mb-6">
-                      {/* Part Header */}
-                      <h3 className="text-sm font-bold mb-2 bg-gray-100 p-2 border border-black">
-                        PART {partIndex + 1}: {part.partName} (SKU: {part.partSku})
-                      </h3>
-                      
-                      {/* Part Information Table */}
-                      <table className="w-full border-collapse border border-black text-xs mb-3">
-                        <tbody>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-50 w-1/4">Part Name</td>
-                            <td className="border border-black p-2">{part.partName}</td>
-                            <td className="border border-black p-2 font-bold bg-gray-50 w-1/4">SKU</td>
-                            <td className="border border-black p-2">{part.partSku}</td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-50">Estimated Time</td>
-                            <td className="border border-black p-2">{Math.round(part.estimatedTime / 60)} hours</td>
-                            <td className="border border-black p-2 font-bold bg-gray-50">Replacement Required</td>
-                            <td className="border border-black p-2">{part.requiresReplacement ? "Yes" : "No"}</td>
-                          </tr>
-                          {part.replacementFrequency && (
-                            <tr>
-                              <td className="border border-black p-2 font-bold bg-gray-50">Replacement Frequency</td>
-                              <td className="border border-black p-2">Every {part.replacementFrequency} cycles</td>
-                              <td className="border border-black p-2 font-bold bg-gray-50">Last Replacement</td>
-                              <td className="border border-black p-2">
-                                {part.lastReplacementDate ? formatDate(part.lastReplacementDate) : "Never"}
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-
-                      {/* Checklist Items Table */}
-                      <h4 className="text-xs font-bold mb-2">CHECKLIST ITEMS ({part.checklistItems.length} items):</h4>
-                      <table className="w-full border-collapse border border-black text-xs">
-                        <thead>
-                          <tr className="bg-blue-50">
-                            <th className="border border-black p-2 text-left w-1/12">#</th>
-                            <th className="border border-black p-2 text-left">Description</th>
-                            <th className="border border-black p-2 text-center w-1/8">Required</th>
-                            <th className="border border-black p-2 text-center w-1/8">Status</th>
-                            <th className="border border-black p-2 text-left w-1/4">Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {part.checklistItems.map((item, itemIndex) => (
-                            <tr key={item.id}>
-                              <td className="border border-black p-2 text-center font-bold">{itemIndex + 1}</td>
-                              <td className="border border-black p-2">{item.description}</td>
-                              <td className="border border-black p-2 text-center">
-                                {item.isRequired ? (
-                                  <span className="px-1 py-0.5 rounded text-xs font-bold bg-red-200 text-red-800">YES</span>
-                                ) : (
-                                  <span className="px-1 py-0.5 rounded text-xs font-bold bg-gray-200 text-gray-800">NO</span>
-                                )}
-                              </td>
-                              <td className="border border-black p-2 text-center">
-                                <span className={`px-1 py-0.5 rounded text-xs font-bold ${
-                                  item.status === 'completed' ? 'bg-green-200 text-green-800' :
-                                  item.status === 'failed' ? 'bg-red-200 text-red-800' :
-                                  item.status === 'skipped' ? 'bg-yellow-200 text-yellow-800' :
-                                  'bg-gray-200 text-gray-800'
-                                }`}>
-                                  {item.status.toUpperCase()}
-                                </span>
-                              </td>
-                              <td className="border border-black p-2 text-xs">{item.notes || "N/A"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Report Footer */}
-            <div className="mt-8 pt-4 border-t-2 border-black text-center text-xs">
-              <p><strong>END OF MAINTENANCE SCHEDULE REPORT</strong></p>
-              <p>Report Generated: {formatDateTime(new Date().toISOString())} | Schedule ID: {schedule.id} | Classification: Internal Use Only</p>
-              <p>This report contains confidential maintenance data. Please handle according to company data security policies.</p>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
 

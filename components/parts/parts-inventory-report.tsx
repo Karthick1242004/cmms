@@ -27,54 +27,54 @@ export function PartsInventoryReport({ parts, onClose }: PartsInventoryReportPro
     const currentDate = new Date().toLocaleDateString()
     const currentTime = new Date().toLocaleTimeString()
     
-    // Calculate summary statistics
-    const totalParts = parts.length
-    const lowStockParts = parts.filter(part => part.quantity <= part.minStockLevel)
-    const totalInventoryValue = parts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0)
-    const averageUnitPrice = totalParts > 0 ? parts.reduce((sum, part) => sum + part.unitPrice, 0) / totalParts : 0
+  // Calculate summary statistics
+  const totalParts = parts.length
+  const lowStockParts = parts.filter(part => part.quantity <= part.minStockLevel)
+  const totalInventoryValue = parts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0)
+  const averageUnitPrice = totalParts > 0 ? parts.reduce((sum, part) => sum + part.unitPrice, 0) / totalParts : 0
 
-    // Group by category
-    const partsByCategory = parts.reduce((acc, part) => {
-      if (!acc[part.category]) {
-        acc[part.category] = []
-      }
-      acc[part.category].push(part)
-      return acc
-    }, {} as Record<string, Part[]>)
-
-    // Group by department
-    const partsByDepartment = parts.reduce((acc, part) => {
-      if (!acc[part.department]) {
-        acc[part.department] = []
-      }
-      acc[part.department].push(part)
-      return acc
-    }, {} as Record<string, Part[]>)
-
-    // Category analysis
-    const categoryStats = Object.entries(partsByCategory).map(([category, categoryParts]) => ({
-      category,
-      totalParts: categoryParts.length,
-      totalValue: categoryParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0),
-      lowStockCount: categoryParts.filter(part => part.quantity <= part.minStockLevel).length,
-      avgUnitPrice: categoryParts.reduce((sum, part) => sum + part.unitPrice, 0) / categoryParts.length
-    })).sort((a, b) => b.totalValue - a.totalValue)
-
-    // Department analysis
-    const departmentStats = Object.entries(partsByDepartment).map(([department, deptParts]) => ({
-      department,
-      totalParts: deptParts.length,
-      totalValue: deptParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0),
-      lowStockCount: deptParts.filter(part => part.quantity <= part.minStockLevel).length
-    })).sort((a, b) => b.totalValue - a.totalValue)
-
-    const getStockStatus = (part: Part) => {
-      if (part.quantity <= part.minStockLevel) {
-        return { status: 'Low Stock', color: 'text-red-600', bgColor: 'bg-red-50' }
-      }
-      return { status: 'In Stock', color: 'text-green-600', bgColor: 'bg-green-50' }
+  // Group by category
+  const partsByCategory = parts.reduce((acc, part) => {
+    if (!acc[part.category]) {
+      acc[part.category] = []
     }
-    
+    acc[part.category].push(part)
+    return acc
+  }, {} as Record<string, Part[]>)
+
+  // Group by department
+  const partsByDepartment = parts.reduce((acc, part) => {
+    if (!acc[part.department]) {
+      acc[part.department] = []
+    }
+    acc[part.department].push(part)
+    return acc
+  }, {} as Record<string, Part[]>)
+
+  // Category analysis
+  const categoryStats = Object.entries(partsByCategory).map(([category, categoryParts]) => ({
+    category,
+    totalParts: categoryParts.length,
+    totalValue: categoryParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0),
+    lowStockCount: categoryParts.filter(part => part.quantity <= part.minStockLevel).length,
+    avgUnitPrice: categoryParts.reduce((sum, part) => sum + part.unitPrice, 0) / categoryParts.length
+  })).sort((a, b) => b.totalValue - a.totalValue)
+
+  // Department analysis
+  const departmentStats = Object.entries(partsByDepartment).map(([department, deptParts]) => ({
+    department,
+    totalParts: deptParts.length,
+    totalValue: deptParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0),
+    lowStockCount: deptParts.filter(part => part.quantity <= part.minStockLevel).length
+  })).sort((a, b) => b.totalValue - a.totalValue)
+
+  const getStockStatus = (part: Part) => {
+    if (part.quantity <= part.minStockLevel) {
+      return { status: 'Low Stock', color: 'text-red-600', bgColor: 'bg-red-50' }
+    }
+    return { status: 'In Stock', color: 'text-green-600', bgColor: 'bg-green-50' }
+  }
+
     return `
       <!DOCTYPE html>
       <html lang="en">

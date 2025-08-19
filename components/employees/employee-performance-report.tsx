@@ -270,9 +270,9 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
 
   const generateReportHTML = async () => {
     const currentDate = new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
     })
 
     // Capture chart images if analytics data is available
@@ -579,17 +579,17 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                 <div class="detail-item">
                   <span class="detail-icon">🏢</span>
                   <span>Department: ${employee.department}</span>
-                </div>
+                      </div>
                 <div class="detail-item">
                   <span class="detail-icon">📅</span>
                   <span>Joined: ${formatDate(employee.joinDate)}</span>
-                </div>
+                        </div>
                 <div class="detail-item">
                   <span class="detail-icon">🕒</span>
                   <span>Work Shift: ${employee.workShift || 'Day'}</span>
-                </div>
-              </div>
-            </div>
+                        </div>
+                      </div>
+                    </div>
 
             <!-- Performance Summary -->
             <div class="performance-summary">
@@ -604,17 +604,17 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                 <div class="metric-card">
                   <div class="metric-value">${employee.performanceMetrics.efficiency}%</div>
                   <div class="metric-label">Task Efficiency</div>
-                </div>
+                      </div>
                 <div class="metric-card">
                   <div class="metric-value">${employee.performanceMetrics.rating}/5</div>
                   <div class="metric-label">Performance Rating</div>
-                </div>
+                      </div>
                 <div class="metric-card">
                   <div class="metric-value">${Math.round(employee.performanceMetrics.averageCompletionTime)}h</div>
                   <div class="metric-label">Avg. Completion Time</div>
-                </div>
-              </div>
-            </div>
+                      </div>
+                    </div>
+                  </div>
 
             <!-- Task Breakdown -->
             <div class="task-breakdown">
@@ -650,7 +650,7 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
             <div class="skills-section">
               <div class="section-title">
                 🎯 Skills & Competencies
-              </div>
+                    </div>
               <div class="skills-grid">
                 ${employee.skills && employee.skills.length > 0 ? `
                 <div class="skills-card">
@@ -658,7 +658,7 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                   <div class="skills-list">
                     ${employee.skills.map(skill => `<span class="skill-badge">${skill}</span>`).join('')}
                   </div>
-                </div>
+                    </div>
                 ` : ''}
                 ${employee.certifications && employee.certifications.length > 0 ? `
                 <div class="skills-card">
@@ -669,14 +669,14 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                 </div>
                 ` : ''}
               </div>
-            </div>
+                    </div>
             ` : ''}
 
             <!-- Recent Work History -->
             <div class="work-history">
               <div class="section-title">
                 📋 Recent Work History
-              </div>
+                  </div>
               ${employee.workHistory.slice(0, 10).map((item, index) => `
                 <div class="history-item">
                   <div class="history-left">
@@ -722,17 +722,17 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                   <div class="task-icon">📈</div>
                   <div class="task-value">${analytics.summary.totalActivities}</div>
                   <div class="task-label">Total Activities</div>
-                </div>
+                  </div>
                 <div class="task-item">
                   <div class="task-icon">📅</div>
                   <div class="task-value">${Math.round(analytics.summary.averageTasksPerMonth)}</div>
                   <div class="task-label">Monthly Average</div>
-                </div>
+                  </div>
                 <div class="task-item">
                   <div class="task-icon">🏆</div>
                   <div class="task-value">${analytics.summary.mostActiveMonth.month}</div>
                   <div class="task-label">Most Active Month (${analytics.summary.mostActiveMonth.count} tasks)</div>
-                </div>
+                  </div>
                 <div class="task-item">
                   <div class="task-icon">⭐</div>
                   <div class="task-value">${analytics.summary.primaryTaskType.type}</div>
@@ -751,27 +751,27 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                   `<img src="${chartImages.monthlyActivity}" alt="Monthly Activity Trend" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
                   '<div style="padding: 40px; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: #64748b;">📈 Monthly Activity Chart</div>'
                 }
-              </div>
-            </div>
+                    </div>
+                    </div>
 
             <!-- Task Distribution Chart -->
             <div class="skills-section">
               <div class="section-title">
                 🥧 Task Distribution
-              </div>
+                      </div>
               <div style="text-align: center; margin: 20px 0;">
                 ${chartImages.taskDistribution ? 
                   `<img src="${chartImages.taskDistribution}" alt="Task Distribution" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
                   '<div style="padding: 40px; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: #64748b;">🥧 Task Distribution Chart</div>'
                 }
-              </div>
+                          </div>
               <div class="task-grid">
                 ${analytics.taskDistribution.map(task => `
                   <div class="task-item">
                     <div class="task-icon">${getWorkTypeIcon(task.type)}</div>
                     <div class="task-value">${task.count}</div>
                     <div class="task-label">${task.type} (${task.percentage}%)</div>
-                  </div>
+                      </div>
                 `).join('')}
               </div>
             </div>
@@ -786,15 +786,15 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                   `<img src="${chartImages.performanceTrends}" alt="Performance Trends" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
                   '<div style="padding: 40px; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: #64748b;">📊 Performance Trends Chart</div>'
                 }
-              </div>
-            </div>
+                        </div>
+                      </div>
 
             <!-- Asset Workload Details -->
             ${analytics.assetWorkload && analytics.assetWorkload.length > 0 ? `
             <div class="skills-section">
               <div class="section-title">
                 🏭 Asset Workload Analysis
-              </div>
+                      </div>
               ${analytics.assetWorkload.slice(0, 5).map(asset => `
                 <div class="history-item">
                   <div class="history-left">
@@ -803,7 +803,7 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                       <div class="history-title">${asset.assetName}</div>
                       <div class="history-date">Total Tasks: ${asset.count}</div>
                     </div>
-                  </div>
+                </div>
                   <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <div class="history-status">📋 ${asset.types.ticket}</div>
                     <div class="history-status">🔧 ${asset.types.maintenance}</div>
