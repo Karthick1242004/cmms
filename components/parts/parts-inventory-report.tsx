@@ -1,10 +1,8 @@
 "use client"
 
 import React from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { X, Download, Package, AlertTriangle, DollarSign, BarChart3 } from 'lucide-react'
+import { Download, Package, FileText } from 'lucide-react'
 import type { Part } from "@/types/part"
 
 interface PartsInventoryReportProps {
@@ -13,496 +11,535 @@ interface PartsInventoryReportProps {
 }
 
 export function PartsInventoryReport({ parts, onClose }: PartsInventoryReportProps) {
-  // Calculate summary statistics
-  const totalParts = parts.length
-  const lowStockParts = parts.filter(part => part.quantity <= part.minStockLevel)
-  const totalInventoryValue = parts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0)
-  const averageUnitPrice = totalParts > 0 ? parts.reduce((sum, part) => sum + part.unitPrice, 0) / totalParts : 0
-
-  // Group by category
-  const partsByCategory = parts.reduce((acc, part) => {
-    if (!acc[part.category]) {
-      acc[part.category] = []
+  const handleExportReport = () => {
+    // Generate the report HTML
+    const reportHTML = generateReportHTML()
+    
+    // Open in new window
+    const newWindow = window.open('about:blank', '_blank')
+    if (newWindow) {
+      newWindow.document.write(reportHTML)
+      newWindow.document.close()
     }
-    acc[part.category].push(part)
-    return acc
-  }, {} as Record<string, Part[]>)
-
-  // Group by department
-  const partsByDepartment = parts.reduce((acc, part) => {
-    if (!acc[part.department]) {
-      acc[part.department] = []
-    }
-    acc[part.department].push(part)
-    return acc
-  }, {} as Record<string, Part[]>)
-
-  // Category analysis
-  const categoryStats = Object.entries(partsByCategory).map(([category, categoryParts]) => ({
-    category,
-    totalParts: categoryParts.length,
-    totalValue: categoryParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0),
-    lowStockCount: categoryParts.filter(part => part.quantity <= part.minStockLevel).length,
-    avgUnitPrice: categoryParts.reduce((sum, part) => sum + part.unitPrice, 0) / categoryParts.length
-  })).sort((a, b) => b.totalValue - a.totalValue)
-
-  // Department analysis
-  const departmentStats = Object.entries(partsByDepartment).map(([department, deptParts]) => ({
-    department,
-    totalParts: deptParts.length,
-    totalValue: deptParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0),
-    lowStockCount: deptParts.filter(part => part.quantity <= part.minStockLevel).length
-  })).sort((a, b) => b.totalValue - a.totalValue)
-
-  const handlePrint = () => {
-    window.print()
   }
 
-  const getStockStatus = (part: Part) => {
-    if (part.quantity <= part.minStockLevel) {
-      return { status: 'Low Stock', color: 'text-red-600', bgColor: 'bg-red-50' }
+  const generateReportHTML = () => {
+    const currentDate = new Date().toLocaleDateString()
+    const currentTime = new Date().toLocaleTimeString()
+    
+    // Calculate summary statistics
+    const totalParts = parts.length
+    const lowStockParts = parts.filter(part => part.quantity <= part.minStockLevel)
+    const totalInventoryValue = parts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0)
+    const averageUnitPrice = totalParts > 0 ? parts.reduce((sum, part) => sum + part.unitPrice, 0) / totalParts : 0
+
+    // Group by category
+    const partsByCategory = parts.reduce((acc, part) => {
+      if (!acc[part.category]) {
+        acc[part.category] = []
+      }
+      acc[part.category].push(part)
+      return acc
+    }, {} as Record<string, Part[]>)
+
+    // Group by department
+    const partsByDepartment = parts.reduce((acc, part) => {
+      if (!acc[part.department]) {
+        acc[part.department] = []
+      }
+      acc[part.department].push(part)
+      return acc
+    }, {} as Record<string, Part[]>)
+
+    // Category analysis
+    const categoryStats = Object.entries(partsByCategory).map(([category, categoryParts]) => ({
+      category,
+      totalParts: categoryParts.length,
+      totalValue: categoryParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0),
+      lowStockCount: categoryParts.filter(part => part.quantity <= part.minStockLevel).length,
+      avgUnitPrice: categoryParts.reduce((sum, part) => sum + part.unitPrice, 0) / categoryParts.length
+    })).sort((a, b) => b.totalValue - a.totalValue)
+
+    // Department analysis
+    const departmentStats = Object.entries(partsByDepartment).map(([department, deptParts]) => ({
+      department,
+      totalParts: deptParts.length,
+      totalValue: deptParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0),
+      lowStockCount: deptParts.filter(part => part.quantity <= part.minStockLevel).length
+    })).sort((a, b) => b.totalValue - a.totalValue)
+
+    const getStockStatus = (part: Part) => {
+      if (part.quantity <= part.minStockLevel) {
+        return { status: 'Low Stock', color: 'text-red-600', bgColor: 'bg-red-50' }
+      }
+      return { status: 'In Stock', color: 'text-green-600', bgColor: 'bg-green-50' }
     }
-    return { status: 'In Stock', color: 'text-green-600', bgColor: 'bg-green-50' }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 print:relative print:bg-white print:p-0 print:block">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden print:shadow-none print:max-w-none print:max-h-none print:overflow-visible">
-        {/* Header - No Print */}
-        <div className="flex items-center justify-between p-6 border-b print:hidden">
-          <div className="flex items-center gap-3">
-            <Package className="h-6 w-6 text-blue-600" />
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Parts Inventory Report</h2>
-              <p className="text-sm text-gray-600">
-                Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={handlePrint} variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Print Report
-            </Button>
-            <Button onClick={onClose} variant="ghost" size="sm">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Report Content */}
-        <div className="overflow-y-auto max-h-[calc(95vh-120px)] print:overflow-visible print:max-h-none print-content">
-          <div className="p-8 space-y-8 print:p-4">
-            
-            {/* Print Header */}
-            <div className="hidden print:block text-center border-b pb-4 mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Parts Inventory Report</h1>
-              <p className="text-lg text-gray-600">
-                Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
-              </p>
-            </div>
-
-            {/* Executive Summary */}
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-blue-600" />
-                Executive Summary
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Package className="h-5 w-5 text-blue-600" />
-                    <h3 className="font-semibold text-blue-900">Total Parts</h3>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-600">{totalParts}</p>
-                  <p className="text-sm text-blue-700">Active inventory items</p>
-                </div>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-5 w-5 text-red-600" />
-                    <h3 className="font-semibold text-red-900">Low Stock</h3>
-                  </div>
-                  <p className="text-2xl font-bold text-red-600">{lowStockParts.length}</p>
-                  <p className="text-sm text-red-700">Parts requiring attention</p>
-                </div>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                    <h3 className="font-semibold text-green-900">Total Value</h3>
-                  </div>
-                  <p className="text-2xl font-bold text-green-600">${totalInventoryValue.toFixed(2)}</p>
-                  <p className="text-sm text-green-700">Current stock value</p>
-                </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Package className="h-5 w-5 text-purple-600" />
-                    <h3 className="font-semibold text-purple-900">Avg. Unit Price</h3>
-                  </div>
-                  <p className="text-2xl font-bold text-purple-600">${averageUnitPrice.toFixed(2)}</p>
-                  <p className="text-sm text-purple-700">Average cost per part</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Critical Stock Issues */}
-            {lowStockParts.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-red-900 flex items-center gap-2">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
-                  Critical Stock Issues ({lowStockParts.length} Parts)
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-gray-300">
-                    <thead>
-                      <tr className="bg-red-50">
-                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Part Number</th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Name</th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Department</th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Current Stock</th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Min Level</th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Shortage</th>
-                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Supplier</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lowStockParts.map(part => (
-                        <tr key={part.id} className="hover:bg-gray-50">
-                          <td className="border border-gray-300 px-4 py-2 font-mono text-sm">{part.partNumber}</td>
-                          <td className="border border-gray-300 px-4 py-2">{part.name}</td>
-                          <td className="border border-gray-300 px-4 py-2">{part.department}</td>
-                          <td className="border border-gray-300 px-4 py-2 text-red-600 font-semibold">{part.quantity}</td>
-                          <td className="border border-gray-300 px-4 py-2">{part.minStockLevel}</td>
-                          <td className="border border-gray-300 px-4 py-2 text-red-600 font-semibold">
-                            {part.minStockLevel - part.quantity > 0 ? part.minStockLevel - part.quantity : 0}
-                          </td>
-                          <td className="border border-gray-300 px-4 py-2">{part.supplier}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Category Analysis */}
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-gray-900">Category Analysis</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-blue-50">
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Category</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Total Parts</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Total Value</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Low Stock Count</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Avg Unit Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {categoryStats.map(stat => (
-                      <tr key={stat.category} className="hover:bg-gray-50">
-                        <td className="border border-gray-300 px-4 py-2 font-semibold">{stat.category}</td>
-                        <td className="border border-gray-300 px-4 py-2">{stat.totalParts}</td>
-                        <td className="border border-gray-300 px-4 py-2 font-semibold text-green-600">${stat.totalValue.toFixed(2)}</td>
-                        <td className="border border-gray-300 px-4 py-2">
-                          <span className={stat.lowStockCount > 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}>
-                            {stat.lowStockCount}
-                          </span>
-                        </td>
-                        <td className="border border-gray-300 px-4 py-2">${stat.avgUnitPrice.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Department Analysis */}
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-gray-900">Department Analysis</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-green-50">
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Department</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Total Parts</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Total Value</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Low Stock Count</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Stock Health</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {departmentStats.map(stat => {
-                      const healthPercentage = ((stat.totalParts - stat.lowStockCount) / stat.totalParts * 100)
-                      return (
-                        <tr key={stat.department} className="hover:bg-gray-50">
-                          <td className="border border-gray-300 px-4 py-2 font-semibold">{stat.department}</td>
-                          <td className="border border-gray-300 px-4 py-2">{stat.totalParts}</td>
-                          <td className="border border-gray-300 px-4 py-2 font-semibold text-green-600">${stat.totalValue.toFixed(2)}</td>
-                          <td className="border border-gray-300 px-4 py-2">
-                            <span className={stat.lowStockCount > 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}>
-                              {stat.lowStockCount}
-                            </span>
-                          </td>
-                          <td className="border border-gray-300 px-4 py-2">
-                            <span className={healthPercentage >= 80 ? 'text-green-600' : healthPercentage >= 60 ? 'text-yellow-600' : 'text-red-600'}>
-                              {healthPercentage.toFixed(1)}%
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Complete Parts Inventory */}
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-gray-900">Complete Parts Inventory ({parts.length} Parts)</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300 text-sm print-table">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Part Number</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Name</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">SKU</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Material Code</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Category</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Department</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Current Stock</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Min Level</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Unit Price</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Total Value</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Status</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Supplier</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-semibold text-xs">Location</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parts.map(part => {
-                      const stockStatus = getStockStatus(part)
-                      return (
-                        <tr key={part.id} className="hover:bg-gray-50 print-row">
-                          <td className="border border-gray-300 px-2 py-1 font-mono text-xs">{part.partNumber}</td>
-                          <td className="border border-gray-300 px-2 py-1 font-medium text-xs">{part.name}</td>
-                          <td className="border border-gray-300 px-2 py-1 font-mono text-xs">{part.sku}</td>
-                          <td className="border border-gray-300 px-2 py-1 font-mono text-xs">{part.materialCode}</td>
-                          <td className="border border-gray-300 px-2 py-1 text-xs">{part.category}</td>
-                          <td className="border border-gray-300 px-2 py-1 text-xs">{part.department}</td>
-                          <td className="border border-gray-300 px-2 py-1 text-center text-xs">
-                            <span className={part.quantity <= part.minStockLevel ? 'text-red-600 font-semibold' : 'text-gray-900'}>
-                              {part.quantity}
-                            </span>
-                          </td>
-                          <td className="border border-gray-300 px-2 py-1 text-center text-xs">{part.minStockLevel}</td>
-                          <td className="border border-gray-300 px-2 py-1 text-right text-xs">${part.unitPrice.toFixed(2)}</td>
-                          <td className="border border-gray-300 px-2 py-1 text-right font-semibold text-xs">
-                            ${(part.quantity * part.unitPrice).toFixed(2)}
-                          </td>
-                          <td className="border border-gray-300 px-2 py-1 text-xs">
-                            <span className={`px-1 py-0 rounded text-xs font-medium ${stockStatus.bgColor} ${stockStatus.color}`}>
-                              {stockStatus.status}
-                            </span>
-                          </td>
-                          <td className="border border-gray-300 px-2 py-1 text-xs">{part.supplier}</td>
-                          <td className="border border-gray-300 px-2 py-1 text-xs">{part.location || 'N/A'}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Report Footer */}
-            <div className="mt-8 pt-4 border-t border-gray-300 text-center text-gray-600">
-              <p className="text-sm">
-                Report generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
-              </p>
-              <p className="text-xs mt-1">
-                This report contains {parts.length} parts across {Object.keys(partsByDepartment).length} departments and {Object.keys(partsByCategory).length} categories
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Print Styles */}
-      <style jsx global>{`
-        @media print {
+    
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Parts Inventory Report</title>
+        <style>
           * {
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
           }
           
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            height: auto !important;
-            overflow: visible !important;
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: white;
+            padding: 20px;
           }
           
-          /* Hide everything first */
-          body * {
-            visibility: hidden !important;
+          .report-header {
+            text-align: center;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
           }
           
-          /* Show only the print content */
-          .print-content,
-          .print-content *,
-          .print-content table,
-          .print-content table *,
-          .print-content thead,
-          .print-content thead *,
-          .print-content tbody,
-          .print-content tbody *,
-          .print-content tr,
-          .print-content tr *,
-          .print-content th,
-          .print-content th *,
-          .print-content td,
-          .print-content td * {
-            visibility: visible !important;
+          .report-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 8px;
           }
           
-          /* Reset positioning for print */
-          .fixed {
-            position: static !important;
+          .generated-info {
+            font-size: 14px;
+            color: #6b7280;
           }
           
-          .print-content {
-            position: static !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            overflow: visible !important;
-            transform: none !important;
+          .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
           }
           
-          .print\\:hidden {
-            display: none !important;
-            visibility: hidden !important;
+          .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1e40af;
+            border-bottom: 2px solid #dbeafe;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
           }
           
-          .print\\:block {
-            display: block !important;
-            visibility: visible !important;
+          .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
           }
           
-          /* Page setup */
-          @page {
-            margin: 0.3in 0.2in;
-            size: A4 landscape;
+          .summary-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
           }
           
-          /* Prevent page breaks within table rows */
-          .print-table {
-            page-break-inside: auto !important;
+          .summary-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
           }
           
-          .print-table thead {
-            display: table-header-group !important;
+          .summary-card .value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e40af;
           }
           
-          .print-table tbody {
-            display: table-row-group !important;
+          .summary-card .subtitle {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
           }
           
-          .print-row {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
+          .card-blue { border-color: #3b82f6; background: #eff6ff; }
+          .card-blue .value { color: #1d4ed8; }
+          .card-blue h3 { color: #1e40af; }
           
-          /* Table styling */
+          .card-red { border-color: #ef4444; background: #fef2f2; }
+          .card-red .value { color: #dc2626; }
+          .card-red h3 { color: #991b1b; }
+          
+          .card-green { border-color: #10b981; background: #f0fdf4; }
+          .card-green .value { color: #059669; }
+          .card-green h3 { color: #047857; }
+          
+          .card-purple { border-color: #8b5cf6; background: #faf5ff; }
+          .card-purple .value { color: #7c3aed; }
+          .card-purple h3 { color: #6d28d9; }
+          
           table {
-            font-size: 7px !important;
-            border-collapse: collapse !important;
-            width: 100% !important;
-            margin: 0 !important;
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 12px;
           }
           
           th, td {
-            padding: 1px 2px !important;
-            border: 1px solid #000 !important;
-            text-align: left !important;
-            font-size: 7px !important;
-            line-height: 1.2 !important;
-            word-wrap: break-word !important;
-            overflow: hidden !important;
+            border: 1px solid #d1d5db;
+            padding: 8px 12px;
+            text-align: left;
           }
           
           th {
-            background-color: #f0f0f0 !important;
-            font-weight: bold !important;
-            font-size: 7px !important;
+            background: #f3f4f6;
+            font-weight: 600;
+            color: #374151;
           }
           
-          /* Color preservation */
-          .text-red-600 {
-            color: #dc2626 !important;
+          tr:nth-child(even) {
+            background: #f9fafb;
           }
           
-          .text-green-600 {
-            color: #16a34a !important;
+          .financial-highlight {
+            font-weight: bold;
+            color: #059669;
           }
           
-          .text-blue-600 {
-            color: #2563eb !important;
+          .stock-warning {
+            color: #dc2626;
+            font-weight: bold;
           }
           
-          .bg-red-50 {
-            background-color: #fef2f2 !important;
+          .stock-normal {
+            color: #059669;
+            font-weight: bold;
           }
           
-          .bg-green-50 {
-            background-color: #f0fdf4 !important;
+          .report-footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 12px;
           }
           
-          .bg-blue-50 {
-            background-color: #eff6ff !important;
+          .print-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
           }
           
-          .bg-gray-50 {
-            background-color: #f9fafb !important;
+          .print-btn, .close-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
           }
           
-          /* Section spacing */
-          .space-y-4 > * + * {
-            margin-top: 0.5rem !important;
+          .print-btn {
+            background: #2563eb;
+            color: white;
           }
           
-          /* Header sizes for print */
-          h1 {
-            font-size: 16px !important;
-            margin: 8px 0 !important;
+          .print-btn:hover {
+            background: #1d4ed8;
           }
           
-          h2 {
-            font-size: 12px !important;
-            margin: 6px 0 !important;
+          .close-btn {
+            background: #6b7280;
+            color: white;
           }
           
-          h3 {
-            font-size: 10px !important;
-            margin: 4px 0 !important;
+          .close-btn:hover {
+            background: #4b5563;
           }
           
-          /* Summary cards */
-          .grid {
-            display: block !important;
+          @media print {
+            .print-controls {
+              display: none;
+            }
+            
+            body {
+              padding: 0;
+            }
+            
+            .section {
+              page-break-inside: avoid;
+            }
+            
+            table {
+              font-size: 10px;
+            }
+            
+            th, td {
+              padding: 6px 8px;
+            }
           }
+        </style>
+      </head>
+      <body>
+        <div class="print-controls">
+          <button class="print-btn" onclick="window.print()">
+            🖨️ Print Report
+          </button>
+          <button class="close-btn" onclick="window.close()">
+            ❌ Close
+          </button>
+        </div>
+        
+        <div class="report-header">
+          <h1 class="report-title">Parts Inventory Report</h1>
+          <p class="generated-info">Generated on ${currentDate} at ${currentTime}</p>
+        </div>
+        
+        <div class="section">
+          <h2 class="section-title">
+            📊 Executive Summary
+          </h2>
+          <div class="summary-grid">
+            <div class="summary-card card-blue">
+              <h3>Total Parts</h3>
+              <div class="value">${totalParts}</div>
+              <div class="subtitle">Active inventory items</div>
+            </div>
+            <div class="summary-card card-red">
+              <h3>Low Stock</h3>
+              <div class="value">${lowStockParts.length}</div>
+              <div class="subtitle">Parts requiring attention</div>
+            </div>
+            <div class="summary-card card-green">
+              <h3>Total Value</h3>
+              <div class="value">$${totalInventoryValue.toFixed(2)}</div>
+              <div class="subtitle">Current stock value</div>
+            </div>
+            <div class="summary-card card-purple">
+              <h3>Avg. Unit Price</h3>
+              <div class="value">$${averageUnitPrice.toFixed(2)}</div>
+              <div class="subtitle">Average cost per part</div>
+            </div>
+          </div>
+        </div>
+        
+        ${lowStockParts.length > 0 ? `
+        <div class="section">
+          <h2 class="section-title">
+            ⚠️ Critical Stock Issues (${lowStockParts.length} Parts)
+          </h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Part Number</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Current Stock</th>
+                <th>Min Level</th>
+                <th>Shortage</th>
+                <th>Supplier</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lowStockParts.map(part => `
+                <tr>
+                  <td class="font-mono">${part.partNumber}</td>
+                  <td>${part.name}</td>
+                  <td>${part.department}</td>
+                  <td class="stock-warning">${part.quantity}</td>
+                  <td>${part.minStockLevel}</td>
+                  <td class="stock-warning">
+                    ${part.minStockLevel - part.quantity > 0 ? part.minStockLevel - part.quantity : 0}
+                  </td>
+                  <td>${part.supplier}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+        
+        <div class="section">
+          <h2 class="section-title">
+            📈 Category Analysis
+          </h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Total Parts</th>
+                <th>Total Value</th>
+                <th>Low Stock Count</th>
+                <th>Avg Unit Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${categoryStats.map(stat => `
+                <tr>
+                  <td class="font-semibold">${stat.category}</td>
+                  <td>${stat.totalParts}</td>
+                  <td class="financial-highlight">$${stat.totalValue.toFixed(2)}</td>
+                  <td>
+                    <span class="${stat.lowStockCount > 0 ? 'stock-warning' : 'stock-normal'}">
+                      ${stat.lowStockCount}
+                    </span>
+                  </td>
+                  <td>$${stat.avgUnitPrice.toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="section">
+          <h2 class="section-title">
+            🏢 Department Analysis
+          </h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Department</th>
+                <th>Total Parts</th>
+                <th>Total Value</th>
+                <th>Low Stock Count</th>
+                <th>Stock Health</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${departmentStats.map(stat => {
+                const healthPercentage = ((stat.totalParts - stat.lowStockCount) / stat.totalParts * 100)
+                return `
+                  <tr>
+                    <td class="font-semibold">${stat.department}</td>
+                    <td>${stat.totalParts}</td>
+                    <td class="financial-highlight">$${stat.totalValue.toFixed(2)}</td>
+                    <td>
+                      <span class="${stat.lowStockCount > 0 ? 'stock-warning' : 'stock-normal'}">
+                        ${stat.lowStockCount}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="${healthPercentage >= 80 ? 'stock-normal' : healthPercentage >= 60 ? 'text-yellow-600' : 'stock-warning'}">
+                        ${healthPercentage.toFixed(1)}%
+                      </span>
+                    </td>
+                  </tr>
+                `
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="section">
+          <h2 class="section-title">
+            📋 Complete Parts Inventory (${parts.length} Parts)
+          </h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Part Number</th>
+                <th>Name</th>
+                <th>SKU</th>
+                <th>Material Code</th>
+                <th>Category</th>
+                <th>Department</th>
+                <th>Current Stock</th>
+                <th>Min Level</th>
+                <th>Unit Price</th>
+                <th>Total Value</th>
+                <th>Status</th>
+                <th>Supplier</th>
+                <th>Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${parts.map(part => {
+                const stockStatus = getStockStatus(part)
+                return `
+                  <tr>
+                    <td class="font-mono">${part.partNumber}</td>
+                    <td class="font-medium">${part.name}</td>
+                    <td class="font-mono">${part.sku}</td>
+                    <td class="font-mono">${part.materialCode}</td>
+                    <td>${part.category}</td>
+                    <td>${part.department}</td>
+                    <td class="text-center">
+                      <span class="${part.quantity <= part.minStockLevel ? 'stock-warning' : 'stock-normal'}">
+                        ${part.quantity}
+                      </span>
+                    </td>
+                    <td class="text-center">${part.minStockLevel}</td>
+                    <td class="text-right">$${part.unitPrice.toFixed(2)}</td>
+                    <td class="text-right financial-highlight">
+                      $${(part.quantity * part.unitPrice).toFixed(2)}
+                    </td>
+                    <td>
+                      <span class="px-2 py-1 rounded text-xs font-medium ${stockStatus.bgColor} ${stockStatus.color}">
+                        ${stockStatus.status}
+                      </span>
+                    </td>
+                    <td>${part.supplier}</td>
+                    <td>${part.location || 'N/A'}</td>
+                  </tr>
+                `
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="report-footer">
+          <p>Report generated on ${currentDate} at ${currentTime}</p>
+          <p style="margin-top: 4px;">
+            This report contains ${parts.length} parts across ${Object.keys(partsByDepartment).length} departments and ${Object.keys(partsByCategory).length} categories
+          </p>
+        </div>
+      </body>
+      </html>
+    `
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div className="p-6 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 mb-4">
+            <FileText className="h-6 w-6 text-blue-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Parts Inventory Report
+          </h3>
+          <p className="text-sm text-gray-600 mb-6">
+            Generate a comprehensive inventory report for <strong>{parts.length} parts</strong> that opens in a new window with print functionality.
+          </p>
           
-          .grid > div {
-            display: inline-block !important;
-            width: 23% !important;
-            margin: 0 0.5% !important;
-            vertical-align: top !important;
-          }
-        }
-      `}</style>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button 
+              onClick={handleExportReport}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Generate Report
+            </Button>
+            <Button 
+              onClick={onClose}
+              variant="outline"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
