@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { MoreHorizontal, Edit, Trash2, Calendar, User, Clock, AlertTriangle, CheckCircle2, Play, Eye } from "lucide-react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
+import { useAuthStore } from "@/stores/auth-store"
 import { MaintenanceScheduleForm } from "./maintenance-schedule-form"
 import { MaintenanceRecordForm } from "./maintenance-record-form"
 import { MaintenanceScheduleDetail } from "./maintenance-schedule-detail"
@@ -23,12 +24,32 @@ interface MaintenanceScheduleTableProps {
 
 export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: MaintenanceScheduleTableProps) {
   const { deleteSchedule, setSelectedSchedule } = useMaintenanceStore()
+  const { user } = useAuthStore()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null)
   const [detailDialog, setDetailDialog] = useState<{ open: boolean; schedule: MaintenanceSchedule | null }>({
     open: false,
     schedule: null
   })
+
+  // Check if current user can start maintenance for a specific schedule
+  const canStartMaintenance = (schedule: MaintenanceSchedule) => {
+    if (!user) return false
+    
+    // Super admin can start any maintenance
+    if (user.accessLevel === 'super_admin') return true
+    
+    // Department admin can start maintenance in their department
+    if (user.accessLevel === 'department_admin' && user.department === schedule.department) return true
+    
+    // Regular users can only start maintenance if they are the assigned technician
+    if (schedule.assignedTechnician && user.name === schedule.assignedTechnician) return true
+    
+    // If no technician is assigned, allow users from the same department as the asset
+    if (!schedule.assignedTechnician && user.department === schedule.department) return true
+    
+    return false
+  }
 
   const handleDeleteClick = (scheduleId: string) => {
     setScheduleToDelete(scheduleId)
@@ -212,10 +233,24 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
                     {schedule.assignedTechnician ? (
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />
-                        <span>{schedule.assignedTechnician}</span>
+                        <span className={canStartMaintenance(schedule) ? "font-medium text-green-700" : ""}>
+                          {schedule.assignedTechnician}
+                        </span>
+                        {canStartMaintenance(schedule) && (
+                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                            You can access
+                          </Badge>
+                        )}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">Unassigned</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Unassigned</span>
+                        {canStartMaintenance(schedule) && (
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                            Department access
+                          </Badge>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>
@@ -240,9 +275,15 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
                         <MaintenanceRecordForm
                           schedule={schedule}
                           trigger={
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              <Play className="mr-2 h-4 w-4" />
+                            <DropdownMenuItem 
+                              onSelect={(e) => e.preventDefault()}
+                              className={!canStartMaintenance(schedule) ? "text-muted-foreground cursor-not-allowed" : ""}
+                            >
+                              <Play className={`mr-2 h-4 w-4 ${!canStartMaintenance(schedule) ? "text-muted-foreground" : ""}`} />
                               Start Maintenance
+                              {!canStartMaintenance(schedule) && (
+                                <span className="ml-auto text-xs text-muted-foreground">Restricted</span>
+                              )}
                             </DropdownMenuItem>
                           }
                         />

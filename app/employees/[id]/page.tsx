@@ -380,7 +380,7 @@ export default function EmployeeDetailPage() {
                           {getWorkTypeIcon(item.type)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 leading-tight">{item.title}</p>
+                          <p className="text-sm font-medium text-gray-900 leading-tight truncate">{item.title}</p>
                           <p className="text-xs text-gray-500 mt-1">{formatDate(item.date)}</p>
                         </div>
                         <Badge variant="outline" className="text-xs px-2 py-1 border-gray-200 text-gray-600">

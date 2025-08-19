@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { Plus, Clock, CheckCircle, XCircle, SkipForward, Camera } from "lucide-react"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { useAuthStore } from "@/stores/auth-store"
+import { useToast } from "@/hooks/use-toast"
 import type { MaintenanceSchedule, MaintenanceRecord, MaintenancePartRecord, MaintenanceChecklistRecord } from "@/types/maintenance"
 
 interface MaintenanceRecordFormProps {
@@ -24,6 +25,43 @@ interface MaintenanceRecordFormProps {
 export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFormProps) {
   const { addRecord, setRecordDialogOpen, isRecordDialogOpen } = useMaintenanceStore()
   const { user } = useAuthStore()
+  const { toast } = useToast()
+
+  // Check if current user has permission to start maintenance
+  const canStartMaintenance = () => {
+    if (!user) return false
+    
+    // Super admin can start any maintenance
+    if (user.accessLevel === 'super_admin') return true
+    
+    // Department admin can start maintenance in their department
+    if (user.accessLevel === 'department_admin' && user.department === schedule.department) return true
+    
+    // Regular users can only start maintenance if they are the assigned technician
+    if (schedule.assignedTechnician && user.name === schedule.assignedTechnician) return true
+    
+    // If no technician is assigned, allow users from the same department as the asset
+    if (!schedule.assignedTechnician && user.department === schedule.department) return true
+    
+    return false
+  }
+
+  // Handle unauthorized access attempt
+  const handleUnauthorizedAccess = () => {
+    let description = ''
+    
+    if (schedule.assignedTechnician) {
+      description = `This maintenance schedule is assigned to ${schedule.assignedTechnician}. Only the assigned technician, department head, or super admin can start this maintenance.`
+    } else {
+      description = `This maintenance schedule is for the ${schedule.department} department. Only employees from this department, department head, or super admin can start this maintenance.`
+    }
+    
+    toast({
+      title: "Access Denied",
+      description,
+      variant: "destructive",
+    })
+  }
 
   const [formData, setFormData] = useState({
     completedDate: new Date().toISOString().split('T')[0],
@@ -172,11 +210,31 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
 
   const stats = getCompletionStats()
 
+  // Custom trigger handler with access control
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (canStartMaintenance()) {
+      setRecordDialogOpen(true)
+    } else {
+      handleUnauthorizedAccess()
+    }
+  }
+
   return (
-    <Dialog open={isRecordDialogOpen} onOpenChange={setRecordDialogOpen}>
-      <DialogTrigger asChild>
+    <>
+      {/* Custom trigger that doesn't use DialogTrigger to avoid automatic opening */}
+      <div onClick={handleTriggerClick} style={{ cursor: 'pointer' }}>
         {trigger}
-      </DialogTrigger>
+      </div>
+      
+      {/* Dialog only opens when user has permission */}
+      <Dialog open={isRecordDialogOpen && canStartMaintenance()} onOpenChange={(open) => {
+        if (canStartMaintenance()) {
+          setRecordDialogOpen(open)
+        }
+      }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Record Maintenance Completion</DialogTitle>
@@ -417,5 +475,6 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
         </form>
       </DialogContent>
     </Dialog>
+    </>
   )
 } 

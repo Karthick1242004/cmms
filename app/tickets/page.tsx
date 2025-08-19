@@ -22,6 +22,7 @@ import { Plus, Search, Filter, FileText, Clock, AlertCircle, CheckCircle, XCircl
 import { toast } from "sonner"
 import type { Ticket, TicketFilters } from "@/types/ticket"
 import { useAuthStore } from "@/stores/auth-store"
+import { useDepartments } from "@/hooks/use-departments"
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
@@ -38,6 +39,10 @@ export default function TicketsPage() {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   
   const { user } = useAuthStore()
+  
+  // Fetch departments for the dropdown
+  const { data: departmentsData, isLoading: departmentsLoading, error: departmentsError } = useDepartments()
+  const departments = departmentsData?.data?.departments || []
 
   // Fetch tickets
   const fetchTickets = async () => {
@@ -348,17 +353,31 @@ export default function TicketsPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium">Department</label>
-                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled={departmentsLoading}>
                   <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All departments" />
+                    <SelectValue placeholder={departmentsLoading ? "Loading..." : "All departments"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
-                    <SelectItem value="Maintenance">Maintenance</SelectItem>
-                    <SelectItem value="IT">IT</SelectItem>
-                    <SelectItem value="Operations">Operations</SelectItem>
-                    <SelectItem value="Safety">Safety</SelectItem>
-                    <SelectItem value="HR">HR</SelectItem>
+                    {departmentsLoading ? (
+                      <SelectItem value="loading" disabled>
+                        Loading departments...
+                      </SelectItem>
+                    ) : departmentsError ? (
+                      <SelectItem value="error" disabled>
+                        Error loading departments
+                      </SelectItem>
+                    ) : departments.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No departments found
+                      </SelectItem>
+                    ) : (
+                      departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.name}>
+                          {dept.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
