@@ -311,7 +311,7 @@ export default function Dashboard() {
         </Card>
         
       </div>
-      <TrialBanner variant="card" />
+      {/* <TrialBanner variant="card" /> */}
     </div>
   )
 }

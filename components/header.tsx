@@ -63,13 +63,13 @@ export function Header() {
       <div className="flex h-14 items-center px-6">
         <div className="flex-1 flex items-center space-x-4">
           <SidebarTrigger className="h-8 w-8" />
-          <div className="relative w-96 transition-all duration-300 hover:w-[28rem]">
+          {/* <div className="relative w-96 transition-all duration-300 hover:w-[28rem]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search assets, work orders, employees..."
               className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-primary/50 bg-background/50"
             />
-          </div>
+          </div> */}
         </div>
 
         <div className="flex items-center space-x-4">

@@ -267,7 +267,7 @@ export default function EmployeeDetailPage() {
       </PageHeader>
 
       {/* Trial Banner */}
-      <TrialBanner variant="card" />
+      {/* <TrialBanner variant="card" /> */}
 
       <div className="space-y-6 mt-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

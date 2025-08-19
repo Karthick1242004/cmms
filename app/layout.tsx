@@ -14,7 +14,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "FMMS Dashboard 360",
   description: "Computerized Maintenance Management System",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({
