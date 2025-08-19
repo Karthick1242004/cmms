@@ -128,9 +128,17 @@ export default function ShiftDetailsPage() {
     '/shift-details',
     [['shift-details', 'list'], ['shift-details', 'stats']],
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setDialogOpen(false)
         setSelectedShiftDetail(null)
+        
+        // Check if employeeId was auto-generated (different from what was submitted)
+        if (data?.data?.employeeId && String(data.data.employeeId) !== String(selectedEmployeeId)) {
+          toast({
+            title: "Shift Detail Created",
+            variant: "default",
+          })
+        }
       },
       onError: (error: any) => {
         console.error('Error creating shift detail:', error)

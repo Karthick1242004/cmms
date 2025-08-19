@@ -160,25 +160,71 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     // Check if shift detail already exists for this employee
-    const existingShiftDetail = await ShiftDetail.findOne({
-      $or: [
-        { employeeId: String(body.employeeId) },
-        { email: body.email }
-      ]
+    // First check for exact match (same employeeId + same email + same name) - this should be an update
+    const exactMatch = await ShiftDetail.findOne({
+      employeeId: String(body.employeeId),
+      email: body.email,
+      employeeName: body.employeeName
     }).lean();
 
-    if (existingShiftDetail) {
-      console.log('Found existing shift detail for:', (existingShiftDetail as any).employeeName);
+    if (exactMatch) {
+      console.log('Found exact match shift detail for:', (exactMatch as any).employeeName);
       return NextResponse.json({
         success: false,
         message: 'Shift detail already exists for this employee. Please edit the existing shift detail instead of creating a new one.',
         existingShiftDetail: {
-          id: (existingShiftDetail as any)._id.toString(),
-          employeeName: (existingShiftDetail as any).employeeName,
-          email: (existingShiftDetail as any).email,
-          department: (existingShiftDetail as any).department
+          id: (exactMatch as any)._id.toString(),
+          employeeName: (exactMatch as any).employeeName,
+          email: (exactMatch as any).email,
+          department: (exactMatch as any).department
         }
       }, { status: 409 });
+    }
+
+    // Check for email conflict (email should be unique across all shift details)
+    const emailConflict = await ShiftDetail.findOne({
+      email: body.email
+    }).lean();
+
+    if (emailConflict) {
+      console.log('Found email conflict with existing shift detail for:', (emailConflict as any).employeeName);
+      return NextResponse.json({
+        success: false,
+        message: `Email ${body.email} is already associated with another employee's shift detail (${(emailConflict as any).employeeName}). Please use a different email or edit the existing shift detail.`,
+        existingShiftDetail: {
+          id: (emailConflict as any)._id.toString(),
+          employeeName: (emailConflict as any).employeeName,
+          email: (emailConflict as any).email,
+          department: (emailConflict as any).department
+        }
+      }, { status: 409 });
+    }
+
+    // Check for employeeId conflict and generate a unique one if needed
+    let finalEmployeeId = String(body.employeeId || Date.now());
+    const employeeIdConflict = await ShiftDetail.findOne({
+      employeeId: finalEmployeeId
+    }).lean();
+
+    if (employeeIdConflict) {
+      // If the conflicting employee has different details, generate a new unique employeeId
+      if ((employeeIdConflict as any).employeeName !== body.employeeName || 
+          (employeeIdConflict as any).email !== body.email) {
+        
+        console.log(`EmployeeId ${finalEmployeeId} is already used by ${(employeeIdConflict as any).employeeName}. Generating new unique ID for ${body.employeeName}.`);
+        
+        // Generate a unique employeeId by combining original ID with timestamp
+        finalEmployeeId = `${body.employeeId}_${Date.now()}`;
+        
+        // Ensure this new ID is also unique (extremely unlikely to conflict, but just in case)
+        let attempts = 0;
+        while (await ShiftDetail.findOne({ employeeId: finalEmployeeId }).lean() && attempts < 5) {
+          finalEmployeeId = `${body.employeeId}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+          attempts++;
+        }
+        
+        console.log(`Generated unique employeeId: ${finalEmployeeId} for ${body.employeeName}`);
+      }
     }
 
     // Validate required fields
@@ -219,7 +265,7 @@ export async function POST(request: NextRequest) {
 
     // Create new shift detail document for shiftdetails collection
     const shiftDetailData = {
-      employeeId: body.employeeId || `EMP-${Date.now()}`,
+      employeeId: finalEmployeeId,
       employeeName: body.employeeName,
       email: body.email,
       phone: body.phone,
@@ -276,8 +322,34 @@ export async function POST(request: NextRequest) {
       message: 'Shift detail created successfully in shiftdetails collection',
     }, { status: 201 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating shift detail:', error);
+    
+    // Handle MongoDB duplicate key errors
+    if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyValue || {})[0];
+      const duplicateValue = error.keyValue?.[duplicateField];
+      
+      return NextResponse.json({
+        success: false,
+        message: `Duplicate ${duplicateField}: "${duplicateValue}" already exists. Please use a different value or edit the existing record.`,
+        error: 'DUPLICATE_KEY_ERROR',
+        field: duplicateField,
+        value: duplicateValue
+      }, { status: 409 });
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors || {}).map((err: any) => err.message);
+      return NextResponse.json({
+        success: false,
+        message: `Validation failed: ${validationErrors.join(', ')}`,
+        error: 'VALIDATION_ERROR',
+        details: validationErrors
+      }, { status: 400 });
+    }
+    
     return NextResponse.json(
       { success: false, message: 'Internal server error while creating shift detail' },
       { status: 500 }
