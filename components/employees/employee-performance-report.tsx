@@ -54,12 +54,229 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
     }
   }
 
-  const generateReportHTML = () => {
+  // Function to capture chart images as base64
+  const captureChartImages = async (): Promise<Record<string, string>> => {
+    const chartImages: Record<string, string> = {};
+    
+    try {
+      const canvasWidth = 500;
+      const canvasHeight = 300;
+
+      // Generate Monthly Activity Chart (Area Chart)
+      if (analytics?.monthlyActivity) {
+        const activityCanvas = document.createElement('canvas');
+        activityCanvas.width = canvasWidth;
+        activityCanvas.height = canvasHeight;
+        const activityCtx = activityCanvas.getContext('2d');
+        if (activityCtx) {
+          drawAreaChart(activityCtx, analytics.monthlyActivity, canvasWidth, canvasHeight, 'Monthly Activity Trend');
+          chartImages.monthlyActivity = activityCanvas.toDataURL();
+        }
+      }
+
+      // Generate Task Distribution Chart (Pie Chart)
+      if (analytics?.taskDistribution) {
+        const taskCanvas = document.createElement('canvas');
+        taskCanvas.width = canvasWidth;
+        taskCanvas.height = canvasHeight;
+        const taskCtx = taskCanvas.getContext('2d');
+        if (taskCtx) {
+          drawPieChart(taskCtx, analytics.taskDistribution, canvasWidth, canvasHeight, 'Task Distribution');
+          chartImages.taskDistribution = taskCanvas.toDataURL();
+        }
+      }
+
+      // Generate Performance Trends Chart (Line Chart)
+      if (analytics?.performanceTrends) {
+        const performanceCanvas = document.createElement('canvas');
+        performanceCanvas.width = canvasWidth;
+        performanceCanvas.height = canvasHeight;
+        const performanceCtx = performanceCanvas.getContext('2d');
+        if (performanceCtx) {
+          drawLineChart(performanceCtx, analytics.performanceTrends, canvasWidth, canvasHeight, 'Performance Trends');
+          chartImages.performanceTrends = performanceCanvas.toDataURL();
+        }
+      }
+
+    } catch (error) {
+      console.error('Error capturing chart images:', error);
+    }
+
+    return chartImages;
+  }
+
+  // Helper function to draw area chart
+  const drawAreaChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number, title: string) => {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const padding = 60;
+    const chartWidth = width - 2 * padding;
+    const chartHeight = height - 2 * padding - 40; // Extra space for title
+    
+    const maxValue = Math.max(...data.map(d => d.count || 0));
+    
+    // Draw title
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, width / 2, 25);
+    
+    // Draw axes
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding + 20);
+    ctx.lineTo(padding, height - padding);
+    ctx.lineTo(width - padding, height - padding);
+    ctx.stroke();
+    
+    // Draw area
+    if (data.length > 0) {
+      ctx.fillStyle = '#8884d8' + '30'; // Add transparency
+      ctx.beginPath();
+      ctx.moveTo(padding, height - padding);
+      
+      data.forEach((item, index) => {
+        const x = padding + (index / (data.length - 1)) * chartWidth;
+        const y = height - padding - ((item.count || 0) / maxValue) * chartHeight;
+        ctx.lineTo(x, y);
+      });
+      
+      ctx.lineTo(width - padding, height - padding);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Draw line
+      ctx.strokeStyle = '#8884d8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      
+      data.forEach((item, index) => {
+        const x = padding + (index / (data.length - 1)) * chartWidth;
+        const y = height - padding - ((item.count || 0) / maxValue) * chartHeight;
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    }
+  }
+
+  // Helper function to draw line chart
+  const drawLineChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number, title: string) => {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const padding = 60;
+    const chartWidth = width - 2 * padding;
+    const chartHeight = height - 2 * padding - 40;
+    
+    const maxValue = Math.max(...data.map(d => Math.max(d.efficiency || 0, d.totalTasks || 0, d.completedTasks || 0)));
+    
+    // Draw title
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, width / 2, 25);
+    
+    // Draw axes
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding + 20);
+    ctx.lineTo(padding, height - padding);
+    ctx.lineTo(width - padding, height - padding);
+    ctx.stroke();
+    
+    // Draw efficiency line
+    if (data.length > 0) {
+      ctx.strokeStyle = '#8884d8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      
+      data.forEach((item, index) => {
+        const x = padding + (index / (data.length - 1)) * chartWidth;
+        const y = height - padding - ((item.efficiency || 0) / maxValue) * chartHeight;
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    }
+  }
+
+  // Helper function to draw pie chart
+  const drawPieChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number, title: string) => {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const centerX = width / 2;
+    const centerY = height / 2 + 10;
+    const radius = Math.min(width, height) / 2 - 80;
+    
+    // Draw title
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, centerX, 25);
+    
+    const total = data.reduce((sum, item) => sum + (item.count || 0), 0);
+    let currentAngle = -Math.PI / 2;
+    
+    const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+    
+    // Draw pie slices
+    data.forEach((item, index) => {
+      const sliceAngle = ((item.count || 0) / total) * 2 * Math.PI;
+      
+      ctx.fillStyle = colors[index % colors.length];
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+      ctx.closePath();
+      ctx.fill();
+      
+      currentAngle += sliceAngle;
+    });
+    
+    // Add labels
+    currentAngle = -Math.PI / 2;
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    
+    data.forEach((item) => {
+      const sliceAngle = ((item.count || 0) / total) * 2 * Math.PI;
+      const labelAngle = currentAngle + sliceAngle / 2;
+      const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+      const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+      
+      const percentage = (((item.count || 0) / total) * 100).toFixed(0);
+      ctx.fillText(`${item.type}: ${percentage}%`, labelX, labelY);
+      
+      currentAngle += sliceAngle;
+    });
+  }
+
+  const generateReportHTML = async () => {
     const currentDate = new Date().toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'long', 
       day: 'numeric' 
     })
+
+    // Capture chart images if analytics data is available
+    const chartImages = analytics ? await captureChartImages() : {};
     
     return `
       <!DOCTYPE html>
@@ -492,6 +709,113 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
             </div>
             ` : ''}
 
+            ${analytics ? `
+            <!-- Analytics Charts Section -->
+            <div class="skills-section">
+              <div class="section-title">
+                📊 Performance Analytics
+              </div>
+              
+              <!-- Analytics Summary -->
+              <div class="task-grid">
+                <div class="task-item">
+                  <div class="task-icon">📈</div>
+                  <div class="task-value">${analytics.summary.totalActivities}</div>
+                  <div class="task-label">Total Activities</div>
+                </div>
+                <div class="task-item">
+                  <div class="task-icon">📅</div>
+                  <div class="task-value">${Math.round(analytics.summary.averageTasksPerMonth)}</div>
+                  <div class="task-label">Monthly Average</div>
+                </div>
+                <div class="task-item">
+                  <div class="task-icon">🏆</div>
+                  <div class="task-value">${analytics.summary.mostActiveMonth.month}</div>
+                  <div class="task-label">Most Active Month (${analytics.summary.mostActiveMonth.count} tasks)</div>
+                </div>
+                <div class="task-item">
+                  <div class="task-icon">⭐</div>
+                  <div class="task-value">${analytics.summary.primaryTaskType.type}</div>
+                  <div class="task-label">Primary Task Type (${analytics.summary.primaryTaskType.count} tasks)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Monthly Activity Chart -->
+            <div class="skills-section">
+              <div class="section-title">
+                📈 Monthly Activity Trend
+              </div>
+              <div style="text-align: center; margin: 20px 0;">
+                ${chartImages.monthlyActivity ? 
+                  `<img src="${chartImages.monthlyActivity}" alt="Monthly Activity Trend" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                  '<div style="padding: 40px; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: #64748b;">📈 Monthly Activity Chart</div>'
+                }
+              </div>
+            </div>
+
+            <!-- Task Distribution Chart -->
+            <div class="skills-section">
+              <div class="section-title">
+                🥧 Task Distribution
+              </div>
+              <div style="text-align: center; margin: 20px 0;">
+                ${chartImages.taskDistribution ? 
+                  `<img src="${chartImages.taskDistribution}" alt="Task Distribution" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                  '<div style="padding: 40px; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: #64748b;">🥧 Task Distribution Chart</div>'
+                }
+              </div>
+              <div class="task-grid">
+                ${analytics.taskDistribution.map(task => `
+                  <div class="task-item">
+                    <div class="task-icon">${getWorkTypeIcon(task.type)}</div>
+                    <div class="task-value">${task.count}</div>
+                    <div class="task-label">${task.type} (${task.percentage}%)</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Performance Trends Chart -->
+            <div class="skills-section">
+              <div class="section-title">
+                📊 Performance Trends
+              </div>
+              <div style="text-align: center; margin: 20px 0;">
+                ${chartImages.performanceTrends ? 
+                  `<img src="${chartImages.performanceTrends}" alt="Performance Trends" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px;" />` :
+                  '<div style="padding: 40px; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: #64748b;">📊 Performance Trends Chart</div>'
+                }
+              </div>
+            </div>
+
+            <!-- Asset Workload Details -->
+            ${analytics.assetWorkload && analytics.assetWorkload.length > 0 ? `
+            <div class="skills-section">
+              <div class="section-title">
+                🏭 Asset Workload Analysis
+              </div>
+              ${analytics.assetWorkload.slice(0, 5).map(asset => `
+                <div class="history-item">
+                  <div class="history-left">
+                    <span class="history-icon">🏭</span>
+                    <div>
+                      <div class="history-title">${asset.assetName}</div>
+                      <div class="history-date">Total Tasks: ${asset.count}</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <div class="history-status">📋 ${asset.types.ticket}</div>
+                    <div class="history-status">🔧 ${asset.types.maintenance}</div>
+                    <div class="history-status">📊 ${asset.types['daily-log']}</div>
+                    <div class="history-status">⚠️ ${asset.types['safety-inspection']}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            ` : ''}
+            ` : ''}
+
             <div class="footer">
               <p><strong>FMMS 360 Dashboard System</strong> - Employee Performance Management</p>
               <p>Report generated on ${currentDate} for ${employee.name}</p>
@@ -506,6 +830,13 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
 
   const handleExportReport = async () => {
     try {
+      // Show loading state
+      toast({
+        title: "Generating Report",
+        description: "Capturing charts and preparing report...",
+        variant: "default"
+      });
+
       // Create a new window for the print-friendly report
       const printWindow = window.open('', '_blank')
       if (!printWindow) {
@@ -517,8 +848,8 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
         return;
       }
 
-      // Generate the HTML content for the report
-      const reportHTML = generateReportHTML()
+      // Generate the HTML content for the report (this now includes chart capture)
+      const reportHTML = await generateReportHTML()
       
       printWindow.document.write(reportHTML)
       printWindow.document.close()
@@ -647,7 +978,20 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                 <li>Skills and certifications</li>
                 <li>Recent work history</li>
                 <li>Current asset assignments</li>
+                {analytics && (
+                  <>
+                    <li>Performance analytics charts</li>
+                    <li>Monthly activity trends</li>
+                    <li>Task distribution analysis</li>
+                    <li>Asset workload details</li>
+                  </>
+                )}
               </ul>
+              {analytics && (
+                <p className="mt-2 text-xs text-green-600 font-medium">
+                  ✨ Enhanced with analytics data and charts
+                </p>
+              )}
             </div>
           </div>
         </div>
