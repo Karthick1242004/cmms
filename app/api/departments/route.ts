@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
+import bcrypt from 'bcryptjs';
 
 export async function GET(request: NextRequest) {
   try {
@@ -100,23 +101,32 @@ export async function POST(request: NextRequest) {
     // Insert department into database
     const result = await db.collection('departments').insertOne(departmentData);
     
+    let managerCreated = false;
+    let managerError = null;
+    
     // If manager employee data is provided, create the employee
     if (body.managerEmployee) {
-      const employeeData = {
-        ...body.managerEmployee,
-        employeeId: `EMP-${Date.now()}`,
-        joinDate: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      // Hash the password before storing
-      const bcrypt = require('bcrypt');
-      if (employeeData.password) {
-        employeeData.password = await bcrypt.hash(employeeData.password, 12);
+      try {
+        const employeeData = {
+          ...body.managerEmployee,
+          employeeId: `EMP-${Date.now()}`,
+          joinDate: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        // Hash the password before storing
+        if (employeeData.password) {
+          employeeData.password = await bcrypt.hash(employeeData.password, 12);
+        }
+        
+        await db.collection('employees').insertOne(employeeData);
+        managerCreated = true;
+      } catch (error) {
+        console.error('Error creating manager employee:', error);
+        managerError = error;
+        // Don't fail the department creation if manager creation fails
       }
-      
-      await db.collection('employees').insertOne(employeeData);
     }
 
     // Return the created department with real-time employee count
@@ -130,11 +140,29 @@ export async function POST(request: NextRequest) {
       employeeCount
     };
 
-    return NextResponse.json({
+    // Prepare response message based on manager creation status
+    let message = 'Department created successfully';
+    if (body.managerEmployee) {
+      if (managerCreated) {
+        message += ' with manager employee';
+      } else {
+        message += ', but manager employee creation failed';
+      }
+    }
+
+    const response: any = {
       success: true,
       data: createdDepartment,
-      message: 'Department created successfully'
-    }, { status: 201 });
+      message
+    };
+
+    // Include manager creation details if there was an issue
+    if (body.managerEmployee && !managerCreated) {
+      response.warnings = ['Manager employee could not be created. Please create manually.'];
+      response.managerError = managerError?.message || 'Unknown error';
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (error) {
     console.error('Error creating department:', error);
     return NextResponse.json(
