@@ -31,8 +31,8 @@ export async function GET(
       );
     }
 
-    // Check if user has access to this location's department (unless admin or no auth)
-    if (user && user.role !== 'admin' && location.department !== user.department) {
+    // Check if user has access to this location's department (unless super_admin or no auth)
+    if (user && user.accessLevel !== 'super_admin' && location.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Access denied - Location belongs to different department' },
         { status: 403 }
@@ -82,16 +82,16 @@ export async function PUT(
       );
     }
     
-    // Check if user has access to this location's department (unless admin or no auth)
-    if (user && user.role !== 'admin' && existingLocation.department !== user.department) {
+    // Check if user has access to this location's department (unless super_admin or no auth)
+    if (user && user.accessLevel !== 'super_admin' && existingLocation.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Access denied - Location belongs to different department' },
         { status: 403 }
       );
     }
 
-    // Prevent non-admin users from changing department
-    if (user && user.role !== 'admin' && body.department && body.department !== user.department) {
+    // Prevent non-super_admin users from changing department
+    if (user && user.accessLevel !== 'super_admin' && body.department && body.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Cannot change location department' },
         { status: 403 }
@@ -153,8 +153,8 @@ export async function DELETE(
       );
     }
     
-    // Check if user has access to this location's department (unless admin or no auth)
-    if (user && user.role !== 'admin' && existingLocation.department !== user.department) {
+    // Check if user has access to this location's department (unless super_admin or no auth)
+    if (user && user.accessLevel !== 'super_admin' && existingLocation.department !== user.department) {
       return NextResponse.json(
         { success: false, message: 'Access denied - Location belongs to different department' },
         { status: 403 }

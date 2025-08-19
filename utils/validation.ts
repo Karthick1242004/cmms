@@ -27,6 +27,16 @@ export interface DepartmentFormData {
   managerPassword?: string;
 }
 
+export interface LocationFormData {
+  name: string;
+  code: string;
+  type: string;
+  department: string;
+  parentLocation: string;
+  address: string;
+  description: string;
+}
+
 // Common validation functions
 export const validateRequired = (value: string, fieldName: string): ValidationResult => {
   const trimmed = value.trim();
@@ -267,8 +277,68 @@ export const validateDepartmentForm = (formData: DepartmentFormData, isEdit: boo
   };
 };
 
+// Location validation
+export const validateLocationForm = (formData: LocationFormData): { isValid: boolean; errors: Record<string, string> } => {
+  const errors: Record<string, string> = {};
+  
+  // Name validation
+  const nameValidation = validateRequired(formData.name, 'Location name');
+  if (!nameValidation.isValid) {
+    errors.name = nameValidation.error!;
+  } else {
+    const lengthValidation = validateLength(formData.name, 'Location name', 2, 100);
+    if (!lengthValidation.isValid) {
+      errors.name = lengthValidation.error!;
+    }
+  }
+  
+  // Code validation
+  const codeValidation = validateCode(formData.code);
+  if (!codeValidation.isValid) {
+    errors.code = codeValidation.error!;
+  }
+  
+  // Type validation
+  const typeValidation = validateRequired(formData.type, 'Location type');
+  if (!typeValidation.isValid) {
+    errors.type = typeValidation.error!;
+  } else {
+    const typeLengthValidation = validateLength(formData.type, 'Location type', 2, 50);
+    if (!typeLengthValidation.isValid) {
+      errors.type = typeLengthValidation.error!;
+    }
+  }
+  
+  // Department validation
+  const departmentValidation = validateRequired(formData.department, 'Department');
+  if (!departmentValidation.isValid) {
+    errors.department = departmentValidation.error!;
+  }
+  
+  // Address validation
+  if (formData.address.trim()) {
+    const addressLengthValidation = validateLength(formData.address, 'Address', 5, 200);
+    if (!addressLengthValidation.isValid) {
+      errors.address = addressLengthValidation.error!;
+    }
+  }
+  
+  // Description validation
+  if (formData.description.trim()) {
+    const descLengthValidation = validateLength(formData.description, 'Description', 10, 500);
+    if (!descLengthValidation.isValid) {
+      errors.description = descLengthValidation.error!;
+    }
+  }
+  
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+};
+
 // Real-time field validation for instant feedback
-export const validateField = (fieldName: keyof (EmployeeFormData & DepartmentFormData), value: string, context?: any): ValidationResult => {
+export const validateField = (fieldName: keyof (EmployeeFormData & DepartmentFormData & LocationFormData), value: string, context?: any): ValidationResult => {
   switch (fieldName) {
     case 'name':
       const nameReq = validateRequired(value, 'Name');
@@ -308,6 +378,15 @@ export const validateField = (fieldName: keyof (EmployeeFormData & DepartmentFor
       const managerReq = validateRequired(value, 'Manager name');
       if (!managerReq.isValid) return managerReq;
       return validateLength(value, 'Manager name', 2, 100);
+    
+    case 'type':
+      const typeReq = validateRequired(value, 'Location type');
+      if (!typeReq.isValid) return typeReq;
+      return validateLength(value, 'Location type', 2, 50);
+    
+    case 'address':
+      if (!value.trim()) return { isValid: true }; // Optional field
+      return validateLength(value, 'Address', 5, 200);
       
     default:
       return { isValid: true };
