@@ -22,6 +22,7 @@ import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepa
 import { useAuthStore } from "@/stores/auth-store"
 import { useDebounce } from "@/hooks/use-debounce"
 import type { Department } from "@/types/department"
+import { validateDepartmentForm, validateField, type DepartmentFormData } from "@/utils/validation"
 import { toast } from "sonner"
 
 type DepartmentStatus = "active" | "inactive"
@@ -52,6 +53,10 @@ export default function DepartmentsPage() {
   const [managerPhone, setManagerPhone] = useState("")
   const [managerPassword, setManagerPassword] = useState("")
   const [managerAccessLevel, setManagerAccessLevel] = useState<"department_admin" | "normal_user">("department_admin")
+  
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -117,38 +122,103 @@ export default function DepartmentsPage() {
       setManagerPhone("")
       setManagerPassword("")
       setManagerAccessLevel("department_admin")
+      // Clear validation state
+      setValidationErrors({})
+      setTouchedFields({})
     }
     setDialogOpen(open)
   }
 
-  const handleSubmit = async () => {
-    if (!name || !code || !manager) {
-      toast.error("Department Name, Code, and Manager are required.")
-      return
+  const handleFieldChange = (fieldName: keyof DepartmentFormData, value: string) => {
+    // Update the appropriate state
+    switch (fieldName) {
+      case 'name':
+        setName(value);
+        break;
+      case 'code':
+        setCode(value.toUpperCase());
+        break;
+      case 'description':
+        setDescription(value);
+        break;
+      case 'manager':
+        setManager(value);
+        break;
+      case 'managerEmail':
+        setManagerEmail(value);
+        break;
+      case 'managerPhone':
+        setManagerPhone(value);
+        break;
+      case 'managerPassword':
+        setManagerPassword(value);
+        break;
     }
     
-    if (description.length < 10) {
-      toast.error("Description must be at least 10 characters long.")
-      return
+    // Real-time validation if field has been touched
+    if (touchedFields[fieldName]) {
+      const validation = validateField(fieldName, value);
+      setValidationErrors(prev => ({
+        ...prev,
+        [fieldName]: validation.isValid ? '' : validation.error!
+      }));
     }
+  };
 
-    // Additional validation for new department creation (with manager employee)
-    if (!editingDepartment) {
-      if (!managerEmail || !managerPhone) {
-        toast.error("Manager email and phone are required for new departments.")
-        return
+  const handleFieldBlur = (fieldName: keyof DepartmentFormData) => {
+    setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
+    
+    // Validate on blur
+    const getValue = () => {
+      switch (fieldName) {
+        case 'name': return name;
+        case 'code': return code;
+        case 'description': return description;
+        case 'manager': return manager;
+        case 'managerEmail': return managerEmail;
+        case 'managerPhone': return managerPhone;
+        case 'managerPassword': return managerPassword;
+        default: return '';
       }
+    };
+    
+    const value = getValue();
+    const validation = validateField(fieldName, value);
+    setValidationErrors(prev => ({
+      ...prev,
+      [fieldName]: validation.isValid ? '' : validation.error!
+    }));
+  };
+
+  const handleSubmit = async () => {
+    // Create form data object for validation
+    const formData: DepartmentFormData = {
+      name,
+      code,
+      description,
+      manager,
+      status,
+      managerEmail: !editingDepartment ? managerEmail : undefined,
+      managerPhone: !editingDepartment ? managerPhone : undefined,
+      managerPassword: !editingDepartment ? managerPassword : undefined,
+    };
+
+    // Validate the form
+    const validation = validateDepartmentForm(formData, !!editingDepartment);
+    
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      // Mark all fields as touched to show errors
+      const allFieldsTouched = Object.keys(formData).reduce((acc, key) => {
+        acc[key] = true;
+        return acc;
+      }, {} as Record<string, boolean>);
+      setTouchedFields(allFieldsTouched);
       
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(managerEmail)) {
-        toast.error("Please enter a valid email address for the manager.")
-        return
-      }
-      
-      if (managerPhone.length < 10) {
-        toast.error("Please enter a valid phone number for the manager.")
-        return
-      }
+      // Show the first error in a toast
+      const firstError = Object.values(validation.errors)[0];
+      toast.error(`Validation failed: ${firstError}`);
+      return;
     }
 
     try {
@@ -286,9 +356,15 @@ export default function DepartmentsPage() {
                 <Input 
                   id="name" 
                   value={name} 
-                  onChange={(e) => setName(e.target.value)} 
+                  onChange={(e) => handleFieldChange('name', e.target.value)}
+                  onBlur={() => handleFieldBlur('name')}
+                  className={validationErrors.name && touchedFields.name ? 'border-red-500' : ''}
+                  placeholder="Enter department name"
                   disabled={isSubmitting}
                 />
+                {validationErrors.name && touchedFields.name && (
+                  <p className="text-sm text-red-500">{validationErrors.name}</p>
+                )}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -299,11 +375,16 @@ export default function DepartmentsPage() {
                   <Input 
                     id="code" 
                     value={code} 
-                    onChange={(e) => setCode(e.target.value.toUpperCase())} 
+                    onChange={(e) => handleFieldChange('code', e.target.value)}
+                    onBlur={() => handleFieldBlur('code')}
+                    className={validationErrors.code && touchedFields.code ? 'border-red-500' : ''}
                     placeholder="e.g., IT, QA, PROD"
                     maxLength={10}
                     disabled={isSubmitting}
                   />
+                  {validationErrors.code && touchedFields.code && (
+                    <p className="text-sm text-red-500">{validationErrors.code}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="status" className="text-sm font-medium">
@@ -332,9 +413,15 @@ export default function DepartmentsPage() {
                 <Input 
                   id="manager" 
                   value={manager} 
-                  onChange={(e) => setManager(e.target.value)} 
+                  onChange={(e) => handleFieldChange('manager', e.target.value)}
+                  onBlur={() => handleFieldBlur('manager')}
+                  className={validationErrors.manager && touchedFields.manager ? 'border-red-500' : ''}
+                  placeholder="Enter manager name"
                   disabled={isSubmitting}
                 />
+                {validationErrors.manager && touchedFields.manager && (
+                  <p className="text-sm text-red-500">{validationErrors.manager}</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -344,10 +431,15 @@ export default function DepartmentsPage() {
                 <Textarea
                   id="description"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Minimum 10 characters"
+                  onChange={(e) => handleFieldChange('description', e.target.value)}
+                  onBlur={() => handleFieldBlur('description')}
+                  className={validationErrors.description && touchedFields.description ? 'border-red-500' : ''}
+                  placeholder="Minimum 10 characters, describe department responsibilities"
                   disabled={isSubmitting}
                 />
+                {validationErrors.description && touchedFields.description && (
+                  <p className="text-sm text-red-500">{validationErrors.description}</p>
+                )}
               </div>
               
               {/* Manager Employee Details - Only show for new department creation */}
@@ -368,10 +460,15 @@ export default function DepartmentsPage() {
                         id="managerEmail" 
                         type="email"
                         value={managerEmail} 
-                        onChange={(e) => setManagerEmail(e.target.value)} 
+                        onChange={(e) => handleFieldChange('managerEmail', e.target.value)}
+                        onBlur={() => handleFieldBlur('managerEmail')}
+                        className={validationErrors.managerEmail && touchedFields.managerEmail ? 'border-red-500' : ''}
                         placeholder="manager@company.com"
                         disabled={isSubmitting}
                       />
+                      {validationErrors.managerEmail && touchedFields.managerEmail && (
+                        <p className="text-sm text-red-500">{validationErrors.managerEmail}</p>
+                      )}
                     </div>
                     
                     <div className="space-y-2">
@@ -381,10 +478,15 @@ export default function DepartmentsPage() {
                       <Input 
                         id="managerPhone" 
                         value={managerPhone} 
-                        onChange={(e) => setManagerPhone(e.target.value)} 
-                        placeholder="+1234567890"
+                        onChange={(e) => handleFieldChange('managerPhone', e.target.value)}
+                        onBlur={() => handleFieldBlur('managerPhone')}
+                        className={validationErrors.managerPhone && touchedFields.managerPhone ? 'border-red-500' : ''}
+                        placeholder="10-15 digits (e.g., +1234567890)"
                         disabled={isSubmitting}
                       />
+                      {validationErrors.managerPhone && touchedFields.managerPhone && (
+                        <p className="text-sm text-red-500">{validationErrors.managerPhone}</p>
+                      )}
                     </div>
                   </div>
                   
@@ -397,10 +499,15 @@ export default function DepartmentsPage() {
                         id="managerPassword" 
                         type="password"
                         value={managerPassword} 
-                        onChange={(e) => setManagerPassword(e.target.value)} 
-                        placeholder="Default: temp123"
+                        onChange={(e) => handleFieldChange('managerPassword', e.target.value)}
+                        onBlur={() => handleFieldBlur('managerPassword')}
+                        className={validationErrors.managerPassword && touchedFields.managerPassword ? 'border-red-500' : ''}
+                        placeholder="Minimum 6 characters (default: temp123)"
                         disabled={isSubmitting}
                       />
+                      {validationErrors.managerPassword && touchedFields.managerPassword && (
+                        <p className="text-sm text-red-500">{validationErrors.managerPassword}</p>
+                      )}
                     </div>
                     
                     <div className="space-y-2">

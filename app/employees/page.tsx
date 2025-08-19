@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores/auth-store"
+import { validateEmployeeForm, validateField, type EmployeeFormData } from "@/utils/validation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -55,6 +56,8 @@ export default function EmployeesPage() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [passwordChanged, setPasswordChanged] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
 
   // TanStack Query hooks
   const { user: authUser } = useAuthStore()
@@ -119,6 +122,24 @@ export default function EmployeesPage() {
   }
 
   const handleSubmit = async () => {
+    // Validate the form
+    const validation = validateEmployeeForm(formData as EmployeeFormData, !!editingEmployee);
+    
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      // Mark all fields as touched to show errors
+      const allFieldsTouched = Object.keys(formData).reduce((acc, key) => {
+        acc[key] = true;
+        return acc;
+      }, {} as Record<string, boolean>);
+      setTouchedFields(allFieldsTouched);
+      
+      // Show the first error in a toast
+      const firstError = Object.values(validation.errors)[0];
+      toast.error(`Validation failed: ${firstError}`);
+      return;
+    }
+
     try {
       if (editingEmployee) {
         // For updates, only include password if it was changed
@@ -181,14 +202,53 @@ export default function EmployeesPage() {
     setEditingEmployee(null)
     setPasswordChanged(false)
     setShowPassword(false)
+    setValidationErrors({})
+    setTouchedFields({})
   }
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, password: e.target.value })
+    const value = e.target.value;
+    setFormData({ ...formData, password: value })
     if (editingEmployee && !passwordChanged) {
       setPasswordChanged(true)
     }
+    
+    // Real-time validation for password
+    if (touchedFields.password) {
+      const validation = validateField('password', value, { isRequired: !editingEmployee });
+      setValidationErrors(prev => ({
+        ...prev,
+        password: validation.isValid ? '' : validation.error!
+      }));
+    }
   }
+
+  const handleFieldChange = (fieldName: keyof EmployeeFormData, value: string) => {
+    setFormData({ ...formData, [fieldName]: value });
+    
+    // Real-time validation if field has been touched
+    if (touchedFields[fieldName]) {
+      const validation = validateField(fieldName, value);
+      setValidationErrors(prev => ({
+        ...prev,
+        [fieldName]: validation.isValid ? '' : validation.error!
+      }));
+    }
+  };
+
+  const handleFieldBlur = (fieldName: keyof EmployeeFormData) => {
+    setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
+    
+    // Validate on blur
+    const value = formData[fieldName];
+    const validation = validateField(fieldName, value, { 
+      isRequired: fieldName === 'password' ? !editingEmployee : true 
+    });
+    setValidationErrors(prev => ({
+      ...prev,
+      [fieldName]: validation.isValid ? '' : validation.error!
+    }));
+  };
 
   const handleCreateEmployee = () => {
     console.log('Add Employee button clicked!')
@@ -269,79 +329,111 @@ export default function EmployeesPage() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
-                  Name
+                  Name *
                 </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="col-span-3"
-                />
+                <div className="col-span-3">
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => handleFieldChange('name', e.target.value)}
+                    onBlur={() => handleFieldBlur('name')}
+                    className={`${validationErrors.name && touchedFields.name ? 'border-red-500' : ''}`}
+                    placeholder="Enter employee name"
+                  />
+                  {validationErrors.name && touchedFields.name && (
+                    <p className="text-sm text-red-500 mt-1">{validationErrors.name}</p>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="email" className="text-right">
-                  Email
+                  Email *
                 </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="col-span-3"
-                />
+                <div className="col-span-3">
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleFieldChange('email', e.target.value)}
+                    onBlur={() => handleFieldBlur('email')}
+                    className={`${validationErrors.email && touchedFields.email ? 'border-red-500' : ''}`}
+                    placeholder="employee@company.com"
+                  />
+                  {validationErrors.email && touchedFields.email && (
+                    <p className="text-sm text-red-500 mt-1">{validationErrors.email}</p>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="phone" className="text-right">
-                  Phone
+                  Phone *
                 </Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="col-span-3"
-                />
+                <div className="col-span-3">
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => handleFieldChange('phone', e.target.value)}
+                    onBlur={() => handleFieldBlur('phone')}
+                    className={`${validationErrors.phone && touchedFields.phone ? 'border-red-500' : ''}`}
+                    placeholder="10-15 digits (e.g., +1234567890)"
+                  />
+                  {validationErrors.phone && touchedFields.phone && (
+                    <p className="text-sm text-red-500 mt-1">{validationErrors.phone}</p>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="department" className="text-right">
-                  Department
+                  Department *
                 </Label>
-                {user?.accessLevel === 'super_admin' ? (
-                  <Select 
-                    value={formData.department} 
-                    onValueChange={(value) => setFormData({ ...formData, department: value })}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.name}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    id="department"
-                    value={formData.department}
-                    className="col-span-3"
-                    disabled={user?.accessLevel === 'department_admin'}
-                    placeholder="Department"
-                  />
-                )}
+                <div className="col-span-3">
+                  {user?.accessLevel === 'super_admin' ? (
+                    <Select 
+                      value={formData.department} 
+                      onValueChange={(value) => handleFieldChange('department', value)}
+                    >
+                      <SelectTrigger className={`${validationErrors.department && touchedFields.department ? 'border-red-500' : ''}`}>
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.name}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="department"
+                      value={formData.department}
+                      disabled={user?.accessLevel === 'department_admin'}
+                      placeholder="Department"
+                      className={`${validationErrors.department && touchedFields.department ? 'border-red-500' : ''}`}
+                    />
+                  )}
+                  {validationErrors.department && touchedFields.department && (
+                    <p className="text-sm text-red-500 mt-1">{validationErrors.department}</p>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="role" className="text-right">
-                  Role
+                  Role *
                 </Label>
-                <Input
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="col-span-3"
-                  placeholder="e.g. Senior Engineer"
-                />
+                <div className="col-span-3">
+                  <Input
+                    id="role"
+                    value={formData.role}
+                    onChange={(e) => handleFieldChange('role', e.target.value)}
+                    onBlur={() => handleFieldBlur('role')}
+                    className={`${validationErrors.role && touchedFields.role ? 'border-red-500' : ''}`}
+                    placeholder="e.g. Senior Engineer, Developer"
+                  />
+                  {validationErrors.role && touchedFields.role && (
+                    <p className="text-sm text-red-500 mt-1">{validationErrors.role}</p>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="status" className="text-right">
@@ -360,30 +452,36 @@ export default function EmployeesPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="password" className="text-right">
-                  Password
+                  Password {!editingEmployee && '*'}
                 </Label>
-                <div className="col-span-3 relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={handlePasswordChange}
-                    className="pr-10"
-                    placeholder={editingEmployee ? "Enter new password (leave empty to keep current)" : "Temporary password"}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
+                <div className="col-span-3">
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={handlePasswordChange}
+                      onBlur={() => handleFieldBlur('password')}
+                      className={`pr-10 ${validationErrors.password && touchedFields.password ? 'border-red-500' : ''}`}
+                      placeholder={editingEmployee ? "Enter new password (leave empty to keep current)" : "Minimum 6 characters"}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  {validationErrors.password && touchedFields.password && (
+                    <p className="text-sm text-red-500 mt-1">{validationErrors.password}</p>
+                  )}
                 </div>
               </div>
               {editingEmployee && passwordChanged && (

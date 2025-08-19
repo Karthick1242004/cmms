@@ -27,7 +27,7 @@ import { useLocations } from "@/hooks/use-locations"
 import { useToast } from "@/hooks/use-toast"
 import type { ShiftDetail } from "@/types/shift-detail"
 
-const DEPARTMENTS = ["Maintenance", "HVAC", "Electrical", "Plumbing", "Security", "Cleaning", "IT"]
+// Remove hardcoded departments - will use API data instead
 const SHIFT_TYPES = [
   { value: "day", label: "Day Shift" },
   { value: "night", label: "Night Shift" },
@@ -231,7 +231,7 @@ export default function ShiftDetailsPage() {
   // Clear all filters
   const clearFilters = () => {
     setFilters({
-      department: "all",
+      department: !isSuperAdmin && user?.department ? user.department : "all",
       shiftType: "all",
       status: "all",
       location: "all",
@@ -241,7 +241,6 @@ export default function ShiftDetailsPage() {
 
   // Get unique values for filter options
   const shiftDetails = shiftDetailsData?.data?.shiftDetails || []
-  const uniqueCategories = Array.from(new Set(shiftDetails.map(shift => shift.department))).filter(Boolean)
   const uniqueLocations = Array.from(new Set(shiftDetails.map(shift => shift.location))).filter(Boolean)
 
   useEffect(() => {
@@ -756,19 +755,36 @@ export default function ShiftDetailsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label>Department</Label>
-            <Select value={filters.department} onValueChange={(value) => handleFilterChange("department", value)}>
+            <Select 
+              value={filters.department} 
+              onValueChange={(value) => handleFilterChange("department", value)}
+              disabled={!isSuperAdmin}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="All departments" />
+                <SelectValue placeholder={isSuperAdmin ? "All departments" : user?.department || "Your department"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All departments</SelectItem>
-                {DEPARTMENTS.map((dept) => (
-                  <SelectItem key={dept} value={dept}>
-                    {dept}
+                {isSuperAdmin ? (
+                  <>
+                    <SelectItem value="all">All departments</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </>
+                ) : (
+                  <SelectItem value={user?.department || ""}>
+                    {user?.department || "Your department"}
                   </SelectItem>
-                ))}
+                )}
               </SelectContent>
             </Select>
+            {!isSuperAdmin && (
+              <p className="text-xs text-muted-foreground">
+                Showing only your department: {user?.department}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
