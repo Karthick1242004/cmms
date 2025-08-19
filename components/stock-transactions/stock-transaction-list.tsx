@@ -121,7 +121,11 @@ export function StockTransactionList({
     setSortBy(field);
     setSortOrder(newSortOrder);
     
-    const newFilters = { ...filters, sortBy: field, sortOrder: newSortOrder };
+    const newFilters = { 
+      ...filters, 
+      sortBy: field, 
+      sortOrder: newSortOrder as 'asc' | 'desc' 
+    };
     setFilters(newFilters);
     fetchTransactions();
   };
@@ -514,12 +518,11 @@ export function StockTransactionList({
                               </DropdownMenuItem>
                             )}
                             
-                            <DropdownMenuSeparator />
-                            
-                            <DropdownMenuItem>
+                            {/* <DropdownMenuSeparator /> */}
+                            {/* <DropdownMenuItem>
                               <Download className="mr-2 h-4 w-4" />
                               Export PDF
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             
                             {canDelete(transaction) && (
                               <>
@@ -582,7 +585,7 @@ export function StockTransactionList({
       {/* Loading Overlay */}
       {isLoading && filteredTransactions.length > 0 && (
         <div className="fixed inset-0 bg-background/50 flex items-center justify-center z-50">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-white p-3 rounded-md">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             <span>Loading transactions...</span>
           </div>
