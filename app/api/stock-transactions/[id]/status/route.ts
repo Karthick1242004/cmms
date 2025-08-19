@@ -164,6 +164,15 @@ export async function PUT(
     }
 
     const { id } = await params;
+    
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid transaction ID format' },
+        { status: 400 }
+      );
+    }
+    
     const body = await request.json();
     const { status, notes } = body;
 

@@ -1,22 +1,25 @@
-# Stock Transaction Status Update API Implementation
+# Stock Transaction API Implementation
 
 ## Overview
 
-This document describes the implementation of the missing stock transaction status update API endpoint and its integration with parts inventory management.
+This document describes the implementation of missing stock transaction API endpoints (status update, delete, get by ID, and update) and their integration with parts inventory management.
 
 ## Problem Analysis
 
-The frontend was attempting to call:
-```
-PUT /api/stock-transactions/{id}/status
-```
+The frontend was attempting to call several missing endpoints:
 
-But this endpoint was missing, causing 404 errors. The frontend already had the complete UI and logic for status updates, but was failing at the API level.
+1. **Status Update**: `PUT /api/stock-transactions/{id}/status` - 404 error
+2. **Delete Transaction**: `DELETE /api/stock-transactions/{id}` - 404 error  
+3. **Get by ID**: `GET /api/stock-transactions/{id}` - 404 error
+4. **Update Transaction**: `PUT /api/stock-transactions/{id}` - 404 error
+
+The frontend already had complete UI and logic for all these operations, but was failing at the API level.
 
 ## Solution Implemented
 
-### 1. Created Missing API Endpoint
+### 1. Created Missing API Endpoints
 
+#### Status Update Endpoint
 **File:** `app/api/stock-transactions/[id]/status/route.ts`
 
 **Features:**
@@ -25,6 +28,14 @@ But this endpoint was missing, causing 404 errors. The frontend already had the 
 - Automatic approval tracking with user information
 - Integration with parts inventory updates
 - Comprehensive error handling
+
+#### Individual Transaction Endpoint  
+**File:** `app/api/stock-transactions/[id]/route.ts`
+
+**Features:**
+- **GET**: Retrieve individual transaction with department-based authorization
+- **DELETE**: Delete draft transactions with strict authorization rules
+- **PUT**: Update transaction details with validation and permissions
 
 ### 2. Status Workflow
 
@@ -45,6 +56,7 @@ cancelled cancelled cancelled
 
 ### 3. Authorization Logic
 
+#### Status Update Authorization
 ```typescript
 const isAuthorized = user.accessLevel === 'super_admin' || 
                     user.accessLevel === 'department_admin' ||
@@ -55,6 +67,24 @@ const isAuthorized = user.accessLevel === 'super_admin' ||
 - **Super Admin**: Can update any transaction status
 - **Department Admin**: Can update transactions in their department
 - **Regular Users**: Can update transactions in their department
+
+#### Delete Authorization
+```typescript
+let canDelete = false;
+
+if (user.accessLevel === 'super_admin') {
+  canDelete = transaction.status === 'draft';
+} else if (user.accessLevel === 'department_admin') {
+  canDelete = transaction.department === user.department && transaction.status === 'draft';
+}
+// Regular users cannot delete transactions
+```
+
+**Delete Rules:**
+- **Super Admin**: Can delete any draft transaction
+- **Department Admin**: Can delete draft transactions from their department only
+- **Regular Users**: Cannot delete any transactions
+- **Status Restriction**: Only draft transactions can be deleted (prevents data integrity issues)
 
 ### 4. Parts Inventory Integration
 
@@ -170,6 +200,55 @@ Response:
 }
 ```
 
+### Delete Transaction
+
+```typescript
+DELETE /api/stock-transactions/{id}
+
+Response:
+{
+  "success": true,
+  "message": "Stock transaction ST25120001 deleted successfully"
+}
+```
+
+### Get Transaction by ID
+
+```typescript
+GET /api/stock-transactions/{id}
+
+Response:
+{
+  "success": true,
+  "data": {
+    // Complete transaction object
+  },
+  "message": "Stock transaction retrieved successfully"
+}
+```
+
+### Update Transaction
+
+```typescript
+PUT /api/stock-transactions/{id}
+
+Body:
+{
+  "description": "Updated description",
+  "items": [...],
+  // Other updatable fields
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    // Updated transaction object
+  },
+  "message": "Stock transaction updated successfully"
+}
+```
+
 ### Error Responses
 
 ```typescript
@@ -189,6 +268,24 @@ Response:
 {
   "success": false,
   "message": "Stock transaction not found"
+}
+
+// Cannot delete (wrong status)
+{
+  "success": false,
+  "message": "Cannot delete transaction - Only draft transactions can be deleted"
+}
+
+// Cannot delete (wrong department)
+{
+  "success": false,
+  "message": "Cannot delete transaction - You can only delete transactions from your department"
+}
+
+// Cannot delete completed transaction
+{
+  "success": false,
+  "message": "Cannot delete completed transaction - Transaction has already affected inventory"
 }
 ```
 
