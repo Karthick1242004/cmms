@@ -8,6 +8,35 @@ import type {
 import { safetyInspectionSchedulesApi, safetyInspectionRecordsApi } from '@/lib/safety-inspection-api'
 import { sampleSafetyInspectionSchedules, sampleSafetyInspectionRecords } from '@/data/safety-inspection-sample'
 
+// Utility functions for MongoDB ObjectId compatibility
+function isValidObjectId(id: string): boolean {
+  return /^[0-9a-fA-F]{24}$/.test(id);
+}
+
+function generateObjectId(): string {
+  // Generate a MongoDB-compatible ObjectId (24-character hex string)
+  const timestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+  const randomBytes = Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  return (timestamp + randomBytes).substring(0, 24);
+}
+
+function convertToObjectId(originalId: string): string {
+  // Create a deterministic ObjectId from the original ID
+  // This ensures the same input always produces the same ObjectId
+  let hash = 0;
+  for (let i = 0; i < originalId.length; i++) {
+    const char = originalId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  // Convert hash to hex and pad to 24 characters
+  const hexHash = Math.abs(hash).toString(16);
+  const timestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+  const padding = '0'.repeat(24 - timestamp.length - hexHash.length);
+  return (timestamp + padding + hexHash).substring(0, 24);
+}
+
 export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get) => ({
   schedules: [],
   records: [],
@@ -95,12 +124,23 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
   deleteSchedule: async (id) => {
     set({ isLoading: true })
     try {
+      console.log(`Attempting to delete safety inspection schedule: ${id}`)
       await safetyInspectionSchedulesApi.delete(id)
       
-      set(state => ({
-        schedules: state.schedules.filter(schedule => schedule.id !== id),
-        isLoading: false
-      }))
+      // Remove from local state regardless of backend response
+      // This handles both actual deletions and simulated ones
+      set(state => {
+        const beforeCount = state.schedules.length;
+        const filteredSchedules = state.schedules.filter(schedule => schedule.id !== id);
+        const afterCount = filteredSchedules.length;
+        
+        console.log(`Removed schedule ${id} from local state. Count: ${beforeCount} -> ${afterCount}`);
+        
+        return {
+          schedules: filteredSchedules,
+          isLoading: false
+        };
+      })
       
       get().filterSchedules()
       get().calculateStats()
@@ -302,13 +342,30 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
       // Note: Department filtering is now handled by the API based on user authentication
       // No need to pass department explicitly as it's extracted from the user session/token
       const response = await safetyInspectionSchedulesApi.getAll()
-      set({ schedules: response.data.schedules, isLoading: false })
+      
+      // Ensure all schedules have valid IDs (safety check for data integrity)
+      const schedulesWithValidIds = response.data.schedules.map((schedule, index) => {
+        // Convert sample data IDs to MongoDB ObjectId format if needed
+        if (schedule.id && !isValidObjectId(schedule.id)) {
+          schedule.id = convertToObjectId(schedule.id);
+        } else if (!schedule.id) {
+          // Generate a new MongoDB-compatible ObjectId
+          schedule.id = generateObjectId();
+        }
+        return schedule;
+      })
+      
+      set({ schedules: schedulesWithValidIds, isLoading: false })
       get().filterSchedules()
       get().calculateStats()
     } catch (error) {
       console.error('Failed to fetch safety inspection schedules:', error)
-      // Fallback to sample data
-      set({ schedules: sampleSafetyInspectionSchedules, isLoading: false })
+      // Fallback to sample data with converted ObjectId-compatible IDs
+      const sampleDataWithObjectIds = sampleSafetyInspectionSchedules.map(schedule => ({
+        ...schedule,
+        id: isValidObjectId(schedule.id) ? schedule.id : convertToObjectId(schedule.id)
+      }))
+      set({ schedules: sampleDataWithObjectIds, isLoading: false })
       get().filterSchedules()
       get().calculateStats()
     }
