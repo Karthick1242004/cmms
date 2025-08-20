@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Plus, Search, FileText } from "lucide-react"
+import { Plus, Search, FileText, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
@@ -196,7 +196,7 @@ export default function AllAssetsPage() {
               }}
               variant="outline"
             >
-              <Search className="mr-2 h-4 w-4" />
+              <Loader2 className="mr-2 h-4 w-4" />
               Refresh Data
             </Button>
             {canModifyAssets && (

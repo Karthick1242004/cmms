@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { devtools, persist } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
 import type { Notification, NotificationState } from "@/types/notification"
+import { notificationApi, type CriticalAlert } from "@/lib/notifications-api"
 
 export const useNotificationStore = create<NotificationState>()(
   devtools(
@@ -49,70 +50,71 @@ export const useNotificationStore = create<NotificationState>()(
             state.showLoginPopup = show
           }),
 
-        generateCriticalNotifications: () =>
-          set((state) => {
-            // Clear existing notifications for demo
-            state.notifications = []
+        loadCriticalNotifications: async () => {
+          try {
+            const response = await notificationApi.getCriticalAlerts()
+            if (response.success) {
+              set((state) => {
+                // Store existing read states
+                const readNotifications = new Set(
+                  state.notifications.filter(n => n.read).map(n => n.id.split('-').slice(0, -1).join('-'))
+                )
 
-            // Generate sample critical notifications
-            const criticalNotifications = [
-              {
-                type: "critical" as const,
-                title: "Low Stock Alert",
-                message:
-                  "Hydraulic Oil (Part #HO-001) is critically low (2 units remaining). Minimum threshold: 10 units.",
-                actionUrl: "/parts",
-                actionLabel: "View Parts",
-              },
-              {
-                type: "critical" as const,
-                title: "Equipment Failure",
-                message: "Generator #3 has reported a critical failure. Immediate maintenance required.",
-                actionUrl: "/assets/equipment",
-                actionLabel: "View Equipment",
-              },
-              {
-                type: "warning" as const,
-                title: "Overdue Maintenance",
-                message: "HVAC Unit A-102 maintenance is 5 days overdue. Schedule maintenance immediately.",
-                actionUrl: "/assets",
-                actionLabel: "View Assets",
-              },
-              {
-                type: "critical" as const,
-                title: "Safety Inspection Required",
-                message: "Building B safety inspection expires today. Compliance violation risk.",
-                actionUrl: "/locations",
-                actionLabel: "View Locations",
-              },
-              {
-                type: "warning" as const,
-                title: "Multiple Parts Low Stock",
-                message: "8 parts are below minimum stock levels. Review inventory immediately.",
-                actionUrl: "/parts",
-                actionLabel: "Review Inventory",
-              },
-            ]
+                // Clear existing notifications
+                state.notifications = []
 
-            criticalNotifications.forEach((notification) => {
-              const newNotification: Notification = {
-                ...notification,
-                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                timestamp: new Date(),
-                read: false,
-              }
-              state.notifications.push(newNotification)
-            })
+                // Convert API alerts to notifications
+                response.alerts.forEach((alert: CriticalAlert) => {
+                  const baseId = `${alert.category}-${alert.relatedId}`
+                  const newNotification: Notification = {
+                    id: `${baseId}-${Date.now()}`,
+                    type: alert.type,
+                    title: alert.title,
+                    message: alert.message,
+                    timestamp: new Date(alert.timestamp),
+                    read: readNotifications.has(baseId), // Preserve read state for same alerts
+                    actionUrl: alert.actionUrl,
+                    actionLabel: alert.actionLabel,
+                  }
+                  state.notifications.push(newNotification)
+                })
 
-            state.unreadCount = state.notifications.filter((n) => !n.read).length
-            state.showLoginPopup = true
-          }),
+                state.unreadCount = state.notifications.filter((n) => !n.read).length
+                
+                // Only show popup if there are new critical/warning notifications and popup isn't already shown
+                const criticalNotifications = state.notifications.filter(
+                  (n) => !n.read && (n.type === "critical" || n.type === "warning")
+                )
+                // Don't show popup if user has already interacted with it
+                if (criticalNotifications.length > 0 && !state.showLoginPopup) {
+                  state.showLoginPopup = true
+                }
+              })
+            }
+          } catch (error) {
+            console.error("Error loading critical notifications:", error)
+          }
+        },
+
+        generateCriticalNotifications: () => {
+          // This is deprecated - use loadCriticalNotifications instead
+          const { loadCriticalNotifications } = get()
+          loadCriticalNotifications()
+        },
       })),
       {
         name: "notification-storage",
         partialize: (state) => ({
           notifications: state.notifications,
           unreadCount: state.unreadCount,
+          showLoginPopup: state.showLoginPopup,
+        }),
+        // Merge function to handle state rehydration properly
+        merge: (persistedState: any, currentState: any) => ({
+          ...currentState,
+          ...persistedState,
+          // Always start with popup closed on app restart
+          showLoginPopup: false,
         }),
       },
     ),

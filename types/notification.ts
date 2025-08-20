@@ -20,5 +20,6 @@ export interface NotificationState {
   markAllAsRead: () => void
   removeNotification: (id: string) => void
   setShowLoginPopup: (show: boolean) => void
+  loadCriticalNotifications: () => Promise<void>
   generateCriticalNotifications: () => void
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNotificationStore } from "@/stores/notification-store"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -40,8 +40,13 @@ const getNotificationBadgeVariant = (type: string) => {
 
 export default function NotificationsPage() {
   const router = useRouter()
-  const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification } = useNotificationStore()
+  const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, loadCriticalNotifications } = useNotificationStore()
   const [activeTab, setActiveTab] = useState("all")
+
+  // Load notifications when page is accessed
+  useEffect(() => {
+    loadCriticalNotifications()
+  }, [loadCriticalNotifications])
 
   const filteredNotifications = notifications.filter((notification) => {
     switch (activeTab) {

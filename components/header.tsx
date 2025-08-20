@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { useAuthStore } from "@/stores/auth-store"
+import { useNotificationStore } from "@/stores/notification-store"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -24,6 +25,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 export function Header() {
   const router = useRouter()
   const { user, logout } = useAuthStore()
+  const { notifications, unreadCount, markAsRead, loadCriticalNotifications } = useNotificationStore()
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -34,6 +36,20 @@ export function Header() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  // Load notifications on component mount if user is authenticated
+  useEffect(() => {
+    if (user) {
+      loadCriticalNotifications()
+      
+      // Set up periodic refresh of notifications (every 5 minutes)
+      const interval = setInterval(() => {
+        loadCriticalNotifications()
+      }, 5 * 60 * 1000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [user, loadCriticalNotifications])
 
   const handleLogout = () => {
     logout()
@@ -51,6 +67,19 @@ export function Header() {
       default:
         return "outline"
     }
+  }
+
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.read) {
+      markAsRead(notification.id)
+    }
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl)
+    }
+  }
+
+  const handleViewAllNotifications = () => {
+    router.push("/notifications")
   }
 
   return (
@@ -77,27 +106,56 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative hover:bg-primary/10">
                 <Bell className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-primary text-primary-foreground text-xs animate-pulse">
-                  3
-                </Badge>
+                {unreadCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-primary text-primary-foreground text-xs animate-pulse">
+                    {unreadCount}
+                  </Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-80" align="end">
               <DropdownMenuLabel>Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <div className="max-h-[300px] overflow-y-auto">
-                {[1, 2, 3].map((i) => (
-                  <DropdownMenuItem key={i} className="cursor-pointer p-3 focus:bg-accent">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">Maintenance Alert</p>
-                      <p className="text-xs text-muted-foreground">Generator #3 requires scheduled maintenance</p>
-                      <p className="text-xs text-muted-foreground">2 hours ago</p>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    <p className="text-sm">No notifications</p>
+                  </div>
+                ) : (
+                  notifications.slice(0, 5).map((notification) => (
+                    <DropdownMenuItem 
+                      key={notification.id} 
+                      className="cursor-pointer p-3 focus:bg-accent"
+                      onClick={() => handleNotificationClick(notification)}
+                    >
+                      <div className="flex flex-col space-y-1 w-full">
+                        <div className="flex items-center justify-between">
+                          <p className={cn(
+                            "text-sm font-medium",
+                            !notification.read && "font-semibold text-primary"
+                          )}>
+                            {notification.title}
+                          </p>
+                          {!notification.read && (
+                            <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {notification.message}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {notification.timestamp.toLocaleString()}
+                        </p>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer justify-center text-primary">
+              <DropdownMenuItem 
+                className="cursor-pointer justify-center text-primary"
+                onClick={handleViewAllNotifications}
+              >
                 View all notifications
               </DropdownMenuItem>
             </DropdownMenuContent>

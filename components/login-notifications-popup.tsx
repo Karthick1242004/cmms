@@ -41,18 +41,18 @@ const getNotificationBadgeVariant = (type: string) => {
 export function LoginNotificationsPopup() {
   const router = useRouter()
   const { isAuthenticated } = useAuthStore()
-  const { notifications, showLoginPopup, setShowLoginPopup, markAllAsRead, generateCriticalNotifications } =
+  const { notifications, showLoginPopup, setShowLoginPopup, markAllAsRead, loadCriticalNotifications } =
     useNotificationStore()
 
-  // Generate notifications when user logs in
+  // Load real notifications when user logs in
   useEffect(() => {
     if (isAuthenticated) {
-      // Simulate checking for critical notifications after login
+      // Load critical notifications from API
       setTimeout(() => {
-        generateCriticalNotifications()
-      }, 1000) // Delay to simulate API call
+        loadCriticalNotifications()
+      }, 1000) // Delay to ensure auth state is settled
     }
-  }, [isAuthenticated, generateCriticalNotifications])
+  }, [isAuthenticated, loadCriticalNotifications])
 
   const criticalNotifications = notifications.filter((n) => !n.read && (n.type === "critical" || n.type === "warning"))
 
