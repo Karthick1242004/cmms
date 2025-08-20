@@ -499,7 +499,7 @@ export function StockTransactionForm({
     switch (type) {
       case 'receipt':
         return {
-          sourceLabel: 'Supplier',
+          sourceLabel: 'Supplier Address',
           destinationLabel: 'Receiving Location',
           showSupplier: true,
           showRecipient: false,
@@ -788,26 +788,35 @@ export function StockTransactionForm({
               name="sourceLocation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{typeLabels.sourceLabel}</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={`Select ${typeLabels.sourceLabel.toLowerCase()}`} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {locations
-                        .filter(location => 
-                          user?.accessLevel === 'super_admin' || 
-                          location.department === user?.department
-                        )
-                        .map((location) => (
-                        <SelectItem key={location.id} value={location.name}>
-                          {location.name} ({location.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>
+                    {watchedTransactionType === 'receipt' ? 'Supplier Address' : typeLabels.sourceLabel}
+                  </FormLabel>
+                  <FormControl>
+                    {watchedTransactionType === 'receipt' ? (
+                      <Input 
+                        placeholder="Enter supplier address" 
+                        {...field} 
+                      />
+                    ) : (
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={`Select ${typeLabels.sourceLabel.toLowerCase()}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locations
+                            .filter(location => 
+                              user?.accessLevel === 'super_admin' || 
+                              location.department === user?.department
+                            )
+                            .map((location) => (
+                            <SelectItem key={location.id} value={location.name}>
+                              {location.name} ({location.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
