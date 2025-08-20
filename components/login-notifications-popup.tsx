@@ -56,9 +56,9 @@ export function LoginNotificationsPopup() {
 
   const criticalNotifications = notifications.filter((n) => !n.read && (n.type === "critical" || n.type === "warning"))
 
-  const handleClose = () => {
+  const handleClose = async () => {
     setShowLoginPopup(false)
-    markAllAsRead()
+    await markAllAsRead()
   }
 
   const handleViewNotification = (notification: any) => {

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 
+// Generate stable notification ID based on content
+function generateNotificationId(category: string, relatedId: string, type: string): string {
+  return `${category}-${relatedId}-${type}`
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { db } = await connectToDatabase()
@@ -13,8 +18,9 @@ export async function GET(request: NextRequest) {
     )
     
     lowStockParts.forEach(part => {
+      const alertType = part.quantity === 0 ? "critical" : "warning"
       criticalAlerts.push({
-        type: part.quantity === 0 ? "critical" : "warning",
+        type: alertType,
         title: part.quantity === 0 ? "Out of Stock Alert" : "Low Stock Alert", 
         message: part.quantity === 0 
           ? `${part.name} (Part #${part.partNumber}) is out of stock. Immediate restocking required.`
@@ -22,7 +28,7 @@ export async function GET(request: NextRequest) {
         category: "stock",
         actionUrl: "/parts",
         actionLabel: "View Parts",
-        relatedId: part._id,
+        relatedId: generateNotificationId("stock", part._id.toString(), alertType),
         timestamp: new Date()
       })
     })
@@ -42,7 +48,7 @@ export async function GET(request: NextRequest) {
         category: "stock",
         actionUrl: "/parts",
         actionLabel: "View Parts",
-        relatedId: part._id,
+        relatedId: generateNotificationId("stock-info", part._id.toString(), "info"),
         timestamp: new Date()
       })
     })
