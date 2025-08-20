@@ -44,7 +44,7 @@ export const navigation: NavigationItem[] = [
     ],
   },
   {
-    name: "Parts",
+    name: "Parts Inventory",
     href: "/parts",
     iconName: "Wrench",
   },
@@ -59,7 +59,7 @@ export const navigation: NavigationItem[] = [
     iconName: "FileText",
   },
   {
-    name: "Inventory",
+    name: "Inventory Transaction",
     href: "/stock-history",
     iconName: "Archive",
   },

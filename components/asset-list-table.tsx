@@ -110,7 +110,7 @@ export function AssetListTable({ assets, onEdit, onDelete, onStatusChange, canMo
           <TableRow>
             <TableHead className="w-[80px]">Image</TableHead>
             <TableHead>Asset Name</TableHead>
-            <TableHead>Category</TableHead>
+            {/* <TableHead>Category Name</TableHead> */}
             <TableHead>Location</TableHead>
             <TableHead>Department</TableHead>
             <TableHead>Status</TableHead>
@@ -141,9 +141,9 @@ export function AssetListTable({ assets, onEdit, onDelete, onStatusChange, canMo
                   <div className="text-sm text-muted-foreground">{asset.assetTag || asset.id}</div>
                 </Link>
               </TableCell>
-              <TableCell>
+              {/* <TableCell>
                 <Badge variant="outline">{asset.categoryName || asset.type}</Badge>
-              </TableCell>
+              </TableCell> */}
               <TableCell>
                 <div className="flex items-center text-sm">
                   <MapPinIcon className="mr-1 h-3.5 w-3.5 text-muted-foreground" />

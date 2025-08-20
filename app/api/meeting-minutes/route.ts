@@ -165,6 +165,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Debug logging for request body
+    console.log('Meeting minutes creation request:', {
+      title: body.title,
+      attendees: body.attendees,
+      attendeesLength: body.attendees?.length || 0,
+      department: body.department,
+      status: body.status,
+      userInfo: { id: user.id, name: user.name, department: user.department }
+    });
+
     // Prepare meeting minutes data
     const meetingMinutesData = {
       title: body.title,
@@ -184,6 +194,11 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+
+    console.log('Meeting minutes data to be inserted:', {
+      ...meetingMinutesData,
+      attendeesCount: meetingMinutesData.attendees.length
+    });
 
     // Insert into MongoDB
     const result = await db.collection('meetingminutes').insertOne(meetingMinutesData);

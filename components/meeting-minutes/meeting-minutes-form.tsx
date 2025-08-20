@@ -31,6 +31,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useMeetingMinutesActions } from '@/stores/meeting-minutes-store';
 import { useDepartments } from '@/hooks/use-departments';
+import { useLocations } from '@/hooks/use-locations';
 import { employeesApi } from '@/lib/employees-api';
 import type { 
   MeetingMinutes, 
@@ -92,9 +93,11 @@ export function MeetingMinutesForm({
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [customLocation, setCustomLocation] = useState('');
 
   // Hooks
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments();
+  const { data: locationsData, isLoading: isLoadingLocations } = useLocations();
   const { createMeetingMinutes, updateMeetingMinutes, loading } = useMeetingMinutesActions();
 
   // Initialize form data
@@ -130,6 +133,15 @@ export function MeetingMinutesForm({
       }
     }
   }, [meetingMinutes, userContext]);
+
+  // Initialize custom location when locations data is loaded
+  useEffect(() => {
+    if (meetingMinutes?.location && 
+        locationsData?.data?.locations && 
+        !locationsData.data.locations.some(loc => loc.name === meetingMinutes.location)) {
+      setCustomLocation(meetingMinutes.location);
+    }
+  }, [meetingMinutes?.location, locationsData?.data?.locations]);
 
   // Update meetingDateTime when date or time changes
   useEffect(() => {
@@ -189,9 +201,23 @@ export function MeetingMinutesForm({
   };
 
   const handleAddAttendee = () => {
-    if (attendeeInput.trim() && !formData.attendees.includes(attendeeInput.trim())) {
-      handleInputChange('attendees', [...formData.attendees, attendeeInput.trim()]);
+    const trimmedInput = attendeeInput.trim();
+    console.log('Adding attendee:', {
+      input: trimmedInput,
+      currentAttendees: formData.attendees,
+      alreadyExists: formData.attendees.includes(trimmedInput)
+    });
+    
+    if (trimmedInput && !formData.attendees.includes(trimmedInput)) {
+      const newAttendees = [...formData.attendees, trimmedInput];
+      console.log('New attendees array:', newAttendees);
+      handleInputChange('attendees', newAttendees);
       setAttendeeInput('');
+      toast.success(`Added "${trimmedInput}" to attendees`);
+    } else if (!trimmedInput) {
+      toast.error('Please enter an attendee name');
+    } else {
+      toast.error('This attendee is already added');
     }
   };
 
@@ -208,6 +234,23 @@ export function MeetingMinutesForm({
 
   const handleRemoveTag = (tag: string) => {
     handleInputChange('tags', formData.tags.filter(t => t !== tag));
+  };
+
+  const handleLocationChange = (value: string) => {
+    if (value === 'custom') {
+      // Keep the custom value but clear the formData location temporarily
+      setCustomLocation('');
+      handleInputChange('location', '');
+    } else {
+      // Set the selected location and clear custom input
+      setCustomLocation('');
+      handleInputChange('location', value);
+    }
+  };
+
+  const handleCustomLocationChange = (value: string) => {
+    setCustomLocation(value);
+    handleInputChange('location', value);
   };
 
   const handleAddActionItem = () => {
@@ -281,13 +324,23 @@ export function MeetingMinutesForm({
       return;
     }
 
+    // Debug logging
+    console.log('Form submission data:', {
+      ...formData,
+      attendeesCount: formData.attendees.length,
+      attendeesList: formData.attendees
+    });
+
     try {
       if (meetingMinutes) {
         // Update existing meeting minutes
         await updateMeetingMinutes(meetingMinutes.id, formData);
+        toast.success('Meeting minutes updated successfully!');
       } else {
         // Create new meeting minutes
-        await createMeetingMinutes(formData);
+        const result = await createMeetingMinutes(formData);
+        console.log('Created meeting minutes result:', result);
+        toast.success('Meeting minutes created successfully!');
       }
       
       onSuccess?.();
@@ -462,16 +515,63 @@ export function MeetingMinutesForm({
           {/* Location */}
           <div className="space-y-2">
             <Label htmlFor="location">Location</Label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
-                placeholder="e.g., Conference Room A, Virtual - Zoom, Building 2 - Room 305"
-                className="pl-10"
-              />
-            </div>
+            <Select 
+              value={
+                formData.location && 
+                locationsData?.data?.locations?.some(loc => loc.name === formData.location) 
+                  ? formData.location 
+                  : formData.location 
+                    ? 'custom' 
+                    : ''
+              } 
+              onValueChange={handleLocationChange}
+            >
+              <SelectTrigger className="bg-background border-input">
+                <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Select meeting location" />
+              </SelectTrigger>
+              <SelectContent>
+                {isLoadingLocations ? (
+                  <SelectItem value="loading" disabled>Loading locations...</SelectItem>
+                ) : locationsData?.data?.locations && locationsData.data.locations.length > 0 ? (
+                  locationsData.data.locations.map((location) => (
+                    <SelectItem key={location.id} value={location.name}>
+                      <div className="flex flex-col">
+                        <span>{location.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {location.type} {location.department && `• ${location.department}`}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-locations" disabled>No locations available</SelectItem>
+                )}
+                {/* Option for custom location */}
+                <SelectItem value="custom">
+                  <div className="flex items-center">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    <span>Other / Custom Location</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Custom location input when custom is being used */}
+            {(formData.location && !locationsData?.data?.locations?.some(loc => loc.name === formData.location)) && (
+              <div className="mt-2">
+                <Input
+                  value={customLocation || formData.location || ''}
+                  placeholder="Enter custom location (e.g., Conference Room A, Virtual - Zoom)"
+                  onChange={(e) => handleCustomLocationChange(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            )}
+            
+            <p className="text-xs text-muted-foreground">
+              Select from available locations or choose "Other" for custom location
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -530,25 +630,29 @@ export function MeetingMinutesForm({
           <div className="space-y-2">
             <div className="flex space-x-2">
               <div className="flex-1 relative">
+                <Input
+                  value={attendeeInput}
+                  onChange={(e) => setAttendeeInput(e.target.value)}
+                  placeholder="Type employee name or select from dropdown..."
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddAttendee()}
+                  className="pr-10"
+                />
+                {formData.department && !isLoadingEmployees && employees.length > 0 && (
                 <Popover open={showEmployeeDropdown} onOpenChange={setShowEmployeeDropdown}>
                   <PopoverTrigger asChild>
                     <Button
-                      variant="outline" 
-                      role="combobox"
-                      aria-expanded={showEmployeeDropdown}
-                      className="w-full justify-between"
-                      disabled={!formData.department || isLoadingEmployees}
-                    >
-                      {attendeeInput || "Select or type employee name..."}
-                      <Users className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                        type="button"
+                      >
+                        <Users className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
+                    <PopoverContent className="w-full p-0" align="end">
                     <Command>
                       <CommandInput 
                         placeholder="Search employees..." 
-                        value={attendeeInput}
-                        onValueChange={setAttendeeInput}
                       />
                       <CommandEmpty>
                         {isLoadingEmployees ? "Loading employees..." : "No employees found."}
@@ -581,16 +685,18 @@ export function MeetingMinutesForm({
                     </Command>
                   </PopoverContent>
                 </Popover>
+                )}
               </div>
               <Button type="button" onClick={handleAddAttendee} variant="outline">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            {!formData.department && (
-              <p className="text-xs text-muted-foreground">
-                Please select a department first to see employees
-              </p>
-            )}
+            <div className="text-xs text-muted-foreground">
+              {!formData.department 
+                ? "Please select a department first to see employee suggestions"
+                : "Type any name manually or click the user icon to select from department employees"
+              }
+            </div>
           </div>
 
           {/* Attendees List */}

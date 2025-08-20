@@ -57,7 +57,16 @@ export const meetingMinutesApi = {
       })),
     };
 
+    // Debug logging
+    console.log('Meeting minutes API create payload:', {
+      ...payload,
+      attendeesCount: payload.attendees?.length || 0,
+      attendeesList: payload.attendees
+    });
+
     const response = await apiClient.post<MeetingMinutesResponse>(ENDPOINTS.MEETING_MINUTES, payload);
+    
+    console.log('Meeting minutes API create response:', response);
     return response;
   },
 
