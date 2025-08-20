@@ -331,10 +331,19 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
                       <Clock className="h-4 w-4" />
                       <Input
                         type="number"
-                        value={part.timeSpent}
-                        onChange={(e) => updatePartStatus(partIndex, { timeSpent: parseInt(e.target.value) })}
+                        value={part.timeSpent === 0 ? '' : part.timeSpent?.toString() || ''}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                          updatePartStatus(partIndex, { timeSpent: value });
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '') {
+                            updatePartStatus(partIndex, { timeSpent: 0 });
+                          }
+                        }}
+                        placeholder="0"
                         className="w-20"
-                        min="1"
+                        min="0"
                       />
                       <span className="text-sm text-muted-foreground">min</span>
                     </div>

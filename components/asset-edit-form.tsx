@@ -803,8 +803,17 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                   <Input
                     id="constructionYear"
                     type="number"
-                    value={formData.constructionYear}
-                    onChange={(e) => handleInputChange('constructionYear', parseInt(e.target.value) || new Date().getFullYear())}
+                    value={formData.constructionYear === new Date().getFullYear() ? '' : formData.constructionYear?.toString() || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? new Date().getFullYear() : parseInt(e.target.value) || new Date().getFullYear();
+                      handleInputChange('constructionYear', value);
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        handleInputChange('constructionYear', new Date().getFullYear());
+                      }
+                    }}
+                    placeholder={new Date().getFullYear().toString()}
                     min="1900"
                     max="2100"
                   />
@@ -1010,9 +1019,20 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                   <Input
                     id="productionHoursDaily"
                     type="number"
-                    value={formData.productionHoursDaily}
-                    onChange={(e) => handleInputChange('productionHoursDaily', Number(e.target.value) || 0)}
-                    placeholder="Enter hours"
+                    step="0.01"
+                    value={formData.productionHoursDaily === 0 ? '' : formData.productionHoursDaily?.toString() || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                      handleInputChange('productionHoursDaily', value);
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        handleInputChange('productionHoursDaily', 0);
+                      }
+                    }}
+                    placeholder="0"
+                    min="0"
+                    max="24"
                   />
                 </div>
               </div>
@@ -1061,9 +1081,18 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                     id="costPrice"
                     type="number"
                     step="0.01"
-                    value={formData.costPrice}
-                    onChange={(e) => handleInputChange('costPrice', Number(e.target.value) || 0)}
+                    value={formData.costPrice === 0 ? '' : formData.costPrice?.toString() || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                      handleInputChange('costPrice', value);
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        handleInputChange('costPrice', 0);
+                      }
+                    }}
                     placeholder="0.00"
+                    min="0"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1072,9 +1101,18 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                     id="purchasePrice"
                     type="number"
                     step="0.01"
-                    value={formData.purchasePrice}
-                    onChange={(e) => handleInputChange('purchasePrice', Number(e.target.value) || 0)}
+                    value={formData.purchasePrice === 0 ? '' : formData.purchasePrice?.toString() || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                      handleInputChange('purchasePrice', value);
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        handleInputChange('purchasePrice', 0);
+                      }
+                    }}
                     placeholder="0.00"
+                    min="0"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1083,9 +1121,18 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                     id="salesPrice"
                     type="number"
                     step="0.01"
-                    value={formData.salesPrice}
-                    onChange={(e) => handleInputChange('salesPrice', Number(e.target.value) || 0)}
+                    value={formData.salesPrice === 0 ? '' : formData.salesPrice?.toString() || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                      handleInputChange('salesPrice', value);
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        handleInputChange('salesPrice', 0);
+                      }
+                    }}
                     placeholder="0.00"
+                    min="0"
                   />
                 </div>
               </div>
@@ -1095,9 +1142,18 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                 <Input
                   id="expectedLifeSpan"
                   type="number"
-                  value={formData.expectedLifeSpan}
-                  onChange={(e) => handleInputChange('expectedLifeSpan', Number(e.target.value) || 0)}
-                  placeholder="Enter years"
+                  value={formData.expectedLifeSpan === 0 ? '' : formData.expectedLifeSpan?.toString() || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                    handleInputChange('expectedLifeSpan', value);
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      handleInputChange('expectedLifeSpan', 0);
+                    }
+                  }}
+                  placeholder="5"
+                  min="0"
                   className="max-w-xs"
                 />
               </div>
@@ -1300,12 +1356,21 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                       <Label>Quantity</Label>
                       <Input
                         type="number"
-                        value={part.quantity}
+                        value={part.quantity === 1 ? '' : part.quantity?.toString() || ''}
                         onChange={(e) => {
+                          const value = e.target.value === '' ? 1 : parseInt(e.target.value) || 1;
                           const newParts = [...formData.partsBOM]
-                          newParts[index] = { ...part, quantity: parseInt(e.target.value) || 1 }
+                          newParts[index] = { ...part, quantity: value }
                           setFormData(prev => ({ ...prev, partsBOM: newParts }))
                         }}
+                        onBlur={(e) => {
+                          if (e.target.value === '') {
+                            const newParts = [...formData.partsBOM]
+                            newParts[index] = { ...part, quantity: 1 }
+                            setFormData(prev => ({ ...prev, partsBOM: newParts }))
+                          }
+                        }}
+                        placeholder="1"
                         min="1"
                       />
                     </div>
@@ -1314,12 +1379,21 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                       <Input
                         type="number"
                         step="0.01"
-                        value={part.unitCost}
+                        value={part.unitCost === 0 ? '' : part.unitCost?.toString() || ''}
                         onChange={(e) => {
+                          const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
                           const newParts = [...formData.partsBOM]
-                          newParts[index] = { ...part, unitCost: parseFloat(e.target.value) || 0 }
+                          newParts[index] = { ...part, unitCost: value }
                           setFormData(prev => ({ ...prev, partsBOM: newParts }))
                         }}
+                        onBlur={(e) => {
+                          if (e.target.value === '') {
+                            const newParts = [...formData.partsBOM]
+                            newParts[index] = { ...part, unitCost: 0 }
+                            setFormData(prev => ({ ...prev, partsBOM: newParts }))
+                          }
+                        }}
+                        placeholder="0.00"
                         min="0"
                       />
                     </div>
@@ -1424,10 +1498,18 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                   <Input
                     id="shelfLifeInMonth"
                     type="number"
-                    value={formData.shelfLifeInMonth}
-                    onChange={(e) => handleInputChange('shelfLifeInMonth', parseInt(e.target.value) || 0)}
+                    value={formData.shelfLifeInMonth === 0 ? '' : formData.shelfLifeInMonth?.toString() || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                      handleInputChange('shelfLifeInMonth', value);
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '') {
+                        handleInputChange('shelfLifeInMonth', 0);
+                      }
+                    }}
+                    placeholder="0"
                     min="0"
-                    placeholder="Enter shelf life in months"
                   />
                 </div>
                 <div className="space-y-2">

@@ -285,8 +285,20 @@ function PartFormStandalone({
                           <Input
                             type="number"
                             min="1"
-                            value={selectedAssets.find(a => a.assetId === asset.id)?.quantityInAsset || 1}
-                            onChange={(e) => handleAssetQuantityChange(asset.id, parseInt(e.target.value) || 1)}
+                            value={(() => {
+                              const qty = selectedAssets.find(a => a.assetId === asset.id)?.quantityInAsset || 1;
+                              return qty === 1 && !selectedAssets.find(a => a.assetId === asset.id)?.quantityInAsset ? '' : qty.toString();
+                            })()}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? 1 : parseInt(e.target.value) || 1;
+                              handleAssetQuantityChange(asset.id, value);
+                            }}
+                            onBlur={(e) => {
+                              if (e.target.value === '') {
+                                handleAssetQuantityChange(asset.id, 1);
+                              }
+                            }}
+                            placeholder="1"
                             className="w-16 h-6 text-xs"
                           />
                         </div>
@@ -326,8 +338,17 @@ function PartFormStandalone({
           <Input
             id="quantity"
             type="number"
-            value={formData.quantity ?? 0}
-            onChange={(e) => onInputChange('quantity', parseInt(e.target.value) || 0)}
+            value={formData.quantity === 0 ? '' : formData.quantity?.toString() || ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+              onInputChange('quantity', value);
+            }}
+            onBlur={(e) => {
+              if (e.target.value === '') {
+                onInputChange('quantity', 0);
+              }
+            }}
+            placeholder="0"
             min="0"
           />
         </div>
@@ -336,8 +357,17 @@ function PartFormStandalone({
           <Input
             id="minStockLevel"
             type="number"
-            value={formData.minStockLevel ?? 0}
-            onChange={(e) => onInputChange('minStockLevel', parseInt(e.target.value) || 0)}
+            value={formData.minStockLevel === 0 ? '' : formData.minStockLevel?.toString() || ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+              onInputChange('minStockLevel', value);
+            }}
+            onBlur={(e) => {
+              if (e.target.value === '') {
+                onInputChange('minStockLevel', 0);
+              }
+            }}
+            placeholder="0"
             min="0"
           />
         </div>
@@ -347,8 +377,17 @@ function PartFormStandalone({
             id="unitPrice"
             type="number"
             step="0.01"
-            value={formData.unitPrice ?? 0}
-            onChange={(e) => onInputChange('unitPrice', parseFloat(e.target.value) || 0)}
+            value={formData.unitPrice === 0 ? '' : formData.unitPrice?.toString() || ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+              onInputChange('unitPrice', value);
+            }}
+            onBlur={(e) => {
+              if (e.target.value === '') {
+                onInputChange('unitPrice', 0);
+              }
+            }}
+            placeholder="0.00"
             min="0"
           />
         </div>

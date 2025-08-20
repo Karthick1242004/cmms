@@ -141,7 +141,7 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
       id: `violation_${Date.now()}`,
       description: "",
       riskLevel: "medium",
-      location: schedule.location,
+      location: schedule?.location || "",
       correctiveAction: "",
       priority: "moderate",
       status: "open",
@@ -209,10 +209,10 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
     }
 
     const recordData: Omit<SafetyInspectionRecord, "id" | "createdAt" | "updatedAt"> = {
-      scheduleId: schedule.id,
-      assetId: schedule.assetId,
-      assetName: schedule.assetName,
-      department: schedule.department, // Add required department field
+      scheduleId: schedule?.id || "",
+      assetId: schedule?.assetId || "",
+      assetName: schedule?.assetName || "",
+      department: schedule?.department || "", // Add required department field
       completedDate: formData.completedDate,
       startTime: formData.startTime,
       endTime: formData.endTime,
@@ -408,8 +408,17 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
                         <Clock className="h-3 w-3" />
                         <Input
                           type="number"
-                          value={category.timeSpent}
-                          onChange={(e) => updateCategoryResult(categoryIndex, { timeSpent: parseInt(e.target.value) })}
+                          value={category.timeSpent === 0 ? '' : category.timeSpent?.toString() || ''}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                            updateCategoryResult(categoryIndex, { timeSpent: value });
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === '') {
+                              updateCategoryResult(categoryIndex, { timeSpent: 0 });
+                            }
+                          }}
+                          placeholder="0"
                           className="w-16 h-6 text-xs"
                           min="0"
                         />

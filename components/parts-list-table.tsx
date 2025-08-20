@@ -44,7 +44,7 @@ interface NewPartData {
   quantity: number
   location?: string
   description?: string
-  price?: number
+  unitPrice?: number
   minStockLevel?: number
 }
 
@@ -64,7 +64,7 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
     quantity: 0,
     location: "",
     description: "",
-    price: 0,
+    unitPrice: 0,
     minStockLevel: 0,
   })
 
@@ -88,7 +88,7 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
       sku: part.sku,
       location: part.location,
       description: part.description,
-      price: part.price,
+      unitPrice: part.unitPrice,
       minStockLevel: part.minStockLevel,
     })
     setIsEditDialogOpen(true)
@@ -98,7 +98,7 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
     const { name, value } = e.target
     setEditFormData((prev) => ({
       ...prev,
-      [name]: name === "price" || name === "minStockLevel" ? Number.parseFloat(value) || 0 : value,
+      [name]: name === "unitPrice" || name === "minStockLevel" ? Number.parseFloat(value) || 0 : value,
     }))
   }
 
@@ -170,7 +170,7 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
       quantity: 0,
       location: "",
       description: "",
-      price: 0,
+      unitPrice: 0,
       minStockLevel: 0,
     })
     setIsAddDialogOpen(true)
@@ -180,7 +180,7 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
     const { name, value } = e.target
     setNewPartData((prev) => ({
       ...prev,
-      [name]: name === "price" || name === "minStockLevel" || name === "quantity" 
+      [name]: name === "unitPrice" || name === "minStockLevel" || name === "quantity" 
         ? Number.parseFloat(value) || 0 
         : value,
     }))
@@ -208,14 +208,27 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
 
     const newPart: Part = {
       id: `part_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      partNumber: newPartData.sku, // Using SKU as part number
       name: newPartData.name,
       sku: newPartData.sku,
+      materialCode: "",
+      description: newPartData.description || "",
+      category: "",
+      department: "",
+      linkedAssets: [],
       quantity: newPartData.quantity,
-      location: newPartData.location || undefined,
-      description: newPartData.description || undefined,
-      price: newPartData.price || undefined,
-      minStockLevel: newPartData.minStockLevel || undefined,
-      department: ""
+      minStockLevel: newPartData.minStockLevel || 0,
+      unitPrice: newPartData.unitPrice || 0,
+      totalValue: (newPartData.quantity || 0) * (newPartData.unitPrice || 0),
+      supplier: "",
+      location: newPartData.location || "",
+      totalConsumed: 0,
+      averageMonthlyUsage: 0,
+      status: 'active' as const,
+      isStockItem: true,
+      isCritical: false,
+      stockStatus: 'in_stock' as const,
+      departmentsServed: []
     }
 
     setParts(prevParts => [...prevParts, newPart])
@@ -275,7 +288,7 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
                   <TableCell>{part.sku}</TableCell>
                   <TableCell className="text-right">{part.quantity}</TableCell>
                   <TableCell>{part.location || "N/A"}</TableCell>
-                  <TableCell className="text-right">${part.price?.toFixed(2) || "0.00"}</TableCell>
+                  <TableCell className="text-right">${part.unitPrice?.toFixed(2) || "0.00"}</TableCell>
                   <TableCell className="text-center">
                     {part.minStockLevel !== undefined && part.quantity < part.minStockLevel ? (
                       <Badge variant="destructive" className="flex items-center justify-center">
@@ -367,8 +380,17 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
                 id="new-quantity"
                 name="quantity"
                 type="number"
-                value={newPartData.quantity}
-                onChange={handleNewPartChange}
+                value={newPartData.quantity === 0 ? '' : newPartData.quantity?.toString() || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                  setNewPartData(prev => ({ ...prev, quantity: value }));
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '') {
+                    setNewPartData(prev => ({ ...prev, quantity: 0 }));
+                  }
+                }}
+                placeholder="0"
                 className="col-span-3"
                 min="0"
               />
@@ -395,8 +417,17 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
                 name="price"
                 type="number"
                 step="0.01"
-                value={newPartData.price}
-                onChange={handleNewPartChange}
+                value={newPartData.unitPrice === 0 ? '' : newPartData.unitPrice?.toString() || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                  setNewPartData(prev => ({ ...prev, unitPrice: value }));
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '') {
+                    setNewPartData(prev => ({ ...prev, unitPrice: 0 }));
+                  }
+                }}
+                placeholder="0.00"
                 className="col-span-3"
                 min="0"
               />
@@ -409,8 +440,17 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
                 id="new-minStockLevel"
                 name="minStockLevel"
                 type="number"
-                value={newPartData.minStockLevel}
-                onChange={handleNewPartChange}
+                value={newPartData.minStockLevel === 0 ? '' : newPartData.minStockLevel?.toString() || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                  setNewPartData(prev => ({ ...prev, minStockLevel: value }));
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '') {
+                    setNewPartData(prev => ({ ...prev, minStockLevel: 0 }));
+                  }
+                }}
+                placeholder="0"
                 className="col-span-3"
                 min="0"
               />
@@ -491,9 +531,20 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
                 id="price"
                 name="price"
                 type="number"
-                value={editFormData.price || ""}
-                onChange={handleEditFormChange}
+                step="0.01"
+                value={(editFormData.unitPrice === 0 || editFormData.unitPrice === undefined) ? '' : editFormData.unitPrice?.toString() || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                  setEditFormData(prev => ({ ...prev, unitPrice: value }));
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '') {
+                    setEditFormData(prev => ({ ...prev, unitPrice: 0 }));
+                  }
+                }}
+                placeholder="0.00"
                 className="col-span-3"
+                min="0"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -504,9 +555,19 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
                 id="minStockLevel"
                 name="minStockLevel"
                 type="number"
-                value={editFormData.minStockLevel || ""}
-                onChange={handleEditFormChange}
+                value={(editFormData.minStockLevel === 0 || editFormData.minStockLevel === undefined) ? '' : editFormData.minStockLevel?.toString() || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                  setEditFormData(prev => ({ ...prev, minStockLevel: value }));
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '') {
+                    setEditFormData(prev => ({ ...prev, minStockLevel: 0 }));
+                  }
+                }}
+                placeholder="0"
                 className="col-span-3"
+                min="0"
               />
             </div>
             <div className="grid grid-cols-4 items-start gap-4">
@@ -571,9 +632,19 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
               <Input
                 id="stockAdjustment"
                 type="number"
-                value={stockAdjustment}
-                onChange={(e) => setStockAdjustment(Math.max(0, Number.parseInt(e.target.value, 10) || 0))} // Ensure positive
+                value={stockAdjustment === 0 ? '' : stockAdjustment.toString()}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : Math.max(0, Number.parseInt(e.target.value, 10) || 0);
+                  setStockAdjustment(value);
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '') {
+                    setStockAdjustment(0);
+                  }
+                }}
+                placeholder="0"
                 className="col-span-3"
+                min="0"
               />
             </div>
           </div>

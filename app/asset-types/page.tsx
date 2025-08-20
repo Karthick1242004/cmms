@@ -77,8 +77,8 @@ export default function AssetTypesPage() {
     code: "",
     category: "",
     description: "",
-    maintenanceInterval: "",
-    avgLifespan: "",
+    maintenanceInterval: 0,
+    avgLifespan: 0,
   })
 
   // Filter state
@@ -171,8 +171,8 @@ export default function AssetTypesPage() {
       code: "",
       category: "",
       description: "",
-      maintenanceInterval: "",
-      avgLifespan: "",
+      maintenanceInterval: 0,
+      avgLifespan: 0,
     })
     setEditingAssetType(null)
   }
@@ -189,8 +189,8 @@ export default function AssetTypesPage() {
       code: assetType.code,
       category: assetType.category,
       description: assetType.description,
-      maintenanceInterval: assetType.maintenanceInterval.toString(),
-      avgLifespan: assetType.avgLifespan.toString(),
+      maintenanceInterval: assetType.maintenanceInterval,
+      avgLifespan: assetType.avgLifespan,
     })
     setIsDialogOpen(true)
   }
@@ -206,8 +206,8 @@ export default function AssetTypesPage() {
               code: formData.code,
               category: formData.category,
               description: formData.description,
-              maintenanceInterval: parseInt(formData.maintenanceInterval) || 0,
-              avgLifespan: parseInt(formData.avgLifespan) || 0,
+              maintenanceInterval: formData.maintenanceInterval,
+              avgLifespan: formData.avgLifespan,
             }
           : item
       ))
@@ -219,8 +219,8 @@ export default function AssetTypesPage() {
         code: formData.code,
         category: formData.category,
         description: formData.description,
-        maintenanceInterval: parseInt(formData.maintenanceInterval) || 0,
-        avgLifespan: parseInt(formData.avgLifespan) || 0,
+        maintenanceInterval: formData.maintenanceInterval,
+        avgLifespan: formData.avgLifespan,
         assetCount: 0,
         status: "active",
       }
@@ -235,7 +235,7 @@ export default function AssetTypesPage() {
     setAssetTypes(prev => prev.filter(item => item.id !== assetTypeId))
   }
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -305,8 +305,18 @@ export default function AssetTypesPage() {
                   id="maintenanceInterval" 
                   type="number" 
                   className="col-span-3" 
-                  value={formData.maintenanceInterval}
-                  onChange={(e) => handleInputChange("maintenanceInterval", e.target.value)}
+                  value={formData.maintenanceInterval === 0 ? '' : formData.maintenanceInterval?.toString() || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                    handleInputChange("maintenanceInterval", value);
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      handleInputChange("maintenanceInterval", 0);
+                    }
+                  }}
+                  placeholder="0"
+                  min="0"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -317,8 +327,18 @@ export default function AssetTypesPage() {
                   id="avgLifespan" 
                   type="number" 
                   className="col-span-3" 
-                  value={formData.avgLifespan}
-                  onChange={(e) => handleInputChange("avgLifespan", e.target.value)}
+                  value={formData.avgLifespan === 0 ? '' : formData.avgLifespan?.toString() || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                    handleInputChange("avgLifespan", value);
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      handleInputChange("avgLifespan", 0);
+                    }
+                  }}
+                  placeholder="0"
+                  min="0"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">

@@ -442,13 +442,16 @@ export function MeetingMinutesForm({
               <Input
                 id="duration"
                 type="number"
-                value={formData.duration}
-                onChange={(e) =>
-                  handleInputChange(
-                    'duration',
-                    e.target.value === '' ? '' : Number(e.target.value)
-                  )
-                }
+                value={formData.duration === 60 || formData.duration === 0 ? '' : formData.duration?.toString() || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 60 : Number(e.target.value) || 60;
+                  handleInputChange('duration', value);
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '') {
+                    handleInputChange('duration', 60);
+                  }
+                }}
                 placeholder="60"
                 min="1"
                 max="480"

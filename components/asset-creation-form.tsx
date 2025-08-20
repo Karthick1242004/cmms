@@ -1177,9 +1177,19 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                 <Input 
                   id="costPrice"
                   type="number"
-                  value={formData.costPrice}
-                  onChange={(e) => handleInputChange('costPrice', parseFloat(e.target.value) || 0)}
+                  step="0.01"
+                  value={formData.costPrice === 0 ? '' : formData.costPrice?.toString() || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                    handleInputChange('costPrice', value);
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      handleInputChange('costPrice', 0);
+                    }
+                  }}
                   placeholder="0.00"
+                  min="0"
                 />
               </div>
 
@@ -1188,9 +1198,19 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                 <Input 
                   id="purchasePrice"
                   type="number"
-                  value={formData.purchasePrice}
-                  onChange={(e) => handleInputChange('purchasePrice', parseFloat(e.target.value) || 0)}
+                  step="0.01"
+                  value={formData.purchasePrice === 0 ? '' : formData.purchasePrice?.toString() || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                    handleInputChange('purchasePrice', value);
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      handleInputChange('purchasePrice', 0);
+                    }
+                  }}
                   placeholder="0.00"
+                  min="0"
                 />
               </div>
 
@@ -1199,9 +1219,19 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                 <Input 
                   id="salesPrice"
                   type="number"
-                  value={formData.salesPrice}
-                  onChange={(e) => handleInputChange('salesPrice', parseFloat(e.target.value) || 0)}
+                  step="0.01"
+                  value={formData.salesPrice === 0 ? '' : formData.salesPrice?.toString() || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                    handleInputChange('salesPrice', value);
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      handleInputChange('salesPrice', 0);
+                    }
+                  }}
                   placeholder="0.00"
+                  min="0"
                 />
               </div>
 
@@ -1210,9 +1240,18 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                 <Input 
                   id="expectedLifeSpan"
                   type="number"
-                  value={formData.expectedLifeSpan}
-                  onChange={(e) => handleInputChange('expectedLifeSpan', parseInt(e.target.value) || 0)}
+                  value={formData.expectedLifeSpan === 0 ? '' : formData.expectedLifeSpan?.toString() || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                    handleInputChange('expectedLifeSpan', value);
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      handleInputChange('expectedLifeSpan', 0);
+                    }
+                  }}
                   placeholder="5"
+                  min="0"
                 />
               </div>
 
@@ -1391,9 +1430,18 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                       <Input 
                         id={`part-quantity-${index}`}
                         type="number"
-                        value={part.quantity}
-                        onChange={(e) => updatePartBOM(index, 'quantity', parseInt(e.target.value) || 0)}
+                        value={part.quantity === 0 ? '' : part.quantity?.toString() || ''}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                          updatePartBOM(index, 'quantity', value);
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '') {
+                            updatePartBOM(index, 'quantity', 0);
+                          }
+                        }}
                         placeholder="1"
+                        min="0"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1401,9 +1449,19 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                       <Input 
                         id={`part-cost-${index}`}
                         type="number"
-                        value={part.unitCost}
-                        onChange={(e) => updatePartBOM(index, 'unitCost', parseFloat(e.target.value) || 0)}
+                        step="0.01"
+                        value={part.unitCost === 0 ? '' : part.unitCost?.toString() || ''}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                          updatePartBOM(index, 'unitCost', value);
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '') {
+                            updatePartBOM(index, 'unitCost', 0);
+                          }
+                        }}
                         placeholder="0.00"
+                        min="0"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1485,10 +1543,20 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                 <Input 
                   id="productionHoursDaily"
                   type="number"
+                  step="0.01"
                   max="24"
-                  value={formData.productionHoursDaily}
-                  onChange={(e) => handleInputChange('productionHoursDaily', parseFloat(e.target.value) || 0)}
+                  value={formData.productionHoursDaily === 0 ? '' : formData.productionHoursDaily?.toString() || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                    handleInputChange('productionHoursDaily', value);
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      handleInputChange('productionHoursDaily', 0);
+                    }
+                  }}
                   placeholder="0"
+                  min="0"
                 />
               </div>
 
@@ -1691,9 +1759,19 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                       <Input 
                         id={`event-reading-${index}`}
                         type="number"
-                        value={event.reading}
-                        onChange={(e) => updateMeteringEvent(index, 'reading', parseFloat(e.target.value) || 0)}
+                        step="0.01"
+                        value={event.reading === 0 ? '' : event.reading?.toString() || ''}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                          updateMeteringEvent(index, 'reading', value);
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '') {
+                            updateMeteringEvent(index, 'reading', 0);
+                          }
+                        }}
                         placeholder="0"
+                        min="0"
                       />
                     </div>
                     <div className="space-y-2">

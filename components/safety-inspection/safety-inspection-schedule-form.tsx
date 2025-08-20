@@ -465,8 +465,17 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                       <Input
                         id="customDays"
                         type="number"
-                        value={formData.customFrequencyDays}
-                        onChange={(e) => setFormData(prev => ({ ...prev, customFrequencyDays: parseInt(e.target.value) }))}
+                        value={formData.customFrequencyDays === 30 ? '' : formData.customFrequencyDays?.toString() || ''}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? 30 : parseInt(e.target.value) || 30;
+                          setFormData(prev => ({ ...prev, customFrequencyDays: value }));
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '') {
+                            setFormData(prev => ({ ...prev, customFrequencyDays: 30 }));
+                          }
+                        }}
+                        placeholder="30"
                         min="1"
                         required
                       />
@@ -510,10 +519,19 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                     <Input
                       id="duration"
                       type="number"
-                      value={formData.estimatedDuration}
-                      onChange={(e) => setFormData(prev => ({ ...prev, estimatedDuration: parseFloat(e.target.value) }))}
-                      min="0.5"
                       step="0.5"
+                      value={formData.estimatedDuration === 2 ? '' : formData.estimatedDuration?.toString() || ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 2 : parseFloat(e.target.value) || 2;
+                        setFormData(prev => ({ ...prev, estimatedDuration: value }));
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value === '') {
+                          setFormData(prev => ({ ...prev, estimatedDuration: 2 }));
+                        }
+                      }}
+                      placeholder="2"
+                      min="0.5"
                       required
                     />
                   </div>
@@ -608,9 +626,17 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                           <div className="flex items-center gap-2">
                             <Input
                               type="number"
-                              value={category.weight}
-                              onChange={(e) => updateCategory(categoryIndex, { weight: parseInt(e.target.value) })}
-                              placeholder="Weight %"
+                              value={category.weight === 100 ? '' : category.weight?.toString() || ''}
+                              onChange={(e) => {
+                                const value = e.target.value === '' ? 100 : parseInt(e.target.value) || 100;
+                                updateCategory(categoryIndex, { weight: value });
+                              }}
+                              onBlur={(e) => {
+                                if (e.target.value === '') {
+                                  updateCategory(categoryIndex, { weight: 100 });
+                                }
+                              }}
+                              placeholder="100"
                               min="1"
                               max="100"
                               className="w-20"

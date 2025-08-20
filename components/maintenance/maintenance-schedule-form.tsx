@@ -368,8 +368,17 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                 <Input
                   id="customDays"
                   type="number"
-                  value={formData.customFrequencyDays}
-                  onChange={(e) => setFormData(prev => ({ ...prev, customFrequencyDays: parseInt(e.target.value) }))}
+                  value={formData.customFrequencyDays === 30 ? '' : formData.customFrequencyDays?.toString() || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 30 : parseInt(e.target.value) || 30;
+                    setFormData(prev => ({ ...prev, customFrequencyDays: value }));
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      setFormData(prev => ({ ...prev, customFrequencyDays: 30 }));
+                    }
+                  }}
+                  placeholder="30"
                   min="1"
                   required
                 />
@@ -396,10 +405,19 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
               <Input
                 id="duration"
                 type="number"
-                value={formData.estimatedDuration}
-                onChange={(e) => setFormData(prev => ({ ...prev, estimatedDuration: parseFloat(e.target.value) }))}
-                min="0.5"
                 step="0.5"
+                value={formData.estimatedDuration === 2 ? '' : formData.estimatedDuration?.toString() || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 2 : parseFloat(e.target.value) || 2;
+                  setFormData(prev => ({ ...prev, estimatedDuration: value }));
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === '') {
+                    setFormData(prev => ({ ...prev, estimatedDuration: 2 }));
+                  }
+                }}
+                placeholder="2"
+                min="0.5"
                 required
               />
             </div>
@@ -524,12 +542,21 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                     </div>
                     <div className="space-y-2">
                       <Label>Estimated Time (min)</Label>
-                      <Input
-                        type="number"
-                        value={part.estimatedTime}
-                        onChange={(e) => updatePart(partIndex, { estimatedTime: parseInt(e.target.value) })}
-                        min="1"
-                      />
+                                              <Input
+                          type="number"
+                          value={part.estimatedTime === 30 ? '' : part.estimatedTime?.toString() || ''}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? 30 : parseInt(e.target.value) || 30;
+                            updatePart(partIndex, { estimatedTime: value });
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === '') {
+                              updatePart(partIndex, { estimatedTime: 30 });
+                            }
+                          }}
+                          placeholder="30"
+                          min="1"
+                        />
                     </div>
                   </div>
 
@@ -548,8 +575,17 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                         <Label>Replacement Frequency (cycles)</Label>
                         <Input
                           type="number"
-                          value={part.replacementFrequency || 1}
-                          onChange={(e) => updatePart(partIndex, { replacementFrequency: parseInt(e.target.value) })}
+                          value={(part.replacementFrequency === 1 || part.replacementFrequency === undefined) ? '' : part.replacementFrequency?.toString() || ''}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? 1 : parseInt(e.target.value) || 1;
+                            updatePart(partIndex, { replacementFrequency: value });
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === '') {
+                              updatePart(partIndex, { replacementFrequency: 1 });
+                            }
+                          }}
+                          placeholder="1"
                           min="1"
                           className="w-20"
                         />

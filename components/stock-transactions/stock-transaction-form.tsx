@@ -1006,11 +1006,17 @@ export function StockTransactionForm({
                                 step="0.01"
                                 min="0.01"
                                 placeholder="0"
-                                {...field}
+                                value={field.value === 0 ? '' : field.value?.toString() || ''}
                                 onChange={(e) => {
-                                  const value = parseFloat(e.target.value) || 0;
+                                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
                                   field.onChange(value);
                                   handleQuantityChange(index, value);
+                                }}
+                                onBlur={(e) => {
+                                  if (e.target.value === '') {
+                                    field.onChange(0);
+                                  }
+                                  field.onBlur();
                                 }}
                               />
                             </FormControl>
@@ -1032,11 +1038,17 @@ export function StockTransactionForm({
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
-                                {...field}
+                                value={field.value === 0 ? '' : field.value?.toString() || ''}
                                 onChange={(e) => {
-                                  const value = parseFloat(e.target.value) || 0;
+                                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
                                   field.onChange(value);
                                   handleUnitCostChange(index, value);
+                                }}
+                                onBlur={(e) => {
+                                  if (e.target.value === '') {
+                                    field.onChange(0);
+                                  }
+                                  field.onBlur();
                                 }}
                               />
                             </FormControl>
