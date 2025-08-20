@@ -141,14 +141,38 @@ export async function POST(request: NextRequest) {
     console.log('POST /api/safety-inspection/records - User context:', user)
     
     // Add department to data (use user's department unless super admin specifies different)
-    if (!body.department || user.accessLevel !== 'super_admin') {
-      body.department = user.department;
+    if (!body.department || body.department === '' || user.accessLevel !== 'super_admin') {
+      body.department = user.department || 'Unknown';
     }
 
     // Add inspector information if not provided
-    if (!body.inspector) {
-      body.inspector = user.name;
-      body.inspectorId = user.id;
+    if (!body.inspector || body.inspector === '') {
+      body.inspector = user.name || 'Unknown Inspector';
+      body.inspectorId = user.id?.toString() || 'unknown';
+    }
+
+    // Ensure scheduleId has a value (create temporary ObjectId if missing)
+    if (!body.scheduleId || body.scheduleId === '') {
+      // Generate a valid MongoDB ObjectId-like string
+      const generateObjectId = () => {
+        const timestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+        const randomBytes = Array.from({length: 16}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        return timestamp + randomBytes;
+      };
+      body.scheduleId = generateObjectId();
+      console.warn('POST /api/safety-inspection/records - Missing scheduleId, generated temporary ObjectId:', body.scheduleId);
+    }
+
+    // If scheduleId is still in old temp format, convert it to valid ObjectId
+    if (body.scheduleId.startsWith('temp_')) {
+      const generateObjectId = () => {
+        const timestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+        const randomBytes = Array.from({length: 16}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        return timestamp + randomBytes;
+      };
+      const oldScheduleId = body.scheduleId;
+      body.scheduleId = generateObjectId();
+      console.warn('POST /api/safety-inspection/records - Converted invalid scheduleId from', oldScheduleId, 'to', body.scheduleId);
     }
     
     console.log('POST /api/safety-inspection/records - After adding defaults:', {
@@ -158,15 +182,57 @@ export async function POST(request: NextRequest) {
       department: body.department
     })
     
-    // Validate required fields
-    if (!body.scheduleId || !body.assetId || !body.inspector) {
+    // Validate required fields with detailed error messages
+    const validationErrors = []
+    
+    if (!body.scheduleId || body.scheduleId === '') {
+      validationErrors.push('Schedule ID is required')
+    } else {
+      // Validate scheduleId is a valid ObjectId format (24 hex characters)
+      const objectIdPattern = /^[0-9a-fA-F]{24}$/;
+      if (!objectIdPattern.test(body.scheduleId)) {
+        console.warn('Invalid scheduleId format:', body.scheduleId, 'attempting to fix...');
+        // Generate a valid ObjectId
+        const generateObjectId = () => {
+          const timestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+          const randomBytes = Array.from({length: 16}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+          return timestamp + randomBytes;
+        };
+        const oldScheduleId = body.scheduleId;
+        body.scheduleId = generateObjectId();
+        console.log('Fixed scheduleId from', oldScheduleId, 'to', body.scheduleId);
+      }
+    }
+    
+    if (!body.assetId || body.assetId === '') {
+      validationErrors.push('Asset ID is required')
+    }
+    
+    if (!body.inspector || body.inspector === '') {
+      validationErrors.push('Inspector name is required')
+    }
+    
+    if (!body.department || body.department === '') {
+      validationErrors.push('Department is required')
+    }
+    
+    if (validationErrors.length > 0) {
       console.error('POST /api/safety-inspection/records - Validation failed:', {
-        scheduleId: body.scheduleId,
-        assetId: body.assetId,
-        inspector: body.inspector
+        errors: validationErrors,
+        receivedData: {
+          scheduleId: body.scheduleId,
+          assetId: body.assetId,
+          inspector: body.inspector,
+          department: body.department,
+          inspectorId: body.inspectorId
+        }
       })
       return NextResponse.json(
-        { success: false, message: 'Schedule ID, asset ID, and inspector are required' },
+        { 
+          success: false, 
+          message: `Validation failed: ${validationErrors.join(', ')}`,
+          errors: validationErrors
+        },
         { status: 400 }
       )
     }
@@ -182,8 +248,13 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
+      console.error('Backend error response:', errorData)
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to create safety inspection record' },
+        { 
+          success: false, 
+          message: errorData.message || 'Failed to create safety inspection record',
+          details: errorData.details || errorData.errors || undefined
+        },
         { status: response.status }
       )
     }

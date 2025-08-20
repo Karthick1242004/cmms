@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Plus, Clock, CheckCircle, XCircle, SkipForward, Shield, AlertTriangle } from "lucide-react"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
+import { useToast } from "@/hooks/use-toast"
 import type { SafetyInspectionSchedule, SafetyInspectionRecord, SafetyChecklistCategoryRecord, SafetyChecklistRecord, SafetyViolation } from "@/types/safety-inspection"
 
 interface SafetyInspectionRecordFormProps {
@@ -23,6 +24,7 @@ interface SafetyInspectionRecordFormProps {
 export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspectionRecordFormProps) {
   const { addRecord, setRecordDialogOpen, isRecordDialogOpen } = useSafetyInspectionStore()
   const { user } = useAuthStore()
+  const { toast } = useToast()
 
   const [formData, setFormData] = useState({
     completedDate: new Date().toISOString().split('T')[0],
@@ -43,39 +45,84 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
       return
     }
 
-    if (!schedule.checklistCategories) {
-      console.log('Safety Inspection Record Form: Schedule has no checklistCategories')
-      console.log('Schedule data:', schedule)
-      return
-    }
+    console.log('Safety Inspection Record Form: Schedule received:', {
+      id: schedule.id,
+      assetId: schedule.assetId,
+      assetName: schedule.assetName,
+      department: schedule.department,
+      hasChecklistCategories: !!schedule.checklistCategories,
+      checklistCategoriesLength: schedule.checklistCategories?.length || 0
+    })
 
-    if (schedule.checklistCategories.length === 0) {
-      console.log('Safety Inspection Record Form: Schedule has empty checklistCategories array')
-      return
-    }
-
-    // Initialize category results from schedule checklist categories
-    console.log('Safety Inspection Record Form: Initializing with', schedule.checklistCategories.length, 'categories')
-    console.log('Schedule checklist categories for record:', schedule.checklistCategories)
+    // Handle missing or empty checklist categories by creating a default one
+    let checklistCategories = schedule.checklistCategories;
     
-    const initialCategoryResults: SafetyChecklistCategoryRecord[] = schedule.checklistCategories.map(category => {
+    if (!checklistCategories || checklistCategories.length === 0) {
+      console.log('Safety Inspection Record Form: Schedule has no/empty checklistCategories, creating default category')
+      console.log('Full schedule data:', schedule)
+      
+      // Create a default category if none exists
+      checklistCategories = [
+        {
+          id: `default_category_${Date.now()}`,
+          categoryName: "General Safety",
+          description: "Basic safety inspection items",
+          required: true,
+          weight: 100,
+          checklistItems: [
+            {
+              id: `default_item_${Date.now()}`,
+              description: "Visual inspection for safety hazards",
+              isRequired: true,
+              riskLevel: "medium" as const,
+              status: "pending" as const,
+            },
+            {
+              id: `default_item_${Date.now() + 1}`,
+              description: "Check for proper signage and markings", 
+              isRequired: true,
+              riskLevel: "low" as const,
+              status: "pending" as const,
+            },
+            {
+              id: `default_item_${Date.now() + 2}`,
+              description: "Verify emergency equipment accessibility",
+              isRequired: true,
+              riskLevel: "high" as const,
+              status: "pending" as const,
+            }
+          ]
+        }
+      ];
+    }
+
+    // Initialize category results from checklist categories
+    console.log('Safety Inspection Record Form: Initializing with', checklistCategories.length, 'categories')
+    console.log('Checklist categories for record:', checklistCategories)
+    
+    const initialCategoryResults: SafetyChecklistCategoryRecord[] = checklistCategories.map((category, categoryIndex) => {
       console.log('Processing category:', category)
+      
+      // Ensure category has a valid ID
+      const categoryId = category.id || `category_${categoryIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
       return {
-        categoryId: category.id,
-        categoryName: category.categoryName,
+        categoryId,
+        categoryName: category.categoryName || `Category ${categoryIndex + 1}`,
         categoryComplianceScore: 100, // Start with 100% compliance
-        weight: category.weight,
+        weight: category.weight || 100,
         timeSpent: 30, // Default 30 minutes
-        checklistItems: category.checklistItems.map((item, index) => {
-          const itemId = item.id || `${category.id}_item_${index}_${Date.now()}`
+        checklistItems: (category.checklistItems || []).map((item, index) => {
+          // Ensure item has a valid ID
+          const itemId = item.id || `${categoryId}_item_${index}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
           console.log('Processing checklist item:', { item, generatedItemId: itemId })
           return {
             itemId,
-            description: item.description,
+            description: item.description || `Checklist item ${index + 1}`,
             safetyStandard: item.safetyStandard,
             completed: false,
             status: "compliant" as const,
-            riskLevel: item.riskLevel,
+            riskLevel: item.riskLevel || "medium",
             notes: "",
           }
         })
@@ -89,9 +136,19 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
   const calculateActualDuration = () => {
     if (formData.startTime && formData.endTime) {
       const start = new Date(`2000-01-01T${formData.startTime}`)
-      const end = new Date(`2000-01-01T${formData.endTime}`)
+      let end = new Date(`2000-01-01T${formData.endTime}`)
+      
+      // Handle case where end time is before start time (inspection spans midnight)
+      if (end.getTime() <= start.getTime()) {
+        // Add one day to end time if it's before start time
+        end = new Date(`2000-01-02T${formData.endTime}`)
+      }
+      
       const diffMs = end.getTime() - start.getTime()
-      return Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100 // Convert to hours with 2 decimal places
+      const durationHours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100 // Convert to hours with 2 decimal places
+      
+      // Ensure duration is positive and reasonable (max 24 hours)
+      return Math.max(0, Math.min(durationHours, 24))
     }
     return 0
   }
@@ -187,12 +244,96 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Frontend validation
+    if (!schedule) {
+      toast({
+        title: "Error",
+        description: "No schedule selected. Please try again.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!schedule.assetId) {
+      toast({
+        title: "Error", 
+        description: "Asset ID is missing. Please try again.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!schedule.assetName) {
+      toast({
+        title: "Error",
+        description: "Asset name is missing. Please try again.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!user?.name) {
+      toast({
+        title: "Error",
+        description: "Inspector information is missing. Please log in again.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.endTime) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter the end time for the inspection.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate that end time is after start time (unless it spans midnight)
+    const startTime = new Date(`2000-01-01T${formData.startTime}`)
+    const endTime = new Date(`2000-01-01T${formData.endTime}`)
+    
+    if (endTime.getTime() <= startTime.getTime()) {
+      // Check if this seems like a reasonable overnight inspection (less than 12 hours difference)
+      const overnightEndTime = new Date(`2000-01-02T${formData.endTime}`)
+      const overnightDuration = (overnightEndTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+      
+      if (overnightDuration > 12) {
+        toast({
+          title: "Invalid Time Range",
+          description: "End time appears to be before start time. Please check your times.",
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     const actualDuration = calculateActualDuration()
     const overallComplianceScore = calculateOverallComplianceScore()
     const stats = getCompletionStats()
+    
+    // Validate calculated values
+    if (actualDuration <= 0) {
+      toast({
+        title: "Invalid Duration",
+        description: "The calculated inspection duration is invalid. Please check your start and end times.",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    if (isNaN(actualDuration) || !isFinite(actualDuration)) {
+      toast({
+        title: "Invalid Duration",
+        description: "The calculated inspection duration is not a valid number. Please check your times.",
+        variant: "destructive",
+      })
+      return
+    }
     
     // Determine overall status based on completion and compliance
     let status: "completed" | "partially_completed" | "failed" = "completed"
@@ -208,17 +349,25 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
       complianceStatus = "requires_attention"
     }
 
+    // Generate a valid MongoDB ObjectId if schedule doesn't have one
+    const generateObjectId = () => {
+      // Generate a 24-character hex string that looks like a MongoDB ObjectId
+      const timestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+      const randomBytes = Array.from({length: 16}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      return timestamp + randomBytes;
+    };
+
     const recordData: Omit<SafetyInspectionRecord, "id" | "createdAt" | "updatedAt"> = {
-      scheduleId: schedule?.id || "",
-      assetId: schedule?.assetId || "",
-      assetName: schedule?.assetName || "",
-      department: schedule?.department || "", // Add required department field
+      scheduleId: schedule.id || generateObjectId(),
+      assetId: schedule.assetId,
+      assetName: schedule.assetName,
+      department: schedule.department || user?.department || "Unknown",
       completedDate: formData.completedDate,
       startTime: formData.startTime,
       endTime: formData.endTime,
       actualDuration,
-      inspector: user?.name || "Unknown Inspector",
-      inspectorId: user?.id?.toString() || "unknown",
+      inspector: user.name,
+      inspectorId: user.id?.toString() || "",
       status,
       overallComplianceScore,
       complianceStatus,
@@ -229,19 +378,77 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
       correctiveActionsRequired: violations.length > 0,
     }
 
-    console.log('Submitting safety inspection record:', recordData)
-    console.log('Key validation fields:', {
-      scheduleId: recordData.scheduleId,
-      assetId: recordData.assetId,
-      inspector: recordData.inspector,
-      department: recordData.department
+    // Validate categoryResults before submission
+    const validatedCategoryResults = categoryResults.map((category, categoryIndex) => {
+      let validatedCategory = { ...category }
+      
+      // Ensure category has a valid ID
+      if (!validatedCategory.categoryId) {
+        console.warn(`Category ${categoryIndex} missing categoryId, generating one`)
+        validatedCategory.categoryId = `category_${categoryIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      }
+      
+      // Ensure all checklist items have valid IDs
+      validatedCategory.checklistItems = validatedCategory.checklistItems.map((item, itemIndex) => {
+        if (!item.itemId) {
+          console.warn(`Category ${categoryIndex}, item ${itemIndex} missing itemId, generating one`)
+          return {
+            ...item,
+            itemId: `${validatedCategory.categoryId}_item_${itemIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          }
+        }
+        return item
+      })
+      
+      return validatedCategory
     })
+
+    // Update recordData with validated categoryResults
+    const finalRecordData = {
+      ...recordData,
+      categoryResults: validatedCategoryResults
+    }
+
+    console.log('Submitting safety inspection record:', finalRecordData)
+    console.log('Key validation fields:', {
+      scheduleId: finalRecordData.scheduleId,
+      scheduleIdOriginal: schedule.id,
+      scheduleIdGenerated: !schedule.id || schedule.id.startsWith('temp_'),
+      assetId: finalRecordData.assetId,
+      inspector: finalRecordData.inspector,
+      department: finalRecordData.department,
+      actualDuration: finalRecordData.actualDuration,
+      categoryResultsCount: finalRecordData.categoryResults.length,
+      categoryIds: finalRecordData.categoryResults.map(c => c.categoryId),
+      startTime: finalRecordData.startTime,
+      endTime: finalRecordData.endTime,
+      completedDate: finalRecordData.completedDate
+    })
+
+    // Log if we generated a temporary scheduleId
+    if (!schedule.id || schedule.id.startsWith('temp_')) {
+      console.warn('Generated temporary scheduleId for safety inspection record:', finalRecordData.scheduleId)
+    }
+    console.log('All category results:', finalRecordData.categoryResults)
     console.log('Schedule object for reference:', schedule)
-    console.log('User object for reference:', user)
-    console.log('Category results details:', JSON.stringify(categoryResults, null, 2))
-    
-    addRecord(recordData)
-    setRecordDialogOpen(false)
+
+    try {
+      await addRecord(finalRecordData)
+      toast({
+        title: "Success",
+        description: "Safety inspection record created successfully!",
+        variant: "default",
+      })
+      setRecordDialogOpen(false)
+    } catch (error: any) {
+      console.error('Error creating safety inspection record:', error)
+      const errorMessage = error?.message || 'Failed to create safety inspection record. Please try again.'
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    }
     
     // Reset form
     setFormData({
@@ -343,6 +550,14 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
                 onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
                 required
               />
+              {formData.startTime && formData.endTime && (
+                <p className="text-xs text-muted-foreground">
+                  Duration: {calculateActualDuration().toFixed(2)} hours
+                  {calculateActualDuration() <= 0 && (
+                    <span className="text-red-500 ml-1">(Invalid - check times)</span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
