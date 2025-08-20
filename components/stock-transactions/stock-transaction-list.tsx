@@ -17,6 +17,7 @@ import {
   ArrowUpDown,
   MoreHorizontal,
   Download,
+  FileText,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { StockTransaction } from "@/types/stock-transaction";
 import { useAuthStore } from "@/stores/auth-store";
 import { useStockTransactionsStore } from "@/stores/stock-transactions-store";
+import { StockTransactionInventoryReport } from "@/components/stock-transactions/stock-transaction-inventory-report";
 import { cn } from "@/lib/utils";
 
 interface StockTransactionListProps {
@@ -92,6 +94,7 @@ export function StockTransactionList({
 
   const [sortBy, setSortBy] = useState<string>('transactionDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   // Load transactions on component mount
   useEffect(() => {
@@ -277,10 +280,20 @@ export function StockTransactionList({
             Manage inventory movements and stock operations
           </p>
         </div>
-        <Button onClick={onCreateNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Transaction
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={() => setIsReportOpen(true)}
+            variant="outline"
+            disabled={filteredTransactions.length === 0}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Generate Report
+          </Button>
+          <Button onClick={onCreateNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Transaction
+          </Button>
+        </div>
       </div>
 
       {/* Filters and Search */}
@@ -590,6 +603,14 @@ export function StockTransactionList({
             <span>Loading transactions...</span>
           </div>
         </div>
+      )}
+
+      {/* Stock Transaction Inventory Report */}
+      {isReportOpen && (
+        <StockTransactionInventoryReport 
+          transactions={filteredTransactions}
+          onClose={() => setIsReportOpen(false)}
+        />
       )}
     </div>
   );
