@@ -352,8 +352,109 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
           
           @media print {
             .controls { display: none; }
-            body { padding: 0; }
-            .section { page-break-inside: avoid; }
+            body { 
+              padding: 10px; 
+              font-size: 12px;
+              line-height: 1.4;
+            }
+            .header {
+              margin-bottom: 15px;
+              padding-bottom: 10px;
+            }
+            .header h1 {
+              font-size: 22px;
+              margin-bottom: 4px;
+            }
+            .header .subtitle, .header .date {
+              font-size: 11px;
+            }
+            .section {
+              margin-bottom: 15px;
+              page-break-inside: avoid;
+            }
+            .section-title {
+              font-size: 14px;
+              margin-bottom: 8px;
+              padding-bottom: 4px;
+            }
+            .grid {
+              gap: 8px;
+            }
+            .grid-4 {
+              gap: 6px;
+            }
+            .info-card {
+              padding: 8px;
+              border-radius: 4px;
+            }
+            .info-label {
+              font-size: 10px;
+              margin-bottom: 2px;
+            }
+            .info-value {
+              font-size: 11px;
+              line-height: 1.3;
+            }
+            .content-box {
+              padding: 8px;
+              min-height: 30px;
+              border-radius: 4px;
+            }
+            .content-text {
+              font-size: 11px;
+              line-height: 1.3;
+            }
+            .status-badge {
+              padding: 3px 6px;
+              font-size: 9px;
+              border-radius: 3px;
+            }
+            table {
+              margin-top: 5px;
+              font-size: 10px;
+            }
+            th, td {
+              padding: 6px 8px;
+            }
+            th {
+              font-size: 9px;
+            }
+            td {
+              font-size: 10px;
+            }
+            .badge {
+              padding: 2px 4px;
+              font-size: 8px;
+              margin: 1px;
+            }
+            /* Ensure critical sections stay together */
+            .ticket-info-section {
+              page-break-inside: avoid;
+            }
+            /* Make grid more compact for print */
+            @page {
+              margin: 0.5in;
+              size: letter;
+            }
+            /* Ensure activity log table is more compact */
+            .activity-table {
+              font-size: 9px !important;
+              page-break-inside: auto;
+            }
+            .activity-table th {
+              font-size: 8px !important;
+              padding: 4px 6px !important;
+              background: #f8fafc !important;
+            }
+            .activity-table td {
+              font-size: 9px !important;
+              padding: 4px 6px !important;
+              vertical-align: top;
+            }
+            /* Responsive grid for print */
+            .grid-4 {
+              grid-template-columns: repeat(3, 1fr) !important;
+            }
           }
           
           @media (max-width: 768px) {
@@ -378,13 +479,13 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
           <p class="date">Generated on ${currentDate}</p>
         </div>
         
-        <div class="section">
+        <div class="section ticket-info-section">
           <h2 class="section-title">📋 Ticket Information</h2>
-          <div class="grid">
+          <div class="grid-4">
             <div class="info-card">
               <div class="info-label">Ticket ID</div>
               <div class="info-value" style="font-family: monospace; font-weight: bold;">${ticket.ticketId}</div>
-                </div>
+            </div>
             <div class="info-card">
               <div class="info-label">Priority</div>
               <div class="status-badge priority-${ticket.priority.toLowerCase()}">
@@ -395,8 +496,8 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
               <div class="info-label">Status</div>
               <div class="status-badge status-${ticket.status.toLowerCase().replace(' ', '-')}">
                 ${ticket.status}
-                  </div>
-                </div>
+              </div>
+            </div>
             <div class="info-card">
               <div class="info-label">Logged Date & Time</div>
               <div class="info-value">
@@ -435,17 +536,9 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
             <div class="info-card">
               <div class="info-label">Reviewed By</div>
               <div class="info-value">${ticket.reviewedBy || 'N/A'}</div>
-                  </div>
-            <div class="info-card">
-              <div class="info-label">Total Time</div>
-              <div class="info-value">${ticket.totalTime ? `${ticket.totalTime} hours` : 'N/A'}</div>
-                </div>
-            <div class="info-card">
-              <div class="info-label">Ticket Close Date</div>
-              <div class="info-value">${ticket.ticketCloseDate ? formatDate(ticket.ticketCloseDate) : 'N/A'}</div>
-                  </div>
-                </div>
-              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="section">
           <h2 class="section-title">🏷️ Report Type & Access</h2>
@@ -479,36 +572,46 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
               </div>
 
         <div class="section">
-          <h2 class="section-title">📝 Subject</h2>
-          <div class="content-box">
-            <div style="font-weight: 600; font-size: 16px;">${ticket.subject}</div>
-                </div>
-              </div>
-
-        <div class="section">
-          <h2 class="section-title">📄 Description</h2>
-          <div class="content-box">
-            <div class="content-text">${ticket.description}</div>
-                  </div>
-                </div>
+          <h2 class="section-title">📝 Subject & Details</h2>
+          <div class="grid">
+            <div class="content-box">
+              <div class="info-label">SUBJECT</div>
+              <div style="font-weight: 600; font-size: 14px; margin-top: 4px;">${ticket.subject}</div>
+            </div>
+            <div class="content-box">
+              <div class="info-label">DESCRIPTION</div>
+              <div class="content-text" style="margin-top: 4px;">${ticket.description}</div>
+            </div>
+          </div>
+        </div>
         
         <div class="section">
-          <h2 class="section-title">💡 Solution</h2>
-          <div class="content-box">
-            <div class="content-text">${ticket.solution || 'No solution provided yet'}</div>
-                </div>
+          <h2 class="section-title">💡 Solution & Timeline</h2>
+          <div class="grid">
+            <div class="content-box">
+              <div class="info-label">SOLUTION</div>
+              <div class="content-text" style="margin-top: 4px;">${ticket.solution || 'No solution provided yet'}</div>
+            </div>
+            <div class="content-box">
+              <div class="info-label">TIMELINE</div>
+              <div style="margin-top: 4px; font-size: 11px;">
+                <div><strong>Total Time:</strong> ${ticket.totalTime ? `${ticket.totalTime} hours` : 'N/A'}</div>
+                ${ticket.ticketCloseDate ? `<div style="margin-top: 2px;"><strong>Closed:</strong> ${formatDate(ticket.ticketCloseDate)}</div>` : ''}
               </div>
+            </div>
+          </div>
+        </div>
 
         ${ticket.activityLog && ticket.activityLog.length > 0 ? `
         <div class="section">
           <h2 class="section-title">📊 Activity Log</h2>
-          <table>
+          <table class="activity-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Duration</th>
-                <th>Logged By</th>
-                <th>Remarks / Notes</th>
+                <th style="width: 20%;">Date</th>
+                <th style="width: 15%;">Duration</th>
+                <th style="width: 20%;">Logged By</th>
+                <th style="width: 45%;">Remarks / Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -517,19 +620,19 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
                   <td>${formatDate(activity.date)}</td>
                   <td>${activity.duration ? `${activity.duration} min` : 'N/A'}</td>
                   <td>${activity.loggedBy}</td>
-                  <td>${activity.remarks}</td>
+                  <td style="word-wrap: break-word; max-width: 200px;">${activity.remarks}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-                </div>
+        </div>
         ` : ''}
         
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
-          <p><strong>END OF SERVICE TICKET REPORT</strong></p>
-          <p>Report Generated: ${currentDate} | Ticket ID: ${ticket.ticketId} | Classification: Internal Use Only</p>
-          <p>For any queries regarding this ticket, please contact: ${ticket.inCharge}</p>
-              </div>
+        <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 10px; page-break-inside: avoid;">
+          <p style="margin: 0; font-weight: bold;">END OF SERVICE TICKET REPORT</p>
+          <p style="margin: 2px 0;">Report Generated: ${currentDate} | Ticket ID: ${ticket.ticketId}</p>
+          <p style="margin: 2px 0;">Classification: Internal Use Only | Contact: ${ticket.inCharge}</p>
+        </div>
       </body>
       </html>
     `
