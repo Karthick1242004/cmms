@@ -143,18 +143,25 @@ export default function ShiftDetailsPage() {
       onError: (error: any) => {
         console.error('Error creating shift detail:', error)
         
-        // Handle duplicate shift detail error
-        if (error.status === 409) {
+        // Handle duplicate shift detail error (409 or 400 with specific message)
+        if (error.status === 409 || (error.status === 400 && error.message?.includes('already associated'))) {
           const errorMessage = error.message || 'Shift detail already exists for this employee. Please edit the existing shift detail instead of creating a new one.'
+          
+          // Extract existing employee info if available
+          const existingEmployee = error.existingShiftDetail?.employeeName || 'an existing employee'
+          const existingDepartment = error.existingShiftDetail?.department || 'another department'
+          
           toast({
             title: "Duplicate Shift Detail",
-            description: errorMessage,
+            description: `${errorMessage}${error.existingShiftDetail ? ` The email is currently assigned to ${existingEmployee} in ${existingDepartment}. Please search for "${existingEmployee}" and edit their existing shift detail instead.` : ''}`,
             variant: "destructive",
           })
         } else {
+          // For other errors, show the specific error message if available
+          const errorMessage = error.message || "Failed to create shift detail. Please try again."
           toast({
             title: "Error",
-            description: "Failed to create shift detail. Please try again.",
+            description: errorMessage,
             variant: "destructive",
           })
         }
@@ -172,10 +179,20 @@ export default function ShiftDetailsPage() {
       onSuccess: () => {
         setDialogOpen(false)
         setSelectedShiftDetail(null)
+        toast({
+          title: "Success",
+          description: "Shift detail updated successfully.",
+          variant: "default",
+        })
       },
-      onError: (error) => {
+      onError: (error: any) => {
         console.error('Error updating shift detail:', error)
-        alert('Failed to update shift detail. Please try again.')
+        const errorMessage = error.message || "Failed to update shift detail. Please try again."
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
       }
     }
   )
@@ -184,9 +201,21 @@ export default function ShiftDetailsPage() {
     (id) => `/shift-details/${id}`,
     [['shift-details', 'list'], ['shift-details', 'stats']],
     {
-      onError: (error) => {
+      onSuccess: () => {
+        toast({
+          title: "Success",
+          description: "Shift detail deleted successfully.",
+          variant: "default",
+        })
+      },
+      onError: (error: any) => {
         console.error('Error deleting shift detail:', error)
-        alert('Failed to delete shift detail. Please try again.')
+        const errorMessage = error.message || "Failed to delete shift detail. Please try again."
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
       }
     }
   )
