@@ -7,12 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Filter, Shield, AlertTriangle } from "lucide-react"
+import { Plus, Search, Filter, Shield, AlertTriangle, FileText } from "lucide-react"
 import { PageLayout } from "@/components/page-layout"
 import { SafetyInspectionStats } from "@/components/safety-inspection/safety-inspection-stats"
 import { SafetyInspectionScheduleForm } from "@/components/safety-inspection/safety-inspection-schedule-form"
 import { SafetyInspectionScheduleTable } from "@/components/safety-inspection/safety-inspection-schedule-table"
 import { SafetyInspectionRecordTable } from "@/components/safety-inspection/safety-inspection-record-table"
+import { SafetyInspectionSchedulesReport } from "@/components/safety-inspection/safety-inspection-schedules-report"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
 
@@ -40,6 +41,7 @@ export default function SafetyInspectionPage() {
   } = useSafetyInspectionStore()
 
   const [activeTab, setActiveTab] = useState("schedules")
+  const [isReportOpen, setIsReportOpen] = useState(false)
   const isAdmin = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
 
   useEffect(() => {
@@ -95,16 +97,28 @@ export default function SafetyInspectionPage() {
               </TabsTrigger>
             </TabsList>
 
-            {isAdmin && activeTab === "schedules" && (
-              <SafetyInspectionScheduleForm
-                trigger={
-                  <Button onClick={() => setScheduleDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Schedule
-                  </Button>
-                }
-              />
-            )}
+            <div className="flex items-center gap-3">
+              {activeTab === "schedules" && (
+                <Button 
+                  onClick={() => setIsReportOpen(true)}
+                  variant="outline"
+                  disabled={filteredSchedules.length === 0}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Report
+                </Button>
+              )}
+              {isAdmin && activeTab === "schedules" && (
+                <SafetyInspectionScheduleForm
+                  trigger={
+                    <Button onClick={() => setScheduleDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Schedule
+                    </Button>
+                  }
+                />
+              )}
+            </div>
           </div>
 
           {/* Filters */}
@@ -246,6 +260,14 @@ export default function SafetyInspectionPage() {
             />
           </TabsContent>
         </Tabs>
+
+        {/* Safety Inspection Schedules Report */}
+        {isReportOpen && (
+          <SafetyInspectionSchedulesReport 
+            schedules={filteredSchedules}
+            onClose={() => setIsReportOpen(false)}
+          />
+        )}
       </div>
     </PageLayout>
   )

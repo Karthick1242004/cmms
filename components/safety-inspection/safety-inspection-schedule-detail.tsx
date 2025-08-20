@@ -21,10 +21,12 @@ import {
   Building2,
   Tag,
   Settings,
-  X
+  X,
+  Download
 } from "lucide-react"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { SafetyInspectionRecordForm } from "./safety-inspection-record-form"
+import { SafetyInspectionScheduleDetailReport } from "./safety-inspection-schedule-detail-report"
 import type { SafetyInspectionSchedule } from "@/types/safety-inspection"
 
 interface SafetyInspectionScheduleDetailProps {
@@ -40,6 +42,7 @@ export function SafetyInspectionScheduleDetail({
 }: SafetyInspectionScheduleDetailProps) {
   const { setSelectedSchedule, setRecordDialogOpen } = useSafetyInspectionStore()
   const [activeTab, setActiveTab] = useState("overview")
+  const [isDetailReportOpen, setIsDetailReportOpen] = useState(false)
 
   if (!schedule) return null
 
@@ -129,9 +132,15 @@ export function SafetyInspectionScheduleDetail({
                   <p className="text-sm text-muted-foreground">{schedule.assetName} • {schedule.location}</p>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsDetailReportOpen(true)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Report
+                </Button>
+                <Button variant="ghost" size="sm" onClick={onClose}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </DialogTitle>
           </DialogHeader>
 
@@ -433,6 +442,14 @@ export function SafetyInspectionScheduleDetail({
         trigger={<div />}
         schedule={null}
       />
+
+      {/* Schedule Detail Report */}
+      {isDetailReportOpen && schedule && (
+        <SafetyInspectionScheduleDetailReport 
+          schedule={schedule}
+          onClose={() => setIsDetailReportOpen(false)}
+        />
+      )}
     </>
   )
 }
