@@ -11,8 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, MapPin, User, Wrench, AlertCircle } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { useDepartments } from '@/hooks/use-departments';
+import { useLocations } from '@/hooks/use-locations';
 import { employeesApi } from '@/lib/employees-api';
 import { dailyLogActivitiesApi } from '@/lib/daily-log-activity-api';
+import { useAuthStore } from '@/stores/auth-store';
 import { LoadingSpinner } from '@/components/loading-spinner';
 import { toast } from 'sonner';
 import type { 
@@ -31,12 +33,15 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     isDialogOpen,
     isEditMode,
     isLoading,
+    selectedActivity,
     setDialogOpen,
     createActivity,
     updateActivity,
   } = useDailyLogActivitiesStore();
 
+  const { user } = useAuthStore();
   const { data: departments, isLoading: isLoadingDepartments, error: departmentsError } = useDepartments();
+  const { data: locations, isLoading: isLoadingLocations, error: locationsError } = useLocations();
 
   // Debug log to see departments data structure
   useEffect(() => {
@@ -127,29 +132,30 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     loadAssets();
   }, [formData.departmentId]);
 
-  // Populate form when editing
+  // Populate form when editing or set default department for new activity
   useEffect(() => {
-    if (isEditMode && editingActivity) {
+    if (isEditMode && (selectedActivity || editingActivity)) {
+      const activityToEdit = selectedActivity || editingActivity;
       setFormData({
-        date: new Date(editingActivity.date).toISOString().split('T')[0],
-        time: editingActivity.time,
-        area: editingActivity.area,
-        departmentId: editingActivity.departmentId,
-        departmentName: editingActivity.departmentName,
-        assetId: editingActivity.assetId,
-        assetName: editingActivity.assetName,
-        natureOfProblem: editingActivity.natureOfProblem,
-        commentsOrSolution: editingActivity.commentsOrSolution,
-        attendedBy: editingActivity.attendedBy,
-        attendedByName: editingActivity.attendedByName,
-        verifiedBy: editingActivity.verifiedBy,
-        verifiedByName: editingActivity.verifiedByName,
-        priority: editingActivity.priority,
-        status: editingActivity.status,
+        date: new Date(activityToEdit.date).toISOString().split('T')[0],
+        time: activityToEdit.time,
+        area: activityToEdit.area,
+        departmentId: activityToEdit.departmentId,
+        departmentName: activityToEdit.departmentName,
+        assetId: activityToEdit.assetId,
+        assetName: activityToEdit.assetName,
+        natureOfProblem: activityToEdit.natureOfProblem,
+        commentsOrSolution: activityToEdit.commentsOrSolution,
+        attendedBy: activityToEdit.attendedBy,
+        attendedByName: activityToEdit.attendedByName,
+        verifiedBy: activityToEdit.verifiedBy,
+        verifiedByName: activityToEdit.verifiedByName,
+        priority: activityToEdit.priority,
+        status: activityToEdit.status,
       });
     } else {
       // Reset form for new activity
-      setFormData({
+      const defaultFormData = {
         date: new Date().toISOString().split('T')[0],
         time: new Date().toTimeString().slice(0, 5),
         area: '',
@@ -163,9 +169,20 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
         attendedByName: '',
         priority: 'medium',
         status: 'open',
-      });
+      };
+
+      // For non-super-admin users, auto-select their department
+      if (user && user.accessLevel !== 'super_admin' && departments?.data?.departments) {
+        const userDepartment = departments.data.departments.find(d => d.name === user.department);
+        if (userDepartment) {
+          defaultFormData.departmentId = userDepartment.id;
+          defaultFormData.departmentName = userDepartment.name;
+        }
+      }
+
+      setFormData(defaultFormData);
     }
-  }, [isEditMode, editingActivity, isDialogOpen]);
+  }, [isEditMode, selectedActivity, editingActivity, isDialogOpen, user, departments]);
 
   const handleDepartmentChange = (departmentId: string) => {
     const department = departments?.data?.departments?.find(d => d.id === departmentId);
@@ -213,8 +230,9 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     }
 
     try {
-      const success = isEditMode && editingActivity
-        ? await updateActivity(editingActivity._id, formData)
+      const activityToEdit = selectedActivity || editingActivity;
+      const success = isEditMode && activityToEdit
+        ? await updateActivity(activityToEdit._id, formData)
         : await createActivity(formData);
 
       if (success) {
@@ -285,17 +303,52 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
 
               <div className="space-y-2">
                 <Label htmlFor="area">Area *</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="area"
-                    value={formData.area}
-                    onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
-                    placeholder="e.g., Production Floor A, Building 2"
-                    className="pl-8"
-                    required
-                  />
-                </div>
+                <Select 
+                  value={formData.area} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, area: value }))}
+                  disabled={isLoadingLocations}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingLocations ? (
+                      <SelectItem value="loading" disabled>
+                        <div className="flex items-center gap-2">
+                          <LoadingSpinner />
+                          Loading locations...
+                        </div>
+                      </SelectItem>
+                    ) : locationsError ? (
+                      <SelectItem value="error" disabled>
+                        Error loading locations
+                      </SelectItem>
+                    ) : locations?.data?.locations?.length === 0 ? (
+                      <SelectItem value="no-locations" disabled>
+                        No locations found
+                      </SelectItem>
+                    ) : (
+                      locations?.data?.locations
+                        ?.filter((location) => {
+                          // Filter locations by department if user is not super admin
+                          if (user?.accessLevel === 'super_admin') {
+                            return true; // Super admin can see all locations
+                          }
+                          return location.department === user?.department;
+                        })
+                        ?.map((location) => (
+                          <SelectItem key={location.id} value={location.name}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{location.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {location.code} • {location.type}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
@@ -311,7 +364,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                 <Select 
                   value={formData.departmentId} 
                   onValueChange={handleDepartmentChange}
-                  disabled={isLoadingDepartments}
+                  disabled={isLoadingDepartments || (user?.accessLevel !== 'super_admin')}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select department..." />
@@ -333,14 +386,27 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                         No departments found
                       </SelectItem>
                     ) : (
-                      departments?.data?.departments?.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </SelectItem>
-                      ))
+                      departments?.data?.departments
+                        ?.filter((dept) => {
+                          // Super admin can see all departments, others only their own
+                          if (user?.accessLevel === 'super_admin') {
+                            return true;
+                          }
+                          return dept.name === user?.department;
+                        })
+                        ?.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))
                     )}
                   </SelectContent>
                 </Select>
+                {user?.accessLevel !== 'super_admin' && (
+                  <p className="text-xs text-muted-foreground">
+                    Department is locked to your assigned department: {user?.department}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

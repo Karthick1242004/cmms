@@ -153,8 +153,15 @@ export const useDailyLogActivitiesStore = create<DailyLogActivitiesState>()(
             state.error = null;
           });
 
-          const currentFilters = filters || get().filters;
-          const response = await dailyLogActivitiesApi.getAll(currentFilters);
+          const state = get();
+          const apiFilters = {
+            search: state.searchTerm,
+            status: state.statusFilter,
+            priority: state.priorityFilter,
+            department: state.departmentFilter,
+            ...filters
+          };
+          const response = await dailyLogActivitiesApi.getAll(apiFilters);
 
           if (response.success && response.data) {
             set((state) => {

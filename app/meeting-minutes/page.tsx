@@ -388,7 +388,7 @@ export default function MeetingMinutesPage() {
                       const actionItemsSummary = getActionItemsStatusSummary(mom.actionItems);
                       
                       return (
-                        <TableRow key={mom.id} onClick={() => handleView(mom)}>
+                        <TableRow key={mom.id} onClick={(e) => {e.preventDefault(); handleView(mom)}}>
                           <TableCell>
                             <div className="space-y-1">
                               <div className="font-medium cursor-pointer">{mom.title}</div>
@@ -455,7 +455,7 @@ export default function MeetingMinutesPage() {
                                   View
                                 </DropdownMenuItem>
                                 {mom.canEdit && (
-                                  <DropdownMenuItem onClick={() => handleEdit(mom)}>
+                                  <DropdownMenuItem onClick={(e) => {e.preventDefault(); handleEdit(mom)}}>
                                     <Edit className="mr-2 h-4 w-4" />
                                     Edit
                                   </DropdownMenuItem>

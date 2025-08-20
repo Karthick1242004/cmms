@@ -1117,7 +1117,7 @@ export default function ReportsPage() {
               <p><strong>FMMS 360 Dashboard System</strong> - Comprehensive Maintenance Management</p>
               <p>Report generated on ${currentDate} for ${timeRangeText}</p>
               <p>Data includes ${overview.totalAssets || 0} assets, ${overview.totalTickets || 0} tickets, and ${overview.totalMaintenanceRecords || 0} maintenance records</p>
-              <p style="margin-top: 10px; font-style: italic;">This report contains real-time data from your CMMS database</p>
+              <p style="margin-top: 10px; font-style: italic;">This report contains real-time data from your FMMS database</p>
               <p>For questions or support, please contact the maintenance team</p>
             </div>
           </div>

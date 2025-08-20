@@ -420,7 +420,6 @@ export function EmployeeAIAnalysisDialog({ employee, isOpen, onClose }: Employee
               <p>Report generated on ${currentDate} for ${analysisData.employeeName}</p>
               <div class="ai-badge">
                 <span>🤖</span>
-                <span>Powered by Gemini AI</span>
               </div>
             </div>
           </div>

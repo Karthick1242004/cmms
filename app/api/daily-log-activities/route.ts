@@ -1,50 +1,105 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-
-// Base URL for the backend server
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
+import { connectToDatabase } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user context for department filtering and user headers
+    // Get user context for department filtering
     const user = await getUserContext(request);
-    
-    const { searchParams } = new URL(request.url);
-    
-    // Forward all query parameters to the backend
-    const queryString = searchParams.toString();
-    const url = `${SERVER_BASE_URL}/api/daily-log-activities${queryString ? `?${queryString}` : ''}`;
-
-    // Prepare headers with user context
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    // Add user context headers if available
-    if (user) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-name'] = user.name;
-      headers['x-user-email'] = user.email;
-      headers['x-user-department'] = user.department;
-      headers['x-user-role'] = user.role;
-    }
-
-    // Forward request to backend server
-    const response = await fetch(url, {
-      method: 'GET',
-      headers,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    if (!user) {
       return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to fetch daily log activities' },
-        { status: response.status }
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
       );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data, { status: 200 });
+    // Connect to MongoDB
+    const { db } = await connectToDatabase();
+
+    const { searchParams } = new URL(request.url);
+    
+    // Parse query parameters
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const search = searchParams.get('search');
+    const status = searchParams.get('status');
+    const priority = searchParams.get('priority');
+    const department = searchParams.get('department');
+    const sortBy = searchParams.get('sortBy') || 'createdAt';
+    const sortOrder = searchParams.get('sortOrder') === 'asc' ? 1 : -1;
+
+    // Build the filter query
+    const filter: any = {};
+
+    // Department filtering based on access level
+    if (user.accessLevel !== 'super_admin') {
+      // Non-super-admin users can only see activities from their department
+      filter.departmentName = user.department;
+    } else if (department && department !== 'all') {
+      // Super admin can filter by specific department
+      filter.departmentName = department;
+    }
+
+    // Apply additional filters
+    if (search) {
+      filter.$or = [
+        { area: { $regex: search, $options: 'i' } },
+        { assetName: { $regex: search, $options: 'i' } },
+        { natureOfProblem: { $regex: search, $options: 'i' } },
+        { commentsOrSolution: { $regex: search, $options: 'i' } },
+        { attendedByName: { $regex: search, $options: 'i' } },
+        { createdByName: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+
+    if (priority && priority !== 'all') {
+      filter.priority = priority;
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const totalCount = await db.collection('dailylogactivities').countDocuments(filter);
+    
+    // Fetch activities with pagination and sorting
+    const activities = await db.collection('dailylogactivities')
+      .find(filter)
+      .sort({ [sortBy]: sortOrder })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    // Transform activities to include id field and ensure consistent format
+    const transformedActivities = activities.map(activity => ({
+      ...activity,
+      id: activity._id.toString(),
+    }));
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        activities: transformedActivities,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalCount,
+          hasNext,
+          hasPrev,
+        }
+      },
+      message: 'Daily log activities retrieved successfully'
+    }, { status: 200 });
+
   } catch (error) {
     console.error('Error fetching daily log activities:', error);
     return NextResponse.json(
@@ -58,13 +113,31 @@ export async function POST(request: NextRequest) {
   try {
     // Get user context for department assignment and audit trail
     const user = await getUserContext(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
+    }
+
+    // Connect to MongoDB
+    const { db } = await connectToDatabase();
     
     const body = await request.json();
     
-    // Add created by information if not provided
-    if (!body.createdBy && user) {
-      body.createdBy = user.id;
-      body.createdByName = user.name;
+    // Add created by information
+    body.createdBy = user.id;
+    body.createdByName = user.name;
+
+    // For non-super-admin users, enforce department restrictions
+    if (user.accessLevel !== 'super_admin') {
+      // Lock department to user's department
+      body.departmentName = user.department;
+      // Find department ID from departments collection
+      const department = await db.collection('departments').findOne({ name: user.department });
+      if (department) {
+        body.departmentId = department._id.toString();
+      }
     }
 
     // Validate required fields
@@ -75,37 +148,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare headers with user context
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+    // Prepare activity document
+    const activityData = {
+      date: body.date ? new Date(body.date) : new Date(),
+      time: body.time,
+      area: body.area,
+      departmentId: body.departmentId,
+      departmentName: body.departmentName,
+      assetId: body.assetId,
+      assetName: body.assetName,
+      natureOfProblem: body.natureOfProblem,
+      commentsOrSolution: body.commentsOrSolution,
+      attendedBy: body.attendedBy,
+      attendedByName: body.attendedByName,
+      verifiedBy: body.verifiedBy || null,
+      verifiedByName: body.verifiedByName || null,
+      status: body.status || 'open',
+      priority: body.priority || 'medium',
+      createdBy: body.createdBy,
+      createdByName: body.createdByName,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
-    // Add user context headers if available
-    if (user) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-name'] = user.name;
-      headers['x-user-email'] = user.email;
-      headers['x-user-department'] = user.department;
-      headers['x-user-role'] = user.role;
-    }
+    // Insert into MongoDB
+    const result = await db.collection('dailylogactivities').insertOne(activityData);
 
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/daily-log-activities`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+    // Fetch the created activity to return with proper formatting
+    const createdActivity = await db.collection('dailylogactivities').findOne({ _id: result.insertedId });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to create daily log activity' },
-        { status: response.status }
-      );
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Daily log activity created successfully',
+      data: {
+        ...createdActivity,
+        id: createdActivity?._id.toString(),
+      }
+    }, { status: 201 });
 
-    const result = await response.json();
-    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     console.error('Error creating daily log activity:', error);
     return NextResponse.json(
