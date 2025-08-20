@@ -1,41 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
-
-// Helper function to get user context from headers/session
-const getUserContext = async (request: NextRequest) => {
-  // TODO: Replace with actual authentication logic
-  // This is a mock implementation
-  return {
-    id: 'user123',
-    name: 'John Doe',
-    email: 'john@example.com',
-    department: 'Engineering',
-    role: 'admin' as const, // or 'user'
-  };
-};
+import { getUserContext } from '@/lib/auth-helpers';
+import { connectToDatabase } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
-    const userContext = await getUserContext(request);
+    const user = await getUserContext(request);
     
-    const backendUrl = `${SERVER_BASE_URL}/api/meeting-minutes/stats`;
-    
-    const response = await fetch(backendUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        // Pass user context to backend
-        'x-user-id': userContext.id,
-        'x-user-name': userContext.name,
-        'x-user-email': userContext.email,
-        'x-user-department': userContext.department,
-        'x-user-role': userContext.role,
-      },
-    });
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
+    }
 
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    // Connect to MongoDB
+    const { db } = await connectToDatabase();
+
+    // Build department filter based on user role
+    const departmentFilter: any = {};
+    if (user.accessLevel !== 'super_admin') {
+      departmentFilter.department = user.department;
+    }
+
+    const [
+      totalCount,
+      publishedCount,
+      draftCount,
+      archivedCount,
+      departmentBreakdown,
+      recentMeetings,
+    ] = await Promise.all([
+      db.collection('meetingminutes').countDocuments(departmentFilter),
+      db.collection('meetingminutes').countDocuments({ ...departmentFilter, status: 'published' }),
+      db.collection('meetingminutes').countDocuments({ ...departmentFilter, status: 'draft' }),
+      db.collection('meetingminutes').countDocuments({ ...departmentFilter, status: 'archived' }),
+      db.collection('meetingminutes').aggregate([
+        { $match: departmentFilter },
+        { $group: { _id: '$department', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]).toArray(),
+      db.collection('meetingminutes')
+        .find(departmentFilter)
+        .sort({ meetingDateTime: -1 })
+        .limit(5)
+        .project({ title: 1, department: 1, meetingDateTime: 1, createdByName: 1 })
+        .toArray(),
+    ]);
+
+    // Format statistics
+    const stats = {
+      totalMeetingMinutes: totalCount,
+      publishedMeetingMinutes: publishedCount,
+      draftMeetingMinutes: draftCount,
+      archivedMeetingMinutes: archivedCount,
+      departmentBreakdown,
+      recentMeetings: recentMeetings.map(meeting => ({
+        ...meeting,
+        id: meeting._id.toString(),
+      })),
+    };
+
+    return NextResponse.json({
+      success: true,
+      data: stats
+    }, { status: 200 });
+
   } catch (error) {
     console.error('Error fetching meeting minutes stats:', error);
     return NextResponse.json(

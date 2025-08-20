@@ -463,7 +463,7 @@ export default function MeetingMinutesPage() {
                                 <DropdownMenuSeparator />
                                 {mom.canDelete && (
                                   <DropdownMenuItem 
-                                    onClick={() => handleDelete(mom)}
+                                    onClick={(e) => {e.preventDefault(); handleDelete(mom)}}
                                     className="text-red-600"
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" />
