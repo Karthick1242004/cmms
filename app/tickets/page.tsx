@@ -18,11 +18,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { TicketCreationForm } from "@/components/ticket-creation-form"
 import { TicketReport } from "@/components/ticket-report"
-import { Plus, Search, Filter, FileText, Clock, AlertCircle, CheckCircle, XCircle, Eye, FileDown, Check, X } from "lucide-react"
+import { Plus, Search, Filter, FileText, Clock, AlertCircle, CheckCircle, XCircle, Eye, FileDown, Check, X, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import type { Ticket, TicketFilters } from "@/types/ticket"
 import { useAuthStore } from "@/stores/auth-store"
 import { useDepartments } from "@/hooks/use-departments"
+import { ticketsApi } from "@/lib/tickets-api"
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
@@ -58,6 +59,11 @@ export default function TicketsPage() {
         sortBy: 'loggedDateTime',
         sortOrder: 'desc',
         limit: 50
+      }
+
+      // For non-super_admin users, automatically filter by their department unless viewing open tickets
+      if (user && user.accessLevel !== 'super_admin' && !showOpenTickets) {
+        filters.department = user.department
       }
 
       const searchParams = new URLSearchParams()
@@ -129,7 +135,14 @@ export default function TicketsPage() {
 
   useEffect(() => {
     fetchTickets()
-  }, [])
+  }, [statusFilter, priorityFilter, departmentFilter, reportTypeFilter, showOpenTickets, user])
+
+  // Auto-select department for non-super_admin users
+  useEffect(() => {
+    if (user && user.accessLevel !== 'super_admin' && user.department && departmentFilter === 'all') {
+      setDepartmentFilter(user.department)
+    }
+  }, [user, departmentFilter])
 
   useEffect(() => {
     filterTickets()
@@ -170,6 +183,43 @@ export default function TicketsPage() {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
+  // Check if department filter should be disabled
+  const isDepartmentFilterDisabled = () => {
+    return user?.accessLevel !== 'super_admin'
+  }
+
+  // Format status for display
+  const formatStatus = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'open': return 'Open'
+      case 'in-progress': return 'In Progress'
+      case 'pending': return 'Pending'
+      case 'completed': return 'Completed'
+      case 'cancelled': return 'Cancelled'
+      default: return status
+    }
+  }
+
+  // Format priority for display
+  const formatPriority = (priority: string) => {
+    return priority.charAt(0).toUpperCase() + priority.slice(1)
+  }
+
+  // Check if user can delete a specific ticket
+  const canDeleteTicket = (ticket: Ticket) => {
+    if (!user) return false
+    
+    // Super admin can delete any ticket
+    if (user.accessLevel === 'super_admin') return true
+    
+    // Department head can delete tickets from their department
+    if (user.accessLevel === 'department_admin' || user.role === 'manager') {
+      return ticket.department === user.department
+    }
+    
+    return false
+  }
+
   // Handle ticket actions
   const handleViewTicket = (ticket: Ticket) => {
     // Navigate to ticket detail page
@@ -179,6 +229,27 @@ export default function TicketsPage() {
   const handleGenerateReport = (ticket: Ticket) => {
     setSelectedTicketForReport(ticket)
     setIsReportDialogOpen(true)
+  }
+
+  const handleDeleteTicket = async (ticket: Ticket) => {
+    if (!confirm(`Are you sure you want to delete ticket ${ticket.ticketId}? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const result = await ticketsApi.deleteTicket(ticket.id)
+      if (result.success) {
+        toast.success(`Ticket ${ticket.ticketId} deleted successfully`)
+        // Remove the ticket from the lists
+        setTickets(prev => prev.filter(t => t.id !== ticket.id))
+        setFilteredTickets(prev => prev.filter(t => t.id !== ticket.id))
+      } else {
+        toast.error(result.message || result.error || 'Failed to delete ticket')
+      }
+    } catch (error) {
+      console.error('Error deleting ticket:', error)
+      toast.error('Error deleting ticket')
+    }
   }
 
   // Helper function to get auth headers
@@ -353,12 +424,22 @@ export default function TicketsPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium">Department</label>
-                <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled={departmentsLoading}>
+                <Select 
+                  value={departmentFilter} 
+                  onValueChange={setDepartmentFilter} 
+                  disabled={departmentsLoading || isDepartmentFilterDisabled()}
+                >
                   <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder={departmentsLoading ? "Loading..." : "All departments"} />
+                    <SelectValue placeholder={
+                      departmentsLoading ? "Loading..." : 
+                      isDepartmentFilterDisabled() ? user?.department || "Your Department" :
+                      "All departments"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
+                    {user?.accessLevel === 'super_admin' && (
+                      <SelectItem value="all">All Departments</SelectItem>
+                    )}
                     {departmentsLoading ? (
                       <SelectItem value="loading" disabled>
                         Loading departments...
@@ -422,7 +503,12 @@ export default function TicketsPage() {
               Tickets ({filteredTickets.length})
             </CardTitle>
             <CardDescription className="text-sm">
-              {showOpenTickets ? 'Showing open tickets visible to all departments' : 'Showing tickets for your department'}
+              {showOpenTickets 
+                ? 'Showing open tickets visible to all departments' 
+                : user?.accessLevel === 'super_admin' 
+                  ? 'Showing tickets from all departments' 
+                  : `Showing tickets for ${user?.department || 'your department'}`
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -484,14 +570,14 @@ export default function TicketsPage() {
                           </TableCell> */}
                           <TableCell className="py-2">
                             <Badge variant={getPriorityColor(ticket.priority) as any} className="text-xs">
-                              {ticket.priority}
+                              {formatPriority(ticket.priority)}
                             </Badge>
                           </TableCell>
                           <TableCell className="py-2">
                             <div className="flex items-center gap-1">
                               <Badge variant={statusInfo.color as any} className="flex items-center gap-1 w-fit text-xs">
                                 {statusInfo.icon}
-                                {ticket.status}
+                                {formatStatus(ticket.status)}
                               </Badge>
                               {(ticket as any)?.statusApproval?.pending && (
                                 <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
@@ -541,6 +627,17 @@ export default function TicketsPage() {
                               >
                                 <FileDown className="h-3 w-3" />
                               </Button>
+                              {canDeleteTicket(ticket) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteTicket(ticket)}
+                                  className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="Delete Ticket"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
                               {/* Show approval buttons for department heads/admins when there's a pending request */}
                               {canApproveStatus && 
                                (ticket as any)?.statusApproval?.pending && 

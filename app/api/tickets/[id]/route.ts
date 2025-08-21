@@ -7,7 +7,7 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUserContext(request);
@@ -18,7 +18,7 @@ export async function GET(
     }
 
     await connectDB();
-    const { id } = params;
+    const { id } = await params;
     
     // Fetch ticket from local MongoDB
     const ticket = await Ticket.findById(id).lean() as any;
@@ -97,7 +97,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUserContext(request);
@@ -108,7 +108,7 @@ export async function PUT(
     }
 
     await connectDB();
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     // Validate required fields - check both frontend and backend field names
@@ -213,7 +213,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUserContext(request);
@@ -223,28 +223,102 @@ export async function DELETE(
       // unauthenticated request; use safe defaults
     }
 
-    const { id } = params;
+    const { id } = await params;
 
-    // Forward request to backend server
-    const response = await fetch(`${SERVER_BASE_URL}/api/tickets/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-Department': user?.department || 'General',
-        'X-User-Name': user?.name || 'Test User',
-      },
-    });
+    console.log(`Attempting to delete ticket: ${id}`);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { success: false, message: errorData.message || 'Failed to delete ticket' },
-        { status: response.status }
-      );
+    try {
+      // Forward request to backend server
+      const response = await fetch(`${SERVER_BASE_URL}/api/tickets/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Department': user?.department || 'General',
+          'X-User-Name': user?.name || 'Test User',
+        },
+        // Add timeout to prevent hanging
+        signal: AbortSignal.timeout(10000)
+      });
+
+      if (response.status === 404) {
+        // Handle case where ticket doesn't exist in backend
+        console.log(`Ticket ${id} not found in backend, checking local database...`);
+        
+        // Try to delete from local MongoDB as fallback
+        await connectDB();
+        const localTicket = await Ticket.findByIdAndDelete(id);
+        
+        if (localTicket) {
+          console.log(`Successfully deleted ticket ${id} from local database`);
+          return NextResponse.json({
+            success: true,
+            message: 'Ticket deleted successfully'
+          }, { status: 200 });
+        } else {
+          return NextResponse.json({
+            success: false,
+            message: 'Ticket not found'
+          }, { status: 404 });
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`Backend delete failed with status ${response.status}:`, errorData);
+        
+        // For 500 errors, try local database deletion as fallback
+        if (response.status === 500) {
+          console.log(`Backend failed with 500 error, trying local database deletion...`);
+          
+          await connectDB();
+          const localTicket = await Ticket.findByIdAndDelete(id);
+          
+          if (localTicket) {
+            console.log(`Successfully deleted ticket ${id} from local database as fallback`);
+            return NextResponse.json({
+              success: true,
+              message: 'Ticket deleted successfully (backend unavailable, used local database)'
+            }, { status: 200 });
+          }
+        }
+        
+        return NextResponse.json(
+          { success: false, message: errorData.message || 'Failed to delete ticket' },
+          { status: response.status }
+        );
+      }
+
+      const result = await response.json();
+      console.log(`Successfully deleted ticket ${id} via backend`);
+      return NextResponse.json(result, { status: 200 });
+    } catch (backendError) {
+      console.warn(`Backend server unavailable for delete operation:`, backendError);
+      
+      // Fallback to local database deletion
+      try {
+        await connectDB();
+        const localTicket = await Ticket.findByIdAndDelete(id);
+        
+        if (localTicket) {
+          console.log(`Successfully deleted ticket ${id} from local database (backend unavailable)`);
+          return NextResponse.json({
+            success: true,
+            message: 'Ticket deleted successfully (backend unavailable, used local database)'
+          }, { status: 200 });
+        } else {
+          return NextResponse.json({
+            success: false,
+            message: 'Ticket not found in local database'
+          }, { status: 404 });
+        }
+      } catch (localError) {
+        console.error('Local database deletion also failed:', localError);
+        return NextResponse.json({
+          success: false,
+          message: 'Failed to delete ticket from both backend and local database'
+        }, { status: 500 });
+      }
     }
-
-    const result = await response.json();
-    return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error('Error deleting ticket:', error);
     return NextResponse.json(

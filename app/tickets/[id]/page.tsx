@@ -33,12 +33,14 @@ import {
 import { toast } from "sonner"
 import { ticketsApi } from "@/lib/tickets-api"
 import { TicketReport } from "@/components/ticket-report"
+import { useAuthStore } from "@/stores/auth-store"
 import type { Ticket, ActivityLogEntry } from "@/types/ticket"
 
 export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
   const ticketId = params.id as string
+  const { user } = useAuthStore()
 
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -198,27 +200,29 @@ export default function TicketDetailPage() {
 
   // Get priority color
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'Critical': return 'destructive'
-      case 'High': return 'destructive'
-      case 'Medium': return 'default'
-      case 'Low': return 'secondary'
+    const normalizedPriority = priority.toLowerCase()
+    switch (normalizedPriority) {
+      case 'critical': return 'destructive'
+      case 'high': return 'destructive'
+      case 'medium': return 'default'
+      case 'low': return 'secondary'
       default: return 'secondary'
     }
   }
 
   // Get status icon and color
   const getStatusInfo = (status: string) => {
-    switch (status) {
-      case 'Open':
+    const normalizedStatus = status.toLowerCase()
+    switch (normalizedStatus) {
+      case 'open':
         return { icon: <AlertCircle className="h-4 w-4" />, color: 'destructive' }
-      case 'In Progress':
+      case 'in-progress':
         return { icon: <Clock className="h-4 w-4" />, color: 'default' }
-      case 'Pending':
+      case 'pending':
         return { icon: <Clock className="h-4 w-4" />, color: 'secondary' }
-      case 'Resolved':
+      case 'completed':
         return { icon: <CheckCircle className="h-4 w-4" />, color: 'default' }
-      case 'Closed':
+      case 'cancelled':
         return { icon: <XCircle className="h-4 w-4" />, color: 'secondary' }
       default:
         return { icon: <AlertCircle className="h-4 w-4" />, color: 'secondary' }
@@ -229,6 +233,38 @@ export default function TicketDetailPage() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  // Format status for display
+  const formatStatus = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'open': return 'Open'
+      case 'in-progress': return 'In Progress'
+      case 'pending': return 'Pending'
+      case 'completed': return 'Completed'
+      case 'cancelled': return 'Cancelled'
+      default: return status
+    }
+  }
+
+  // Format priority for display
+  const formatPriority = (priority: string) => {
+    return priority.charAt(0).toUpperCase() + priority.slice(1)
+  }
+
+  // Check if user can delete tickets
+  const canDeleteTicket = () => {
+    if (!user || !ticket) return false
+    
+    // Super admin can delete any ticket
+    if (user.accessLevel === 'super_admin') return true
+    
+    // Department head can delete tickets from their department
+    if (user.accessLevel === 'department_admin' || user.role === 'manager') {
+      return ticket.department === user.department
+    }
+    
+    return false
   }
 
   if (isLoading) {
@@ -296,10 +332,12 @@ export default function TicketDetailPage() {
               <FileDown className="h-4 w-4 mr-2" />
               Generate Report
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
+            {canDeleteTicket() && (
+              <Button variant="destructive" onClick={handleDelete}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
       </PageHeader>
@@ -359,15 +397,15 @@ export default function TicketDetailPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Low">Low</SelectItem>
-                              <SelectItem value="Medium">Medium</SelectItem>
-                              <SelectItem value="High">High</SelectItem>
-                              <SelectItem value="Critical">Critical</SelectItem>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="critical">Critical</SelectItem>
                             </SelectContent>
                           </Select>
                         ) : (
                           <Badge variant={getPriorityColor(ticket.priority) as any}>
-                            {ticket.priority}
+                            {formatPriority(ticket.priority)}
                           </Badge>
                         )}
                       </div>
@@ -380,17 +418,17 @@ export default function TicketDetailPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Open">Open</SelectItem>
-                              <SelectItem value="In Progress">In Progress</SelectItem>
-                              <SelectItem value="Pending">Pending</SelectItem>
-                              <SelectItem value="Resolved">Resolved</SelectItem>
-                              <SelectItem value="Closed">Closed</SelectItem>
+                              <SelectItem value="open">Open</SelectItem>
+                              <SelectItem value="in-progress">In Progress</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
                             </SelectContent>
                           </Select>
                         ) : (
                           <Badge variant={statusInfo.color as any} className="flex items-center gap-1 w-fit">
                             {statusInfo.icon}
-                            {ticket.status}
+                            {formatStatus(ticket.status)}
                           </Badge>
                         )}
                       </div>
