@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Plus, X, Upload, Save, AlertCircle, Camera, QrCode, Trash2, ImageIcon } from "lucide-react"
+import { Plus, X, Upload, Save, AlertCircle, Camera, QrCode, Trash2, ImageIcon, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import { useAssetsStore } from "@/stores/assets-store"
 import { useAuthStore } from "@/stores/auth-store"
@@ -171,6 +171,21 @@ interface AssetFormData {
   }>
 }
 
+interface AssetFormErrors {
+  assetName?: string
+  category?: string
+  department?: string
+  statusText?: string
+  serialNo?: string
+  rfid?: string
+  costPrice?: string
+  purchasePrice?: string
+  constructionYear?: string
+  expectedLifeSpan?: string
+  shelfLifeInMonth?: string
+  productionHoursDaily?: string
+}
+
 interface AssetCreationFormProps {
   onSuccess?: () => void
   onCancel?: () => void
@@ -184,12 +199,122 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null)
+  const [errors, setErrors] = useState<AssetFormErrors>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
   
   const { addAsset } = useAssetsStore()
   const { user } = useAuthStore()
   
   // Check permissions - only super admin and department admin can create assets
   const canCreateAsset = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
+
+  // Validation functions
+  const validateField = (field: string, value: any): string | undefined => {
+    switch (field) {
+      case 'assetName':
+        if (!value || value.trim().length === 0) return 'Asset name is required'
+        if (value.trim().length < 2) return 'Asset name must be at least 2 characters'
+        if (value.trim().length > 100) return 'Asset name must be less than 100 characters'
+        return undefined
+      
+      case 'category':
+        if (!value || value.trim().length === 0) return 'Category is required'
+        return undefined
+      
+      case 'department':
+        if (!value || value.trim().length === 0) return 'Department is required'
+        return undefined
+      
+      case 'statusText':
+        if (!value || value.trim().length === 0) return 'Status is required'
+        return undefined
+      
+      case 'serialNo':
+        if (value && value.trim().length > 50) return 'Serial number must be less than 50 characters'
+        return undefined
+      
+      case 'rfid':
+        if (value && value.trim().length > 50) return 'RFID must be less than 50 characters'
+        return undefined
+      
+      case 'costPrice':
+        if (value && (isNaN(value) || value < 0)) return 'Cost price must be a positive number'
+        if (value && value > 999999999) return 'Cost price is too high'
+        return undefined
+      
+      case 'purchasePrice':
+        if (value && (isNaN(value) || value < 0)) return 'Purchase price must be a positive number'
+        if (value && value > 999999999) return 'Purchase price is too high'
+        return undefined
+      
+      case 'constructionYear':
+        if (value && (isNaN(value) || value < 1900 || value > new Date().getFullYear() + 10)) {
+          return `Construction year must be between 1900 and ${new Date().getFullYear() + 10}`
+        }
+        return undefined
+      
+      case 'expectedLifeSpan':
+        if (value && (isNaN(value) || value < 0 || value > 100)) {
+          return 'Expected life span must be between 0 and 100 years'
+        }
+        return undefined
+      
+      case 'shelfLifeInMonth':
+        if (value && (isNaN(value) || value < 0 || value > 1200)) {
+          return 'Shelf life must be between 0 and 1200 months (100 years)'
+        }
+        return undefined
+      
+      case 'productionHoursDaily':
+        if (value && (isNaN(value) || value < 0 || value > 24)) {
+          return 'Production hours must be between 0 and 24 hours'
+        }
+        return undefined
+      
+      default:
+        return undefined
+    }
+  }
+
+  const validateForm = (): boolean => {
+    const newErrors: AssetFormErrors = {}
+    
+    // Validate required fields
+    newErrors.assetName = validateField('assetName', formData.assetName)
+    newErrors.category = validateField('category', formData.category)
+    newErrors.department = validateField('department', formData.department)
+    newErrors.statusText = validateField('statusText', formData.statusText)
+    
+    // Validate optional fields if they have values
+    if (formData.serialNo) newErrors.serialNo = validateField('serialNo', formData.serialNo)
+    if (formData.rfid) newErrors.rfid = validateField('rfid', formData.rfid)
+    if (formData.costPrice) newErrors.costPrice = validateField('costPrice', formData.costPrice)
+    if (formData.purchasePrice) newErrors.purchasePrice = validateField('purchasePrice', formData.purchasePrice)
+    if (formData.constructionYear) newErrors.constructionYear = validateField('constructionYear', formData.constructionYear)
+    if (formData.expectedLifeSpan) newErrors.expectedLifeSpan = validateField('expectedLifeSpan', formData.expectedLifeSpan)
+    if (formData.shelfLifeInMonth) newErrors.shelfLifeInMonth = validateField('shelfLifeInMonth', formData.shelfLifeInMonth)
+    if (formData.productionHoursDaily) newErrors.productionHoursDaily = validateField('productionHoursDaily', formData.productionHoursDaily)
+    
+    setErrors(newErrors)
+    
+    // Check if there are any errors
+    return Object.values(newErrors).every(error => !error)
+  }
+
+  const handleFieldBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }))
+    const error = validateField(field, formData[field as keyof AssetFormData])
+    setErrors(prev => ({ ...prev, [field]: error }))
+  }
+
+  const handleFieldChange = (field: keyof AssetFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    
+    // Clear error when user starts typing
+    if (errors[field as keyof AssetFormErrors]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }))
+    }
+  }
   
   if (!canCreateAsset) {
     return (
@@ -299,10 +424,101 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
   })
 
   const handleInputChange = (field: keyof AssetFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
+    handleFieldChange(field, value)
+  }
+
+  // Helper function to render input field with validation
+  const renderInputField = (
+    field: keyof AssetFormData,
+    label: string,
+    placeholder: string,
+    type: string = 'text',
+    required: boolean = false,
+    options?: { min?: number; max?: number; step?: string }
+  ) => {
+    const fieldName = field as string
+    const hasError = errors[fieldName as keyof AssetFormErrors] && touched[fieldName]
+    const isValid = touched[fieldName] && !errors[fieldName as keyof AssetFormErrors] && formData[field]
+    
+    return (
+      <div className="space-y-2">
+        <Label htmlFor={fieldName} className={required ? "after:content-['*'] after:ml-0.5 after:text-red-500" : ""}>
+          {label}
+        </Label>
+        <Input
+          id={fieldName}
+          type={type}
+          value={formData[field] as string}
+          onChange={(e) => handleInputChange(field, type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
+          onBlur={() => handleFieldBlur(fieldName)}
+          placeholder={placeholder}
+          className={`${hasError ? 'border-red-500 focus:border-red-500' : ''} ${isValid ? 'border-green-500 focus:border-green-500' : ''}`}
+          min={options?.min}
+          max={options?.max}
+          step={options?.step}
+        />
+        {hasError && (
+          <p className="text-sm text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {errors[fieldName as keyof AssetFormErrors]}
+          </p>
+        )}
+        {isValid && (
+          <p className="text-sm text-green-600 flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            Valid
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  // Helper function to render select field with validation
+  const renderSelectField = (
+    field: keyof AssetFormData,
+    label: string,
+    placeholder: string,
+    options: { value: string; label: string }[],
+    required: boolean = false
+  ) => {
+    const fieldName = field as string
+    const hasError = errors[fieldName as keyof AssetFormErrors] && touched[fieldName]
+    const isValid = touched[fieldName] && !errors[fieldName as keyof AssetFormErrors] && formData[field]
+    
+    return (
+      <div className="space-y-2">
+        <Label htmlFor={fieldName} className={required ? "after:content-['*'] after:ml-0.5 after:text-red-500" : ""}>
+          {label}
+        </Label>
+        <Select 
+          value={formData[field] as string} 
+          onValueChange={(value) => handleInputChange(field, value)}
+        >
+          <SelectTrigger className={`${hasError ? 'border-red-500 focus:border-red-500' : ''} ${isValid ? 'border-green-500 focus:border-green-500' : ''}`}>
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {hasError && (
+          <p className="text-sm text-red-500 flex items-center gap-1">
+            <AlertCircle className="h-4 w-4" />
+            {errors[fieldName as keyof AssetFormErrors]}
+          </p>
+        )}
+        {isValid && (
+          <p className="text-sm text-green-600 flex items-center gap-1">
+            <CheckCircle className="h-4 w-4" />
+            Valid
+          </p>
+        )}
+      </div>
+    )
   }
 
   // Fetch departments and locations on component mount
@@ -584,18 +800,9 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
   }
 
   const handleSubmit = async () => {
-    // Validate required fields
-    const requiredFields = [
-      { field: formData.assetName, name: 'Asset name' },
-      { field: formData.category, name: 'Category' },
-      { field: formData.department, name: 'Department' },
-      { field: formData.statusText, name: 'Status' }
-    ]
-
-    const missingFields = requiredFields.filter(({ field }) => !field?.trim()).map(({ name }) => name)
-    
-    if (missingFields.length > 0) {
-      toast.error(`Please fill in required fields: ${missingFields.join(', ')}`)
+    // Validate form before submission
+    if (!validateForm()) {
+      toast.error('Please fix the validation errors before submitting')
       return
     }
 
@@ -784,11 +991,20 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isLoading || Object.keys(errors).length > 0}
+            className={Object.keys(errors).length > 0 ? 'bg-yellow-600 hover:bg-yellow-700' : ''}
+          >
             {isLoading ? (
               <>
                 <Save className="mr-2 h-4 w-4 animate-spin" />
                 Creating...
+              </>
+            ) : Object.keys(errors).length > 0 ? (
+              <>
+                <AlertCircle className="mr-2 h-4 w-4" />
+                Fix Validation Errors ({Object.keys(errors).length})
               </>
             ) : (
               <>
@@ -799,6 +1015,63 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
           </Button>
         </div>
       </div>
+
+      {/* Validation Summary */}
+      {Object.keys(touched).length > 0 && (
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium text-blue-700">Form Validation Status</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Required Fields:</span>
+                <span className={`px-2 py-1 rounded ${Object.keys(errors).some(key => ['assetName', 'category', 'department', 'statusText'].includes(key)) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                  {Object.keys(errors).some(key => ['assetName', 'category', 'department', 'statusText'].includes(key)) ? 'Incomplete' : 'Complete'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Total Errors:</span>
+                <span className={`px-2 py-1 rounded ${Object.keys(errors).length > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                  {Object.keys(errors).length}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Fields Touched:</span>
+                <span className="px-2 py-1 rounded bg-blue-100 text-blue-700">
+                  {Object.keys(touched).length}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Form Status:</span>
+                <span className={`px-2 py-1 rounded ${Object.keys(errors).length === 0 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  {Object.keys(errors).length === 0 ? 'Ready to Submit' : 'Needs Attention'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Error Details */}
+            {Object.keys(errors).length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  <span className="text-sm font-medium text-red-700">Validation Errors:</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {Object.entries(errors).map(([field, error]) => error && (
+                    <div key={field} className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                      <AlertCircle className="h-3 w-3" />
+                      <span className="font-medium">{field.charAt(0).toUpperCase() + field.slice(1)}:</span>
+                      <span>{error}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
@@ -817,15 +1090,7 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
               <CardDescription>Essential asset details and identification</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="assetName">Asset Name *</Label>
-                <Input 
-                  id="assetName"
-                  value={formData.assetName}
-                  onChange={(e) => handleInputChange('assetName', e.target.value)}
-                  placeholder="e.g., Heavy Duty Wrench Set"
-                />
-              </div>
+              {renderInputField('assetName', 'Asset Name', 'e.g., Heavy Duty Wrench Set', 'text', true)}
               
               <div className="space-y-2">
                 <Label htmlFor="serialNo">Serial Number</Label>
@@ -834,7 +1099,9 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                     id="serialNo"
                     value={formData.serialNo}
                     onChange={(e) => handleInputChange('serialNo', e.target.value)}
+                    onBlur={() => handleFieldBlur('serialNo')}
                     placeholder="e.g., HDWS-M-001"
+                    className={`${errors.serialNo && touched.serialNo ? 'border-red-500 focus:border-red-500' : ''} ${touched.serialNo && !errors.serialNo && formData.serialNo ? 'border-green-500 focus:border-green-500' : ''}`}
                   />
                   <Button
                     type="button"
@@ -846,22 +1113,26 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                     <QrCode className="h-4 w-4" />
                   </Button>
                 </div>
+                {errors.serialNo && touched.serialNo && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.serialNo}
+                  </p>
+                )}
+                {touched.serialNo && !errors.serialNo && formData.serialNo && (
+                  <p className="text-sm text-green-600 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Valid
+                  </p>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
-                <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Equipment">Equipment</SelectItem>
-                    <SelectItem value="Tools">Tools</SelectItem>
-                    <SelectItem value="Facilities">Facilities</SelectItem>
-                    <SelectItem value="Products">Products</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {renderSelectField('category', 'Category', 'Select category', [
+                { value: 'Equipment', label: 'Equipment' },
+                { value: 'Tools', label: 'Tools' },
+                { value: 'Facilities', label: 'Facilities' },
+                { value: 'Products', label: 'Products' }
+              ], true)}
 
               <div className="space-y-2">
                 <Label htmlFor="rfid">RFID</Label>
@@ -870,7 +1141,9 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                     id="rfid"
                     value={formData.rfid}
                     onChange={(e) => handleInputChange('rfid', e.target.value)}
+                    onBlur={() => handleFieldBlur('rfid')}
                     placeholder="e.g., RF123456789"
+                    className={`${errors.rfid && touched.rfid ? 'border-red-500 focus:border-red-500' : ''} ${touched.rfid && !errors.rfid && formData.rfid ? 'border-green-500 focus:border-green-500' : ''}`}
                   />
                   <Button
                     type="button"
@@ -882,27 +1155,22 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                     <QrCode className="h-4 w-4" />
                   </Button>
                 </div>
+                {errors.rfid && touched.rfid && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.rfid}
+                  </p>
+                )}
+                {touched.rfid && !errors.rfid && formData.rfid && (
+                  <p className="text-sm text-green-600 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Valid
+                  </p>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="categoryName">Category Name</Label>
-                <Input 
-                  id="categoryName"
-                  value={formData.categoryName}
-                  onChange={(e) => handleInputChange('categoryName', e.target.value)}
-                  placeholder="e.g., Tools > Hand Tools"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="manufacturer">Manufacturer</Label>
-                <Input 
-                  id="manufacturer"
-                  value={formData.manufacturer}
-                  onChange={(e) => handleInputChange('manufacturer', e.target.value)}
-                  placeholder="e.g., Craftsman"
-                />
-              </div>
+              {renderInputField('categoryName', 'Category Name', 'e.g., Tools > Hand Tools')}
+              {renderInputField('manufacturer', 'Manufacturer', 'e.g., Craftsman')}
 
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
@@ -921,13 +1189,13 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="department">Department *</Label>
+                <Label htmlFor="department" className="after:content-['*'] after:ml-0.5 after:text-red-500">Department</Label>
                 <Select 
                   value={formData.department} 
                   onValueChange={(value) => handleInputChange('department', value)}
                   disabled={user?.accessLevel === 'department_admin'}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={`${errors.department && touched.department ? 'border-red-500 focus:border-red-500' : ''} ${touched.department && !errors.department && formData.department ? 'border-green-500 focus:border-green-500' : ''}`}>
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
@@ -945,6 +1213,18 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                     }
                   </SelectContent>
                 </Select>
+                {errors.department && touched.department && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.department}
+                  </p>
+                )}
+                {touched.department && !errors.department && formData.department && (
+                  <p className="text-sm text-green-600 flex items-center gap-1">
+                    <CheckCircle className="h-4 w-4" />
+                    Valid
+                  </p>
+                )}
                 {user?.accessLevel === 'department_admin' && (
                   <p className="text-sm text-muted-foreground">
                     Department is auto-selected based on your role
@@ -952,21 +1232,13 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="condition">Condition</Label>
-                <Select value={formData.condition} onValueChange={(value) => handleInputChange('condition', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select condition" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="excellent">Excellent</SelectItem>
-                    <SelectItem value="good">Good</SelectItem>
-                    <SelectItem value="fair">Fair</SelectItem>
-                    <SelectItem value="poor">Poor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {renderSelectField('condition', 'Condition', 'Select condition', [
+                { value: 'new', label: 'New' },
+                { value: 'excellent', label: 'Excellent' },
+                { value: 'good', label: 'Good' },
+                { value: 'fair', label: 'Fair' },
+                { value: 'poor', label: 'Poor' }
+              ])}
 
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="description">Description</Label>
@@ -1122,45 +1394,21 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
               <CardTitle>Status & Settings</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="statusText">Status *</Label>
-                <Select value={formData.statusText} onValueChange={(value) => handleInputChange('statusText', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Available">Available</SelectItem>
-                    <SelectItem value="In Use">In Use</SelectItem>
-                    <SelectItem value="Maintenance">Maintenance</SelectItem>
-                    <SelectItem value="Out of Service">Out of Service</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {renderSelectField('statusText', 'Status', 'Select status', [
+                { value: 'Available', label: 'Available' },
+                { value: 'In Use', label: 'In Use' },
+                { value: 'Maintenance', label: 'Maintenance' },
+                { value: 'Out of Service', label: 'Out of Service' }
+              ], true)}
 
-              <div className="space-y-2">
-                <Label htmlFor="assetType">Asset Type</Label>
-                <Select value={formData.assetType} onValueChange={(value) => handleInputChange('assetType', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Tangible">Tangible</SelectItem>
-                    <SelectItem value="Fixed Asset">Fixed Asset</SelectItem>
-                    <SelectItem value="Consumable">Consumable</SelectItem>
-                    <SelectItem value="Reusable">Reusable</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {renderSelectField('assetType', 'Asset Type', 'Select type', [
+                { value: 'Tangible', label: 'Tangible' },
+                { value: 'Fixed Asset', label: 'Fixed Asset' },
+                { value: 'Consumable', label: 'Consumable' },
+                { value: 'Reusable', label: 'Reusable' }
+              ])}
 
-              <div className="space-y-2">
-                <Label htmlFor="uom">Unit of Measure</Label>
-                <Input 
-                  id="uom"
-                  value={formData.uom}
-                  onChange={(e) => handleInputChange('uom', e.target.value)}
-                  placeholder="e.g., Set, Piece, Meter"
-                />
-              </div>
+              {renderInputField('uom', 'Unit of Measure', 'e.g., Set, Piece, Meter')}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1172,128 +1420,14 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
               <CardDescription>Cost, pricing, and financial details</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="costPrice">Cost Price ($)</Label>
-                <Input 
-                  id="costPrice"
-                  type="number"
-                  step="0.01"
-                  value={formData.costPrice === 0 ? '' : formData.costPrice?.toString() || ''}
-                  onChange={(e) => {
-                    const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                    handleInputChange('costPrice', value);
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') {
-                      handleInputChange('costPrice', 0);
-                    }
-                  }}
-                  placeholder="0.00"
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="purchasePrice">Purchase Price ($)</Label>
-                <Input 
-                  id="purchasePrice"
-                  type="number"
-                  step="0.01"
-                  value={formData.purchasePrice === 0 ? '' : formData.purchasePrice?.toString() || ''}
-                  onChange={(e) => {
-                    const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                    handleInputChange('purchasePrice', value);
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') {
-                      handleInputChange('purchasePrice', 0);
-                    }
-                  }}
-                  placeholder="0.00"
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="salesPrice">Sales Price ($)</Label>
-                <Input 
-                  id="salesPrice"
-                  type="number"
-                  step="0.01"
-                  value={formData.salesPrice === 0 ? '' : formData.salesPrice?.toString() || ''}
-                  onChange={(e) => {
-                    const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                    handleInputChange('salesPrice', value);
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') {
-                      handleInputChange('salesPrice', 0);
-                    }
-                  }}
-                  placeholder="0.00"
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="expectedLifeSpan">Expected Life Span (years)</Label>
-                <Input 
-                  id="expectedLifeSpan"
-                  type="number"
-                  value={formData.expectedLifeSpan === 0 ? '' : formData.expectedLifeSpan?.toString() || ''}
-                  onChange={(e) => {
-                    const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
-                    handleInputChange('expectedLifeSpan', value);
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') {
-                      handleInputChange('expectedLifeSpan', 0);
-                    }
-                  }}
-                  placeholder="5"
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="purchaseDate">Purchase Date</Label>
-                <Input 
-                  id="purchaseDate"
-                  type="date"
-                  value={formData.purchaseDate}
-                  onChange={(e) => handleInputChange('purchaseDate', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="commissioningDate">Commissioning Date</Label>
-                <Input 
-                  id="commissioningDate"
-                  type="date"
-                  value={formData.commissioningDate}
-                  onChange={(e) => handleInputChange('commissioningDate', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="warrantyStart">Warranty Start</Label>
-                <Input 
-                  id="warrantyStart"
-                  type="date"
-                  value={formData.warrantyStart}
-                  onChange={(e) => handleInputChange('warrantyStart', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="endOfWarranty">Warranty End</Label>
-                <Input 
-                  id="endOfWarranty"
-                  type="date"
-                  value={formData.endOfWarranty}
-                  onChange={(e) => handleInputChange('endOfWarranty', e.target.value)}
-                />
-              </div>
+              {renderInputField('costPrice', 'Cost Price ($)', '0.00', 'number', false, { min: 0, step: '0.01' })}
+              {renderInputField('purchasePrice', 'Purchase Price ($)', '0.00', 'number', false, { min: 0, step: '0.01' })}
+              {renderInputField('salesPrice', 'Sales Price ($)', '0.00', 'number', false, { min: 0, step: '0.01' })}
+              {renderInputField('expectedLifeSpan', 'Expected Life Span (years)', '5', 'number', false, { min: 0, max: 100 })}
+              {renderInputField('purchaseDate', 'Purchase Date', '', 'date')}
+              {renderInputField('commissioningDate', 'Commissioning Date', '', 'date')}
+              {renderInputField('warrantyStart', 'Warranty Start', '', 'date')}
+              {renderInputField('endOfWarranty', 'Warranty End', '', 'date')}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1518,83 +1652,20 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
               <CardDescription>Additional configuration and operational details</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="allocated">Allocated To</Label>
-                <Input 
-                  id="allocated"
-                  value={formData.allocated}
-                  onChange={(e) => handleInputChange('allocated', e.target.value)}
-                  placeholder="e.g., Tool Crib A"
-                />
-              </div>
+              {renderInputField('allocated', 'Allocated To', 'e.g., Tool Crib A')}
+              {renderInputField('size', 'Size', 'Physical dimensions')}
+              {renderInputField('productionHoursDaily', 'Production Hours Daily', '0', 'number', false, { min: 0, max: 24, step: '0.01' })}
+              {renderInputField('rfid', 'RFID Tag', 'RFID tag number')}
 
-              <div className="space-y-2">
-                <Label htmlFor="size">Size</Label>
-                <Input 
-                  id="size"
-                  value={formData.size}
-                  onChange={(e) => handleInputChange('size', e.target.value)}
-                  placeholder="Physical dimensions"
-                />
-              </div>
+              {renderSelectField('outOfOrder', 'Out of Order', 'Select status', [
+                { value: 'No', label: 'No' },
+                { value: 'Yes', label: 'Yes' }
+              ])}
 
-              <div className="space-y-2">
-                <Label htmlFor="productionHoursDaily">Production Hours Daily</Label>
-                <Input 
-                  id="productionHoursDaily"
-                  type="number"
-                  step="0.01"
-                  max="24"
-                  value={formData.productionHoursDaily === 0 ? '' : formData.productionHoursDaily?.toString() || ''}
-                  onChange={(e) => {
-                    const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                    handleInputChange('productionHoursDaily', value);
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') {
-                      handleInputChange('productionHoursDaily', 0);
-                    }
-                  }}
-                  placeholder="0"
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="rfid">RFID Tag</Label>
-                <Input 
-                  id="rfid"
-                  value={formData.rfid}
-                  onChange={(e) => handleInputChange('rfid', e.target.value)}
-                  placeholder="RFID tag number"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="outOfOrder">Out of Order</Label>
-                <Select value={formData.outOfOrder} onValueChange={(value) => handleInputChange('outOfOrder', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="No">No</SelectItem>
-                    <SelectItem value="Yes">Yes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="isActive">Is Active</Label>
-                <Select value={formData.isActive} onValueChange={(value) => handleInputChange('isActive', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Yes">Yes</SelectItem>
-                    <SelectItem value="No">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {renderSelectField('isActive', 'Is Active', 'Select status', [
+                { value: 'Yes', label: 'Yes' },
+                { value: 'No', label: 'No' }
+              ])}
             </CardContent>
           </Card>
 
