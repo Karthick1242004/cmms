@@ -56,6 +56,13 @@ function PartFormStandalone({
     formData.linkedAssets || []
   )
 
+  // Update selectedAssets when formData.linkedAssets changes (for edit mode)
+  useEffect(() => {
+    if (formData.linkedAssets) {
+      setSelectedAssets(formData.linkedAssets)
+    }
+  }, [formData.linkedAssets])
+
   // Filter assets based on selected department
   const departmentAssets = availableAssets.filter(asset => 
     asset.department === (formData.department || currentUserDepartment)
@@ -665,6 +672,7 @@ export default function PartsPage() {
         description: formData.description || '',
         category: formData.category,
         department: formData.department,
+        linkedAssets: formData.linkedAssets || [],
         quantity: Number(formData.quantity) || 0,
         minStockLevel: Number(formData.minStockLevel) || 0,
         unitPrice: Number(formData.unitPrice) || 0,
@@ -673,6 +681,10 @@ export default function PartsPage() {
         isStockItem: formData.isStockItem ?? true,
         isCritical: formData.isCritical ?? false
       }
+
+      // Debug logging
+      console.log('Form Data linkedAssets:', formData.linkedAssets)
+      console.log('Request Data being sent:', requestData)
 
       let response
       if (isEdit && selectedPart) {
