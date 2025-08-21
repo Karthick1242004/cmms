@@ -11,6 +11,10 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+// Trial configuration - easily update these dates for different trial periods
+const TRIAL_START_DATE = '2025-08-21T00:00:00.000Z'
+const TRIAL_END_DATE = '2025-08-28T23:59:59.999Z'
+
 interface TrialBannerProps {
   className?: string
   variant?: 'banner' | 'card' | 'minimal'
@@ -26,9 +30,8 @@ export function TrialBanner({ className, variant = 'banner' }: TrialBannerProps)
   })
 
   useEffect(() => {
-    // Calculate time until trial ends (7 days from now)
-    const trialEndDate = new Date()
-    trialEndDate.setDate(trialEndDate.getDate() + 7)
+    // Fixed trial period: August 21, 2025 to August 28, 2025
+    const trialEndDate = new Date(TRIAL_END_DATE)
     
     const updateTimer = () => {
       const now = new Date()
@@ -55,15 +58,16 @@ export function TrialBanner({ className, variant = 'banner' }: TrialBannerProps)
 
   const handleUpgrade = () => {
     // Handle upgrade action
-    window.open('mailto:sales@fmms360.com?subject=Upgrade%20Request&body=I%20would%20like%20to%20upgrade%20my%20FMMS%20360%20trial%20to%20a%20full%20license.', '_blank')
+    window.open('mailto:admin@voneautomation.com?subject=Upgrade%20Request&body=I%20would%20like%20to%20upgrade%20my%20FMMS%20360%20trial%20to%20a%20full%20license.', '_blank')
   }
 
   const handleContact = () => {
     // Handle contact action
-    window.open('mailto:support@fmms360.com?subject=Trial%20Support&body=I%20need%20help%20with%20my%20FMMS%20360%20trial.', '_blank')
+    window.open('mailto:admin@voneautomation.com?subject=Trial%20Support&body=I%20need%20help%20with%20my%20FMMS%20360%20trial.', '_blank')
   }
 
-  if (!isVisible) return null
+  // Hide banner if dismissed or if trial has ended
+  if (!isVisible || (timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0)) return null
 
   if (variant === 'minimal') {
     return (
@@ -97,7 +101,7 @@ export function TrialBanner({ className, variant = 'banner' }: TrialBannerProps)
                   </Badge>
                 </div>
                 <p className="text-sm text-orange-800">
-                  Your FMMS 360 trial will expire in <strong>{timeLeft.days} days</strong>. 
+                  Your FMMS 360 trial expires on <strong>August 28, 2025</strong> ({timeLeft.days} days remaining). 
                   Upgrade now to keep all features active.
                 </p>
                 <div className="flex gap-2">
@@ -188,8 +192,8 @@ export function TrialStatusIndicator() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0 })
 
   useEffect(() => {
-    const trialEndDate = new Date()
-    trialEndDate.setDate(trialEndDate.getDate() + 7)
+    // Fixed trial period: August 21, 2025 to August 28, 2025
+    const trialEndDate = new Date(TRIAL_END_DATE)
     
     const updateTimer = () => {
       const now = new Date()
@@ -199,6 +203,9 @@ export function TrialStatusIndicator() {
         const days = Math.floor(difference / (1000 * 60 * 60 * 24))
         const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
         setTimeLeft({ days, hours })
+      } else {
+        // Trial has ended
+        setTimeLeft({ days: 0, hours: 0 })
       }
     }
 
