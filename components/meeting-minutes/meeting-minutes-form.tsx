@@ -25,7 +25,8 @@ import {
   FileText,
   Target,
   MapPin,
-  Tag
+  Tag,
+  User
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -372,14 +373,14 @@ export function MeetingMinutesForm({
       )}
 
       {/* Basic Information */}
-      <Card>
-        <CardHeader>
+      <Card className="border-gray-200 shadow-sm">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center space-x-2">
-            <FileText className="h-5 w-5" />
-            <span>Basic Information</span>
+            <FileText className="h-5 w-5 text-blue-600" />
+            <span className="text-lg">Basic Information</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="title">Meeting Title *</Label>
@@ -577,14 +578,14 @@ export function MeetingMinutesForm({
       </Card>
 
       {/* Meeting Content */}
-      <Card>
-        <CardHeader>
+      <Card className="border-gray-200 shadow-sm">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center space-x-2">
-            <Target className="h-5 w-5" />
-            <span>Meeting Content</span>
+            <Target className="h-5 w-5 text-blue-600" />
+            <span className="text-lg">Meeting Content</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           {/* Purpose */}
           <div className="space-y-2">
             <Label htmlFor="purpose">Meeting Purpose *</Label>
@@ -618,14 +619,14 @@ export function MeetingMinutesForm({
       </Card>
 
       {/* Attendees */}
-      <Card>
-        <CardHeader>
+      <Card className="border-gray-200 shadow-sm">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center space-x-2">
-            <Users className="h-5 w-5" />
-            <span>Attendees</span>
+            <Users className="h-5 w-5 text-blue-600" />
+            <span className="text-lg">Attendees</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           {/* Add Attendee */}
           <div className="space-y-2">
             <div className="flex space-x-2">
@@ -722,67 +723,129 @@ export function MeetingMinutesForm({
       </Card>
 
       {/* Action Items */}
-      <Card>
-        <CardHeader>
+      <Card className="border-gray-200">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Check className="h-5 w-5" />
-              <span>Action Items</span>
+              <Check className="h-5 w-5 text-blue-600" />
+              <span className="text-lg">Action Items</span>
             </div>
-            <Button type="button" onClick={handleAddActionItem} variant="outline" size="sm">
+            <Button type="button" onClick={handleAddActionItem} variant="outline" size="sm" className="hover:bg-blue-50 hover:border-blue-200">
               <Plus className="mr-2 h-4 w-4" />
               Add Action Item
             </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {formData.actionItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No action items yet. Click "Add Action Item" to create one.
-            </p>
+            <div className="text-center py-12 text-muted-foreground border-2 border-dashed border-gray-200 rounded-lg">
+              <Check className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p className="text-sm font-medium text-gray-500 mb-1">No action items yet</p>
+              <p className="text-xs text-gray-400">Click "Add Action Item" to create one</p>
+            </div>
           ) : (
             formData.actionItems.map((item, index) => (
-              <Card key={index} className="border-gray-200">
-                <CardContent className="pt-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-sm">Action Item {index + 1}</h4>
+              <Card key={index} className="border-gray-200 shadow-sm">
+                <CardContent className="pt-6 pb-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                      <h4 className="font-semibold text-sm text-gray-700">Action Item {index + 1}</h4>
                       <Button
                         type="button"
                         onClick={() => handleRemoveActionItem(index)}
                         variant="ghost"
                         size="sm"
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
 
                     {/* Description */}
-                    <div className="space-y-1">
-                      <Label>Description *</Label>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Description *</Label>
                       <Textarea
                         value={item.description}
                         onChange={(e) => handleUpdateActionItem(index, 'description', e.target.value)}
                         placeholder="Describe what needs to be done..."
-                        className="min-h-[60px]"
+                        className="min-h-[80px] resize-none border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* Assigned To */}
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <Label>Assigned To *</Label>
-                        <Input
-                          value={item.assignedTo}
-                          onChange={(e) => handleUpdateActionItem(index, 'assignedTo', e.target.value)}
-                          placeholder="Person responsible"
-                        />
+                        {formData.department && employees.length > 0 ? (
+                          <Select
+                            value={item.assignedTo}
+                            onValueChange={(value) => handleUpdateActionItem(index, 'assignedTo', value)}
+                          >
+                            <SelectTrigger className="bg-background border-input h-12">
+                              <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                              <SelectValue placeholder="Select employee" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {isLoadingEmployees ? (
+                                <SelectItem value="loading" disabled>Loading employees...</SelectItem>
+                              ) : (
+                                <>
+                                  {employees.map((employee) => (
+                                    <SelectItem key={employee.id} value={employee.name}>
+                                      <div className="flex flex-col py-1">
+                                        <span className="font-medium">{employee.name}</span>
+                                        <span className="text-xs text-muted-foreground leading-tight">
+                                          {employee.role} • {employee.email}
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                  {/* Option for custom assignment */}
+                                  <SelectItem value="custom">
+                                    <div className="flex items-center py-1">
+                                      <User className="h-4 w-4 mr-2" />
+                                      <span>Other / Custom Person</span>
+                                    </div>
+                                  </SelectItem>
+                                </>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            value={item.assignedTo}
+                            onChange={(e) => handleUpdateActionItem(index, 'assignedTo', e.target.value)}
+                            placeholder={!formData.department ? "Select department first" : "Person responsible"}
+                            disabled={!formData.department}
+                            className="h-12"
+                          />
+                        )}
+                        
+                        {/* Custom input when "custom" is selected */}
+                        {item.assignedTo === 'custom' && (
+                          <Input
+                            value=""
+                            onChange={(e) => handleUpdateActionItem(index, 'assignedTo', e.target.value)}
+                            placeholder="Enter custom person name"
+                            className="mt-2 h-10"
+                          />
+                        )}
+                        
+                        <div className="pt-1">
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {!formData.department 
+                              ? "Please select a department first to see employee options"
+                              : employees.length === 0 && !isLoadingEmployees
+                                ? "No employees found for this department"
+                                : "Select from department employees or choose 'Other' for custom assignment"
+                            }
+                          </p>
+                        </div>
                       </div>
 
                       {/* Due Date */}
-                      <div className="space-y-1">
-                        <Label>Due Date *</Label>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Due Date *</Label>
                         <Input
                           type="date"
                           value={item.dueDate ? item.dueDate.split('T')[0] : ''}
@@ -790,17 +853,18 @@ export function MeetingMinutesForm({
                             const dateValue = e.target.value ? new Date(e.target.value).toISOString() : '';
                             handleUpdateActionItem(index, 'dueDate', dateValue);
                           }}
+                          className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                         />
                       </div>
 
                       {/* Status */}
-                      <div className="space-y-1">
-                        <Label>Status</Label>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Status</Label>
                         <Select
                           value={item.status}
                           onValueChange={(value: any) => handleUpdateActionItem(index, 'status', value)}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -820,14 +884,14 @@ export function MeetingMinutesForm({
       </Card>
 
       {/* Tags */}
-      <Card>
-        <CardHeader>
+      <Card className="border-gray-200 shadow-sm">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center space-x-2">
-            <Tag className="h-5 w-5" />
-            <span>Tags</span>
+            <Tag className="h-5 w-5 text-blue-600" />
+            <span className="text-lg">Tags</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           {/* Add Tag */}
           <div className="flex space-x-2">
             <Input
@@ -865,12 +929,13 @@ export function MeetingMinutesForm({
       </Card>
 
       {/* Form Actions */}
-      <div className="flex items-center justify-end space-x-3 pt-6 border-t">
+      <div className="flex items-center justify-end space-x-4 pt-8 border-t border-gray-200">
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
           disabled={loading}
+          className="px-6 py-2 border-gray-300 hover:bg-gray-50"
         >
           Cancel
         </Button>
@@ -878,6 +943,7 @@ export function MeetingMinutesForm({
           type="button"
           onClick={handleSubmit}
           disabled={loading}
+          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
         >
           {loading ? (
             <>
@@ -887,7 +953,6 @@ export function MeetingMinutesForm({
           ) : (
             meetingMinutes ? 'Update Meeting Minutes' : 'Create Meeting Minutes'
           )}
-          
         </Button>
       </div>
     </div>
