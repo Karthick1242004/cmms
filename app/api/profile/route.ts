@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const SERVER_API_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5001';
+const SERVER_API_URL = process.env.NEXT_PUBLIC_SERVER_URL || process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 // GET user profile from backend server
 export async function GET(request: NextRequest) {
