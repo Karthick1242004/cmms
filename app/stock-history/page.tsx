@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 import {
   Dialog,
@@ -35,7 +36,7 @@ import {
 import { StockTransactionForm } from "@/components/stock-transactions/stock-transaction-form";
 import { StockTransactionList } from "@/components/stock-transactions/stock-transaction-list";
 import { StockTransactionView } from "@/components/stock-transactions/stock-transaction-view";
-import { PageLayout } from "@/components/page-layout";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 import { AuthGuard } from "@/components/auth-guard";
 
 import type { StockTransaction, StockTransactionFormData } from "@/types/stock-transaction";
@@ -70,6 +71,38 @@ export default function StockHistoryPage() {
     notes: '',
   });
 
+  // Validation state for status update
+  const [statusUpdateErrors, setStatusUpdateErrors] = useState({
+    status: '',
+    notes: '',
+  });
+
+  // Validation functions
+  const validateStatusUpdate = () => {
+    const errors = {
+      status: '',
+      notes: '',
+    };
+
+    if (!statusUpdateData.status) {
+      errors.status = 'Status is required';
+    }
+
+    if (statusUpdateData.notes && statusUpdateData.notes.length > 500) {
+      errors.notes = 'Notes cannot exceed 500 characters';
+    }
+
+    setStatusUpdateErrors(errors);
+    return !errors.status && !errors.notes;
+  };
+
+  const clearValidationErrors = () => {
+    setStatusUpdateErrors({
+      status: '',
+      notes: '',
+    });
+  };
+
   // Handle create new transaction
   const handleCreateNew = () => {
     setSelectedTransaction(null);
@@ -103,6 +136,7 @@ export default function StockHistoryPage() {
              transaction.status === 'approved' ? 'completed' : 'completed',
       notes: '',
     });
+    clearValidationErrors();
     setStatusUpdateDialogOpen(true);
   };
 
@@ -112,9 +146,9 @@ export default function StockHistoryPage() {
       await createTransaction(data);
       setCreateDialogOpen(false);
       setSelectedTransaction(null);
-      toast.success('Stock transaction created successfully');
+      toast.success(selectedTransaction ? 'Stock transaction updated successfully' : 'Stock transaction created successfully');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create stock transaction');
+      toast.error(error.message || (selectedTransaction ? 'Failed to update stock transaction' : 'Failed to create stock transaction'));
     }
   };
 
@@ -142,6 +176,12 @@ export default function StockHistoryPage() {
   const handleConfirmStatusUpdate = async () => {
     if (!transactionToUpdate) return;
 
+    // Validate form before submission
+    if (!validateStatusUpdate()) {
+      toast.error('Please fix the validation errors before submitting');
+      return;
+    }
+
     try {
       await updateTransactionStatus(
         transactionToUpdate.id,
@@ -151,6 +191,7 @@ export default function StockHistoryPage() {
       setStatusUpdateDialogOpen(false);
       setTransactionToUpdate(null);
       setStatusUpdateData({ status: '', notes: '' });
+      clearValidationErrors();
       toast.success('Transaction status updated successfully');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update transaction status');
@@ -165,6 +206,7 @@ export default function StockHistoryPage() {
     setTransactionToDelete(null);
     setTransactionToUpdate(null);
     setStatusUpdateData({ status: '', notes: '' });
+    clearValidationErrors();
   };
 
   // Check if user can see internal notes
@@ -172,18 +214,25 @@ export default function StockHistoryPage() {
 
   return (
     <AuthGuard>
-      <PageLayout
-        title="Stock History"
-        description="Track and manage all inventory movements and stock transactions"
-      >
-        {/* Main Content */}
-        <StockTransactionList
-          onCreateNew={handleCreateNew}
-          onView={handleView}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onStatusUpdate={handleStatusUpdate}
-        />
+      <PageLayout>
+        <PageHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Stock History</h1>
+              <p className="text-muted-foreground">Track and manage all inventory movements and stock transactions</p>
+            </div>
+          </div>
+        </PageHeader>
+        
+        <PageContent>
+          {/* Main Content */}
+          <StockTransactionList
+            onCreateNew={handleCreateNew}
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onStatusUpdate={handleStatusUpdate}
+          />
 
         {/* Create/Edit Dialog */}
         <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -202,7 +251,9 @@ export default function StockHistoryPage() {
             <StockTransactionForm
               initialData={selectedTransaction ? {
                 transactionType: selectedTransaction.transactionType,
-                transactionDate: selectedTransaction.transactionDate,
+                transactionDate: typeof selectedTransaction.transactionDate === 'string' 
+                  ? selectedTransaction.transactionDate 
+                  : format(selectedTransaction.transactionDate, 'yyyy-MM-dd'),
                 referenceNumber: selectedTransaction.referenceNumber,
                 description: selectedTransaction.description,
                 sourceLocation: selectedTransaction.sourceLocation,
@@ -279,15 +330,19 @@ export default function StockHistoryPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="status">New Status</Label>
+              <div className="space-y-2">
+                <Label htmlFor="status">New Status *</Label>
                 <Select
                   value={statusUpdateData.status}
-                  onValueChange={(value) =>
-                    setStatusUpdateData((prev) => ({ ...prev, status: value }))
-                  }
+                  onValueChange={(value) => {
+                    setStatusUpdateData((prev) => ({ ...prev, status: value }));
+                    // Clear error when user selects a value
+                    if (statusUpdateErrors.status) {
+                      setStatusUpdateErrors((prev) => ({ ...prev, status: '' }));
+                    }
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={`${statusUpdateErrors.status ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'}`}>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -305,17 +360,41 @@ export default function StockHistoryPage() {
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
+                {statusUpdateErrors.status && (
+                  <p className="text-xs text-red-600 mt-1">{statusUpdateErrors.status}</p>
+                )}
               </div>
-              <div>
-                <Label htmlFor="notes">Notes (Optional)</Label>
+              
+              <div className="space-y-2">
+                <Label htmlFor="notes">
+                  Notes (Optional)
+                  <span className="text-xs text-muted-foreground ml-2">
+                    {statusUpdateData.notes.length}/500 characters
+                  </span>
+                </Label>
                 <Textarea
                   id="notes"
                   placeholder="Add notes about this status change..."
                   value={statusUpdateData.notes}
-                  onChange={(e) =>
-                    setStatusUpdateData((prev) => ({ ...prev, notes: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setStatusUpdateData((prev) => ({ ...prev, notes: e.target.value }));
+                    // Clear error when user types
+                    if (statusUpdateErrors.notes) {
+                      setStatusUpdateErrors((prev) => ({ ...prev, notes: '' }));
+                    }
+                  }}
+                  className={`${statusUpdateErrors.notes ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} resize-none`}
+                  rows={3}
+                  maxLength={500}
                 />
+                {statusUpdateErrors.notes && (
+                  <p className="text-xs text-red-600 mt-1">{statusUpdateErrors.notes}</p>
+                )}
+                {!statusUpdateErrors.notes && statusUpdateData.notes.length > 400 && (
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Approaching character limit ({statusUpdateData.notes.length}/500)
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex justify-end space-x-2 mt-6">
@@ -324,14 +403,16 @@ export default function StockHistoryPage() {
               </Button>
               <Button
                 onClick={handleConfirmStatusUpdate}
-                disabled={!statusUpdateData.status || isUpdating}
+                disabled={!statusUpdateData.status || isUpdating || Object.values(statusUpdateErrors).some(error => error !== '')}
+                className={Object.values(statusUpdateErrors).some(error => error !== '') ? 'bg-gray-400 cursor-not-allowed' : ''}
               >
                 {isUpdating ? 'Updating...' : 'Update Status'}
               </Button>
                         </div>
           </DialogContent>
         </Dialog>
-    </PageLayout>
+        </PageContent>
+      </PageLayout>
     </AuthGuard>
   );
 }
