@@ -250,67 +250,19 @@ export async function GET(request: NextRequest) {
       const data = await response.json()
       console.log('Backend data received:', data)
       
-      // If backend returns empty data, try to populate it with sample data
-      if (data.success && data.data && (!data.data.schedules || data.data.schedules.length === 0)) {
-        console.log('Backend returned empty data, attempting to populate with sample data');
-        const populated = await populateBackendWithSampleData(user);
-        
-        if (populated) {
-          console.log('Successfully populated backend, retrying fetch...');
-          // Retry the fetch after population
-          const retryResponse = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-User-Department': user?.department || 'General',
-              'X-User-Name': user?.name || 'Test User',
-            },
-            signal: AbortSignal.timeout(5000)
-          });
-          
-          if (retryResponse.ok) {
-            const retryData = await retryResponse.json();
-            console.log('Retry fetch successful:', retryData);
-            return NextResponse.json(retryData, { status: 200 });
-          }
-        }
-      }
+      // Don't populate with sample data if backend is working - just return what we got
+      // Sample data population can cause confusion with mixed IDs
       
       return NextResponse.json(data, { status: 200 })
     } catch (backendError) {
-      console.warn('Backend server unavailable, using sample data:', backendError)
+      console.error('Backend server unavailable:', backendError)
       
-      // Filter sample data by department if user is not super admin
-      let filteredSchedules = [...sampleSafetyInspectionSchedules]
-      if (user && user.accessLevel !== 'super_admin') {
-        // For demo purposes, assign departments to sample data
-        filteredSchedules = filteredSchedules.map(schedule => ({
-          ...schedule,
-          department: user.department
-        }))
-      }
-      
-      // Convert sample data IDs to ObjectId-compatible format for MongoDB backend
-      filteredSchedules = filteredSchedules.map(schedule => ({
-        ...schedule,
-        id: convertSampleIdToObjectId(schedule.id)
-      }))
-      
-      // Return sample data with proper structure
+      // Return error instead of sample data to avoid ID confusion
       return NextResponse.json({
-        success: true,
-        data: {
-          schedules: filteredSchedules,
-          pagination: {
-            currentPage: 1,
-            totalPages: 1,
-            totalCount: filteredSchedules.length,
-            hasNext: false,
-            hasPrevious: false
-          }
-        },
-        message: 'Safety inspection schedules retrieved successfully (using sample data)'
-      }, { status: 200 })
+        success: false,
+        message: 'Backend server unavailable. Please check your connection and try again.',
+        error: 'BACKEND_UNAVAILABLE'
+      }, { status: 503 })
     }
   } catch (error) {
     console.error('Error fetching safety inspection schedules:', error)

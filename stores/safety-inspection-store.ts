@@ -343,14 +343,11 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
       // No need to pass department explicitly as it's extracted from the user session/token
       const response = await safetyInspectionSchedulesApi.getAll()
       
-      // Ensure all schedules have valid IDs (safety check for data integrity)
-      const schedulesWithValidIds = response.data.schedules.map((schedule, index) => {
-        // Convert sample data IDs to MongoDB ObjectId format if needed
-        if (schedule.id && !isValidObjectId(schedule.id)) {
-          schedule.id = convertToObjectId(schedule.id);
-        } else if (!schedule.id) {
-          // Generate a new MongoDB-compatible ObjectId
-          schedule.id = generateObjectId();
+      // Map MongoDB _id field to id field for frontend compatibility
+      const schedulesWithValidIds = response.data.schedules.map((schedule) => {
+        // MongoDB returns _id, but frontend expects id
+        if (schedule._id && !schedule.id) {
+          schedule.id = schedule._id;
         }
         return schedule;
       })
@@ -377,7 +374,17 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
       // Note: Department filtering is now handled by the API based on user authentication
       // No need to pass department explicitly as it's extracted from the user session/token
       const response = await safetyInspectionRecordsApi.getAll()
-      set({ records: response.data.records, isLoading: false })
+      
+      // Map MongoDB _id field to id field for frontend compatibility
+      const recordsWithValidIds = response.data.records.map((record) => {
+        // MongoDB returns _id, but frontend expects id
+        if (record._id && !record.id) {
+          record.id = record._id;
+        }
+        return record;
+      })
+      
+      set({ records: recordsWithValidIds, isLoading: false })
       get().filterRecords()
       get().calculateStats()
     } catch (error) {

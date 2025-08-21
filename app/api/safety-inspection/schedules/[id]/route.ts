@@ -145,13 +145,13 @@ export async function DELETE(
 
       if (response.status === 404) {
         // Handle the case where the schedule doesn't exist in backend database
-        // This is common when frontend shows sample data but backend is empty
-        console.log(`Schedule ${id} not found in backend database, simulating deletion`);
+        console.log(`Schedule ${id} not found in backend database`);
         
         return NextResponse.json({
-          success: true,
-          message: 'Safety inspection schedule deleted successfully (not found in database, simulated deletion)'
-        }, { status: 200 });
+          success: false,
+          message: 'Safety inspection schedule not found. It may have already been deleted or never existed.',
+          error: 'SCHEDULE_NOT_FOUND'
+        }, { status: 404 });
       }
 
       if (!response.ok) {
@@ -166,16 +166,13 @@ export async function DELETE(
       console.log(`Successfully deleted schedule ${id} from backend database`);
       return NextResponse.json(data, { status: 200 });
     } catch (backendError) {
-      console.warn('Backend server unavailable for delete operation:', backendError);
-      
-      // For sample data, we can simulate successful deletion
-      // In a real app, this would be handled by a proper database
-      console.log(`Simulating deletion of safety inspection schedule: ${id}`);
+      console.error('Backend server unavailable for delete operation:', backendError);
       
       return NextResponse.json({
-        success: true,
-        message: 'Safety inspection schedule deleted successfully (backend unavailable, simulated)'
-      }, { status: 200 });
+        success: false,
+        message: 'Backend server unavailable. Cannot perform delete operation.',
+        error: 'BACKEND_UNAVAILABLE'
+      }, { status: 503 });
     }
 
   } catch (error) {

@@ -1,5 +1,6 @@
 export interface SafetyInspectionSchedule {
   id: string
+  _id?: string // MongoDB ObjectId field
   assetId: string
   assetName: string
   assetTag?: string
@@ -46,6 +47,7 @@ export interface SafetyChecklistItem {
 
 export interface SafetyInspectionRecord {
   id: string
+  _id?: string // MongoDB ObjectId field
   scheduleId: string
   assetId: string
   assetName: string
