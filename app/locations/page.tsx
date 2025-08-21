@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, MapPin, Building, Loader2 } from "lucide-react"
+import { Plus, Search, Edit, Trash2, MapPin, Building, Loader2, RefreshCw } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -61,6 +61,7 @@ export default function LocationsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
+  const [isUpdatingAssetCounts, setIsUpdatingAssetCounts] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     code: "",
@@ -107,7 +108,29 @@ export default function LocationsPage() {
   // Load locations on component mount
   useEffect(() => {
     fetchLocations()
-  }, [])
+    
+    // Auto-update asset counts in the background for super admins
+    if (isSuperAdmin) {
+      // Update asset counts silently in the background after a short delay
+      const timer = setTimeout(async () => {
+        try {
+          const token = localStorage.getItem('auth-token')
+          await fetch('/api/locations/update-asset-counts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` }),
+            },
+          })
+          // Silent update - no toast notification
+        } catch (error) {
+          console.warn('Background asset count update failed:', error)
+        }
+      }, 2000) // 2 second delay to let the page load first
+      
+      return () => clearTimeout(timer)
+    }
+  }, [isSuperAdmin])
 
   const filteredLocations = locations
     .filter(location => location != null) // Filter out null/undefined locations
@@ -299,6 +322,40 @@ export default function LocationsPage() {
     handleFieldChange(field as keyof LocationFormData, value)
   }
 
+  // Function to update asset counts for all locations
+  const handleUpdateAssetCounts = async () => {
+    if (!isSuperAdmin) {
+      toast.error('Access denied - Only super admins can update asset counts')
+      return
+    }
+
+    try {
+      setIsUpdatingAssetCounts(true)
+      const token = localStorage.getItem('auth-token')
+      
+      const response = await fetch('/api/locations/update-asset-counts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      })
+
+      if (response.ok) {
+        toast.success('Asset counts updated successfully!')
+        fetchLocations() // Refresh the locations list
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        toast.error(errorData.message || 'Failed to update asset counts')
+      }
+    } catch (error) {
+      console.error('Error updating asset counts:', error)
+      toast.error('Network error: Failed to update asset counts')
+    } finally {
+      setIsUpdatingAssetCounts(false)
+    }
+  }
+
   // Helper function to check if user can edit location
   const canEditLocation = (location: Location): boolean => {
     if (isSuperAdmin) return true
@@ -324,14 +381,34 @@ export default function LocationsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Locations</h1>
           <p className="text-muted-foreground">Manage physical locations where assets are deployed</p>
         </div>
-        {canEdit && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleAddNew}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Location
-              </Button>
-            </DialogTrigger>
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <Button 
+              variant="outline" 
+              onClick={handleUpdateAssetCounts}
+              disabled={isUpdatingAssetCounts}
+            >
+              {isUpdatingAssetCounts ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Update Asset Counts
+                </>
+              )}
+            </Button>
+          )}
+          {canEdit && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleAddNew}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Location
+                </Button>
+              </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>{editingLocation ? "Edit Location" : "Add New Location"}</DialogTitle>
@@ -513,7 +590,8 @@ export default function LocationsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="flex items-center space-x-2">
@@ -563,7 +641,7 @@ export default function LocationsPage() {
                       </div>
                       <div>
                         <div className="font-medium">{location.name}</div>
-                        <div className="text-sm text-muted-foreground">{location.code}</div>
+                        
                         <div className="text-xs text-muted-foreground">{location.description}</div>
                       </div>
                     </div>
@@ -577,15 +655,14 @@ export default function LocationsPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                  {location.department && (() => {
-                        const dept = departments.find(d => d && d.name === location.department);
-                        return dept ? (
-                          <div className="text-xs text-center text-muted-foreground">
-                            Code: <span className="font-bold">{dept.code}</span>
-                          </div>
-                        ) : null;
-                      })()}
+                  <div className="text-sm text-muted-foreground">{location.code}</div>
                   </TableCell>
+
+                  {/* <TableCell>
+                    <div className="flex items-center space-x-2">
+                    <div className="text-sm text-muted-foreground">{location.code}</div>
+                    </div>
+                  </TableCell> */}
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <Building className="h-4 w-4 text-muted-foreground" />

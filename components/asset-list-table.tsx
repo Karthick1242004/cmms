@@ -74,14 +74,33 @@ export function AssetListTable({ assets, onEdit, onDelete, onStatusChange, canMo
   const getStatusColor = (status: string | undefined) => {
     switch (status?.toLowerCase()) {
       case "operational":
+        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
+      case "available":
+        return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200"
+      case "in stock":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+      case "new":
+        return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200"
+      case "maintenance":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200"
+      case "out-of-service":
+        return "bg-red-100 text-red-800 border-red-200 hover:bg-red-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200"
+    }
+  }
+
+  const getStatusBadgeVariant = (status: string | undefined) => {
+    switch (status?.toLowerCase()) {
+      case "operational":
       case "available":
       case "in stock":
       case "new":
-        return "default" // Greenish in shadcn default
+        return "default"
       case "maintenance":
-        return "secondary" // Bluish/Grayish
+        return "secondary"
       case "out-of-service":
-        return "destructive" // Reddish
+        return "destructive"
       default:
         return "outline"
     }
@@ -154,15 +173,13 @@ export function AssetListTable({ assets, onEdit, onDelete, onStatusChange, canMo
                 <Badge variant="outline">{asset.department || "N/A"}</Badge>
               </TableCell>
               <TableCell>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`capitalize hover:bg-muted ${getStatusColor(asset.status)}`}
+                <button
+                  className={`capitalize px-1.5 py-1 rounded-sm flex text-xs flex-row items-center ${getStatusColor(asset.status)}`}
                   onClick={() => openStatusDialog(asset)}
                 >
-                  <RefreshCw className="mr-1 h-3 w-3" />
+                  <RefreshCw className="mr-1 h-2.5 w-2.5" />
                   {asset.status.replace("-", " ")}
-                </Button>
+                </button>
               </TableCell>
               <TableCell>
                 <Badge variant={getConditionColor(asset.condition)} className="capitalize">
@@ -228,7 +245,7 @@ export function AssetListTable({ assets, onEdit, onDelete, onStatusChange, canMo
 
               <div className="space-y-2">
                 <Label>Current Status</Label>
-                <Badge variant={getStatusColor(selectedAsset.status)} className="capitalize">
+                <Badge variant={getStatusBadgeVariant(selectedAsset.status)} className="capitalize">
                   {selectedAsset.status.replace("-", " ")}
                 </Badge>
               </div>

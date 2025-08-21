@@ -30,6 +30,26 @@ export default function AllAssetsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedAssetForEdit, setSelectedAssetForEdit] = useState<Asset | null>(null)
   const [isReportOpen, setIsReportOpen] = useState(false)
+
+  // Helper function to get status colors for consistent styling
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "operational":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "maintenance":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "available":
+        return "bg-blue-100 text-blue-800 border-blue-200"
+      case "out-of-service":
+        return "bg-red-100 text-red-800 border-red-200"
+      case "in stock":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200"
+      case "new":
+        return "bg-purple-100 text-purple-800 border-purple-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
   
   // Use the assets store
   const { 
@@ -265,10 +285,30 @@ export default function AllAssetsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="operational">Operational</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="out-of-service">Out of Service</SelectItem>
+                  <SelectItem value="operational">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      Operational
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="maintenance">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                      Maintenance
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="available">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      Available
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="out-of-service">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                      Out of Service
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -4,6 +4,22 @@ import { immer } from "zustand/middleware/immer"
 import type { Asset, AssetsState, AssetDetail } from "@/types/asset"
 import { assetsApi } from "@/lib/assets-api"
 
+// Helper function to update location asset counts
+const updateLocationAssetCounts = async () => {
+  try {
+    const token = localStorage.getItem('auth-token');
+    await fetch('/api/locations/update-asset-counts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+    });
+  } catch (error) {
+    console.warn('Failed to update location asset counts:', error);
+  }
+}
+
 export const useAssetsStore = create<AssetsState>()(
   devtools(
     persist(
@@ -53,6 +69,9 @@ export const useAssetsStore = create<AssetsState>()(
                 state.assets.push(transformedAsset)
                 get().filterAssets()
               })
+              
+              // Update location asset counts in the background
+              updateLocationAssetCounts()
             } else {
               // Throw error if API response indicates failure
               throw new Error(response.error || response.message || 'Failed to create asset')
@@ -96,6 +115,9 @@ export const useAssetsStore = create<AssetsState>()(
                   get().filterAssets()
                 }
               })
+              
+              // Update location asset counts in the background
+              updateLocationAssetCounts()
             }
           } catch (error) {
             console.error('Error updating asset:', error)
@@ -110,6 +132,9 @@ export const useAssetsStore = create<AssetsState>()(
                 state.assets = state.assets.filter((a) => a.id !== id)
                 get().filterAssets()
               })
+              
+              // Update location asset counts in the background
+              updateLocationAssetCounts()
             }
           } catch (error) {
             console.error('Error deleting asset:', error)

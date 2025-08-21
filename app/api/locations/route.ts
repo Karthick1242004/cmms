@@ -3,6 +3,42 @@ import { getUserContext } from '@/lib/auth-helpers';
 import connectDB from '@/lib/mongodb';
 import Location from '@/models/Location';
 
+// Backend server URL for fetching assets
+const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || process.env.SERVER_BASE_URL || 'http://localhost:5001';
+
+// Helper function to fetch asset counts by location from the backend
+async function fetchAssetCountsByLocation(): Promise<Record<string, number>> {
+  try {
+    const response = await fetch(`${SERVER_BASE_URL}/api/assets`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn('Failed to fetch assets for location count calculation');
+      return {};
+    }
+
+    const data = await response.json();
+    const assets = data.data?.assets || [];
+
+    // Count assets by location
+    const locationCounts: Record<string, number> = {};
+    assets.forEach((asset: any) => {
+      if (asset.location) {
+        locationCounts[asset.location] = (locationCounts[asset.location] || 0) + 1;
+      }
+    });
+
+    return locationCounts;
+  } catch (error) {
+    console.error('Error fetching assets for location count:', error);
+    return {};
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -53,11 +89,15 @@ export async function GET(request: NextRequest) {
       Location.countDocuments(filter)
     ]);
 
-    // Transform _id to id for frontend compatibility
+    // Fetch asset counts from the backend server
+    const assetCounts = await fetchAssetCountsByLocation();
+
+    // Transform _id to id for frontend compatibility and update asset counts
     const transformedLocations = locations.map(location => ({
       ...location,
       id: location._id,
-      _id: undefined
+      _id: undefined,
+      assetCount: assetCounts[location.name] || 0 // Use location name to match assets
     }));
 
     // Calculate pagination metadata
@@ -86,6 +126,38 @@ export async function GET(request: NextRequest) {
       { success: false, message: 'Internal server error while fetching locations' },
       { status: 500 }
     );
+  }
+}
+
+// Helper function to update asset counts for all locations
+export async function updateAllLocationAssetCounts() {
+  try {
+    await connectDB();
+    
+    const assetCounts = await fetchAssetCountsByLocation();
+    
+    // Update all locations with their current asset counts
+    const updatePromises = Object.entries(assetCounts).map(([locationName, count]) =>
+      Location.updateOne(
+        { name: locationName },
+        { $set: { assetCount: count } }
+      )
+    );
+    
+    // Reset count to 0 for locations with no assets
+    const locationsWithAssets = Object.keys(assetCounts);
+    await Location.updateMany(
+      { name: { $nin: locationsWithAssets } },
+      { $set: { assetCount: 0 } }
+    );
+    
+    await Promise.all(updatePromises);
+    
+    console.log('Successfully updated asset counts for all locations');
+    return true;
+  } catch (error) {
+    console.error('Error updating location asset counts:', error);
+    return false;
   }
 }
 
