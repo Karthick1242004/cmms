@@ -79,6 +79,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
 
 
   const [parts, setParts] = useState<MaintenancePart[]>([])
+  const [partsValidationError, setPartsValidationError] = useState<string>("")
 
   // Initialize form with schedule data if editing
   useEffect(() => {
@@ -97,7 +98,11 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         estimatedDuration: schedule.estimatedDuration,
         assignedInspector: schedule.assignedTechnician || "",
       })
-      setParts(schedule.parts)
+      // Create a deep copy of parts to ensure mutability
+      setParts(schedule.parts.map(part => ({
+        ...part,
+        checklistItems: [...(part.checklistItems || [])]
+      })))
       
       // Set selected department for super admin when editing
       if (isSuperAdmin && schedule.department) {
@@ -141,11 +146,20 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       checklistItems: [],
     }
     setParts([...parts, newPart])
+    // Clear validation error when adding a part
+    if (partsValidationError && parts.length === 0) {
+      setPartsValidationError("")
+    }
   }
 
   const updatePart = (index: number, updates: Partial<MaintenancePart>) => {
-    const updatedParts = [...parts]
-    updatedParts[index] = { ...updatedParts[index], ...updates }
+    const updatedParts = parts.map((part, idx) => 
+      idx === index ? { 
+        ...part, 
+        ...updates,
+        checklistItems: [...(part.checklistItems || [])] // Preserve checklistItems array
+      } : part
+    )
     setParts(updatedParts)
   }
 
@@ -160,23 +174,47 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       isRequired: true,
       status: "pending",
     }
-    const updatedParts = [...parts]
-    updatedParts[partIndex].checklistItems.push(newItem)
+    const updatedParts = parts.map((part, index) => {
+      if (index === partIndex) {
+        return {
+          ...part,
+          checklistItems: [...(part.checklistItems || []), newItem]
+        }
+      }
+      return part
+    })
     setParts(updatedParts)
+    // Clear validation error when adding checklist item
+    if (partsValidationError) {
+      setPartsValidationError("")
+    }
   }
 
   const updateChecklistItem = (partIndex: number, itemIndex: number, updates: Partial<MaintenanceChecklistItem>) => {
-    const updatedParts = [...parts]
-    updatedParts[partIndex].checklistItems[itemIndex] = {
-      ...updatedParts[partIndex].checklistItems[itemIndex],
-      ...updates
-    }
+    const updatedParts = parts.map((part, index) => {
+      if (index === partIndex) {
+        return {
+          ...part,
+          checklistItems: part.checklistItems.map((item, idx) => 
+            idx === itemIndex ? { ...item, ...updates } : item
+          )
+        }
+      }
+      return part
+    })
     setParts(updatedParts)
   }
 
   const removeChecklistItem = (partIndex: number, itemIndex: number) => {
-    const updatedParts = [...parts]
-    updatedParts[partIndex].checklistItems = updatedParts[partIndex].checklistItems.filter((_, i) => i !== itemIndex)
+    const updatedParts = parts.map((part, index) => {
+      if (index === partIndex) {
+        return {
+          ...part,
+          checklistItems: part.checklistItems.filter((_, i) => i !== itemIndex)
+        }
+      }
+      return part
+    })
     setParts(updatedParts)
   }
 
@@ -198,6 +236,36 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     setFormData(prev => ({ ...prev, nextDueDate: nextDue }))
   }, [formData.frequency, formData.startDate, formData.customFrequencyDays])
 
+  // Validation function for parts and checklist
+  const validatePartsAndChecklist = (): boolean => {
+    // Check if at least one part exists
+    if (parts.length === 0) {
+      setPartsValidationError("At least one part is required for maintenance schedule")
+      return false
+    }
+
+    // Check if each part has at least one checklist item
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]
+      if (!part.checklistItems || part.checklistItems.length === 0) {
+        setPartsValidationError(`Part "${part.name || `Part ${i + 1}`}" must have at least one checklist item`)
+        return false
+      }
+
+      // Check if all checklist items have descriptions
+      for (let j = 0; j < part.checklistItems.length; j++) {
+        const item = part.checklistItems[j]
+        if (!item.description.trim()) {
+          setPartsValidationError(`Part "${part.name || `Part ${i + 1}`}" has checklist items without descriptions`)
+          return false
+        }
+      }
+    }
+
+    setPartsValidationError("")
+    return true
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -211,6 +279,11 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     if (formData.title.length > 200) {
       console.error('❌ Frontend validation failed: Title must be at most 200 characters');
       // Could add toast notification here
+      return;
+    }
+
+    // Validate parts and checklist items
+    if (!validatePartsAndChecklist()) {
       return;
     }
     
@@ -264,7 +337,13 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   }
 
   return (
-    <Dialog open={isScheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+    <Dialog open={isScheduleDialogOpen} onOpenChange={(open) => {
+      setScheduleDialogOpen(open)
+      if (!open) {
+        // Clear validation errors when dialog is closed
+        setPartsValidationError("")
+      }
+    }}>
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
@@ -500,12 +579,33 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
           {/* Parts Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Parts & Checklist</h3>
+              <h3 className="text-lg font-semibold">
+                Parts & Checklist 
+                <span className="text-red-500 ml-1">*</span>
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  (At least 1 part with checklist items required)
+                </span>
+              </h3>
               <Button type="button" variant="outline" onClick={addPart}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Part
               </Button>
             </div>
+
+            {/* Validation Error Display */}
+            {partsValidationError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <p className="text-sm text-red-600">{partsValidationError}</p>
+              </div>
+            )}
+
+            {/* No Parts Message */}
+            {parts.length === 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-center">
+                <p className="text-sm text-blue-600 mb-2">No parts added yet</p>
+                <p className="text-xs text-blue-500">Add at least one part with checklist items to continue</p>
+              </div>
+            )}
 
             {parts.map((part, partIndex) => (
               <Card key={part.id}>

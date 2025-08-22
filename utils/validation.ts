@@ -57,6 +57,15 @@ export const validateEmail = (email: string): ValidationResult => {
     return { isValid: false, error: 'Please enter a valid email address' };
   }
   
+  // Company domain validation - allow both @gmail.com and @tyjfood.com
+  const allowedDomains = ['@gmail.com', '@tyjfood.com'];
+  const emailLower = trimmed.toLowerCase();
+  const hasValidDomain = allowedDomains.some(domain => emailLower.endsWith(domain));
+  
+  if (!hasValidDomain) {
+    return { isValid: false, error: 'Only email addresses with @gmail.com or @tyjfood.com domains are allowed' };
+  }
+  
   return { isValid: true };
 };
 

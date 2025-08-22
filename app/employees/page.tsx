@@ -16,6 +16,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -58,6 +68,10 @@ export default function EmployeesPage() {
   const [passwordChanged, setPasswordChanged] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
+  
+  // Delete confirmation dialog state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
 
   // TanStack Query hooks
   const { user: authUser } = useAuthStore()
@@ -178,14 +192,28 @@ export default function EmployeesPage() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteClick = (employee: Employee) => {
+    setEmployeeToDelete(employee)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!employeeToDelete) return
+    
     try {
-      await deleteEmployeeMutation.mutateAsync(id)
+      await deleteEmployeeMutation.mutateAsync(employeeToDelete.id)
       toast.success("Employee deleted successfully")
+      setDeleteConfirmOpen(false)
+      setEmployeeToDelete(null)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to delete employee"
       toast.error(errorMessage)
     }
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpen(false)
+    setEmployeeToDelete(null)
   }
 
   const resetForm = () => {
@@ -638,7 +666,7 @@ export default function EmployeesPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-red-600" 
-                              onClick={() => handleDelete(employee.id)}
+                              onClick={() => handleDeleteClick(employee)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
@@ -654,6 +682,41 @@ export default function EmployeesPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Employee</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{employeeToDelete?.name}</strong>? 
+              This action cannot be undone and will permanently remove the employee from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel} disabled={deleteEmployeeMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleteEmployeeMutation.isPending}
+              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleteEmployeeMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Employee
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

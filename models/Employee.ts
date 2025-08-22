@@ -111,9 +111,23 @@ const EmployeeSchema = new Schema<IEmployee>({
     unique: true,
     lowercase: true,
     trim: true,
-    match: [
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-      'Please enter a valid email address',
+    validate: [
+      {
+        validator: function(email: string) {
+          // Basic email format validation
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        },
+        message: 'Please enter a valid email address'
+      },
+      {
+        validator: function(email: string) {
+          // Company domain validation - allow both @gmail.com and @tyjfood.com
+          const allowedDomains = ['@gmail.com', '@tyjfood.com'];
+          const emailLower = email.toLowerCase();
+          return allowedDomains.some(domain => emailLower.endsWith(domain));
+        },
+        message: 'Only email addresses with @gmail.com or @tyjfood.com domains are allowed'
+      }
     ],
     index: true,
   },

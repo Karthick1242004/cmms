@@ -33,6 +33,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Company domain validation - allow both @gmail.com and @tyjfood.com
+    const allowedDomains = ['@gmail.com', '@tyjfood.com'];
+    const emailLower = email.toLowerCase();
+    const hasValidDomain = allowedDomains.some(domain => emailLower.endsWith(domain));
+    
+    if (!hasValidDomain) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid email domain',
+          details: 'Only email addresses with @gmail.com or @tyjfood.com domains are allowed',
+          type: 'validation_error'
+        },
+        { status: 400 }
+      )
+    }
+
     // Connect to database
     await connectDB()
 
