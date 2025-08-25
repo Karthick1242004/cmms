@@ -214,11 +214,46 @@ export const useAssetsStore = create<AssetsState>()(
           })
 
           try {
-            const response = await assetsApi.getAssets(filters)
-            
-            if (response.success && response.data) {
+            // Fetch all pages to get complete asset list
+            let allAssets: AssetDetail[] = []
+            let currentPage = 1
+            let hasMore = true
+
+            console.log('Starting to fetch all assets with pagination...')
+
+            while (hasMore) {
+              const paginatedFilters = { ...filters, page: currentPage, limit: 50 }
+              console.log(`Fetching page ${currentPage} with filters:`, paginatedFilters)
+              
+              const response = await assetsApi.getAssets(paginatedFilters)
+              
+              if (response.success && response.data) {
+                console.log(`Page ${currentPage} response:`, {
+                  assetsCount: response.data.assets.length,
+                  pagination: response.data.pagination
+                })
+                
+                allAssets = [...allAssets, ...response.data.assets]
+                
+                // Check if there are more pages
+                if (response.data.pagination) {
+                  hasMore = response.data.pagination.hasNext
+                  currentPage++
+                  console.log(`Pagination info - hasNext: ${hasMore}, currentPage: ${currentPage}`)
+                } else {
+                  hasMore = false
+                }
+              } else {
+                console.error(`Failed to fetch page ${currentPage}:`, response.error || response.message)
+                hasMore = false
+              }
+            }
+
+            console.log(`Finished fetching all pages. Total assets: ${allAssets.length}`)
+
+            if (allAssets.length > 0) {
               // Transform AssetDetail to Asset for list views
-              const transformedAssets: Asset[] = response.data.assets.map((detail: AssetDetail) => ({
+              const transformedAssets: Asset[] = allAssets.map((detail: AssetDetail) => ({
                 id: detail.id,
                 name: detail.assetName,
                 assetTag: detail.serialNo, // Or assetTag if available directly
@@ -241,8 +276,14 @@ export const useAssetsStore = create<AssetsState>()(
               }))
 
               // Debug log to see the transformed data
-              console.log('Original API response:', response.data.assets)
-              console.log('Transformed assets:', transformedAssets)
+              console.log('Total transformed assets:', transformedAssets.length)
+              console.log('Asset names:', transformedAssets.map(a => a.name))
+
+              // Check for the specific assets we're looking for
+              const targetAssets = transformedAssets.filter(asset => 
+                asset.name.includes('asdad') || asset.name.includes('Weighing Scale 100kg')
+              )
+              console.log('Found target assets:', targetAssets)
 
               // Check for assets missing department field
               const assetsWithoutDepartment = transformedAssets.filter(asset => !asset.department || asset.department === "N/A")
@@ -256,7 +297,7 @@ export const useAssetsStore = create<AssetsState>()(
                 state.isLoading = false
               })
             } else {
-              console.error('Failed to fetch assets:', response.error || response.message)
+              console.log('No assets found')
               set((state) => {
                 state.assets = []
                 state.filteredAssets = []
