@@ -5,35 +5,9 @@ import type { User, AuthState } from "@/types/auth"
 import { toast } from "sonner"
 
 // Hardcoded users
-const USERS: User[] = [
-  {
-    id: 1,
-    email: "admin@company.com",
-    password: "admin123",
-    name: "John Doe",
-    role: "admin",
-    department: "IT",
-    avatar: "/placeholder.svg?height=32&width=32&query=admin",
-  },
-  {
-    id: 2,
-    email: "manager@company.com",
-    password: "manager123",
-    name: "Sarah Johnson",
-    role: "manager",
-    department: "Maintenance",
-    avatar: "/placeholder.svg?height=32&width=32&query=manager",
-  },
-  {
-    id: 3,
-    email: "tech@company.com",
-    password: "tech123",
-    name: "Mike Wilson",
-    role: "technician",
-    department: "HVAC",
-    avatar: "/placeholder.svg?height=32&width=32&query=technician",
-  },
-]
+// REMOVED: Hardcoded user credentials for security reasons
+// All authentication is now handled server-side via JWT tokens
+// Users are created through the secure employee management system
 
 export const useAuthStore = create<AuthState>()(
   persist(

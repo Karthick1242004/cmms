@@ -504,7 +504,20 @@ export default function PartsPage() {
   const fetchParts = async (autoSync = false) => {
     setIsLoading(true)
     try {
-      const response = await fetch('/api/parts')
+      // Get auth token and include it in headers
+      const token = localStorage.getItem('auth-token')
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
+      const response = await fetch('/api/parts', {
+        method: 'GET',
+        headers,
+      })
       const data = await response.json()
       
       if (data.success) {
@@ -564,7 +577,20 @@ export default function PartsPage() {
 
   const fetchAssets = async () => {
     try {
-      const response = await fetch('/api/assets')
+      // Get auth token and include it in headers
+      const token = localStorage.getItem('auth-token')
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
+      const response = await fetch('/api/assets', {
+        method: 'GET',
+        headers,
+      })
       const data = await response.json()
       
       if (data.success) {

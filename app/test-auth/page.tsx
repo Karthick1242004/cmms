@@ -133,7 +133,7 @@ export default function TestAuthPage() {
               <Input
                 id="login-password"
                 type="password"
-                placeholder="password123"
+                placeholder="Enter your password"
                 value={loginData.password}
                 onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
               />
@@ -146,7 +146,7 @@ export default function TestAuthPage() {
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>Non-existent email: nonexistent@example.com</li>
                 <li>Wrong password: newtest@example.com + wrongpass</li>
-                <li>Valid login: newtest@example.com + password123</li>
+                <li>Valid login: Use the credentials provided by your administrator</li>
               </ul>
             </div>
           </CardContent>
@@ -183,7 +183,7 @@ export default function TestAuthPage() {
               <Input
                 id="signup-password"
                 type="password"
-                placeholder="password123"
+                placeholder="Enter your password"
                 value={signupData.password}
                 onChange={(e) => setSignupData(prev => ({ ...prev, password: e.target.value }))}
               />

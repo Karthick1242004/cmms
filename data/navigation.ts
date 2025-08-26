@@ -76,7 +76,7 @@ export const navigation: NavigationItem[] = [
   {
     name: "Meeting Minutes",
     href: "/meeting-minutes",
-    iconName: "FileText",
+    iconName: "Calendar",
   },
   {
     name: "Daily Log Activities",
@@ -86,18 +86,18 @@ export const navigation: NavigationItem[] = [
   {
     name: "Notice Board",
     href: "/notice-board",
-    iconName: "MessageSquare",
+    iconName: "Settings2",
   },
   {
     name: "Department Chat",
     href: "/chat",
-    iconName: "MessageCircle",
+    iconName: "Users",
   },
-  {
-    name: "Settings",
-    href: "/settings",
-    iconName: "Settings",
-  },
+  // {
+  //   name: "Settings",
+  //   href: "/settings",
+  //   iconName: "Settings",
+  // },
   {
     name: "Profile",
     href: "/profile",

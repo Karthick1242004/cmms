@@ -6,32 +6,74 @@ import Location from '@/models/Location';
 // Backend server URL for fetching assets
 const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
-// Helper function to fetch asset counts by location from the backend
-async function fetchAssetCountsByLocation(): Promise<Record<string, number>> {
+// Helper function to fetch asset counts by location from the backend with authentication
+async function fetchAssetCountsByLocation(request: NextRequest): Promise<Record<string, number>> {
   try {
-    const response = await fetch(`${SERVER_BASE_URL}/api/assets`, {
+    // Extract authentication token from the incoming request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') ||
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      console.warn('No authentication token available for asset count calculation');
+      return {};
+    }
+
+    // Call the backend server directly with JWT authentication to avoid potential loops
+    const response = await fetch(`${SERVER_BASE_URL}/api/assets?limit=1000&page=1`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
     });
 
     if (!response.ok) {
-      console.warn('Failed to fetch assets for location count calculation');
+      console.warn(`Failed to fetch assets for location count calculation: ${response.status} ${response.statusText}`);
       return {};
     }
 
     const data = await response.json();
-    const assets = data.data?.assets || [];
+    
+    // Handle paginated response - get all assets if there are multiple pages
+    let allAssets = data.data?.assets || [];
+    
+    if (data.data?.pagination?.hasNext) {
+      const totalPages = data.data.pagination.totalPages;
+      const additionalRequests = [];
+      
+      // Fetch remaining pages
+      for (let page = 2; page <= Math.min(totalPages, 10); page++) { // Limit to 10 pages for safety
+        additionalRequests.push(
+          fetch(`${SERVER_BASE_URL}/api/assets?limit=1000&page=${page}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          })
+        );
+      }
+      
+      const additionalResponses = await Promise.all(additionalRequests);
+      
+      for (const additionalResponse of additionalResponses) {
+        if (additionalResponse.ok) {
+          const additionalData = await additionalResponse.json();
+          allAssets = allAssets.concat(additionalData.data?.assets || []);
+        }
+      }
+    }
 
     // Count assets by location
     const locationCounts: Record<string, number> = {};
-    assets.forEach((asset: any) => {
+    allAssets.forEach((asset: any) => {
       if (asset.location) {
         locationCounts[asset.location] = (locationCounts[asset.location] || 0) + 1;
       }
     });
 
+    console.log(`Successfully calculated asset counts for ${Object.keys(locationCounts).length} locations from ${allAssets.length} assets`);
     return locationCounts;
   } catch (error) {
     console.error('Error fetching assets for location count:', error);
@@ -44,6 +86,7 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     // Note: GET locations is public (no auth required). All users can view locations.
+    // However, asset counts require authentication to fetch from the backend server.
 
     const { searchParams } = new URL(request.url);
     
@@ -89,8 +132,9 @@ export async function GET(request: NextRequest) {
       Location.countDocuments(filter)
     ]);
 
-    // Fetch asset counts from the backend server
-    const assetCounts = await fetchAssetCountsByLocation();
+    // Fetch asset counts from the backend server with authentication
+    // This is non-blocking - if it fails, locations will still be returned with assetCount: 0
+    const assetCounts = await fetchAssetCountsByLocation(request);
 
     // Transform _id to id for frontend compatibility and update asset counts
     const transformedLocations = locations.map(location => ({
@@ -130,11 +174,11 @@ export async function GET(request: NextRequest) {
 }
 
 // Helper function to update asset counts for all locations
-export async function updateAllLocationAssetCounts() {
+export async function updateAllLocationAssetCounts(request: NextRequest) {
   try {
     await connectDB();
     
-    const assetCounts = await fetchAssetCountsByLocation();
+    const assetCounts = await fetchAssetCountsByLocation(request);
     
     // Update all locations with their current asset counts
     const updatePromises = Object.entries(assetCounts).map(([locationName, count]) =>

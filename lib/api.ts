@@ -15,7 +15,7 @@ class ApiClient {
     
     // Get auth token from localStorage
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
-
+    
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',

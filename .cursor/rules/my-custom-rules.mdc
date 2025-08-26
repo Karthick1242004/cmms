@@ -1,0 +1,77 @@
+---
+alwaysApply: false
+---
+Always think broader way, not just to solve the current given prompt, Analyse the prompt then analyse the application and then think which solution will play well with the current version of the application and also will that approach be good in future , is the approach the best one for this project, is it optimised, you need to think of everything and then implement the solution, Not just to solve the current given problem.
+---
+- FORBIDDEN trusting any client data without validation
+
+
+## Middleware Order (TypeScript)
+1. Helmet (restrictive)
+2. CORS (specific origins)
+3. Rate limiting
+4. JWT validation
+5. Input validation
+6. Request logging
+
+
+## Error Handling
+- MUST use consistent response format
+- FORBIDDEN exposing internal errors in responses
+- REQUIRED to log all security-related errors
+
+
+## Database Security
+- MUST use parameterized queries
+- REQUIRED connection pooling with proper limits
+- MUST encrypt sensitive data at rest
+- FORBIDDEN exposing DB credentials in code
+
+
+## Database Performance
+- MUST use aggregation pipelines instead of multiple queries
+- REQUIRED compound indexes for frequent queries
+- FORBIDDEN N+1 queries or sequential DB calls
+
+
+## Caching
+- MUST implement Redis caching with proper TTL
+- REQUIRED monitoring cache hit rates (>90%)
+
+
+## Architecture
+- MUST implement API versioning (/api/v1/)
+- REQUIRED RESTful conventions and proper status codes
+- MUST keep controllers thin and business logic in services
+- REQUIRED centralized validation middleware
+
+
+## Monitoring & Logging
+- MUST track query time (<100ms), API response (<200ms), connection pool (<80%)
+- MUST monitor failed auth attempts, invalid JWT, CORS violations
+- MUST structured logging with Winston and no sensitive data
+
+
+## TypeScript & Code Quality
+- MUST use strict mode and proper interfaces
+- FORBIDDEN using `any` type without justification, but use any if it is needed and it should not provide further error in types, then add any,
+- MUST achieve 80% test coverage (unit + integration)
+
+
+## Deployment
+- MUST validate environment variables at startup
+- REQUIRED different configs for dev/staging/prod
+- FORBIDDEN committing secrets to version control
+- MUST implement health checks and retry logic
+
+
+## Compliance Checklist
+- [ ] All CRITICAL security issues resolved
+- [ ] JWT validation implemented
+- [ ] Database optimized with aggregation and indexes
+- [ ] Caching for hot data
+- [ ] Rate limiting enabled
+- [ ] CORS locked to trusted domains
+- [ ] Inputs validated and sanitized
+- [ ] Error handling consistent
+- [ ] Monitoring and alerts configured

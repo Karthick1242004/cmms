@@ -24,6 +24,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 import type { Department } from "@/types/department"
 import { validateDepartmentForm, validateField, type DepartmentFormData } from "@/utils/validation"
 import { toast } from "sonner"
+import { usePasswordGenerator } from "@/hooks/use-password-generator"
 
 type DepartmentStatus = "active" | "inactive"
 
@@ -57,6 +58,9 @@ export default function DepartmentsPage() {
   // Validation state
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
+
+  // Password generator hook
+  const { generatePassword } = usePasswordGenerator()
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -102,7 +106,9 @@ export default function DepartmentsPage() {
       // Initialize manager employee fields for new department
       setManagerEmail("")
       setManagerPhone("")
-      setManagerPassword("temp123") // Default password
+      // Generate a secure password for the manager
+      const securePassword = generatePassword({ type: 'temp' })
+      setManagerPassword(securePassword)
       setManagerAccessLevel("department_admin")
     }
     
@@ -239,7 +245,7 @@ export default function DepartmentsPage() {
             name: manager,
             email: managerEmail,
             phone: managerPhone,
-            password: managerPassword || "temp123",
+            password: managerPassword,
             role: "Department Manager",
             department: name,
             accessLevel: managerAccessLevel,
@@ -502,7 +508,7 @@ export default function DepartmentsPage() {
                         onChange={(e) => handleFieldChange('managerPassword', e.target.value)}
                         onBlur={() => handleFieldBlur('managerPassword')}
                         className={validationErrors.managerPassword && touchedFields.managerPassword ? 'border-red-500' : ''}
-                        placeholder="Minimum 6 characters (default: temp123)"
+                        placeholder="Auto-generated secure password"
                         disabled={isSubmitting}
                       />
                       {validationErrors.managerPassword && touchedFields.managerPassword && (

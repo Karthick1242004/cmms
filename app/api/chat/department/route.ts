@@ -6,12 +6,16 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user context for authentication (with fallback for testing)
-    const user = await getUserContext(request);
-    
-    // TEMPORARY: Allow access even without authentication for testing
-    if (!user) {
-      // unauthenticated request; continue with defaults
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -20,16 +24,12 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString();
     const url = `${SERVER_BASE_URL}/api/chat/department${queryString ? `?${queryString}` : ''}`;
 
-    // Forward request to backend server with user context headers
+    // Forward request to backend server with JWT token
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id': user?.id || 'test-user-id',
-        'x-user-name': user?.name || 'Test User',
-        'x-user-email': user?.email || 'test@example.com',
-        'x-user-department': user?.department || 'General',
-        'x-user-role': user?.role === 'super_admin' ? 'admin' : user?.role === 'department_admin' ? 'manager' : 'technician',
+        'Authorization': `Bearer ${token}`,
       },
     });
 

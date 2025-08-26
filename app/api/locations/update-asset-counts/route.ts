@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const success = await updateAllLocationAssetCounts();
+    const success = await updateAllLocationAssetCounts(request);
 
     if (success) {
       return NextResponse.json({

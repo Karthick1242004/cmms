@@ -99,9 +99,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Set default password if not provided
+    // Validate that password is provided for security
     if (!body.password) {
-      body.password = 'temp123'; // Default temporary password
+      return NextResponse.json(
+        { success: false, message: 'Password is required for employee creation. Please provide a secure password.' },
+        { status: 400 }
+      );
     }
 
     // Set default access level if not provided

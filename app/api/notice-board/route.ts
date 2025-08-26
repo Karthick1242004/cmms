@@ -5,33 +5,27 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getUserContext(request);
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
     }
 
     // Extract query parameters
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
-    
-    // Normalize role for backend compatibility
-    const roleForBackend =
-      user.accessLevel === 'super_admin' || user.accessLevel === 'department_admin'
-        ? 'admin'
-        : user.role;
 
-    // Forward request to backend with user context
+    // Forward request to backend with JWT token
     const response = await fetch(`${SERVER_BASE_URL}/api/notice-board?${queryString}`, {
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id': user.id,
-        'x-user-email': user.email,
-        'x-user-department': user.department,
-        'x-user-role': roleForBackend,
-        'x-user-role-name': user.role,
-        'x-user-name': user.name,
-        'x-user-access-level': user.accessLevel,
+        'Authorization': `Bearer ${token}`,
       },
     });
 

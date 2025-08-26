@@ -29,13 +29,14 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, Search, Edit, Trash2, Phone, Mail, Loader2, Eye, EyeOff } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Phone, Mail, Loader2, Eye, EyeOff, RefreshCw, Copy } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import { useEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from "@/hooks/use-employees-query"
 import { Employee } from "@/types/employee"
 import { toast } from "sonner"
+import { usePasswordGenerator } from "@/hooks/use-password-generator"
 
 export default function EmployeesPage() {
   const router = useRouter()
@@ -80,6 +81,9 @@ export default function EmployeesPage() {
   const createEmployeeMutation = useCreateEmployee()
   const updateEmployeeMutation = useUpdateEmployee()
   const deleteEmployeeMutation = useDeleteEmployee()
+
+  // Password generator hook
+  const { generatePassword, validatePassword, passwordStrength } = usePasswordGenerator()
 
   // Local search state
   const [searchTerm, setSearchTerm] = useState("")
@@ -248,6 +252,31 @@ export default function EmployeesPage() {
         ...prev,
         password: validation.isValid ? '' : validation.error!
       }));
+    }
+
+    // Validate password strength
+    if (value) {
+      validatePassword(value);
+    }
+  }
+
+  const handleGeneratePassword = () => {
+    const newPassword = generatePassword({ type: 'temp' });
+    setFormData({ ...formData, password: newPassword });
+    if (editingEmployee && !passwordChanged) {
+      setPasswordChanged(true);
+    }
+    toast.success('Secure password generated!');
+  }
+
+  const handleCopyPassword = async () => {
+    if (formData.password) {
+      try {
+        await navigator.clipboard.writeText(formData.password);
+        toast.success('Password copied to clipboard!');
+      } catch (err) {
+        toast.error('Failed to copy password');
+      }
     }
   }
 
@@ -482,7 +511,7 @@ export default function EmployeesPage() {
                 <Label htmlFor="password" className="text-right">
                   Password {!editingEmployee && '*'}
                 </Label>
-                <div className="col-span-3">
+                <div className="col-span-3 space-y-2">
                   <div className="relative">
                     <Input
                       id="password"
@@ -490,25 +519,86 @@ export default function EmployeesPage() {
                       value={formData.password}
                       onChange={handlePasswordChange}
                       onBlur={() => handleFieldBlur('password')}
-                      className={`pr-10 ${validationErrors.password && touchedFields.password ? 'border-red-500' : ''}`}
+                      className={`pr-24 ${validationErrors.password && touchedFields.password ? 'border-red-500' : ''} ${passwordStrength?.strength === 'strong' ? 'border-green-500' : passwordStrength?.strength === 'good' ? 'border-blue-500' : passwordStrength?.strength === 'fair' ? 'border-yellow-500' : passwordStrength?.strength === 'weak' ? 'border-red-500' : ''}`}
                       placeholder={editingEmployee ? "Enter new password (leave empty to keep current)" : "Minimum 6 characters"}
                     />
+                    <div className="absolute right-0 top-0 h-full flex items-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-full px-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Password generation buttons */}
+                  <div className="flex gap-2">
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={handleGeneratePassword}
+                      className="text-xs"
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      )}
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Generate
                     </Button>
+                    {formData.password && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyPassword}
+                        className="text-xs"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy
+                      </Button>
+                    )}
                   </div>
+
+                  {/* Password strength indicator */}
+                  {passwordStrength && formData.password && (
+                    <div className="text-xs">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`font-medium ${
+                          passwordStrength.strength === 'strong' ? 'text-green-600' :
+                          passwordStrength.strength === 'good' ? 'text-blue-600' :
+                          passwordStrength.strength === 'fair' ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                          {passwordStrength.strength.toUpperCase()} ({passwordStrength.score}/100)
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div 
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            passwordStrength.strength === 'strong' ? 'bg-green-500' :
+                            passwordStrength.strength === 'good' ? 'bg-blue-500' :
+                            passwordStrength.strength === 'fair' ? 'bg-yellow-500' :
+                            'bg-red-500'
+                          }`}
+                          style={{ width: `${passwordStrength.score}%` }}
+                        ></div>
+                      </div>
+                      {passwordStrength.feedback.length > 0 && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {passwordStrength.feedback.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {validationErrors.password && touchedFields.password && (
-                    <p className="text-sm text-red-500 mt-1">{validationErrors.password}</p>
+                    <p className="text-sm text-red-500">{validationErrors.password}</p>
                   )}
                 </div>
               </div>

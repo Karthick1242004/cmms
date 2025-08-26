@@ -5,39 +5,29 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user context for department filtering
-    const user = await getUserContext(request);
-    
-    // Allow access for testing but with limited data
-    if (!user) {
-      // unauthenticated request; continue with limited headers
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
-    
-    // Add department filter for non-admin users (only if user is authenticated)
-    if (user && user.accessLevel !== 'super_admin') {
-      searchParams.set('department', user.department);
-    }
     
     // Forward all query parameters to the backend
     const queryString = searchParams.toString();
     const backendUrl = `${SERVER_BASE_URL}/api/parts${queryString ? `?${queryString}` : ''}`;
 
-    // Set user headers for backend authentication
+    // Forward the JWT token to the backend
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     };
-
-    if (user) {
-      headers['x-user-id'] = user.id;
-      headers['x-user-name'] = user.name;
-      headers['x-user-email'] = user.email;
-      headers['x-user-department'] = user.department;
-      // Map accessLevel to role for backend compatibility
-      headers['x-user-role'] = user.accessLevel === 'super_admin' ? 'admin' : 
-                               user.accessLevel === 'department_admin' ? 'manager' : 'technician';
-    }
 
     const response = await fetch(backendUrl, {
       method: 'GET',
