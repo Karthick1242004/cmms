@@ -3,10 +3,7 @@ import { getUserContext } from '@/lib/auth-helpers';
 import connectDB from '@/lib/mongodb';
 import Location from '@/models/Location';
 
-// Backend server URL for fetching assets
-const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || process.env.SERVER_BASE_URL || 'http://localhost:5001';
-
-// Helper function to fetch asset counts by location from the backend with authentication
+// Helper function to fetch asset counts by location using the Next.js assets API
 async function fetchAssetCountsByLocation(request: NextRequest): Promise<Record<string, number>> {
   try {
     // Extract authentication token from the incoming request
@@ -19,8 +16,8 @@ async function fetchAssetCountsByLocation(request: NextRequest): Promise<Record<
       return {};
     }
 
-    // Call the backend server directly with JWT authentication to avoid potential loops
-    const response = await fetch(`${SERVER_BASE_URL}/api/assets?limit=1000&page=1`, {
+    // Call the Next.js assets API which will handle authentication and forwarding to backend
+    const response = await fetch(`${request.nextUrl.origin}/api/assets?limit=1000&page=1`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -45,7 +42,7 @@ async function fetchAssetCountsByLocation(request: NextRequest): Promise<Record<
       // Fetch remaining pages
       for (let page = 2; page <= Math.min(totalPages, 10); page++) { // Limit to 10 pages for safety
         additionalRequests.push(
-          fetch(`${SERVER_BASE_URL}/api/assets?limit=1000&page=${page}`, {
+          fetch(`${request.nextUrl.origin}/api/assets?limit=1000&page=${page}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
