@@ -10,7 +10,7 @@ async function fetchAssetCountsByLocation(request: NextRequest): Promise<Record<
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '') ||
                   request.cookies.get('auth-token')?.value;
-
+ 
     if (!token) {
       console.warn('No authentication token available for asset count calculation');
       return {};

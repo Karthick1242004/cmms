@@ -40,9 +40,10 @@ export default function ShiftDetailsPage() {
   const { user } = useAuthStore()
   const { toast } = useToast()
   const isSuperAdmin = user?.accessLevel === 'super_admin'
+  const canManageShiftDetails = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
 
   // React Query for data fetching
-  // Build query params including department filter for non-admin users
+  // Build query params including department filter for non-super-admin users
   const queryParams = useMemo(() => {
     const params = new URLSearchParams({ limit: '100' })
     if (!isSuperAdmin && user?.department) {
@@ -510,10 +511,10 @@ export default function ShiftDetailsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Shift Details</h1>
           <p className="text-muted-foreground">
-            {isSuperAdmin ? "Manage employee shift schedules and assignments" : "View employee shift schedules and contact information"}
+            {canManageShiftDetails ? "Manage employee shift schedules and assignments" : "View employee shift schedules and contact information"}
           </p>
         </div>
-        {isSuperAdmin && (
+        {canManageShiftDetails && (
           <Button onClick={() => handleOpenDialog()}>
             <Plus className="mr-2 h-4 w-4" />
             Add Shift Detail
@@ -521,7 +522,7 @@ export default function ShiftDetailsPage() {
         )}
       </div>
 
-                      {isSuperAdmin && (
+                      {canManageShiftDetails && (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -596,7 +597,7 @@ export default function ShiftDetailsPage() {
                   )}
                 </div>
               ) : (
-                // Non-Super Admin: Show department and employees from user's department only
+                // Department Admin: Show department and employees from user's department only
                 <div className="grid gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="userDepartment">Department</Label>
@@ -891,7 +892,7 @@ export default function ShiftDetailsPage() {
               <TableHead>Work Schedule</TableHead>
               <TableHead>Supervisor</TableHead>
               <TableHead>Status</TableHead>
-              {isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
+              {canManageShiftDetails && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -967,7 +968,7 @@ export default function ShiftDetailsPage() {
                     {shift.status.replace("-", " ")}
                   </Badge>
                 </TableCell>
-                {isSuperAdmin && (
+                {canManageShiftDetails && (
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
