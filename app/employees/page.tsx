@@ -76,7 +76,7 @@ export default function EmployeesPage() {
 
   // TanStack Query hooks
   const { user: authUser } = useAuthStore()
-  const employeeParams = authUser?.accessLevel !== 'super_admin' ? { department: authUser?.department } : {}
+  const employeeParams = authUser?.accessLevel !== 'super_admin' ? { department: authUser?.department, limit: 100 } : { limit: 100 }
   const { data: employeesData, isLoading, error } = useEmployees(employeeParams)
   const createEmployeeMutation = useCreateEmployee()
   const updateEmployeeMutation = useUpdateEmployee()
@@ -160,12 +160,23 @@ export default function EmployeesPage() {
 
     try {
       if (editingEmployee) {
-        // For updates, only include password if it was changed
-        const updateData = { ...formData }
-        if (!passwordChanged) {
-          delete updateData.password
+        // For updates, create a clean update payload with only the fields to update
+        const updatePayload: Partial<Omit<EmployeeFormData, 'password'>> & { password?: string } = {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          department: formData.department,
+          role: formData.role,
+          status: formData.status,
+          accessLevel: formData.accessLevel,
         }
-        await updateEmployeeMutation.mutateAsync({ id: editingEmployee.id, updates: updateData })
+        
+        // Only include password if it was changed and not empty
+        if (passwordChanged && formData.password.trim()) {
+          updatePayload.password = formData.password
+        }
+        
+        await updateEmployeeMutation.mutateAsync({ id: editingEmployee.id, updates: updatePayload })
         toast.success("Employee updated successfully")
       } else {
         await createEmployeeMutation.mutateAsync(formData)
