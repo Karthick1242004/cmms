@@ -10,6 +10,18 @@ export async function GET(
   try {
     const { id } = params;
     
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
+    }
+    
     // Get user context for authentication
     const user = await getUserContext(request);
     
@@ -23,6 +35,7 @@ export async function GET(
     // Set user headers for backend authentication
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
       'x-user-id': user.id,
       'x-user-name': user.name,
       'x-user-email': user.email,
@@ -62,6 +75,18 @@ export async function PUT(
   try {
     const { id } = params;
     
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
+    }
+    
     // Get user context for authentication
     const user = await getUserContext(request);
     
@@ -77,6 +102,7 @@ export async function PUT(
     // Set user headers for backend authentication
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
       'x-user-id': user.id,
       'x-user-name': user.name,
       'x-user-email': user.email,
@@ -117,6 +143,18 @@ export async function DELETE(
   try {
     const { id } = params;
     
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
+    }
+    
     // Get user context for authentication
     const user = await getUserContext(request);
     
@@ -130,6 +168,7 @@ export async function DELETE(
     // Set user headers for backend authentication
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
       'x-user-id': user.id,
       'x-user-name': user.name,
       'x-user-email': user.email,

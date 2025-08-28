@@ -11,21 +11,39 @@ export async function GET(
   try {
     const { id } = params;
 
-    // Get user context for authentication (with fallback for testing)
-    const user = await getUserContext(request);
-    
-    // TEMPORARY: Allow access even without authentication for testing
-    if (!user) {
-      // unauthenticated request; continue
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
     }
 
-    // Forward request to backend server
+    // Get user context for headers
+    const user = await getUserContext(request);
+    
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Forward request to backend server with JWT token
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/records/${id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Department': user?.department || 'General',
-        'X-User-Name': user?.name || 'Test User',
+        'Authorization': `Bearer ${token}`,
+        'x-user-id': user.id,
+        'x-user-name': user.name,
+        'x-user-email': user.email,
+        'x-user-department': user.department,
+        'x-user-role': user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician',
       },
     });
 
@@ -54,23 +72,42 @@ export async function PUT(
 ) {
   try {
     const { id } = params;
-    const body = await request.json();
 
-    // Get user context for authentication (with fallback for testing)
-    const user = await getUserContext(request);
-    
-    // TEMPORARY: Allow access even without authentication for testing
-    if (!user) {
-      // unauthenticated request; use safe defaults
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
     }
 
-    // Forward request to backend server
+    // Get user context for headers
+    const user = await getUserContext(request);
+    
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+
+    // Forward request to backend server with JWT token
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/records/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Department': user?.department || 'General',
-        'X-User-Name': user?.name || 'Test User',
+        'Authorization': `Bearer ${token}`,
+        'x-user-id': user.id,
+        'x-user-name': user.name,
+        'x-user-email': user.email,
+        'x-user-department': user.department,
+        'x-user-role': user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician',
       },
       body: JSON.stringify(body),
     });
@@ -101,21 +138,39 @@ export async function DELETE(
   try {
     const { id } = params;
 
-    // Get user context for authentication (with fallback for testing)
-    const user = await getUserContext(request);
-    
-    // TEMPORARY: Allow access even without authentication for testing
-    if (!user) {
-      // unauthenticated request; continue
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
     }
 
-    // Forward request to backend server
+    // Get user context for headers
+    const user = await getUserContext(request);
+    
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Forward request to backend server with JWT token
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/records/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Department': user?.department || 'General',
-        'X-User-Name': user?.name || 'Test User',
+        'Authorization': `Bearer ${token}`,
+        'x-user-id': user.id,
+        'x-user-name': user.name,
+        'x-user-email': user.email,
+        'x-user-department': user.department,
+        'x-user-role': user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician',
       },
     });
 
