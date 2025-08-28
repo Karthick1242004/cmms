@@ -83,8 +83,8 @@ export async function GET(
     // Support multiple identifier strategies: employeeId, email, or MongoDB _id
     let query: any = {};
 
-    // Strategy 1: Try as employeeId
-    if (/^\d+$/.test(identifier)) {
+    // Strategy 1: Try as employeeId (supports numeric, alphanumeric, and underscore patterns)
+    if (/^[\w_\-]+$/.test(identifier) && !identifier.includes('@')) {
       query.employeeId = identifier;
     }
     // Strategy 2: Try as email
@@ -105,7 +105,7 @@ export async function GET(
     }
     else {
       return NextResponse.json(
-        { success: false, message: 'Invalid identifier format' },
+        { success: false, message: 'Invalid identifier format. Expected: employeeId, email, or MongoDB ObjectId' },
         { status: 400 }
       );
     }
@@ -122,7 +122,7 @@ export async function GET(
     }
 
     // Fetch first record to get employee info and check department access
-    const firstRecord = await ShiftDetail.findOne(query).lean();
+    const firstRecord = await ShiftDetail.findOne(query).lean() as any;
     
     if (!firstRecord) {
       return NextResponse.json(
