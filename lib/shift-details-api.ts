@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import type { ShiftDetail } from "@/types/shift-detail"
+import type { ShiftDetail, EmployeeShiftHistoryResponse, EmployeeShiftHistoryFilters } from "@/types/shift-detail"
 
 // API Response types
 export interface ShiftDetailResponse {
@@ -96,6 +96,31 @@ export const shiftDetailsApi = {
   // Get shift detail statistics
   getStats: async (): Promise<ShiftDetailStatsResponse> => {
     return apiClient.get<ShiftDetailStatsResponse>('/shift-details/stats')
+  },
+
+  // Get employee shift history with pagination and filtering
+  getEmployeeHistory: async (
+    identifier: string, 
+    filters: EmployeeShiftHistoryFilters = {}
+  ): Promise<EmployeeShiftHistoryResponse> => {
+    // Input validation
+    if (!identifier || identifier.trim() === '') {
+      throw new Error('Employee identifier is required')
+    }
+
+    const queryParams = new URLSearchParams()
+    
+    // Add filters to query params, excluding 'all' values and undefined/null values
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && value !== 'all') {
+        queryParams.append(key, value.toString())
+      }
+    })
+
+    const queryString = queryParams.toString()
+    const endpoint = `/shift-details/employee/${encodeURIComponent(identifier)}${queryString ? `?${queryString}` : ''}`
+
+    return apiClient.get<EmployeeShiftHistoryResponse>(endpoint)
   },
 }
 

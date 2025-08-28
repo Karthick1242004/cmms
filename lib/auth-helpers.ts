@@ -39,7 +39,14 @@ export async function getUserFromToken(request: NextRequest): Promise<UserContex
       return null
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
+    // Use the same JWT_SECRET validation as authMiddleware
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (JWT_SECRET.length < 32) {
+      console.error('JWT_SECRET must be at least 32 characters long');
+      return null;
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any
     
     await connectDB()
     

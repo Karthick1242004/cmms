@@ -26,6 +26,7 @@ import { useEmployees } from "@/hooks/use-employees"
 import { useLocations } from "@/hooks/use-locations"
 import { useToast } from "@/hooks/use-toast"
 import type { ShiftDetail } from "@/types/shift-detail"
+import { EmployeeShiftHistoryDialog } from "@/components/shift-details/employee-shift-history-dialog"
 
 // Remove hardcoded departments - will use API data instead
 const SHIFT_TYPES = [
@@ -70,6 +71,11 @@ export default function ShiftDetailsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [selectedShiftDetail, setSelectedShiftDetail] = useState<ShiftDetail | null>(null)
+  
+  // Employee shift history dialog state
+  const [employeeHistoryDialogOpen, setEmployeeHistoryDialogOpen] = useState(false)
+  const [historyEmployeeId, setHistoryEmployeeId] = useState<string | null>(null)
+  const [historyEmployeeName, setHistoryEmployeeName] = useState<string>("")
 
   // Filter state - initialize department filter based on user's department
   const [filters, setFilters] = useState({
@@ -419,6 +425,47 @@ export default function ShiftDetailsPage() {
       setSelectedShiftDetail(null)
     }
     setDialogOpen(open)
+  }
+
+  // Handle employee name click to show shift history
+  const handleEmployeeNameClick = (shift: ShiftDetail) => {
+    // Use multiple strategies to find employee - prioritize employeeId, then email, then shift record ID
+    let employeeIdentifier: string | null = null;
+    
+    // Strategy 1: Use employeeId if it exists and is meaningful
+    if (shift.employeeId && shift.employeeId.toString() !== "0" && shift.employeeId.toString() !== "") {
+      employeeIdentifier = shift.employeeId.toString();
+    }
+    // Strategy 2: Use email as identifier 
+    else if (shift.email) {
+      employeeIdentifier = shift.email;
+    }
+    // Strategy 3: Use shift record ID as fallback
+    else if (shift.id) {
+      employeeIdentifier = shift.id.toString();
+    }
+    
+    if (!employeeIdentifier) {
+      toast({
+        title: "Error",
+        description: "Unable to load employee shift history. No valid identifier found.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setHistoryEmployeeId(employeeIdentifier)
+    setHistoryEmployeeName(shift.employeeName)
+    setEmployeeHistoryDialogOpen(true)
+  }
+
+  // Handle employee history dialog close
+  const handleEmployeeHistoryDialogClose = (open: boolean) => {
+    if (!open) {
+      setHistoryEmployeeId(null)
+      setHistoryEmployeeName("")
+    }
+    setEmployeeHistoryDialogOpen(open)
   }
 
   const handleWorkDayToggle = (day: string) => {
@@ -910,7 +957,13 @@ export default function ShiftDetailsPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">{shift.employeeName}</div>
+                      <div 
+                        className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer transition-colors"
+                        onClick={() => handleEmployeeNameClick(shift)}
+                        title="Click to view shift history"
+                      >
+                        {shift.employeeName}
+                      </div>
                       <div className="text-sm text-muted-foreground flex items-center">
                         <MapPin className="mr-1 h-3 w-3" />
                         {shift.location}
@@ -1006,6 +1059,14 @@ export default function ShiftDetailsPage() {
       {filteredShiftDetails.length === 0 && !isLoading && (
         <p className="text-center text-muted-foreground py-8">No shift details found matching your search and filters.</p>
       )}
+
+      {/* Employee Shift History Dialog */}
+      <EmployeeShiftHistoryDialog
+        open={employeeHistoryDialogOpen}
+        onOpenChange={handleEmployeeHistoryDialogClose}
+        employeeId={historyEmployeeId}
+        employeeName={historyEmployeeName}
+      />
     </div>
   )
 } 

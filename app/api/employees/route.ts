@@ -38,10 +38,23 @@ export async function GET(request: NextRequest) {
       searchParams: Object.fromEntries(searchParams.entries())
     });
 
+    // Extract JWT token from the incoming request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
+    }
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
     });
 
@@ -112,10 +125,23 @@ export async function POST(request: NextRequest) {
       body.accessLevel = 'normal_user';
     }
     
+    // Extract JWT token for backend authentication
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
+    }
+
     const response = await fetch(`${SERVER_API_URL}/api/employees`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
         'x-user-id': user.id,
         'x-user-email': user.email,
         'x-user-department': user.department,

@@ -1,6 +1,6 @@
 export interface ShiftDetail {
-  id: number
-  employeeId: number
+  id: number | string
+  employeeId: number | string
   employeeName: string
   email: string
   phone: string
@@ -15,6 +15,9 @@ export interface ShiftDetail {
   status: "active" | "inactive" | "on-leave"
   joinDate: string
   avatar?: string
+  effectiveDate?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface ShiftDetailsState {
@@ -36,4 +39,50 @@ export interface ShiftDetailsState {
   setSelectedShiftDetail: (shiftDetail: ShiftDetail | null) => void
   filterShiftDetails: () => void
   fetchShiftDetails: () => Promise<void>
+}
+
+// Employee Shift History Types
+export interface EmployeeInfo {
+  employeeId: string | number
+  employeeName: string
+  email: string
+  phone: string
+  department: string
+  avatar?: string
+}
+
+export interface EmployeeShiftHistoryFilters {
+  status?: "active" | "inactive" | "on-leave" | "all"
+  shiftType?: "day" | "night" | "rotating" | "on-call" | "all"
+  location?: string
+  sortBy?: "createdAt" | "updatedAt" | "effectiveDate" | "shiftType" | "status"
+  sortOrder?: "asc" | "desc"
+  page?: number
+  limit?: number
+}
+
+export interface EmployeeShiftHistoryPagination {
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  hasNext: boolean
+  hasPrevious: boolean
+  limit: number
+}
+
+export interface EmployeeShiftHistoryResponse {
+  success: boolean
+  data: {
+    employee: EmployeeInfo
+    shiftDetails: ShiftDetail[]
+    pagination: EmployeeShiftHistoryPagination
+    filters: {
+      status?: string
+      shiftType?: string
+      location?: string
+      sortBy: string
+      sortOrder: string
+    }
+  }
+  message: string
 } 

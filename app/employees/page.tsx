@@ -76,7 +76,7 @@ export default function EmployeesPage() {
 
   // TanStack Query hooks
   const { user: authUser } = useAuthStore()
-  const employeeParams = authUser?.accessLevel !== 'super_admin' ? { department: authUser?.department, limit: 100 } : { limit: 100 }
+  const employeeParams = authUser?.accessLevel !== 'super_admin' ? { department: authUser?.department } : {}
   const { data: employeesData, isLoading, error } = useEmployees(employeeParams)
   const createEmployeeMutation = useCreateEmployee()
   const updateEmployeeMutation = useUpdateEmployee()
