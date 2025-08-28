@@ -18,22 +18,40 @@ export async function GET(
       );
     }
 
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      );
+    }
+
     // Get user context for headers
     const user = await getUserContext(request);
+    
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     // First, get the department name from departments API
     const departmentsHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     };
 
-    // Add user context headers if available
-    if (user) {
-      departmentsHeaders['x-user-id'] = user.id;
-      departmentsHeaders['x-user-name'] = user.name;
-      departmentsHeaders['x-user-email'] = user.email;
-      departmentsHeaders['x-user-department'] = user.department;
-      departmentsHeaders['x-user-role'] = user.role;
-    }
+    // Add user context headers
+    departmentsHeaders['x-user-id'] = user.id;
+    departmentsHeaders['x-user-name'] = user.name;
+    departmentsHeaders['x-user-email'] = user.email;
+    departmentsHeaders['x-user-department'] = user.department;
+    departmentsHeaders['x-user-role'] = user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician';
 
     // Get department details to get the department name
     const departmentResponse = await fetch(`${SERVER_BASE_URL}/api/departments/${departmentId}`, {
@@ -68,16 +86,15 @@ export async function GET(
       // Now get assets for this department by name
       const assetsHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       };
 
-      // Add user context headers if available
-      if (user) {
-        assetsHeaders['x-user-id'] = user.id;
-        assetsHeaders['x-user-name'] = user.name;
-        assetsHeaders['x-user-email'] = user.email;
-        assetsHeaders['x-user-department'] = user.department;
-        assetsHeaders['x-user-role'] = user.role;
-      }
+      // Add user context headers
+      assetsHeaders['x-user-id'] = user.id;
+      assetsHeaders['x-user-name'] = user.name;
+      assetsHeaders['x-user-email'] = user.email;
+      assetsHeaders['x-user-department'] = user.department;
+      assetsHeaders['x-user-role'] = user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician';
 
       const assetsUrl = `${SERVER_BASE_URL}/api/assets?department=${encodeURIComponent(department.name)}`;
       const assetsResponse = await fetch(assetsUrl, {
@@ -125,16 +142,15 @@ export async function GET(
       // Now get assets for this department by name
       const assetsHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       };
 
-      // Add user context headers if available
-      if (user) {
-        assetsHeaders['x-user-id'] = user.id;
-        assetsHeaders['x-user-name'] = user.name;
-        assetsHeaders['x-user-email'] = user.email;
-        assetsHeaders['x-user-department'] = user.department;
-        assetsHeaders['x-user-role'] = user.role;
-      }
+      // Add user context headers
+      assetsHeaders['x-user-id'] = user.id;
+      assetsHeaders['x-user-name'] = user.name;
+      assetsHeaders['x-user-email'] = user.email;
+      assetsHeaders['x-user-department'] = user.department;
+      assetsHeaders['x-user-role'] = user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician';
 
       const assetsUrl = `${SERVER_BASE_URL}/api/assets?department=${encodeURIComponent(departmentName)}`;
       const assetsResponse = await fetch(assetsUrl, {

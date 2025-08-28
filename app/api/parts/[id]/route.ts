@@ -99,6 +99,20 @@ export async function PUT(
 
     const body = await request.json();
 
+    // For super admin, allow department override from the payload
+    // For other users, enforce their own department
+    if (user.accessLevel !== 'super_admin') {
+      // Non-super admin users can only edit parts for their own department
+      if (body.department && body.department !== user.department) {
+        return NextResponse.json(
+          { success: false, message: 'You can only edit parts for your own department' },
+          { status: 403 }
+        );
+      }
+      // Ensure department is set to user's department for non-super admins
+      body.department = user.department;
+    }
+
     // Set user headers for backend authentication
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
