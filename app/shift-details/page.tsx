@@ -320,6 +320,8 @@ export default function ShiftDetailsPage() {
   // Extract shift details and pagination from API response
   const shiftDetails = shiftDetailsData?.data?.shiftDetails || []
   const pagination = shiftDetailsData?.data?.pagination
+  
+
 
   // Reset page when filters change
   useEffect(() => {
@@ -1292,6 +1294,8 @@ export default function ShiftDetailsPage() {
           </PaginationContent>
         </Pagination>
       )}
+      
+
 
       {/* Employee Shift History Dialog */}
       <EmployeeShiftHistoryDialog

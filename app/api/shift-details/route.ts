@@ -52,6 +52,8 @@ export async function GET(request: NextRequest) {
     const statusFilter = url.searchParams.get('status');
     const locationFilter = url.searchParams.get('location');
     const departmentFilter = url.searchParams.get('department');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '10');
 
     // Build query for MongoDB
     let query: any = {};
@@ -86,8 +88,16 @@ export async function GET(request: NextRequest) {
       query.location = { $regex: locationFilter, $options: 'i' };
     }
 
-    // Fetch shift details from MongoDB using Mongoose
-    const shiftDetails = await ShiftDetail.find(query).lean();
+    // Get total count for pagination
+    const totalCount = await ShiftDetail.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+    const skip = (page - 1) * limit;
+
+    // Fetch shift details from MongoDB using Mongoose with pagination
+    const shiftDetails = await ShiftDetail.find(query)
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
     // Transform data to match expected format
     const formattedShiftDetails = shiftDetails.map((shift: any) => ({
@@ -117,11 +127,11 @@ export async function GET(request: NextRequest) {
       data: {
         shiftDetails: formattedShiftDetails,
         pagination: {
-          currentPage: 1,
-          totalPages: 1,
-          totalCount: formattedShiftDetails.length,
-          hasNext: false,
-          hasPrevious: false,
+          currentPage: page,
+          totalPages: totalPages,
+          totalCount: totalCount,
+          hasNext: page < totalPages,
+          hasPrevious: page > 1,
         },
       },
       message: 'Shift details retrieved successfully from shiftdetails collection',
