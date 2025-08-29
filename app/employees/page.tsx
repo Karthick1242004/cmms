@@ -34,9 +34,20 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import { useEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from "@/hooks/use-employees-query"
-import { Employee } from "@/types/employee"
+import { Employee, EmployeeQueryParams, EmployeePagination } from "@/types/employee"
 import { toast } from "sonner"
 import { usePasswordGenerator } from "@/hooks/use-password-generator"
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Filter, X } from "lucide-react"
+import { useDebounce } from "@/hooks/use-debounce"
 
 export default function EmployeesPage() {
   const router = useRouter()
@@ -76,8 +87,6 @@ export default function EmployeesPage() {
 
   // TanStack Query hooks
   const { user: authUser } = useAuthStore()
-  const employeeParams = authUser?.accessLevel !== 'super_admin' ? { department: authUser?.department } : {}
-  const { data: employeesData, isLoading, error } = useEmployees(employeeParams)
   const createEmployeeMutation = useCreateEmployee()
   const updateEmployeeMutation = useUpdateEmployee()
   const deleteEmployeeMutation = useDeleteEmployee()
@@ -85,31 +94,166 @@ export default function EmployeesPage() {
   // Password generator hook
   const { generatePassword, validatePassword, passwordStrength } = usePasswordGenerator()
 
-  // Local search state
+  // Pagination and filtering state
+  const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
-
-  // Extract employees from API response
-  const employees = employeesData?.data?.employees || []
+  const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
+  const [selectedRole, setSelectedRole] = useState<string>("all")
+  const [showFilters, setShowFilters] = useState(false)
   
-  // Filter employees based on search term
-  const filteredEmployees = useMemo(() => {
-    if (!searchTerm.trim()) return employees
+  // Debounce search term to avoid too many API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500)
+
+  // Build query parameters for API
+  const queryParams: EmployeeQueryParams = useMemo(() => {
+    const params: EmployeeQueryParams = {
+      page: currentPage,
+      limit: 10, // Items per page
+    }
     
-    const term = searchTerm.toLowerCase()
-    return employees.filter((employee) => {
-      return (
-        employee.name.toLowerCase().includes(term) ||
-        employee.email.toLowerCase().includes(term) ||
-        employee.department.toLowerCase().includes(term) ||
-        employee.role.toLowerCase().includes(term) ||
-        employee.phone.includes(term)
-      )
-    })
-  }, [employees, searchTerm])
+    if (debouncedSearchTerm.trim()) {
+      params.search = debouncedSearchTerm.trim()
+    }
+    
+    if (selectedStatus !== "all") {
+      params.status = selectedStatus
+    }
+    
+    if (selectedDepartment !== "all") {
+      params.department = selectedDepartment
+    }
+    
+    if (selectedRole !== "all") {
+      params.role = selectedRole
+    }
+    
+    // For non-super admins, enforce department filtering
+    if (authUser?.accessLevel !== 'super_admin' && authUser?.department) {
+      params.department = authUser.department
+    }
+    
+    params.sortBy = 'name'
+    params.sortOrder = 'asc'
+    
+    return params
+  }, [currentPage, debouncedSearchTerm, selectedStatus, selectedDepartment, selectedRole, authUser])
+
+  // TanStack Query hooks with pagination
+  const { data: employeesData, isLoading, error } = useEmployees(queryParams)
+
+  // Extract employees and pagination from API response
+  const employees = employeesData?.data?.employees || []
+  const pagination: EmployeePagination | undefined = employeesData?.data?.pagination
+  
+  // Get unique roles from all employees for filter dropdown
+  const [availableRoles, setAvailableRoles] = useState<string[]>([])
+  
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearchTerm, selectedStatus, selectedDepartment, selectedRole])
 
   useEffect(() => {
     fetchDepartments()
+    fetchAvailableRoles()
   }, [])
+
+  // Fetch available roles for filter dropdown
+  const fetchAvailableRoles = async () => {
+    try {
+      const response = await fetch('/api/employees/stats')
+      const data = await response.json()
+      if (data.success && data.data.roleBreakdown) {
+        const roles = data.data.roleBreakdown.map((role: any) => role._id).filter(Boolean)
+        setAvailableRoles(roles)
+      }
+    } catch (error) {
+      console.error('Error fetching available roles:', error)
+    }
+  }
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm("")
+    setSelectedStatus("all")
+    setSelectedDepartment("all")
+    setSelectedRole("all")
+    setCurrentPage(1)
+  }
+
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm || selectedStatus !== "all" || selectedDepartment !== "all" || selectedRole !== "all"
+
+  // Pagination component
+  const renderPagination = () => {
+    if (!pagination || pagination.totalPages <= 1) return null
+
+    const pages = []
+    const totalPages = pagination.totalPages
+    const current = pagination.currentPage
+
+    // Always show first page
+    pages.push(1)
+    
+    // Add dots if there's a gap
+    if (current > 3) {
+      pages.push('...')
+    }
+    
+    // Add pages around current page
+    for (let i = Math.max(2, current - 1); i <= Math.min(totalPages - 1, current + 1); i++) {
+      if (!pages.includes(i)) {
+        pages.push(i)
+      }
+    }
+    
+    // Add dots if there's a gap
+    if (current < totalPages - 2) {
+      pages.push('...')
+    }
+    
+    // Always show last page
+    if (totalPages > 1 && !pages.includes(totalPages)) {
+      pages.push(totalPages)
+    }
+
+    return (
+      <Pagination className="mt-6">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious 
+              onClick={() => pagination.hasPrevious && setCurrentPage(current - 1)}
+              className={!pagination.hasPrevious ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+          
+          {pages.map((page, index) => (
+            <PaginationItem key={index}>
+              {page === '...' ? (
+                <PaginationEllipsis />
+              ) : (
+                <PaginationLink
+                  onClick={() => setCurrentPage(page as number)}
+                  isActive={page === current}
+                  className="cursor-pointer"
+                >
+                  {page}
+                </PaginationLink>
+              )}
+            </PaginationItem>
+          ))}
+          
+          <PaginationItem>
+            <PaginationNext 
+              onClick={() => pagination.hasNext && setCurrentPage(current + 1)}
+              className={!pagination.hasNext ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    )
+  }
 
   // Check if user can create employees
   const canCreateEmployees = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
@@ -662,16 +806,119 @@ export default function EmployeesPage() {
         </Dialog>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search employees..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        {/* Search and Filter Toggle */}
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search employees..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2"
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+            {hasActiveFilters && <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
+              {[searchTerm, selectedStatus !== "all", selectedDepartment !== "all", selectedRole !== "all"].filter(Boolean).length}
+            </span>}
+          </Button>
+          {hasActiveFilters && (
+            <Button variant="ghost" onClick={clearFilters} className="flex items-center gap-2">
+              <X className="h-4 w-4" />
+              Clear
+            </Button>
+          )}
         </div>
+
+        {/* Filter Section */}
+        {showFilters && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/30">
+            {/* Status Filter */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Status</Label>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="on-leave">On Leave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Department Filter - Only for super admin */}
+            {user?.accessLevel === 'super_admin' ? (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Department</Label>
+                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Department</Label>
+                <Input
+                  value={user?.department || ""}
+                  disabled
+                  className="bg-muted cursor-not-allowed"
+                />
+              </div>
+            )}
+
+            {/* Role Filter */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Role</Label>
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  {availableRoles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        {/* Results Summary */}
+        {pagination && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div>
+              Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalCount)} of {pagination.totalCount} employees
+            </div>
+            {hasActiveFilters && (
+              <div className="text-blue-600">
+                Filtered results
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="border rounded-lg">
@@ -696,14 +943,14 @@ export default function EmployeesPage() {
                   </div>
                 </TableCell>
               </TableRow>
-            ) : filteredEmployees.length === 0 ? (
+            ) : employees.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No employees found
+                  {hasActiveFilters ? "No employees found matching your filters" : "No employees found"}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredEmployees.map((employee) => (
+              employees.map((employee) => (
                 <TableRow key={employee.id}>
                   <TableCell>
                     <div className="flex items-center space-x-3">
@@ -783,6 +1030,9 @@ export default function EmployeesPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {renderPagination()}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

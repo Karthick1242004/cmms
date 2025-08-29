@@ -130,6 +130,25 @@ export interface EmployeeAnalytics {
   };
 }
 
+export interface EmployeeQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  department?: string;
+  role?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface EmployeePagination {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
 export interface EmployeesState {
   employees: Employee[]
   filteredEmployees: Employee[]

@@ -27,6 +27,16 @@ import { useLocations } from "@/hooks/use-locations"
 import { useToast } from "@/hooks/use-toast"
 import type { ShiftDetail } from "@/types/shift-detail"
 import { EmployeeShiftHistoryDialog } from "@/components/shift-details/employee-shift-history-dialog"
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Filter, X } from "lucide-react"
 
 // Remove hardcoded departments - will use API data instead
 const SHIFT_TYPES = [
@@ -43,23 +53,71 @@ export default function ShiftDetailsPage() {
   const isSuperAdmin = user?.accessLevel === 'super_admin'
   const canManageShiftDetails = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
 
-  // React Query for data fetching
-  // Build query params including department filter for non-super-admin users
+  // Pagination and filtering state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
+  const [selectedShiftType, setSelectedShiftType] = useState<string>("all")
+  const [selectedLocation, setSelectedLocation] = useState<string>("all")
+  const [showFilters, setShowFilters] = useState(false)
+  
+  // Debounce search term to avoid too many API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500)
+
+  // Build query parameters for API with pagination and filtering
   const queryParams = useMemo(() => {
-    const params = new URLSearchParams({ limit: '100' })
+    const params = new URLSearchParams()
+    
+    // Pagination
+    params.append('page', currentPage.toString())
+    params.append('limit', '10') // Items per page
+    
+    // Search
+    if (debouncedSearchTerm.trim()) {
+      params.append('search', debouncedSearchTerm.trim())
+    }
+    
+    // Filters
+    if (selectedStatus !== "all") {
+      params.append('status', selectedStatus)
+    }
+    
+    if (selectedDepartment !== "all") {
+      params.append('department', selectedDepartment)
+    }
+    
+    if (selectedShiftType !== "all") {
+      params.append('shiftType', selectedShiftType)
+    }
+    
+    if (selectedLocation !== "all") {
+      params.append('location', selectedLocation)
+    }
+    
+    // For non-super admins, enforce department filtering
     if (!isSuperAdmin && user?.department) {
       params.append('department', user.department)
     }
+    
+    // Sorting
+    params.append('sortBy', 'employeeName')
+    params.append('sortOrder', 'asc')
+    
     return params.toString()
-  }, [isSuperAdmin, user?.department])
-
-
+  }, [currentPage, debouncedSearchTerm, selectedStatus, selectedDepartment, selectedShiftType, selectedLocation, isSuperAdmin, user?.department])
 
   const { data: shiftDetailsData, isLoading, error } = useCommonQuery<{
     success: boolean;
     data: {
       shiftDetails: ShiftDetail[];
-      pagination: any;
+      pagination: {
+        currentPage: number;
+        totalPages: number;
+        totalCount: number;
+        hasNext: boolean;
+        hasPrevious: boolean;
+      };
     };
     message: string;
   }>(
@@ -68,7 +126,6 @@ export default function ShiftDetailsPage() {
   )
 
   // Local state for UI
-  const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [selectedShiftDetail, setSelectedShiftDetail] = useState<ShiftDetail | null>(null)
   
@@ -77,18 +134,10 @@ export default function ShiftDetailsPage() {
   const [historyEmployeeId, setHistoryEmployeeId] = useState<string | null>(null)
   const [historyEmployeeName, setHistoryEmployeeName] = useState<string>("")
 
-  // Filter state - initialize department filter based on user's department
-  const [filters, setFilters] = useState({
-    department: !isSuperAdmin && user?.department ? user.department : "all",
-    shiftType: "all",
-    status: "all",
-    location: "all",
-  })
-
 
 
   // Form state
-  const [selectedDepartment, setSelectedDepartment] = useState("")
+  const [formSelectedDepartment, setFormSelectedDepartment] = useState("")
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("")
   const [employeeName, setEmployeeName] = useState("")
   const [email, setEmail] = useState("")
@@ -103,8 +152,6 @@ export default function ShiftDetailsPage() {
   const [status, setStatus] = useState<"active" | "inactive" | "on-leave">("active")
   const [joinDate, setJoinDate] = useState("")
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 300)
-
   // Fetch departments for super_admin users
   const { data: departmentsData } = useDepartments()
   const departments = departmentsData?.data?.departments || []
@@ -116,16 +163,55 @@ export default function ShiftDetailsPage() {
   // Auto-select department for non-super_admin users
   useEffect(() => {
     if (!isSuperAdmin && user?.department) {
-      setSelectedDepartment(user.department)
+      setFormSelectedDepartment(user.department)
       setDepartment(user.department)
     }
   }, [isSuperAdmin, user?.department])
+  
+  // Handle department selection for super_admin (moved from later in file)
+  const handleDepartmentChange = (dept: string) => {
+    setFormSelectedDepartment(dept)
+    setDepartment(dept)
+    // Reset employee selection when department changes
+    setSelectedEmployeeId("")
+    setEmployeeName("")
+    setEmail("")
+    setPhone("")
+  }
 
-  // Fetch employees based on selected department
-  const { data: employeesData } = useEmployees({
-    department: isSuperAdmin ? selectedDepartment : user?.department,
-  })
-  const employees = employeesData?.data?.employees || []
+  // Fetch employees for form dropdown (all employees without pagination)
+  const employeeQueryParams = useMemo(() => {
+    const params = new URLSearchParams()
+    params.append('limit', '1000') // Get all employees for dropdown
+    params.append('page', '1')
+    
+    // Determine which department to fetch employees for
+    const targetDepartment = isSuperAdmin ? formSelectedDepartment : user?.department
+    
+    if (targetDepartment) {
+      params.append('department', targetDepartment)
+    }
+    
+    return params.toString()
+  }, [isSuperAdmin, formSelectedDepartment, user?.department])
+
+  const { data: formEmployeesData } = useCommonQuery<{
+    success: boolean;
+    data: {
+      employees: any[];
+      pagination: any;
+    };
+    message: string;
+  }>(
+    ['employees', 'form', formSelectedDepartment || '', user?.department || ''],
+    `/employees?${employeeQueryParams}`,
+    {
+      enabled: (isSuperAdmin && !!formSelectedDepartment) || (!isSuperAdmin && !!user?.department),
+      staleTime: 2 * 60 * 1000, // 2 minutes
+    }
+  )
+  
+  const employees = formEmployeesData?.data?.employees || []
 
   // React Query mutations with automatic invalidation
   const createMutation = useCreateMutation<
@@ -227,69 +313,34 @@ export default function ShiftDetailsPage() {
     }
   )
 
-  // Filter shift details based on search term and filters
-  const filteredShiftDetails = useMemo(() => {
-    const shiftDetails = shiftDetailsData?.data?.shiftDetails || []
-    
-    let filtered = shiftDetails
+  // Extract shift details and pagination from API response
+  const shiftDetails = shiftDetailsData?.data?.shiftDetails || []
+  const pagination = shiftDetailsData?.data?.pagination
 
-    // Apply search filter
-    if (debouncedSearchTerm.trim()) {
-      filtered = filtered.filter(
-        (shift) =>
-          shift.employeeName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          shift.email.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          shift.department.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          shift.role.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          shift.shiftType.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          shift.location.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          shift.supervisor.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-      )
-    }
-
-    // Apply filters
-    if (filters.department && filters.department !== "all") {
-      filtered = filtered.filter(shift => shift.department === filters.department)
-    }
-    if (filters.shiftType && filters.shiftType !== "all") {
-      filtered = filtered.filter(shift => shift.shiftType === filters.shiftType)
-    }
-    if (filters.status && filters.status !== "all") {
-      filtered = filtered.filter(shift => shift.status === filters.status)
-    }
-    if (filters.location && filters.location !== "all") {
-      filtered = filtered.filter(shift => shift.location === filters.location)
-    }
-    
-    return filtered
-  }, [shiftDetailsData?.data?.shiftDetails, debouncedSearchTerm, filters])
-
-  // Handle filter changes
-  const handleFilterChange = (filterKey: string, value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterKey]: value
-    }))
-  }
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearchTerm, selectedStatus, selectedDepartment, selectedShiftType, selectedLocation])
 
   // Clear all filters
   const clearFilters = () => {
-    setFilters({
-      department: !isSuperAdmin && user?.department ? user.department : "all",
-      shiftType: "all",
-      status: "all",
-      location: "all",
-    })
     setSearchTerm("")
+    setSelectedStatus("all")
+    setSelectedDepartment("all")
+    setSelectedShiftType("all")
+    setSelectedLocation("all")
+    setCurrentPage(1)
   }
 
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm || selectedStatus !== "all" || selectedDepartment !== "all" || selectedShiftType !== "all" || selectedLocation !== "all"
+
   // Get unique values for filter options
-  const shiftDetails = shiftDetailsData?.data?.shiftDetails || []
   const uniqueLocations = Array.from(new Set(shiftDetails.map(shift => shift.location))).filter(Boolean)
 
   useEffect(() => {
     if (selectedShiftDetail) {
-      setSelectedDepartment(selectedShiftDetail.department)
+      setFormSelectedDepartment(selectedShiftDetail.department)
       setSelectedEmployeeId(selectedShiftDetail.employeeId.toString())
       setEmployeeName(selectedShiftDetail.employeeName)
       setEmail(selectedShiftDetail.email)
@@ -312,7 +363,7 @@ export default function ShiftDetailsPage() {
   const resetForm = () => {
     // Only reset department selection if super_admin, otherwise keep user's department
     if (isSuperAdmin) {
-      setSelectedDepartment("")
+      setFormSelectedDepartment("")
     }
     setSelectedEmployeeId("")
     setEmployeeName("")
@@ -329,16 +380,7 @@ export default function ShiftDetailsPage() {
     setJoinDate("")
   }
 
-  // Handle department selection for super_admin
-  const handleDepartmentChange = (dept: string) => {
-    setSelectedDepartment(dept)
-    setDepartment(dept)
-    // Reset employee selection when department changes
-    setSelectedEmployeeId("")
-    setEmployeeName("")
-    setEmail("")
-    setPhone("")
-  }
+
 
   // Handle employee selection
   const handleEmployeeChange = (employeeId: string) => {
@@ -587,7 +629,7 @@ export default function ShiftDetailsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="selectedDepartment">Department *</Label>
-                      <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
+                      <Select value={formSelectedDepartment} onValueChange={handleDepartmentChange}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
@@ -605,17 +647,23 @@ export default function ShiftDetailsPage() {
                       <Select 
                         value={selectedEmployeeId} 
                         onValueChange={handleEmployeeChange}
-                        disabled={!selectedDepartment}
+                        disabled={!formSelectedDepartment}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={selectedDepartment ? "Select employee" : "Select department first"} />
+                          <SelectValue placeholder={formSelectedDepartment ? "Select employee" : "Select department first"} />
                         </SelectTrigger>
-                        <SelectContent>
-                          {employees.map((emp) => (
-                            <SelectItem key={emp.id} value={emp.employeeId || emp.id}>
-                              {emp.name} ({emp.role})
-                            </SelectItem>
-                          ))}
+                        <SelectContent className="max-h-[200px] overflow-y-auto">
+                          {employees.length === 0 ? (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                              {formSelectedDepartment ? "No employees found in this department" : "Select department first"}
+                            </div>
+                          ) : (
+                            employees.map((emp) => (
+                              <SelectItem key={emp.id} value={emp.employeeId || emp.id}>
+                                {emp.name} ({emp.role})
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -661,12 +709,18 @@ export default function ShiftDetailsPage() {
                       <SelectTrigger>
                         <SelectValue placeholder="Select employee from your department" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {employees.map((emp) => (
-                          <SelectItem key={emp.id} value={emp.employeeId || emp.id}>
-                            {emp.name} ({emp.role})
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="max-h-[200px] overflow-y-auto">
+                        {employees.length === 0 ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No employees found in your department
+                          </div>
+                        ) : (
+                          employees.map((emp) => (
+                            <SelectItem key={emp.id} value={emp.employeeId || emp.id}>
+                              {emp.name} ({emp.role})
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -821,6 +875,7 @@ export default function ShiftDetailsPage() {
 
       {/* Search and Filters */}
       <div className="space-y-4">
+        {/* Search and Filter Toggle */}
         <div className="flex items-center space-x-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -831,18 +886,33 @@ export default function ShiftDetailsPage() {
               className="pl-10"
             />
           </div>
-          <Button variant="outline" onClick={clearFilters}>
-            Clear Filters
+          <Button 
+            variant="outline" 
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2"
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+            {hasActiveFilters && <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
+              {[searchTerm, selectedStatus !== "all", selectedDepartment !== "all", selectedShiftType !== "all", selectedLocation !== "all"].filter(Boolean).length}
+            </span>}
           </Button>
+          {hasActiveFilters && (
+            <Button variant="ghost" onClick={clearFilters} className="flex items-center gap-2">
+              <X className="h-4 w-4" />
+              Clear
+            </Button>
+          )}
         </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Filter Section */}
+        {showFilters && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label>Department</Label>
             <Select 
-              value={filters.department} 
-              onValueChange={(value) => handleFilterChange("department", value)}
+              value={selectedDepartment} 
+              onValueChange={setSelectedDepartment}
               disabled={!isSuperAdmin}
             >
               <SelectTrigger>
@@ -874,7 +944,7 @@ export default function ShiftDetailsPage() {
 
           <div className="space-y-2">
             <Label>Shift Type</Label>
-            <Select value={filters.shiftType} onValueChange={(value) => handleFilterChange("shiftType", value)}>
+            <Select value={selectedShiftType} onValueChange={setSelectedShiftType}>
               <SelectTrigger>
                 <SelectValue placeholder="All shift types" />
               </SelectTrigger>
@@ -891,7 +961,7 @@ export default function ShiftDetailsPage() {
 
           <div className="space-y-2">
             <Label>Status</Label>
-            <Select value={filters.status} onValueChange={(value) => handleFilterChange("status", value)}>
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger>
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
@@ -904,29 +974,39 @@ export default function ShiftDetailsPage() {
             </Select>
           </div>
 
-          {/* <div className="space-y-2">
+          <div className="space-y-2">
             <Label>Location</Label>
-            <Select value={filters.location} onValueChange={(value) => handleFilterChange("location", value)}>
+            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
               <SelectTrigger>
                 <SelectValue placeholder="All locations" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All locations</SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.name}>
-                    {loc.name} ({loc.type})
+                {uniqueLocations.map((loc) => (
+                  <SelectItem key={loc} value={loc}>
+                    {loc}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div> */}
+          </div>
         </div>
+        )}
       </div>
 
-      {/* Results count */}
-      <div className="text-sm text-muted-foreground">
-        Showing {filteredShiftDetails.length} of {shiftDetailsData?.data?.shiftDetails?.length || 0} employees
-      </div>
+      {/* Results Summary */}
+      {pagination && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div>
+            Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalCount)} of {pagination.totalCount} shift details
+          </div>
+          {hasActiveFilters && (
+            <div className="text-blue-600">
+              Filtered results
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="border rounded-lg overflow-x-auto">
         <Table>
@@ -943,7 +1023,7 @@ export default function ShiftDetailsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredShiftDetails.map((shift) => (
+            {shiftDetails.map((shift) => (
               <TableRow key={shift.id} className="hover:bg-muted/50 transition-colors">
                 <TableCell>
                   <div className="flex items-center space-x-3">
@@ -1056,8 +1136,43 @@ export default function ShiftDetailsPage() {
           </TableBody>
         </Table>
       </div>
-      {filteredShiftDetails.length === 0 && !isLoading && (
-        <p className="text-center text-muted-foreground py-8">No shift details found matching your search and filters.</p>
+      {shiftDetails.length === 0 && !isLoading && (
+        <p className="text-center text-muted-foreground py-8">
+          {hasActiveFilters ? "No shift details found matching your filters" : "No shift details found"}
+        </p>
+      )}
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <Pagination className="mt-6">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious 
+                onClick={() => pagination.hasPrevious && setCurrentPage(pagination.currentPage - 1)}
+                className={!pagination.hasPrevious ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+            
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+              <PaginationItem key={page}>
+                <PaginationLink
+                  onClick={() => setCurrentPage(page)}
+                  isActive={page === pagination.currentPage}
+                  className="cursor-pointer"
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            
+            <PaginationItem>
+              <PaginationNext 
+                onClick={() => pagination.hasNext && setCurrentPage(pagination.currentPage + 1)}
+                className={!pagination.hasNext ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       )}
 
       {/* Employee Shift History Dialog */}
