@@ -63,6 +63,24 @@ export default function DepartmentsPage() {
   const { generatePassword } = usePasswordGenerator()
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  
+  // Helper function to check if code is available
+  const isCodeAvailable = (codeToCheck: string): boolean => {
+    if (!codeToCheck.trim()) return true;
+    return !departments.some(dept => 
+      dept.code.toLowerCase() === codeToCheck.toLowerCase() && 
+      (!editingDepartment || dept.id !== editingDepartment.id)
+    );
+  };
+  
+  // Helper function to check if name is available
+  const isNameAvailable = (nameToCheck: string): boolean => {
+    if (!nameToCheck.trim()) return true;
+    return !departments.some(dept => 
+      dept.name.toLowerCase() === nameToCheck.toLowerCase() && 
+      (!editingDepartment || dept.id !== editingDepartment.id)
+    );
+  };
 
   // Extract departments from API response
   const departments = departmentsData?.data?.departments || []
@@ -161,8 +179,27 @@ export default function DepartmentsPage() {
         break;
     }
     
-    // Real-time validation if field has been touched
-    if (touchedFields[fieldName]) {
+    // Real-time validation for code and name fields (always check duplicates)
+    if ((fieldName === 'code' || fieldName === 'name') && value.trim()) {
+      const formData: DepartmentFormData = {
+        name: fieldName === 'name' ? value : name,
+        code: fieldName === 'code' ? value : code,
+        description,
+        manager,
+        status,
+        managerEmail: !editingDepartment ? managerEmail : undefined,
+        managerPhone: !editingDepartment ? managerPhone : undefined,
+        managerPassword: !editingDepartment ? managerPassword : undefined,
+      };
+      const fullValidation = validateDepartmentForm(formData, !!editingDepartment, departments);
+      setValidationErrors(prev => ({
+        ...prev,
+        [fieldName]: fullValidation.errors[fieldName] || ''
+      }));
+    }
+    
+    // Real-time validation for other fields if they have been touched
+    if (touchedFields[fieldName] && fieldName !== 'code' && fieldName !== 'name') {
       const validation = validateField(fieldName, value);
       setValidationErrors(prev => ({
         ...prev,
@@ -189,7 +226,26 @@ export default function DepartmentsPage() {
     };
     
     const value = getValue();
-    const validation = validateField(fieldName, value);
+    let validation;
+    
+    // Special handling for code and name fields to check duplicates
+    if (fieldName === 'code' || fieldName === 'name') {
+      const formData: DepartmentFormData = {
+        name: fieldName === 'name' ? value : name,
+        code: fieldName === 'code' ? value : code,
+        description,
+        manager,
+        status,
+        managerEmail: !editingDepartment ? managerEmail : undefined,
+        managerPhone: !editingDepartment ? managerPhone : undefined,
+        managerPassword: !editingDepartment ? managerPassword : undefined,
+      };
+      const fullValidation = validateDepartmentForm(formData, !!editingDepartment, departments);
+      validation = { isValid: !fullValidation.errors[fieldName], error: fullValidation.errors[fieldName] };
+    } else {
+      validation = validateField(fieldName, value);
+    }
+    
     setValidationErrors(prev => ({
       ...prev,
       [fieldName]: validation.isValid ? '' : validation.error!
@@ -209,8 +265,8 @@ export default function DepartmentsPage() {
       managerPassword: !editingDepartment ? managerPassword : undefined,
     };
 
-    // Validate the form
-    const validation = validateDepartmentForm(formData, !!editingDepartment);
+    // Validate the form with existing departments to check for duplicates
+    const validation = validateDepartmentForm(formData, !!editingDepartment, departments);
     
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
@@ -259,9 +315,39 @@ export default function DepartmentsPage() {
       
       setDialogOpen(false)
       setEditingDepartment(null)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
-      toast.error(errorMessage)
+    } catch (error: any) {
+      // Handle specific backend validation errors
+      if (error?.response?.data?.message) {
+        const backendMessage = error.response.data.message;
+        
+        // Check if it's a duplicate code error from backend
+        if (backendMessage.toLowerCase().includes('code') && backendMessage.toLowerCase().includes('already exists')) {
+          setValidationErrors(prev => ({
+            ...prev,
+            code: 'Department code already exists'
+          }));
+          setTouchedFields(prev => ({ ...prev, code: true }));
+          toast.error('Department code already exists. Please choose a different code.');
+          return;
+        }
+        
+        // Check if it's a duplicate name error from backend
+        if (backendMessage.toLowerCase().includes('name') && backendMessage.toLowerCase().includes('already exists')) {
+          setValidationErrors(prev => ({
+            ...prev,
+            name: 'Department name already exists'
+          }));
+          setTouchedFields(prev => ({ ...prev, name: true }));
+          toast.error('Department name already exists. Please choose a different name.');
+          return;
+        }
+        
+        // Other backend errors
+        toast.error(backendMessage);
+      } else {
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+        toast.error(errorMessage);
+      }
     }
   }
 
@@ -359,17 +445,33 @@ export default function DepartmentsPage() {
                 <Label htmlFor="name" className="text-sm font-medium">
                   Name *
                 </Label>
-                <Input 
-                  id="name" 
-                  value={name} 
-                  onChange={(e) => handleFieldChange('name', e.target.value)}
-                  onBlur={() => handleFieldBlur('name')}
-                  className={validationErrors.name && touchedFields.name ? 'border-red-500' : ''}
-                  placeholder="Enter department name"
-                  disabled={isSubmitting}
-                />
+                <div className="relative">
+                  <Input 
+                    id="name" 
+                    value={name} 
+                    onChange={(e) => handleFieldChange('name', e.target.value)}
+                    onBlur={() => handleFieldBlur('name')}
+                    className={`${validationErrors.name && touchedFields.name ? 'border-red-500' : ''} ${
+                      name && touchedFields.name && !validationErrors.name ? 'border-green-500' : ''
+                    }`}
+                    placeholder="Enter department name"
+                    disabled={isSubmitting}
+                  />
+                  {name && touchedFields.name && !validationErrors.name && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {validationErrors.name && touchedFields.name && (
                   <p className="text-sm text-red-500">{validationErrors.name}</p>
+                )}
+                {name && touchedFields.name && !validationErrors.name && (
+                  <p className="text-sm text-green-600">✓ Name is available</p>
                 )}
               </div>
               
@@ -378,18 +480,34 @@ export default function DepartmentsPage() {
                   <Label htmlFor="code" className="text-sm font-medium">
                     Code *
                   </Label>
-                  <Input 
-                    id="code" 
-                    value={code} 
-                    onChange={(e) => handleFieldChange('code', e.target.value)}
-                    onBlur={() => handleFieldBlur('code')}
-                    className={validationErrors.code && touchedFields.code ? 'border-red-500' : ''}
-                    placeholder="e.g., IT, QA, PROD"
-                    maxLength={10}
-                    disabled={isSubmitting}
-                  />
+                  <div className="relative">
+                    <Input 
+                      id="code" 
+                      value={code} 
+                      onChange={(e) => handleFieldChange('code', e.target.value)}
+                      onBlur={() => handleFieldBlur('code')}
+                      className={`${validationErrors.code && touchedFields.code ? 'border-red-500' : ''} ${
+                        code && touchedFields.code && !validationErrors.code ? 'border-green-500' : ''
+                      }`}
+                      placeholder="e.g., IT, QA, PROD"
+                      maxLength={10}
+                      disabled={isSubmitting}
+                    />
+                    {code && touchedFields.code && !validationErrors.code && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   {validationErrors.code && touchedFields.code && (
                     <p className="text-sm text-red-500">{validationErrors.code}</p>
+                  )}
+                  {code && touchedFields.code && !validationErrors.code && (
+                    <p className="text-sm text-green-600">✓ Code is available</p>
                   )}
                 </div>
                 <div className="space-y-2">

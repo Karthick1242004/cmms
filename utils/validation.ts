@@ -210,7 +210,11 @@ export const validateEmployeeForm = (formData: EmployeeFormData, isEdit: boolean
 };
 
 // Department validation
-export const validateDepartmentForm = (formData: DepartmentFormData, isEdit: boolean = false): { isValid: boolean; errors: Record<string, string> } => {
+export const validateDepartmentForm = (
+  formData: DepartmentFormData, 
+  isEdit: boolean = false,
+  existingDepartments: Array<{ id: string; code: string; name: string }> = []
+): { isValid: boolean; errors: Record<string, string> } => {
   const errors: Record<string, string> = {};
   
   // Name validation
@@ -221,6 +225,15 @@ export const validateDepartmentForm = (formData: DepartmentFormData, isEdit: boo
     const lengthValidation = validateLength(formData.name, 'Department name', 2, 100);
     if (!lengthValidation.isValid) {
       errors.name = lengthValidation.error!;
+    } else {
+      // Check for duplicate name (case-insensitive)
+      const duplicateName = existingDepartments.find(
+        dept => dept.name.toLowerCase() === formData.name.toLowerCase() && 
+                (!isEdit || dept.id !== (formData as any).id)
+      );
+      if (duplicateName) {
+        errors.name = `Department name "${formData.name}" already exists`;
+      }
     }
   }
   
@@ -228,6 +241,15 @@ export const validateDepartmentForm = (formData: DepartmentFormData, isEdit: boo
   const codeValidation = validateCode(formData.code);
   if (!codeValidation.isValid) {
     errors.code = codeValidation.error!;
+  } else {
+    // Check for duplicate code (case-insensitive)
+    const duplicateCode = existingDepartments.find(
+      dept => dept.code.toLowerCase() === formData.code.toLowerCase() && 
+              (!isEdit || dept.id !== (formData as any).id)
+    );
+    if (duplicateCode) {
+      errors.code = `Department code "${formData.code}" already exists`;
+    }
   }
   
   // Description validation
