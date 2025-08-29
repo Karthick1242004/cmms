@@ -96,7 +96,7 @@ export async function GET(
       assetsHeaders['x-user-department'] = user.department;
       assetsHeaders['x-user-role'] = user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician';
 
-      const assetsUrl = `${SERVER_BASE_URL}/api/assets?department=${encodeURIComponent(department.name)}`;
+      const assetsUrl = `${SERVER_BASE_URL}/api/assets?department=${encodeURIComponent(department.name)}&limit=1000`;
       const assetsResponse = await fetch(assetsUrl, {
         method: 'GET',
         headers: assetsHeaders,
@@ -152,7 +152,7 @@ export async function GET(
       assetsHeaders['x-user-department'] = user.department;
       assetsHeaders['x-user-role'] = user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician';
 
-      const assetsUrl = `${SERVER_BASE_URL}/api/assets?department=${encodeURIComponent(departmentName)}`;
+      const assetsUrl = `${SERVER_BASE_URL}/api/assets?department=${encodeURIComponent(departmentName)}&limit=1000`;
       const assetsResponse = await fetch(assetsUrl, {
         method: 'GET',
         headers: assetsHeaders,

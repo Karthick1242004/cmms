@@ -8,7 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, User, Wrench, AlertCircle } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Calendar, Clock, MapPin, User, Wrench, AlertCircle, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { useDepartments } from '@/hooks/use-departments';
 import { useLocations } from '@/hooks/use-locations';
@@ -74,6 +77,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
   const [assets, setAssets] = useState<AssetOption[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
 
   // Load employees on component mount
   useEffect(() => {
@@ -86,7 +90,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
             id: emp.id,
             name: emp.name,
             department: emp.department,
-            jobTitle: emp.jobTitle,
+            role: emp.role,
           }));
           setEmployees(employeeOptions);
         }
@@ -155,7 +159,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
       });
     } else {
       // Reset form for new activity
-      const defaultFormData = {
+      const defaultFormData: DailyLogActivityFormData = {
         date: new Date().toISOString().split('T')[0],
         time: new Date().toTimeString().slice(0, 5),
         area: '',
@@ -411,35 +415,69 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
 
               <div className="space-y-2">
                 <Label htmlFor="asset">Asset *</Label>
-                <Select 
-                  value={formData.assetId} 
-                  onValueChange={handleAssetChange}
-                  disabled={!formData.departmentId || isLoadingAssets}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select asset..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoadingAssets ? (
-                      <SelectItem value="loading" disabled>
-                        <div className="flex items-center gap-2">
-                          <LoadingSpinner />
-                          Loading assets...
-                        </div>
-                      </SelectItem>
-                    ) : assets.length === 0 ? (
-                      <SelectItem value="no-assets" disabled>
-                        No assets found for this department
-                      </SelectItem>
-                    ) : (
-                      assets.map((asset) => (
-                        <SelectItem key={asset._id} value={asset._id}>
-                          {asset.assetName} ({asset.category})
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Input
+                    value={formData.assetName || ""}
+                    placeholder={formData.departmentId ? "Type asset name or click to search..." : "Select department first"}
+                    disabled={!formData.departmentId}
+                    readOnly
+                    className="cursor-pointer"
+                    onClick={() => formData.departmentId && setShowAssetDropdown(true)}
+                  />
+                  {formData.departmentId && assets.length > 0 && (
+                    <Popover open={showAssetDropdown} onOpenChange={setShowAssetDropdown}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                          type="button"
+                          onClick={() => setShowAssetDropdown(true)}
+                        >
+                          <Wrench className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="end">
+                        <Command>
+                          <CommandInput placeholder="Search assets..." />
+                          <CommandEmpty>
+                            {assets.length === 0 ? "No assets found for this department" : "No assets match your search."}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            <CommandList>
+                              {assets.map((asset) => (
+                                <CommandItem
+                                  key={asset._id}
+                                  value={asset.assetName}
+                                  onSelect={() => {
+                                    handleAssetChange(asset._id);
+                                    setShowAssetDropdown(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formData.assetId === asset._id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{asset.assetName}</span>
+                                    <span className="text-xs text-muted-foreground">{asset.category} • {asset.condition}</span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandList>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+                {formData.departmentId && assets.length === 0 && !isLoadingAssets && (
+                  <p className="text-xs text-muted-foreground">
+                    No assets found for this department
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

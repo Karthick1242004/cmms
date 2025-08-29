@@ -193,7 +193,7 @@ export interface EmployeeOption {
   id: string;
   name: string;
   department: string;
-  jobTitle?: string;
+  role?: string;
 }
 
 export interface DepartmentOption {
