@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, MapPin, Building, Loader2, RefreshCw } from "lucide-react"
+import { Plus, Search, Edit, Trash2, MapPin, Building, Loader2, RefreshCw, Filter, X } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -23,6 +23,7 @@ import { toast } from "sonner"
 import { useAuthStore } from "@/stores/auth-store"
 import { useDepartments } from "@/hooks/use-departments"
 import { validateLocationForm, validateField, type LocationFormData } from "@/utils/validation"
+import { useDebounce } from "@/hooks/use-debounce"
 
 interface Location {
   id?: string
@@ -62,6 +63,15 @@ export default function LocationsPage() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
   const [isUpdatingAssetCounts, setIsUpdatingAssetCounts] = useState(false)
+  
+  // Filter states
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("")
+  const [selectedType, setSelectedType] = useState<string>("")
+  const [selectedStatus, setSelectedStatus] = useState<string>("")
+  const [selectedParentLocation, setSelectedParentLocation] = useState<string>("")
+  const [assetCountRange, setAssetCountRange] = useState<string>("")
+  const [showFilters, setShowFilters] = useState(false)
+  
   const [formData, setFormData] = useState({
     name: "",
     code: "",
@@ -75,6 +85,9 @@ export default function LocationsPage() {
   // Fetch departments for dropdown
   const { data: departmentsData } = useDepartments()
   const departments = departmentsData?.data?.departments || []
+
+  // Debounced search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   // Fetch locations from API
   const fetchLocations = async () => {
@@ -132,14 +145,114 @@ export default function LocationsPage() {
     }
   }, [isSuperAdmin])
 
-  const filteredLocations = locations
-    .filter(location => location != null) // Filter out null/undefined locations
-    .filter((location) =>
-      location.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      location.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      location.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      location.description.toLowerCase().includes(searchTerm.toLowerCase()),
+  // Get unique values for filter options
+  const uniqueTypes = useMemo(() => {
+    const types = locations
+      .filter(location => location != null)
+      .map(location => location.type)
+      .filter((type, index, self) => self.indexOf(type) === index)
+      .sort()
+    return types
+  }, [locations])
+
+  const uniqueParentLocations = useMemo(() => {
+    const parentLocations = locations
+      .filter(location => location != null && location.parentLocation)
+      .map(location => location.parentLocation)
+      .filter((parent, index, self) => self.indexOf(parent) === index)
+      .sort()
+    return parentLocations
+  }, [locations])
+
+  // Apply all filters
+  const filteredLocations = useMemo(() => {
+    return locations
+      .filter(location => location != null) // Filter out null/undefined locations
+      .filter((location) => {
+        // Search filter
+        if (debouncedSearchTerm) {
+          const searchLower = debouncedSearchTerm.toLowerCase()
+          const matchesSearch = 
+            location.name.toLowerCase().includes(searchLower) ||
+            location.code.toLowerCase().includes(searchLower) ||
+            location.type.toLowerCase().includes(searchLower) ||
+            location.description.toLowerCase().includes(searchLower) ||
+            location.address.toLowerCase().includes(searchLower)
+          if (!matchesSearch) return false
+        }
+
+        // Department filter
+        if (selectedDepartment && location.department !== selectedDepartment) {
+          return false
+        }
+
+        // Type filter
+        if (selectedType && location.type !== selectedType) {
+          return false
+        }
+
+        // Status filter
+        if (selectedStatus && location.status !== selectedStatus) {
+          return false
+        }
+
+        // Parent location filter
+        if (selectedParentLocation) {
+          if (selectedParentLocation === "none" && location.parentLocation) {
+            return false
+          }
+          if (selectedParentLocation !== "none" && location.parentLocation !== selectedParentLocation) {
+            return false
+          }
+        }
+
+        // Asset count range filter
+        if (assetCountRange) {
+          const count = location.assetCount
+          switch (assetCountRange) {
+            case "0":
+              if (count !== 0) return false
+              break
+            case "1-5":
+              if (count < 1 || count > 5) return false
+              break
+            case "6-10":
+              if (count < 6 || count > 10) return false
+              break
+            case "11-20":
+              if (count < 11 || count > 20) return false
+              break
+            case "20+":
+              if (count <= 20) return false
+              break
+          }
+        }
+
+        return true
+      })
+  }, [locations, debouncedSearchTerm, selectedDepartment, selectedType, selectedStatus, selectedParentLocation, assetCountRange])
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return !!(
+      debouncedSearchTerm ||
+      selectedDepartment ||
+      selectedType ||
+      selectedStatus ||
+      selectedParentLocation ||
+      assetCountRange
     )
+  }, [debouncedSearchTerm, selectedDepartment, selectedType, selectedStatus, selectedParentLocation, assetCountRange])
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm("")
+    setSelectedDepartment("")
+    setSelectedType("")
+    setSelectedStatus("")
+    setSelectedParentLocation("")
+    setAssetCountRange("")
+  }
 
   const resetForm = () => {
     setFormData({
@@ -594,16 +707,177 @@ export default function LocationsPage() {
         </div>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search locations..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      {/* Search and Filters Section */}
+      <div className="space-y-4">
+        {/* Search Bar */}
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search locations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2"
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+            {hasActiveFilters && (
+              <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 text-xs">
+                {Object.values({
+                  search: debouncedSearchTerm,
+                  department: selectedDepartment,
+                  type: selectedType,
+                  status: selectedStatus,
+                  parentLocation: selectedParentLocation,
+                  assetCount: assetCountRange
+                }).filter(Boolean).length}
+              </Badge>
+            )}
+          </Button>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Clear
+            </Button>
+          )}
         </div>
+
+        {/* Results Summary */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            Showing {filteredLocations.length} of {locations.length} locations
+            {hasActiveFilters && " (filtered)"}
+          </span>
+        </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="border rounded-lg p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">Filters</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="text-xs"
+              >
+                Clear all
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Department Filter */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Department</Label>
+                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      All departments
+                    </div>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Type Filter */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Type</Label>
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      All types
+                    </div>
+                    {uniqueTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Status</Label>
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      All statuses
+                    </div>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Parent Location Filter */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Parent Location</Label>
+                <Select value={selectedParentLocation} onValueChange={setSelectedParentLocation}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All parent locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      All parent locations
+                    </div>
+                    <SelectItem value="none">No parent location</SelectItem>
+                    {uniqueParentLocations.map((parent) => (
+                      <SelectItem key={parent} value={parent}>
+                        {parent}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Asset Count Range Filter */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Asset Count</Label>
+                <Select value={assetCountRange} onValueChange={setAssetCountRange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All asset counts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      All asset counts
+                    </div>
+                    <SelectItem value="0">0 assets</SelectItem>
+                    <SelectItem value="1-5">1-5 assets</SelectItem>
+                    <SelectItem value="6-10">6-10 assets</SelectItem>
+                    <SelectItem value="11-20">11-20 assets</SelectItem>
+                    <SelectItem value="20+">20+ assets</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="border rounded-lg">
@@ -623,11 +897,20 @@ export default function LocationsPage() {
           <TableBody>
             {filteredLocations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canEdit ? 7 : 6} className="text-center py-8">
+                <TableCell colSpan={canEdit ? 8 : 7} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-2">
                     <MapPin className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-muted-foreground">No locations found</p>
-                    <p className="text-sm text-muted-foreground">Create your first location to get started</p>
+                    <p className="text-muted-foreground">
+                      {hasActiveFilters ? 'No locations match your filters' : 'No locations found'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {hasActiveFilters ? 'Try adjusting your filters or search terms' : 'Create your first location to get started'}
+                    </p>
+                    {hasActiveFilters && (
+                      <Button variant="outline" size="sm" onClick={clearFilters}>
+                        Clear filters
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
