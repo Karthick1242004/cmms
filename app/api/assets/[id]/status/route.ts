@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 
-const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'https://cmms-dashboard.vercel.app';
+const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 // Valid asset status values
 const VALID_STATUSES = ['operational', 'maintenance', 'out-of-service', 'available', 'in stock', 'new'] as const;
@@ -34,11 +34,24 @@ export async function PATCH(
       );
     }
 
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     // First, get the existing asset to check permissions
     const existingAssetResponse = await fetch(`${SERVER_BASE_URL}/api/assets/${id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
     });
 
@@ -81,9 +94,12 @@ export async function PATCH(
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Name': user.name,
-        'X-User-Department': user.department,
-        'X-User-Access-Level': user.accessLevel,
+        'Authorization': `Bearer ${token}`,
+        'x-user-id': user.id,
+        'x-user-name': user.name,
+        'x-user-email': user.email,
+        'x-user-department': user.department,
+        'x-user-role': user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician',
       },
       body: JSON.stringify(updatePayload),
     });
