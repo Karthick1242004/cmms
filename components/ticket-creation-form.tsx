@@ -150,7 +150,7 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
     }))
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (retryCount = 0) => {
     // Validate required fields
     const requiredFields = [
       { field: formData.subject, name: 'Subject' },
@@ -221,11 +221,37 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
         toast.success(`Ticket created successfully! Ticket ID: ${result.data.ticketId}`)
         onSuccess?.()
       } else {
-        throw new Error(result.message || 'Failed to create ticket')
+        // Handle specific error types
+        if (result.error === 'DUPLICATE_TICKET_ID') {
+          if (retryCount < 3) {
+            // Retry after a short delay for duplicate ticket ID errors
+            toast.error('Ticket ID conflict detected. Retrying...')
+            setTimeout(() => {
+              handleSubmit(retryCount + 1)
+            }, 1000)
+            return
+          } else {
+            toast.error('Ticket ID conflict after multiple attempts. Please try again later.')
+          }
+        } else if (result.error === 'VALIDATION_ERROR') {
+          toast.error(result.message || 'Please check your input data.')
+        } else {
+          throw new Error(result.message || 'Failed to create ticket')
+        }
       }
     } catch (error) {
       console.error('Error creating ticket:', error)
-      toast.error('Failed to create ticket. Please try again.')
+      
+      // Check if it's a network error or other type
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          toast.error('Network error. Please check your connection and try again.')
+        } else {
+          toast.error(error.message || 'Failed to create ticket. Please try again.')
+        }
+      } else {
+        toast.error('Failed to create ticket. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }

@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose'
+import Counter from './Counter'
 
 export interface ITicket extends Document {
   ticketId: string // Auto-generated unique ticket ID like TKT-2025-000001
@@ -99,20 +100,22 @@ const TicketSchema = new Schema<ITicket>({
   },
   category: {
     type: String,
+    enum: ['service', 'maintenance', 'incident', 'breakdown', 'general'],
     required: true,
     lowercase: true
   },
-  
-  // Date and time
   loggedDateTime: {
     type: Date,
     required: true,
     default: Date.now
   },
-  ticketCloseDate: Date,
-  totalTime: Number,
-  
-  // User information
+  ticketCloseDate: {
+    type: Date
+  },
+  totalTime: {
+    type: Number,
+    min: 0
+  },
   loggedBy: {
     type: String,
     required: true,
@@ -127,8 +130,6 @@ const TicketSchema = new Schema<ITicket>({
     type: String,
     trim: true
   },
-  
-  // Company and location
   company: {
     type: String,
     required: true,
@@ -149,21 +150,15 @@ const TicketSchema = new Schema<ITicket>({
     required: true,
     trim: true
   },
-  
-  // Equipment
   equipmentId: {
     type: String,
     trim: true
   },
-  
-  // Communication
   reportedVia: {
     type: String,
     enum: ['Phone', 'Email', 'In-Person', 'Mobile App', 'Web Portal'],
-    required: true
+    default: 'Web Portal'
   },
-  
-  // Report Type
   reportType: {
     service: {
       type: Boolean,
@@ -182,14 +177,10 @@ const TicketSchema = new Schema<ITicket>({
       default: false
     }
   },
-  
-  // Content
   solution: {
     type: String,
     trim: true
   },
-  
-  // Access control
   isOpenTicket: {
     type: Boolean,
     default: false
@@ -259,18 +250,26 @@ TicketSchema.set('toJSON', {
 })
 
 // Generate ticketId before validation so 'required' validation passes
+// FIXED: Use atomic counter to prevent race conditions and duplicate IDs
 TicketSchema.pre('validate', async function (next) {
   try {
     if (this.isNew && !this.ticketId) {
       const year = new Date().getFullYear()
-      const Model = this.constructor as mongoose.Model<any>
-      const count = await Model.countDocuments({
-        createdAt: {
-          $gte: new Date(`${year}-01-01T00:00:00.000Z`),
-          $lt: new Date(`${year + 1}-01-01T00:00:00.000Z`),
-        },
-      })
-      this.ticketId = `TKT-${year}-${String(count + 1).padStart(6, '0')}`
+      
+      // Use separate Counter model to atomically get the next sequence number
+      // This prevents race conditions when multiple tickets are created simultaneously
+      const result = await Counter.findOneAndUpdate(
+        { _id: `ticket_${year}` }, // Use year-specific counter
+        { $inc: { sequence: 1 } }, // Increment the sequence
+        { 
+          upsert: true, // Create if doesn't exist
+          new: true, // Return the updated document
+          setDefaultsOnInsert: true // Set defaults on insert
+        }
+      )
+      
+      // Generate ticketId with the sequence number
+      this.ticketId = `TKT-${year}-${String(result.sequence).padStart(6, '0')}`
     }
     next()
   } catch (err) {

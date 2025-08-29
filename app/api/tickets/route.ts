@@ -270,8 +270,41 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating ticket:', error);
+    
+    // Handle specific MongoDB errors
+    if (error instanceof Error) {
+      // Check for duplicate key error (ticketId already exists)
+      if (error.message.includes('E11000') && error.message.includes('ticketId')) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'Ticket ID conflict detected. Please try again.',
+            error: 'DUPLICATE_TICKET_ID'
+          },
+          { status: 409 }
+        );
+      }
+      
+      // Check for validation errors
+      if (error.name === 'ValidationError') {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'Validation error: Please check your input data.',
+            error: 'VALIDATION_ERROR'
+          },
+          { status: 400 }
+        );
+      }
+    }
+    
+    // Generic error response
     return NextResponse.json(
-      { success: false, message: 'Internal server error while creating ticket' },
+      { 
+        success: false, 
+        message: 'Internal server error while creating ticket. Please try again.',
+        error: 'INTERNAL_ERROR'
+      },
       { status: 500 }
     );
   }
