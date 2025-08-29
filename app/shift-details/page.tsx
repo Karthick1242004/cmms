@@ -374,9 +374,7 @@ export default function ShiftDetailsPage() {
     setEmail("")
     setPhone("")
     setDepartment(isSuperAdmin ? "" : user?.department || "")
-    setShiftType("day")
-    setShiftStartTime("")
-    setShiftEndTime("")
+    handleShiftTypeChange("day") // This will set shift type and auto-fill times
     setWorkDays([])
     setSupervisor("")
     setLocation("")
@@ -399,6 +397,28 @@ export default function ShiftDetailsPage() {
       // Auto-map supervisor based on role hierarchy
       const supervisorName = determineSupervisor(selectedEmployee, employees)
       setSupervisor(supervisorName)
+    }
+  }
+
+  // Handle shift type change with automatic time filling
+  const handleShiftTypeChange = (value: "day" | "night" | "rotating" | "on-call") => {
+    setShiftType(value)
+    
+    // Auto-fill time ranges based on shift type
+    if (value === "day") {
+      setShiftStartTime("09:00") // 9:00 AM
+      setShiftEndTime("18:00")   // 6:00 PM
+    } else if (value === "night") {
+      setShiftStartTime("21:00") // 9:00 PM
+      setShiftEndTime("06:00")   // 6:00 AM
+    } else if (value === "rotating") {
+      // For rotating shifts, set a default but allow user to customize
+      setShiftStartTime("08:00") // 8:00 AM
+      setShiftEndTime("16:00")   // 4:00 PM
+    } else if (value === "on-call") {
+      // For on-call, set 24-hour availability
+      setShiftStartTime("00:00") // 12:00 AM
+      setShiftEndTime("23:59")   // 11:59 PM
     }
   }
 
@@ -870,7 +890,7 @@ export default function ShiftDetailsPage() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="shiftType">Shift Type</Label>
-                  <Select value={shiftType} onValueChange={(value: any) => setShiftType(value)}>
+                  <Select value={shiftType} onValueChange={(value: any) => handleShiftTypeChange(value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select shift type" />
                     </SelectTrigger>
@@ -882,6 +902,9 @@ export default function ShiftDetailsPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Selecting a shift type will auto-fill the time range.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="shiftStartTime">Start Time *</Label>
@@ -891,6 +914,9 @@ export default function ShiftDetailsPage() {
                     value={shiftStartTime}
                     onChange={(e) => setShiftStartTime(e.target.value)} 
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Auto-filled based on shift type. You can edit if needed.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="shiftEndTime">End Time *</Label>
@@ -900,6 +926,9 @@ export default function ShiftDetailsPage() {
                     value={shiftEndTime}
                     onChange={(e) => setShiftEndTime(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Auto-filled based on shift type. You can edit if needed.
+                  </p>
                 </div>
               </div>
 
