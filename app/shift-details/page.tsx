@@ -15,9 +15,12 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, Search, Edit, Trash2, MoreVertical, Clock, Users, MapPin, Phone, Mail } from "lucide-react"
+import { Plus, Search, Edit, Trash2, MoreVertical, Clock, Users, MapPin, Phone, Mail, Check } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth-store"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useCommonQuery, useCreateMutation, useUpdateMutation, useDeleteMutation, queryKeys } from "@/hooks/use-query"
@@ -151,6 +154,7 @@ export default function ShiftDetailsPage() {
   const [location, setLocation] = useState("")
   const [status, setStatus] = useState<"active" | "inactive" | "on-leave">("active")
   const [joinDate, setJoinDate] = useState("")
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false)
 
   // Fetch departments for super_admin users
   const { data: departmentsData } = useDepartments()
@@ -644,28 +648,69 @@ export default function ShiftDetailsPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="selectedEmployee">Employee *</Label>
-                      <Select 
-                        value={selectedEmployeeId} 
-                        onValueChange={handleEmployeeChange}
-                        disabled={!formSelectedDepartment}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={formSelectedDepartment ? "Select employee" : "Select department first"} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[200px] overflow-y-auto">
-                          {employees.length === 0 ? (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                              {formSelectedDepartment ? "No employees found in this department" : "Select department first"}
-                            </div>
-                          ) : (
-                            employees.map((emp) => (
-                              <SelectItem key={emp.id} value={emp.employeeId || emp.id}>
-                                {emp.name} ({emp.role})
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <div className="relative">
+                        <Input
+                          value={employeeName || ""}
+                          placeholder={formSelectedDepartment ? "Search employee" : "Select department first"}
+                          disabled={!formSelectedDepartment}
+                          readOnly
+                          className="cursor-pointer"
+                          onClick={() => formSelectedDepartment && setShowEmployeeDropdown(true)}
+                        />
+                        {formSelectedDepartment && employees.length > 0 && (
+                          <Popover open={showEmployeeDropdown} onOpenChange={setShowEmployeeDropdown}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                                type="button"
+                                onClick={() => setShowEmployeeDropdown(true)}
+                              >
+                                <Users className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="end">
+                              <Command>
+                                <CommandInput placeholder="Search employees..." />
+                                <CommandEmpty>
+                                  {employees.length === 0 ? "No employees found in this department" : "No employees match your search."}
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  <CommandList>
+                                    {employees.map((emp) => (
+                                      <CommandItem
+                                        key={emp.id}
+                                        value={emp.name}
+                                        onSelect={() => {
+                                          handleEmployeeChange(emp.employeeId || emp.id);
+                                          setShowEmployeeDropdown(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            selectedEmployeeId === (emp.employeeId || emp.id) ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <div className="flex flex-col">
+                                          <span>{emp.name}</span>
+                                          <span className="text-xs text-muted-foreground">{emp.role} - {emp.email}</span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandList>
+                                </CommandGroup>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </div>
+                      {formSelectedDepartment && employees.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          No employees found in this department
+                        </p>
+                      )}
                     </div>
                   </div>
                   
@@ -705,24 +750,68 @@ export default function ShiftDetailsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="selectedEmployee">Employee *</Label>
-                    <Select value={selectedEmployeeId} onValueChange={handleEmployeeChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select employee from your department" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[200px] overflow-y-auto">
-                        {employees.length === 0 ? (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                            No employees found in your department
-                          </div>
-                        ) : (
-                          employees.map((emp) => (
-                            <SelectItem key={emp.id} value={emp.employeeId || emp.id}>
-                              {emp.name} ({emp.role})
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <div className="relative">
+                      <Input
+                        value={employeeName || ""}
+                        placeholder="Type employee name or click to search..."
+                        readOnly
+                        className="cursor-pointer"
+                        onClick={() => setShowEmployeeDropdown(true)}
+                      />
+                      {employees.length > 0 && (
+                        <Popover open={showEmployeeDropdown} onOpenChange={setShowEmployeeDropdown}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                              type="button"
+                              onClick={() => setShowEmployeeDropdown(true)}
+                            >
+                              <Users className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="end">
+                            <Command>
+                              <CommandInput placeholder="Search employees..." />
+                              <CommandEmpty>
+                                {employees.length === 0 ? "No employees found in your department" : "No employees match your search."}
+                              </CommandEmpty>
+                              <CommandGroup>
+                                <CommandList>
+                                  {employees.map((emp) => (
+                                    <CommandItem
+                                      key={emp.id}
+                                      value={emp.name}
+                                      onSelect={() => {
+                                        handleEmployeeChange(emp.employeeId || emp.id);
+                                        setShowEmployeeDropdown(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          selectedEmployeeId === (emp.employeeId || emp.id) ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span>{emp.name}</span>
+                                        <span className="text-xs text-muted-foreground">{emp.role} - {emp.email}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandList>
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                    </div>
+                    {employees.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        No employees found in your department
+                      </p>
+                    )}
                   </div>
                   
                   {/* Display selected employee details */}
