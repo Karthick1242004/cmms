@@ -681,7 +681,7 @@ export default function LocationsPage() {
                     onChange={(e) => handleFieldChange("description", e.target.value)}
                     onBlur={() => handleFieldBlur("description")}
                     className={validationErrors.description && touchedFields.description ? 'border-red-500' : ''}
-                    placeholder="Optional: Describe the location (min 10 characters if provided)"
+                    placeholder="Describe the location (min 10 characters)"
                   />
                   {validationErrors.description && touchedFields.description && (
                     <p className="text-sm text-red-500 mt-1">{validationErrors.description}</p>
