@@ -11,6 +11,8 @@ import { departmentsApi } from "@/lib/departments-api"
 import type { Department } from "@/types/department"
 import type { Location } from "@/types/location"
 import { uploadToCloudinary } from "@/lib/cloudinary-config"
+import { syncAssetBOMToParts } from "@/lib/asset-part-sync"
+import type { AssetPartSyncData } from "@/lib/asset-part-sync"
 
 // Import split components
 import type { AssetFormData, AssetFormErrors, AssetCreationFormProps } from "./asset-creation-form/types"
@@ -364,8 +366,42 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
       console.log('QR Code URL:', cleanedAssetData.qrCodeSrc)
       console.log('Full asset data:', JSON.stringify(cleanedAssetData, null, 2))
 
-      await addAsset(cleanedAssetData as any)
+      const createdAsset = await addAsset(cleanedAssetData as any)
       toast.success('Asset created successfully!')
+      
+      // Sync asset BOM to parts if there are parts in the BOM
+      if (formData.partsBOM && formData.partsBOM.length > 0) {
+        try {
+          console.log('[ASSET SYNC] Starting BOM sync for newly created asset');
+          
+          // Get auth token
+          const token = localStorage.getItem('auth-token');
+          if (token) {
+            const syncData: AssetPartSyncData = {
+              assetId: createdAsset?.id || 'unknown',
+              assetName: formData.assetName,
+              department: formData.department,
+              partsBOM: formData.partsBOM
+            };
+
+            const syncResult = await syncAssetBOMToParts(syncData, token);
+            
+            if (syncResult.success) {
+              toast.success(`Asset created and ${syncResult.syncedItems} parts synced successfully!`);
+              console.log('[ASSET SYNC] BOM sync completed:', syncResult.message);
+            } else {
+              toast.warning(`Asset created but BOM sync had issues: ${syncResult.message}`);
+              console.warn('[ASSET SYNC] BOM sync issues:', syncResult.errors);
+            }
+          } else {
+            console.warn('[ASSET SYNC] No auth token available for sync');
+          }
+        } catch (syncError) {
+          console.error('[ASSET SYNC] Error during BOM sync:', syncError);
+          toast.warning('Asset created but parts sync failed. You can manually sync later.');
+        }
+      }
+      
       onSuccess?.()
         } catch (error: any) {
       console.error('Error creating asset:', error)

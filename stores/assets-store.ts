@@ -72,6 +72,9 @@ export const useAssetsStore = create<AssetsState>()(
               
               // Update location asset counts in the background
               updateLocationAssetCounts()
+              
+              // Return the transformed asset data for sync operations
+              return transformedAsset
             } else {
               // Throw error if API response indicates failure
               throw new Error(response.error || response.message || 'Failed to create asset')

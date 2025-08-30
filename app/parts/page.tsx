@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History } from "lucide-react"
+import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -22,6 +22,8 @@ import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { useAuthStore } from "@/stores/auth-store"
 import { PartsInventoryReport } from "@/components/parts/parts-inventory-report"
 import { InventoryHistoryDialog } from "@/components/parts/inventory-history-dialog"
+import { syncPartLinksToAssetBOM, syncPartDeletion } from "@/lib/asset-part-sync"
+import type { PartAssetSyncData, PartDeletionSyncData } from "@/lib/asset-part-sync"
 
 // Extracted form to prevent re-mount on every parent render (fixes input focus loss)
 function PartFormStandalone({
@@ -56,6 +58,9 @@ function PartFormStandalone({
   const [selectedAssets, setSelectedAssets] = useState<Array<{ assetId: string; assetName: string; assetDepartment: string; quantityInAsset: number }>>(
     formData.linkedAssets || []
   )
+  const [assetSearchTerm, setAssetSearchTerm] = useState("")
+  const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false)
+  const [filteredAssets, setFilteredAssets] = useState<Array<{ id: string; name: string; department: string }>>([])
 
   // Update selectedAssets when formData.linkedAssets changes (for edit mode)
   useEffect(() => {
@@ -64,10 +69,19 @@ function PartFormStandalone({
     }
   }, [formData.linkedAssets])
 
-  // Filter assets based on selected department
-  const departmentAssets = availableAssets.filter(asset => 
-    asset.department === (formData.department || currentUserDepartment)
-  )
+  // Filter assets based on selected department and search term
+  useEffect(() => {
+    const departmentAssets = availableAssets.filter(asset => 
+      asset.department === (formData.department || currentUserDepartment)
+    )
+    
+    const searchFiltered = departmentAssets.filter(asset =>
+      asset.name.toLowerCase().includes(assetSearchTerm.toLowerCase()) ||
+      asset.id.toLowerCase().includes(assetSearchTerm.toLowerCase())
+    )
+    
+    setFilteredAssets(searchFiltered)
+  }, [availableAssets, formData.department, currentUserDepartment, assetSearchTerm])
 
   const handleAddNewCategory = () => {
     if (newCategoryName.trim()) {
@@ -107,6 +121,15 @@ function PartFormStandalone({
     )
     setSelectedAssets(updatedAssets)
     onInputChange('linkedAssets', updatedAssets)
+  }
+
+  const isAssetSelected = (assetId: string) => {
+    return selectedAssets.some(a => a.assetId === assetId)
+  }
+
+  const getAssetQuantity = (assetId: string) => {
+    const asset = selectedAssets.find(a => a.assetId === assetId)
+    return asset?.quantityInAsset || 1
   }
 
   return (
@@ -159,185 +182,275 @@ function PartFormStandalone({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Input
+            id="description"
+            value={formData.description || ""}
+            onChange={(e) => onInputChange('description', e.target.value)}
+            placeholder="Brief description of the part"
+          />
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="category">Category *</Label>
-          <Select value={formData.category || ""} onValueChange={(value) => {
-            if (value === "add_new") {
-              setShowNewCategoryInput(true)
-            } else {
-              onInputChange('category', value as any)
-            }
-          }}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
+          <div className="flex gap-2">
+            <select
+              id="category"
+              value={formData.category || ""}
+              onChange={(e) => onInputChange('category', e.target.value)}
+              className="flex-1 px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Select part category"
+            >
+              <option value="">Select category</option>
               {existingCategories.map((category) => (
-                <SelectItem key={category} value={category}>
+                <option key={category} value={category}>
                   {category}
-                </SelectItem>
+                </option>
               ))}
-              <SelectItem value="add_new" className="text-blue-600 font-medium">
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Category
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowNewCategoryInput(!showNewCategoryInput)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
           {showNewCategoryInput && (
             <div className="flex gap-2 mt-2">
               <Input
-                placeholder="Enter new category name"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddNewCategory()
-                  }
-                }}
+                placeholder="Enter new category name"
+                className="flex-1"
               />
               <Button
                 type="button"
+                variant="outline"
                 size="sm"
                 onClick={handleAddNewCategory}
-                disabled={!newCategoryName.trim()}
               >
                 Add
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setShowNewCategoryInput(false)
-                  setNewCategoryName("")
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="department">Department *</Label>
+          <select
+            id="department"
+            value={formData.department || ""}
+            onChange={(e) => onInputChange('department', e.target.value)}
+            className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!isSuperAdmin}
+            aria-label="Select department"
+          >
+            <option value="">Select department</option>
+            {isSuperAdmin
+              ? departments.map((dept) => (
+                  <option key={dept.id} value={dept.name}>
+                    {dept.name}
+                  </option>
+                ))
+              : (
+                  <option value={currentUserDepartment}>
+                    {currentUserDepartment}
+                  </option>
+                )
+            }
+          </select>
+          {!isSuperAdmin && (
+            <p className="text-sm text-muted-foreground">
+              Department is auto-selected based on your role
+            </p>
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="department">Department *</Label>
-          {isSuperAdmin ? (
-            <Select 
-              value={formData.department || ""} 
-              onValueChange={(value) => onInputChange('department', value as any)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.name}>
-                    {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              id="department"
-              value={currentUserDepartment}
-              disabled
-              className="bg-muted cursor-not-allowed"
-            />
-          )}
+          <Label htmlFor="location">Location</Label>
+          <select
+            id="location"
+            value={formData.location || ""}
+            onChange={(e) => onInputChange('location', e.target.value)}
+            className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Select location"
+          >
+            <option value="">Select location</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.name}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
+      {/* Enhanced Linked Assets Section */}
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description || ""}
-          onChange={(e) => onInputChange('description', e.target.value)}
-          placeholder="Detailed description of the part"
-          rows={3}
-        />
-      </div>
+        <div className="flex items-center justify-between">
+          <Label>Linked Assets</Label>
+          <Dialog open={isAssetDialogOpen} onOpenChange={setIsAssetDialogOpen}>
+            <DialogTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Select Assets ({selectedAssets.length})
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Select Assets to Link
+                </DialogTitle>
+                <DialogDescription>
+                  Available assets in {formData.department || currentUserDepartment} department
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search assets by name or ID..."
+                    value={assetSearchTerm}
+                    onChange={(e) => setAssetSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
 
-      {/* Linked Assets Section */}
-      <div className="space-y-2">
-        <Label>Linked Assets</Label>
-        <div className="border rounded-lg p-4 space-y-3">
-          {departmentAssets.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              {formData.department ? 
-                `No assets found for ${formData.department} department` : 
-                "Select a department to view available assets"
-              }
-            </p>
-          ) : (
-            <>
-              <div className="text-sm text-muted-foreground mb-3">
-                Available assets in {formData.department || currentUserDepartment} department:
-              </div>
-              <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
-                {departmentAssets.map((asset) => {
-                  const isSelected = selectedAssets.some(a => a.assetId === asset.id)
-                  return (
-                    <div key={asset.id} className="flex items-center justify-between p-2 border rounded-md">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleAssetToggle(asset)}
-                          className="rounded"
-                        />
-                        <span className="text-sm font-medium">{asset.name}</span>
-                      </div>
-                      {isSelected && (
-                        <div className="flex items-center space-x-2">
-                          <Label className="text-xs">Qty:</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={(() => {
-                              const qty = selectedAssets.find(a => a.assetId === asset.id)?.quantityInAsset || 1;
-                              return qty === 1 && !selectedAssets.find(a => a.assetId === asset.id)?.quantityInAsset ? '' : qty.toString();
-                            })()}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? 1 : parseInt(e.target.value) || 1;
-                              handleAssetQuantityChange(asset.id, value);
-                            }}
-                            onBlur={(e) => {
-                              if (e.target.value === '') {
-                                handleAssetQuantityChange(asset.id, 1);
-                              }
-                            }}
-                            placeholder="1"
-                            className="w-16 h-6 text-xs"
-                          />
-                        </div>
+                {/* Assets Table */}
+                <div className="flex-1 overflow-auto border rounded-md">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background">
+                      <TableRow>
+                        <TableHead className="w-12">Select</TableHead>
+                        <TableHead>Asset Name</TableHead>
+                        <TableHead>Asset ID</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead className="w-24">Quantity</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredAssets.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            {assetSearchTerm ? 
+                              `No assets found matching "${assetSearchTerm}"` : 
+                              `No assets available in ${formData.department || currentUserDepartment} department`
+                            }
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredAssets.map((asset) => {
+                          const isSelected = isAssetSelected(asset.id)
+                          return (
+                            <TableRow key={asset.id} className={isSelected ? "bg-muted/50" : ""}>
+                              <TableCell>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleAssetToggle(asset)}
+                                  className="rounded"
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">{asset.name}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{asset.id}</TableCell>
+                              <TableCell>{asset.department}</TableCell>
+                              <TableCell>
+                                {isSelected ? (
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={getAssetQuantity(asset.id)}
+                                    onChange={(e) => {
+                                      const value = parseInt(e.target.value) || 1
+                                      handleAssetQuantityChange(asset.id, value)
+                                    }}
+                                    className="w-20 h-8 text-sm"
+                                  />
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
                       )}
-                    </div>
-                  )
-                })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Summary */}
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>
+                    Showing {filteredAssets.length} of {availableAssets.filter(asset => 
+                      asset.department === (formData.department || currentUserDepartment)
+                    ).length} assets
+                  </span>
+                  <span>
+                    {selectedAssets.length} asset{selectedAssets.length !== 1 ? 's' : ''} selected
+                  </span>
+                </div>
               </div>
-            </>
-          )}
-          
-          {selectedAssets.length > 0 && (
-            <div className="mt-3 pt-3 border-t">
-              <div className="text-sm font-medium mb-2">Selected Assets ({selectedAssets.length}):</div>
-              <div className="flex flex-wrap gap-1">
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Selected Assets Display */}
+        {selectedAssets.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                Selected Assets ({selectedAssets.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 {selectedAssets.map((asset) => (
-                  <Badge key={asset.assetId} variant="secondary" className="text-xs">
-                    {asset.assetName} (Qty: {asset.quantityInAsset})
-                    <button
-                      type="button"
-                      onClick={() => handleAssetToggle({ id: asset.assetId, name: asset.assetName, department: asset.assetDepartment })}
-                      className="ml-1 text-red-500 hover:text-red-700"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
+                  <div key={asset.assetId} className="flex items-center justify-between p-2 border rounded-md bg-muted/30">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="text-sm font-medium">{asset.assetName}</div>
+                        <div className="text-xs text-muted-foreground">{asset.assetDepartment}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        Qty: {asset.quantityInAsset}
+                      </Badge>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleAssetToggle({ 
+                          id: asset.assetId, 
+                          name: asset.assetName, 
+                          department: asset.assetDepartment 
+                        })}
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedAssets.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground border rounded-md">
+            <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No assets linked</p>
+            <p className="text-xs">Click "Select Assets" to link this part to assets</p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -361,7 +474,7 @@ function PartFormStandalone({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="minStockLevel">Min Stock Level</Label>
+          <Label htmlFor="minStockLevel">Minimum Stock Level</Label>
           <Input
             id="minStockLevel"
             type="number"
@@ -408,35 +521,54 @@ function PartFormStandalone({
             id="supplier"
             value={formData.supplier || ""}
             onChange={(e) => onInputChange('supplier', e.target.value)}
-            placeholder="e.g., Hydraulic Solutions Inc"
+            placeholder="Enter supplier name"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="location">Storage Location</Label>
-          <Select 
-            value={formData.location || ""} 
-            onValueChange={(value) => onInputChange('location', value as any)}
+          <Label htmlFor="status">Status</Label>
+          <select
+            id="status"
+            value={formData.status || "active"}
+            onChange={(e) => onInputChange('status', e.target.value)}
+            className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Select part status"
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select storage location" />
-            </SelectTrigger>
-            <SelectContent>
-              {locations.map((location) => (
-                <SelectItem key={location.id} value={location.name}>
-                  {location.name} ({location.code})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="discontinued">Discontinued</option>
+          </select>
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 pt-4">
-        <Button variant="outline" onClick={onCancel}>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="isStockItem"
+            checked={formData.isStockItem ?? true}
+            onChange={(e) => onInputChange('isStockItem', e.target.checked)}
+            className="rounded"
+          />
+          <Label htmlFor="isStockItem" className="text-sm">Stock Item</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="isCritical"
+            checked={formData.isCritical ?? false}
+            onChange={(e) => onInputChange('isCritical', e.target.checked)}
+            className="rounded"
+          />
+          <Label htmlFor="isCritical" className="text-sm">Critical Part</Label>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button onClick={onSubmit}>
-          {isEdit ? 'Update Part' : 'Create Part'}
+        <Button type="button" onClick={onSubmit}>
+          {isEdit ? "Update Part" : "Create Part"}
         </Button>
       </div>
     </div>
@@ -590,7 +722,8 @@ export default function PartsPage() {
         headers['Authorization'] = `Bearer ${token}`
       }
       
-      const response = await fetch('/api/assets', {
+      // Fetch all assets without pagination limits
+      const response = await fetch('/api/assets?limit=10000&page=1', {
         method: 'GET',
         headers,
       })
@@ -605,6 +738,7 @@ export default function PartsPage() {
           department: asset.department || "N/A"
         }))
         setAvailableAssets(transformedAssets)
+        console.log(`[ASSET FETCH] Loaded ${transformedAssets.length} assets for selection`)
       } else {
         console.error('Failed to fetch assets:', data.message)
       }
@@ -741,16 +875,46 @@ export default function PartsPage() {
       const data = await response.json()
       
       if (data.success) {
+        const savedPart = data.data;
+        
         if (isEdit) {
           // Update part in the list
-          setParts(prev => prev.map(p => p.id === selectedPart?.id ? data.data : p))
+          setParts(prev => prev.map(p => p.id === selectedPart?.id ? savedPart : p))
           toast.success('Part updated successfully')
           setIsEditDialogOpen(false)
         } else {
           // Add new part to the list
-          setParts(prev => [...prev, data.data])
+          setParts(prev => [...prev, savedPart])
           toast.success('Part created successfully')
           setIsCreateDialogOpen(false)
+        }
+
+        // Sync part asset links to asset BOM if there are linked assets
+        if (formData.linkedAssets && formData.linkedAssets.length > 0) {
+          try {
+            console.log('[PART SYNC] Starting asset sync for part with linked assets');
+            
+            const syncData: PartAssetSyncData = {
+              partId: savedPart.id,
+              partNumber: formData.partNumber || '',
+              partName: formData.name || '',
+              department: formData.department || '',
+              linkedAssets: formData.linkedAssets
+            };
+
+            const syncResult = await syncPartLinksToAssetBOM(syncData, token);
+            
+            if (syncResult.success) {
+              toast.success(`Part ${isEdit ? 'updated' : 'created'} and ${syncResult.syncedItems} assets synced successfully!`);
+              console.log('[PART SYNC] Asset sync completed:', syncResult.message);
+            } else {
+              toast.warning(`Part ${isEdit ? 'updated' : 'created'} but asset sync had issues: ${syncResult.message}`);
+              console.warn('[PART SYNC] Asset sync issues:', syncResult.errors);
+            }
+          } catch (syncError) {
+            console.error('[PART SYNC] Error during asset sync:', syncError);
+            toast.warning(`Part ${isEdit ? 'updated' : 'created'} but asset sync failed. You can manually sync later.`);
+          }
         }
 
         // Reset form
@@ -819,6 +983,9 @@ export default function PartsPage() {
         return
       }
 
+      // Find the part to get its details before deletion
+      const partToDelete = parts.find(p => p.id === partId);
+      
       const response = await fetch(`/api/parts/${partId}`, {
         method: 'DELETE',
         headers: {
@@ -831,7 +998,36 @@ export default function PartsPage() {
       if (data.success) {
         // Remove part from the list
         setParts(prev => prev.filter(p => p.id !== partId))
-        toast.success('Part deleted successfully')
+        
+        // Sync deletion with linked assets if the part had linked assets
+        if (partToDelete && partToDelete.linkedAssets && partToDelete.linkedAssets.length > 0) {
+          try {
+            console.log('[PART DELETION SYNC] Starting asset sync for deleted part');
+            
+            const deletionSyncData: PartDeletionSyncData = {
+              partId: partToDelete.id,
+              partNumber: partToDelete.partNumber,
+              partName: partToDelete.name,
+              department: partToDelete.department,
+              linkedAssets: partToDelete.linkedAssets
+            };
+
+            const syncResult = await syncPartDeletion(deletionSyncData, token);
+            
+            if (syncResult.success) {
+              toast.success(`Part deleted and removed from ${syncResult.syncedItems} asset BOMs successfully!`);
+              console.log('[PART DELETION SYNC] Asset sync completed:', syncResult.message);
+            } else {
+              toast.warning(`Part deleted but asset sync had issues: ${syncResult.message}`);
+              console.warn('[PART DELETION SYNC] Asset sync issues:', syncResult.errors);
+            }
+          } catch (syncError) {
+            console.error('[PART DELETION SYNC] Error during asset sync:', syncError);
+            toast.warning('Part deleted but asset sync failed. Assets may still reference this part.');
+          }
+        } else {
+          toast.success('Part deleted successfully');
+        }
       } else {
         if (response.status === 403) {
           toast.error('You do not have permission to delete this part')

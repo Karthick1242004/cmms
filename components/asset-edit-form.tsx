@@ -19,6 +19,8 @@ import { departmentsApi } from "@/lib/departments-api"
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary-config"
 import type { Asset, AssetDetail } from "@/types/asset"
 import type { Department } from "@/types/department"
+import { syncAssetBOMToParts } from "@/lib/asset-part-sync"
+import type { AssetPartSyncData } from "@/lib/asset-part-sync"
 
 interface AssetFormData {
   // Basic Information
@@ -558,6 +560,40 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
       // Update the asset
       await updateAsset(asset.id, updateData)
       toast.success('Asset updated successfully!')
+      
+      // Sync asset BOM to parts if there are parts in the BOM
+      if (formData.partsBOM && formData.partsBOM.length > 0) {
+        try {
+          console.log('[ASSET EDIT SYNC] Starting BOM sync for updated asset');
+          
+          // Get auth token
+          const token = localStorage.getItem('auth-token');
+          if (token) {
+            const syncData: AssetPartSyncData = {
+              assetId: asset.id,
+              assetName: formData.assetName,
+              department: formData.department,
+              partsBOM: formData.partsBOM
+            };
+
+            const syncResult = await syncAssetBOMToParts(syncData, token);
+            
+            if (syncResult.success) {
+              toast.success(`Asset updated and ${syncResult.syncedItems} parts synced successfully!`);
+              console.log('[ASSET EDIT SYNC] BOM sync completed:', syncResult.message);
+            } else {
+              toast.warning(`Asset updated but BOM sync had issues: ${syncResult.message}`);
+              console.warn('[ASSET EDIT SYNC] BOM sync issues:', syncResult.errors);
+            }
+          } else {
+            console.warn('[ASSET EDIT SYNC] No auth token available for sync');
+          }
+        } catch (syncError) {
+          console.error('[ASSET EDIT SYNC] Error during BOM sync:', syncError);
+          toast.warning('Asset updated but parts sync failed. You can manually sync later.');
+        }
+      }
+      
       onSuccess?.()
     } catch (error) {
       console.error('Error updating asset:', error)
