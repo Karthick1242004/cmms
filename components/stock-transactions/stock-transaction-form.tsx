@@ -299,27 +299,14 @@ export function StockTransactionForm({
 
   // Validate stock availability when transaction type or items change
   useEffect(() => {
-    if (['issue', 'transfer_out', 'scrap'].includes(watchedTransactionType) && watchedItems) {
+    if (watchedItems) {
       watchedItems.forEach((item, index) => {
-        if (item.partId && item.quantity) {
-          const part = filteredParts.find(p => p.id === item.partId);
-          if (part && part.quantity < item.quantity) {
-            form.setError(`items.${index}.quantity`, {
-              type: 'manual',
-              message: `Insufficient stock. Available: ${part.quantity}, Requested: ${item.quantity}`,
-            });
-          } else {
-            form.clearErrors(`items.${index}.quantity`);
-          }
+        if (item.partId) {
+          validateStockAvailability(index);
         }
       });
-    } else {
-      // Clear all stock validation errors for non-issue transactions
-      watchedItems?.forEach((_, index) => {
-        form.clearErrors(`items.${index}.quantity`);
-      });
     }
-  }, [watchedTransactionType, watchedItems, filteredParts, form]);
+  }, [watchedTransactionType, watchedItems, parts, form]);
 
   // Add new item
   const addItem = () => {
@@ -352,17 +339,8 @@ export function StockTransactionForm({
     const quantity = form.getValues(`items.${index}.quantity`) || 1;
     form.setValue(`items.${index}.totalCost`, quantity * (part.unitPrice || 0));
     
-    // Validate stock availability for issue transactions
-    if (['issue', 'transfer_out', 'scrap'].includes(watchedTransactionType)) {
-      if (part.quantity < quantity) {
-        form.setError(`items.${index}.quantity`, {
-          type: 'manual',
-          message: `Insufficient stock. Available: ${part.quantity}`,
-        });
-      } else {
-        form.clearErrors(`items.${index}.quantity`);
-      }
-    }
+    // Validate stock availability after part selection
+    validateStockAvailability(index, quantity);
     
     setPartSearchOpen(prev => ({ ...prev, [index]: false }));
   };
@@ -381,25 +359,56 @@ export function StockTransactionForm({
     setRecipientSearchOpen(false);
   };
 
+  // Enhanced stock validation function
+  const validateStockAvailability = (index: number, quantity?: number) => {
+    const partId = form.getValues(`items.${index}.partId`);
+    const itemQuantity = quantity !== undefined ? quantity : form.getValues(`items.${index}.quantity`) || 0;
+    
+    // Only validate for outbound transactions
+    if (!partId || !['issue', 'transfer_out', 'scrap'].includes(watchedTransactionType)) {
+      form.clearErrors(`items.${index}.quantity`);
+      return;
+    }
+
+    const part = parts.find(p => p.id === partId);
+    if (!part) {
+      form.setError(`items.${index}.quantity`, {
+        type: 'manual',
+        message: 'Part not found. Please select a valid part.',
+      });
+      return;
+    }
+
+    // Check current stock levels
+    const availableStock = part.quantity || 0;
+    if (availableStock < itemQuantity) {
+      form.setError(`items.${index}.quantity`, {
+        type: 'manual',
+        message: `Insufficient stock. Available: ${availableStock}, Requested: ${itemQuantity}`,
+      });
+    } else if (availableStock === 0) {
+      form.setError(`items.${index}.quantity`, {
+        type: 'manual',
+        message: 'Part is out of stock.',
+      });
+    } else if (availableStock <= (part.minStockLevel || 0) && availableStock - itemQuantity < (part.minStockLevel || 0)) {
+      // Warning for low stock after transaction (but allow it)
+      console.warn(`Transaction will result in low stock for ${part.partNumber}`);
+      form.clearErrors(`items.${index}.quantity`);
+    } else {
+      form.clearErrors(`items.${index}.quantity`);
+    }
+  };
+
   // Update total cost when quantity changes
   const handleQuantityChange = (index: number, quantity: number) => {
+    form.setValue(`items.${index}.quantity`, quantity);
+    
     const unitCost = form.getValues(`items.${index}.unitCost`) || 0;
     form.setValue(`items.${index}.totalCost`, quantity * unitCost);
     
-    // Validate stock availability for issue transactions
-    if (['issue', 'transfer_out', 'scrap'].includes(watchedTransactionType)) {
-      const partId = form.getValues(`items.${index}.partId`);
-      const part = filteredParts.find(p => p.id === partId);
-      
-      if (part && part.quantity < quantity) {
-        form.setError(`items.${index}.quantity`, {
-          type: 'manual',
-          message: `Insufficient stock. Available: ${part.quantity}, Requested: ${quantity}`,
-        });
-      } else {
-        form.clearErrors(`items.${index}.quantity`);
-      }
-    }
+    // Validate stock availability for outbound transactions
+    validateStockAvailability(index, quantity);
   };
 
   // Update total cost when unit cost changes
@@ -441,13 +450,28 @@ export function StockTransactionForm({
       errors.push('Source and destination locations must be different for transfers');
     }
 
-    // Validate item quantities
+    // Validate item quantities and stock availability
     data.items.forEach((item, index) => {
       if (item.quantity <= 0) {
         errors.push(`Item ${index + 1}: Quantity must be greater than 0`);
       }
       if (item.unitCost && item.unitCost < 0) {
         errors.push(`Item ${index + 1}: Unit cost cannot be negative`);
+      }
+      
+      // Validate stock availability for outbound transactions
+      if (['issue', 'transfer_out', 'scrap'].includes(data.transactionType)) {
+        const part = parts.find(p => p.id === item.partId);
+        if (part) {
+          const availableStock = part.quantity || 0;
+          if (availableStock < item.quantity) {
+            errors.push(`${item.partName}: Insufficient stock (Available: ${availableStock}, Requested: ${item.quantity})`);
+          } else if (availableStock === 0) {
+            errors.push(`${item.partName}: Part is out of stock`);
+          }
+        } else if (item.partId) {
+          errors.push(`${item.partName}: Part not found in inventory`);
+        }
       }
     });
 
@@ -466,11 +490,12 @@ export function StockTransactionForm({
       const validationErrors = validateSubmission(data);
       
       if (validationErrors.length > 0) {
-        // Display validation errors
-        validationErrors.forEach(error => {
-          console.error('Validation Error:', error);
-          // You could also use a toast notification here
-        });
+        // Display validation errors to the user
+        console.error('Form Validation Failed:', validationErrors);
+        
+        // You can add toast notifications here if needed
+        alert(`Please fix the following issues:\n\n• ${validationErrors.join('\n• ')}`);
+        
         return;
       }
 

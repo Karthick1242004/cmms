@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import { processInventoryUpdates, reverseInventoryUpdates, validateInventoryAvailability } from '@/lib/inventory-service';
+import type { StockTransaction } from '@/types/stock-transaction';
 
 // StockTransaction Schema (matching the types)
 const StockTransactionSchema = new mongoose.Schema({
@@ -236,16 +238,182 @@ export async function PUT(
         `[${new Date().toISOString()}] Status changed to ${status} by ${user.name}: ${notes}`;
     }
 
-    // Update the transaction
+    // Get authentication token for inventory service calls
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || '';
+
+    // Construct proper base URL for internal API calls
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+    const baseUrl = `${protocol}://${host}`;
+
+    // Pre-validate inventory availability for outbound transactions
+    if ((status === 'approved' || status === 'completed') && oldStatus !== status) {
+      const transactionForValidation: StockTransaction = {
+        id: transaction._id.toString(),
+        transactionNumber: transaction.transactionNumber,
+        transactionType: transaction.transactionType,
+        transactionDate: transaction.transactionDate,
+        description: transaction.description,
+        sourceLocation: transaction.sourceLocation,
+        destinationLocation: transaction.destinationLocation,
+        department: transaction.department,
+        items: transaction.items,
+        status: transaction.status,
+        notes: transaction.notes,
+        priority: transaction.priority,
+        referenceNumber: transaction.referenceNumber,
+        supplier: transaction.supplier,
+        recipient: transaction.recipient,
+        recipientType: transaction.recipientType,
+        assetId: transaction.assetId,
+        assetName: transaction.assetName,
+        workOrderId: transaction.workOrderId,
+        workOrderNumber: transaction.workOrderNumber,
+        totalAmount: transaction.totalAmount,
+        currency: transaction.currency,
+        createdBy: transaction.createdBy,
+        createdByName: transaction.createdByName,
+        approvedBy: transaction.approvedBy,
+        approvedByName: transaction.approvedByName,
+        approvedAt: transaction.approvedAt,
+        attachments: transaction.attachments,
+        internalNotes: transaction.internalNotes,
+        totalItems: transaction.totalItems,
+        totalQuantity: transaction.totalQuantity,
+        createdAt: transaction.createdAt,
+        updatedAt: transaction.updatedAt
+      };
+
+      const validation = await validateInventoryAvailability(
+        transactionForValidation,
+        token,
+        baseUrl
+      );
+
+      if (!validation.valid) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'Insufficient inventory for transaction',
+            details: validation.issues
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Update the transaction in MongoDB
     const updatedTransaction = await StockTransaction.findByIdAndUpdate(
       id,
       updateData,
       { new: true, runValidators: true }
     );
 
-    // Update parts inventory when transaction is completed
-    if (status === 'completed' && oldStatus !== 'completed') {
-      await updatePartsInventory(transaction);
+    // Process inventory updates when transaction is approved or completed
+    let inventoryUpdateResult = null;
+    if ((status === 'approved' || status === 'completed') && oldStatus !== status) {
+      const transactionForUpdate: StockTransaction = {
+        id: updatedTransaction._id.toString(),
+        transactionNumber: updatedTransaction.transactionNumber,
+        transactionType: updatedTransaction.transactionType,
+        transactionDate: updatedTransaction.transactionDate,
+        description: updatedTransaction.description,
+        sourceLocation: updatedTransaction.sourceLocation,
+        destinationLocation: updatedTransaction.destinationLocation,
+        department: updatedTransaction.department,
+        items: updatedTransaction.items,
+        status: updatedTransaction.status,
+        notes: updatedTransaction.notes,
+        priority: updatedTransaction.priority,
+        referenceNumber: updatedTransaction.referenceNumber,
+        supplier: updatedTransaction.supplier,
+        recipient: updatedTransaction.recipient,
+        recipientType: updatedTransaction.recipientType,
+        assetId: updatedTransaction.assetId,
+        assetName: updatedTransaction.assetName,
+        workOrderId: updatedTransaction.workOrderId,
+        workOrderNumber: updatedTransaction.workOrderNumber,
+        totalAmount: updatedTransaction.totalAmount,
+        currency: updatedTransaction.currency,
+        createdBy: updatedTransaction.createdBy,
+        createdByName: updatedTransaction.createdByName,
+        approvedBy: updatedTransaction.approvedBy,
+        approvedByName: updatedTransaction.approvedByName,
+        approvedAt: updatedTransaction.approvedAt,
+        attachments: updatedTransaction.attachments,
+        internalNotes: updatedTransaction.internalNotes,
+        totalItems: updatedTransaction.totalItems,
+        totalQuantity: updatedTransaction.totalQuantity,
+        createdAt: updatedTransaction.createdAt,
+        updatedAt: updatedTransaction.updatedAt
+      };
+
+      inventoryUpdateResult = await processInventoryUpdates(
+        transactionForUpdate,
+        token,
+        baseUrl
+      );
+
+      // Log inventory update results
+      if (inventoryUpdateResult.success) {
+        console.log(`[INVENTORY] Successfully processed ${inventoryUpdateResult.totalUpdated} parts for transaction ${updatedTransaction.transactionNumber}`);
+      } else {
+        console.error(`[INVENTORY] Failed to process inventory for transaction ${updatedTransaction.transactionNumber}:`, inventoryUpdateResult.message);
+        // Note: We don't fail the transaction status update if inventory update fails
+        // This allows for manual intervention while maintaining data consistency
+      }
+    }
+
+    // Handle transaction cancellation - reverse inventory if previously approved/completed
+    if (status === 'cancelled' && (oldStatus === 'approved' || oldStatus === 'completed')) {
+      const transactionForReversal: StockTransaction = {
+        id: transaction._id.toString(),
+        transactionNumber: transaction.transactionNumber,
+        transactionType: transaction.transactionType,
+        transactionDate: transaction.transactionDate,
+        description: transaction.description,
+        sourceLocation: transaction.sourceLocation,
+        destinationLocation: transaction.destinationLocation,
+        department: transaction.department,
+        items: transaction.items,
+        status: oldStatus, // Use old status for reversal calculation
+        notes: transaction.notes,
+        priority: transaction.priority,
+        referenceNumber: transaction.referenceNumber,
+        supplier: transaction.supplier,
+        recipient: transaction.recipient,
+        recipientType: transaction.recipientType,
+        assetId: transaction.assetId,
+        assetName: transaction.assetName,
+        workOrderId: transaction.workOrderId,
+        workOrderNumber: transaction.workOrderNumber,
+        totalAmount: transaction.totalAmount,
+        currency: transaction.currency,
+        createdBy: transaction.createdBy,
+        createdByName: transaction.createdByName,
+        approvedBy: transaction.approvedBy,
+        approvedByName: transaction.approvedByName,
+        approvedAt: transaction.approvedAt,
+        attachments: transaction.attachments,
+        internalNotes: transaction.internalNotes,
+        totalItems: transaction.totalItems,
+        totalQuantity: transaction.totalQuantity,
+        createdAt: transaction.createdAt,
+        updatedAt: transaction.updatedAt
+      };
+
+      const reversalResult = await reverseInventoryUpdates(
+        transactionForReversal,
+        token,
+        baseUrl
+      );
+
+      if (reversalResult.success) {
+        console.log(`[INVENTORY] Successfully reversed inventory for transaction ${updatedTransaction.transactionNumber}`);
+      } else {
+        console.error(`[INVENTORY] Failed to reverse inventory for transaction ${updatedTransaction.transactionNumber}:`, reversalResult.message);
+      }
     }
 
     // Format response
@@ -285,10 +453,25 @@ export async function PUT(
       updatedAt: updatedTransaction.updatedAt
     };
 
+    // Include inventory update information in response
+    const responseWithInventory = {
+      ...response,
+      inventoryUpdate: inventoryUpdateResult ? {
+        success: inventoryUpdateResult.success,
+        totalUpdated: inventoryUpdateResult.totalUpdated,
+        totalFailed: inventoryUpdateResult.totalFailed,
+        message: inventoryUpdateResult.message
+      } : null
+    };
+
+    const statusMessage = inventoryUpdateResult?.success === false 
+      ? `Transaction status updated to ${status}, but some inventory updates failed. Please check manually.`
+      : `Transaction status updated to ${status}`;
+
     return NextResponse.json({
       success: true,
-      data: response,
-      message: `Transaction status updated to ${status}`
+      data: responseWithInventory,
+      message: statusMessage
     }, { status: 200 });
 
   } catch (error) {
@@ -300,74 +483,5 @@ export async function PUT(
   }
 }
 
-// Helper function to update parts inventory based on completed transactions
-async function updatePartsInventory(transaction: any) {
-  try {
-    for (const item of transaction.items) {
-      const part = await Part.findById(item.partId);
-      if (!part) {
-        console.warn(`Part with ID ${item.partId} not found`);
-        continue;
-      }
-
-      let quantityChange = 0;
-      
-      // Calculate inventory change based on transaction type
-      switch (transaction.transactionType) {
-        case 'receipt':
-        case 'transfer_in':
-          quantityChange = item.quantity; // Increase inventory
-          break;
-        case 'issue':
-        case 'transfer_out':
-        case 'scrap':
-          quantityChange = -item.quantity; // Decrease inventory
-          break;
-        case 'adjustment':
-          // For adjustments, the quantity in the item represents the final quantity
-          quantityChange = item.quantity - part.quantity;
-          break;
-      }
-
-      // Update part quantities
-      const newQuantity = Math.max(0, part.quantity + quantityChange);
-      const newTotalValue = newQuantity * part.unitPrice;
-      
-      // Update usage tracking for outgoing transactions
-      let updateData: any = {
-        quantity: newQuantity,
-        totalValue: newTotalValue,
-        updatedAt: new Date()
-      };
-
-      if (quantityChange < 0) { // Outgoing transaction
-        updateData.totalConsumed = (part.totalConsumed || 0) + Math.abs(quantityChange);
-        updateData.lastUsedDate = new Date();
-      }
-
-      if (transaction.transactionType === 'receipt' && item.unitCost) {
-        updateData.lastPurchaseDate = new Date();
-        updateData.lastPurchasePrice = item.unitCost;
-        // Update unit price if this is a newer price
-        if (!part.lastPurchaseDate || new Date() > new Date(part.lastPurchaseDate)) {
-          updateData.unitPrice = item.unitCost;
-          updateData.totalValue = newQuantity * item.unitCost;
-        }
-      }
-
-      // Update stock status
-      if (newQuantity === 0) {
-        updateData.stockStatus = 'out_of_stock';
-      } else if (newQuantity <= part.minStockLevel) {
-        updateData.stockStatus = 'low_stock';
-      } else {
-        updateData.stockStatus = 'in_stock';
-      }
-
-      await Part.findByIdAndUpdate(item.partId, updateData);
-    }
-  } catch (error) {
-    console.error('Error updating parts inventory:', error);
-    // Don't throw error to prevent transaction update from failing
-  }
-}
+// Note: Inventory updates are now handled by the inventory-service.ts module
+// This ensures consistent, secure, and auditable inventory management across all transaction types

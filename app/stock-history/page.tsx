@@ -215,14 +215,14 @@ export default function StockHistoryPage() {
   return (
     <AuthGuard>
       <PageLayout>
-        <PageHeader>
+        {/* <PageHeader>
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Stock History</h1>
               <p className="text-muted-foreground">Track and manage all inventory movements and stock transactions</p>
             </div>
           </div>
-        </PageHeader>
+        </PageHeader> */}
         
         <PageContent>
           {/* Main Content */}

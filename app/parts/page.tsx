@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X } from "lucide-react"
+import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,7 @@ import { toast } from "sonner"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { useAuthStore } from "@/stores/auth-store"
 import { PartsInventoryReport } from "@/components/parts/parts-inventory-report"
+import { InventoryHistoryDialog } from "@/components/parts/inventory-history-dialog"
 
 // Extracted form to prevent re-mount on every parent render (fixes input focus loss)
 function PartFormStandalone({
@@ -453,6 +454,8 @@ export default function PartsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedPart, setSelectedPart] = useState<Part | null>(null)
   const [isReportOpen, setIsReportOpen] = useState(false)
+  const [isInventoryHistoryOpen, setIsInventoryHistoryOpen] = useState(false)
+  const [historyPart, setHistoryPart] = useState<Part | null>(null)
   const [departments, setDepartments] = useState<Department[]>([])
   const [locations, setLocations] = useState<Location[]>([])
   const [availableAssets, setAvailableAssets] = useState<Array<{ id: string; name: string; department: string }>>([])
@@ -842,6 +845,11 @@ export default function PartsPage() {
     }
   }
 
+  const handleViewHistory = (part: Part) => {
+    setHistoryPart(part)
+    setIsInventoryHistoryOpen(true)
+  }
+
   const getStockStatus = (part: Part) => {
     if (part.quantity <= part.minStockLevel) {
       return { 
@@ -1143,8 +1151,18 @@ export default function PartsPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => handleViewHistory(part)}
+                                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+                                title="View inventory history"
+                              >
+                                <History className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleEdit(part)}
                                 className="h-6 w-6 p-0"
+                                title="Edit part"
                               >
                                 <Edit className="h-3 w-3" />
                               </Button>
@@ -1153,6 +1171,7 @@ export default function PartsPage() {
                                 size="sm"
                                 onClick={() => handleDelete(part.id)}
                                 className="h-6 w-6 p-0 text-red-600 hover:text-red-800"
+                                title="Delete part"
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
@@ -1207,6 +1226,13 @@ export default function PartsPage() {
           onClose={() => setIsReportOpen(false)}
         />
       )}
+
+      {/* Inventory History Dialog */}
+      <InventoryHistoryDialog
+        open={isInventoryHistoryOpen}
+        onOpenChange={setIsInventoryHistoryOpen}
+        part={historyPart}
+      />
     </PageLayout>
   )
 }

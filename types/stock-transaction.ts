@@ -92,6 +92,48 @@ export interface StockTransactionFormData {
   internalNotes?: string;
 }
 
+// Inventory-related types
+export interface InventoryUpdateResult {
+  success: boolean;
+  partId: string;
+  partNumber: string;
+  previousQuantity: number;
+  newQuantity: number;
+  message: string;
+  error?: string;
+}
+
+export interface InventoryBatchUpdateResult {
+  success: boolean;
+  results: InventoryUpdateResult[];
+  totalUpdated: number;
+  totalFailed: number;
+  failedUpdates: InventoryUpdateResult[];
+  message: string;
+}
+
+export interface InventoryHistoryRecord {
+  id: string;
+  partId: string;
+  partNumber: string;
+  partName: string;
+  changeType: 'transaction' | 'adjustment' | 'correction' | 'initial';
+  transactionType?: 'receipt' | 'issue' | 'transfer_in' | 'transfer_out' | 'adjustment' | 'scrap';
+  transactionId?: string;
+  transactionNumber?: string;
+  previousQuantity: number;
+  quantityChange: number;
+  newQuantity: number;
+  reason: string;
+  location?: string;
+  department: string;
+  performedBy: string;
+  performedByName: string;
+  performedAt: string | Date;
+  notes?: string;
+  cost?: number;
+}
+
 export interface StockTransactionFilters {
   search?: string;
   department?: string;
