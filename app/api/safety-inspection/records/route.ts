@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserContext } from '@/lib/auth-helpers'
 import { sampleSafetyInspectionRecords } from '@/data/safety-inspection-sample'
+import { AssetActivityLogService } from '@/lib/asset-activity-log-service'
 import type { SafetyInspectionRecord } from '@/types/safety-inspection'
 
 // In-memory storage for demo purposes (replace with database in production)
@@ -266,8 +267,29 @@ export async function POST(request: NextRequest) {
       try {
         // Update performance data to mark the safety inspection task as completed
         await updateSafetyInspectionPerformanceData(body, result.data, user);
+
+        // Create asset activity log
+        await AssetActivityLogService.createSafetyInspectionLog({
+          assetId: body.assetId,
+          assetName: body.assetName,
+          activityType: 'safety_inspection_completed',
+          createdBy: user.id,
+          createdByName: user.name,
+          department: body.department,
+          departmentId: body.departmentId || '',
+          context: {
+            recordId: result.data.id,
+            inspector: body.inspector,
+            inspectorId: body.inspectorId,
+            inspectionType: body.title || 'Safety Inspection',
+            complianceScore: body.overallComplianceScore,
+            violations: body.violations?.length || 0,
+            duration: body.actualDuration
+          },
+          request
+        });
       } catch (performanceError) {
-        console.error('Error updating safety inspection performance data:', performanceError);
+        console.error('Error updating safety inspection performance data or activity log:', performanceError);
         // Don't fail the main request if performance tracking fails
       }
     }

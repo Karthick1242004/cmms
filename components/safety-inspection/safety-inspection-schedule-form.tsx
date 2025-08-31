@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Plus, Trash2, Shield, AlertTriangle } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Plus, Trash2, Shield, AlertTriangle, Search } from "lucide-react"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { useAssets } from "@/hooks/use-assets"
@@ -84,6 +85,10 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
 
   const [categories, setCategories] = useState<SafetyChecklistCategory[]>([])
   const [availableStandards] = useState(["OSHA", "ISO45001", "NFPA", "EPA", "Company Policy", "Local Regulations"])
+  
+  // Asset search state
+  const [assetSearchOpen, setAssetSearchOpen] = useState(false)
+  const [assetSearchTerm, setAssetSearchTerm] = useState("")
 
   // Initialize form data when editing
   useEffect(() => {
@@ -134,6 +139,31 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
         location: selectedAsset.location, // Auto-fill location from asset
       }))
     }
+  }
+
+  // Asset search functionality
+  const filteredAssets = assetsData?.data?.assets?.filter(asset => 
+    asset.name.toLowerCase().includes(assetSearchTerm.toLowerCase()) ||
+    asset.assetTag?.toLowerCase().includes(assetSearchTerm.toLowerCase()) ||
+    asset.location.toLowerCase().includes(assetSearchTerm.toLowerCase())
+  ) || []
+
+  const handleAssetSelect = (asset: any) => {
+    setFormData(prev => ({
+      ...prev,
+      assetId: asset.id,
+      location: asset.location,
+    }))
+    setAssetSearchOpen(false)
+    setAssetSearchTerm("")
+  }
+
+  const getSelectedAssetName = () => {
+    const selectedAsset = assetsData?.data?.assets?.find(asset => asset.id === formData.assetId)
+    if (selectedAsset) {
+      return `${selectedAsset.name} ${selectedAsset.assetTag ? `(${selectedAsset.assetTag})` : ''} - ${selectedAsset.location}`
+    }
+    return ""
   }
 
   const addCategory = () => {
@@ -360,30 +390,27 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                   {/* Asset Selection */}
                   <div className={`space-y-2 ${isSuperAdmin ? '' : 'col-span-2'}`}>
                     <Label htmlFor="asset">Asset</Label>
-                    <Select 
-                      value={formData.assetId} 
-                      onValueChange={handleAssetChange}
-                      disabled={isSuperAdmin && !selectedDepartment}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={
+                    <div className="flex gap-2">
+                      <Input
+                        value={getSelectedAssetName()}
+                        placeholder={
                           isSuperAdmin && !selectedDepartment 
                             ? "Select department first" 
                             : "Select an asset"
-                        } />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isLoadingAssets ? (
-                          <SelectItem value="loading" disabled>Loading assets...</SelectItem>
-                        ) : (
-                          assetsData?.data?.assets?.map((asset) => (
-                            <SelectItem key={asset.id} value={asset.id}>
-                              {asset.name} {asset.assetTag ? `(${asset.assetTag})` : ''} - {asset.location}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                        }
+                        readOnly
+                        className="flex-1"
+                        disabled={isSuperAdmin && !selectedDepartment}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setAssetSearchOpen(true)}
+                        disabled={isSuperAdmin && !selectedDepartment || isLoadingAssets}
+                      >
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -732,6 +759,71 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
           </form>
         </ScrollArea>
       </DialogContent>
+
+      {/* Asset Search Dialog */}
+      <Dialog open={assetSearchOpen} onOpenChange={setAssetSearchOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Select Asset</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search assets by name, tag, or location..."
+                value={assetSearchTerm}
+                onChange={(e) => setAssetSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <ScrollArea className="h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Asset Name</TableHead>
+                    <TableHead>Tag</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAssets.map((asset) => (
+                    <TableRow key={asset.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell className="font-medium">{asset.name}</TableCell>
+                      <TableCell>{asset.assetTag || '-'}</TableCell>
+                      <TableCell>{asset.location}</TableCell>
+                      <TableCell>{asset.type}</TableCell>
+                      <TableCell>
+                        <Badge variant={asset.status === 'operational' ? 'default' : 'secondary'}>
+                          {asset.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAssetSelect(asset)}
+                        >
+                          Select
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {filteredAssets.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No assets found matching your search.</p>
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 } 

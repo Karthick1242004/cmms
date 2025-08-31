@@ -1,11 +1,22 @@
 "use client"
 
 import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, ExternalLink } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
+import { MoreHorizontal, CheckCircle, XCircle, Clock, User, Calendar, Eye, Shield, MessageSquare, History } from "lucide-react"
+import { LoadingSpinner } from "@/components/loading-spinner"
 import { SafetyInspectionScheduleDetail } from "./safety-inspection-schedule-detail"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
+import { useAuthStore } from "@/stores/auth-store"
 import type { SafetyInspectionRecord, SafetyInspectionSchedule } from "@/types/safety-inspection"
+import { format } from 'date-fns'
 
 interface SafetyInspectionRecordTableProps {
   records: SafetyInspectionRecord[]
@@ -15,10 +26,16 @@ interface SafetyInspectionRecordTableProps {
 }
 
 export function SafetyInspectionRecordTable({ records, schedules, isLoading, isAdmin }: SafetyInspectionRecordTableProps) {
+  const { user } = useAuthStore()
+  const { verifyRecord } = useSafetyInspectionStore()
+  
   const [detailDialog, setDetailDialog] = useState<{ open: boolean; schedule: SafetyInspectionSchedule | null }>({
     open: false,
     schedule: null
   })
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false)
+  const [selectedRecord, setSelectedRecord] = useState<SafetyInspectionRecord | null>(null)
+  const [adminNotes, setAdminNotes] = useState("")
 
   const handleRecordClick = (record: SafetyInspectionRecord) => {
     // Find the related schedule for this record
@@ -54,6 +71,64 @@ export function SafetyInspectionRecordTable({ records, schedules, isLoading, isA
       }
       setDetailDialog({ open: true, schedule: fallbackSchedule })
     }
+  }
+
+  const handleVerifyClick = (record: SafetyInspectionRecord) => {
+    setSelectedRecord(record)
+    setAdminNotes("")
+    setVerifyDialogOpen(true)
+  }
+
+  const handleVerifyConfirm = async () => {
+    if (selectedRecord) {
+      await verifyRecord(selectedRecord.id, adminNotes, user?.name)
+      setSelectedRecord(null)
+      setVerifyDialogOpen(false)
+      setAdminNotes("")
+    }
+  }
+
+  // Helper functions
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed": return "default"
+      case "partially_completed": return "secondary"
+      case "failed": return "destructive"
+      case "in_progress": return "secondary"
+      default: return "outline"
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed": return <CheckCircle className="h-4 w-4" />
+      case "partially_completed": return <Clock className="h-4 w-4" />
+      case "failed": return <XCircle className="h-4 w-4" />
+      case "in_progress": return <Clock className="h-4 w-4" />
+      default: return <Clock className="h-4 w-4" />
+    }
+  }
+
+  const getComplianceColor = (complianceStatus: string) => {
+    switch (complianceStatus) {
+      case "compliant": return "bg-green-100 text-green-800 border-green-200"
+      case "non_compliant": return "bg-red-100 text-red-800 border-red-200"
+      case "requires_attention": return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      default: return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString), "MMM dd, yyyy")
+  }
+
+  const formatTime = (timeString: string) => {
+    return timeString
+  }
+
+  const canVerifyRecord = (record: SafetyInspectionRecord) => {
+    if (!isAdmin) return false
+    return record.status === 'completed' && !record.adminVerified
   }
   if (isLoading) {
     return (

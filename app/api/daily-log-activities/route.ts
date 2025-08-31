@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
+import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,25 +32,57 @@ export async function GET(request: NextRequest) {
     // Build the filter query
     const filter: any = {};
 
-    // Department filtering based on access level
-    if (user.accessLevel !== 'super_admin') {
-      // Non-super-admin users can only see activities from their department
+    // Access control based on user role and assignment
+    if (user.accessLevel === 'super_admin') {
+      // Super admin can see all activities, optionally filtered by department
+      if (department && department !== 'all') {
+        filter.departmentName = department;
+      }
+    } else if (user.accessLevel === 'department_admin') {
+      // Department admin can see all activities in their department
       filter.departmentName = user.department;
-    } else if (department && department !== 'all') {
-      // Super admin can filter by specific department
-      filter.departmentName = department;
+    } else {
+      // Normal users can only see activities assigned to them or in their department
+      filter.$or = [
+        { assignedTo: user.id }, // Activities assigned to them
+        { attendedBy: user.id }, // Activities they are attending to
+        { createdBy: user.id }, // Activities they created
+        // Also include unassigned activities in their department for assignment purposes
+        { 
+          departmentName: user.department,
+          $or: [
+            { assignedTo: { $exists: false } },
+            { assignedTo: null },
+            { assignedTo: '' }
+          ]
+        }
+      ];
     }
 
     // Apply additional filters
     if (search) {
-      filter.$or = [
-        { area: { $regex: search, $options: 'i' } },
-        { assetName: { $regex: search, $options: 'i' } },
-        { natureOfProblem: { $regex: search, $options: 'i' } },
-        { commentsOrSolution: { $regex: search, $options: 'i' } },
-        { attendedByName: { $regex: search, $options: 'i' } },
-        { createdByName: { $regex: search, $options: 'i' } }
-      ];
+      // Combine access control filter with search filter
+      const searchFilter = {
+        $or: [
+          { area: { $regex: search, $options: 'i' } },
+          { assetName: { $regex: search, $options: 'i' } },
+          { natureOfProblem: { $regex: search, $options: 'i' } },
+          { commentsOrSolution: { $regex: search, $options: 'i' } },
+          { attendedByName: { $regex: search, $options: 'i' } },
+          { createdByName: { $regex: search, $options: 'i' } }
+        ]
+      };
+      
+      // If we already have access control $or, combine them with $and
+      if (filter.$or) {
+        filter.$and = [
+          { $or: filter.$or },
+          searchFilter
+        ];
+        delete filter.$or;
+      } else {
+        Object.assign(filter, searchFilter);
+      }
     }
 
     if (status && status !== 'all') {
@@ -148,6 +181,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const now = new Date();
+    const timestamp = now.toISOString();
+
+    // Create initial activity history entry
+    const initialHistoryEntry = {
+      timestamp,
+      action: 'created' as const,
+      performedBy: user.id,
+      performedByName: user.name,
+      details: `Activity created by ${user.name}`,
+      previousValue: null,
+      newValue: body.status || 'open'
+    };
+
+    // If an employee is assigned, add assignment history
+    const historyEntries = [initialHistoryEntry];
+    if (body.assignedTo && body.assignedToName) {
+      historyEntries.push({
+        timestamp,
+        action: 'assigned' as 'assigned',
+        performedBy: user.id,
+        performedByName: user.name,
+        details: `Activity assigned to ${body.assignedToName}`,
+        previousValue: null,
+        newValue: body.assignedToName
+      });
+    }
+
     // Prepare activity document
     const activityData = {
       date: body.date ? new Date(body.date) : new Date(),
@@ -159,16 +220,27 @@ export async function POST(request: NextRequest) {
       assetName: body.assetName,
       natureOfProblem: body.natureOfProblem,
       commentsOrSolution: body.commentsOrSolution,
+      // Assignment fields
+      assignedTo: body.assignedTo || body.attendedBy, // Default to attendedBy if no specific assignment
+      assignedToName: body.assignedToName || body.attendedByName,
       attendedBy: body.attendedBy,
       attendedByName: body.attendedByName,
-      verifiedBy: body.verifiedBy || null,
-      verifiedByName: body.verifiedByName || null,
+      // Verification fields
+      adminVerified: false,
+      adminVerifiedBy: null,
+      adminVerifiedByName: null,
+      adminVerifiedAt: null,
+      adminNotes: null,
+      verifiedBy: body.verifiedBy || null, // Legacy field
+      verifiedByName: body.verifiedByName || null, // Legacy field
       status: body.status || 'open',
       priority: body.priority || 'medium',
       createdBy: body.createdBy,
       createdByName: body.createdByName,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
+      // Activity history
+      activityHistory: historyEntries,
     };
 
     // Insert into MongoDB
@@ -176,6 +248,34 @@ export async function POST(request: NextRequest) {
 
     // Fetch the created activity to return with proper formatting
     const createdActivity = await db.collection('dailylogactivities').findOne({ _id: result.insertedId });
+
+    // Create asset activity log entry
+    if (createdActivity) {
+      try {
+        await AssetActivityLogService.createDailyLogActivityLog({
+          assetId: body.assetId,
+          assetName: body.assetName,
+          activityType: 'daily_log_created',
+          createdBy: user.id,
+          createdByName: user.name,
+          department: body.departmentName,
+          departmentId: body.departmentId,
+          context: {
+            activityId: createdActivity._id.toString(),
+            natureOfProblem: body.natureOfProblem,
+            solution: body.commentsOrSolution,
+            attendedBy: body.attendedByName,
+            attendedById: body.attendedBy,
+            area: body.area,
+            time: body.time
+          },
+          request
+        });
+      } catch (error) {
+        console.error('Failed to create asset activity log:', error);
+        // Don't fail the main operation if activity log creation fails
+      }
+    }
 
     return NextResponse.json({
       success: true,

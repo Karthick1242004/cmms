@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
 
 export async function GET(
   request: NextRequest,
@@ -82,10 +83,26 @@ export async function PUT(
       );
     }
 
-    // Department-based access control
-    if (user.accessLevel !== 'super_admin' && existingActivity.departmentName !== user.department) {
+    // Assignment-based access control (similar to maintenance)
+    const canUpdateActivity = () => {
+      // Super admin can update any activity
+      if (user.accessLevel === 'super_admin') return true;
+      
+      // Department admin can update activities in their department
+      if (user.accessLevel === 'department_admin' && existingActivity.departmentName === user.department) return true;
+      
+      // Regular users can only update activities assigned to them
+      if (existingActivity.assignedTo === user.id || existingActivity.attendedBy === user.id) return true;
+      
+      // Users can update activities they created
+      if (existingActivity.createdBy === user.id) return true;
+      
+      return false;
+    };
+
+    if (!canUpdateActivity()) {
       return NextResponse.json(
-        { success: false, message: 'You can only update activities from your own department' },
+        { success: false, message: 'You can only update activities assigned to you or in your department (if you are an admin)' },
         { status: 403 }
       );
     }
@@ -166,12 +183,85 @@ export async function PUT(
       updates.date = new Date(updates.date);
     }
 
+    // Build activity history entries for changes
+    const now = new Date();
+    const timestamp = now.toISOString();
+    const historyEntries = [];
+
+    // Track status changes
+    if (updates.status && updates.status !== existingActivity.status) {
+      historyEntries.push({
+        timestamp,
+        action: 'status_updated' as const,
+        performedBy: user.id,
+        performedByName: user.name,
+        details: `Status changed from ${existingActivity.status} to ${updates.status}`,
+        previousValue: existingActivity.status,
+        newValue: updates.status
+      });
+      
+      // If status is being changed to 'completed', set it to 'pending_verification' instead
+      // so admins can verify it
+      if (updates.status === 'completed' && user.accessLevel === 'normal_user') {
+        updates.status = 'pending_verification';
+        historyEntries[historyEntries.length - 1].newValue = 'pending_verification';
+        historyEntries[historyEntries.length - 1].details = `Status changed from ${existingActivity.status} to pending_verification (awaiting admin verification)`;
+      }
+    }
+
+    // Track assignment changes
+    if (updates.assignedTo && updates.assignedTo !== existingActivity.assignedTo) {
+      historyEntries.push({
+        timestamp,
+        action: 'assigned' as const,
+        performedBy: user.id,
+        performedByName: user.name,
+        details: `Activity reassigned from ${existingActivity.assignedToName || 'unassigned'} to ${updates.assignedToName}`,
+        previousValue: existingActivity.assignedToName || null,
+        newValue: updates.assignedToName
+      });
+    }
+
+    // Track priority changes
+    if (updates.priority && updates.priority !== existingActivity.priority) {
+      historyEntries.push({
+        timestamp,
+        action: 'updated' as const,
+        performedBy: user.id,
+        performedByName: user.name,
+        details: `Priority changed from ${existingActivity.priority} to ${updates.priority}`,
+        previousValue: existingActivity.priority,
+        newValue: updates.priority
+      });
+    }
+
+    // Add general update entry if no specific tracked changes
+    if (historyEntries.length === 0) {
+      historyEntries.push({
+        timestamp,
+        action: 'updated' as const,
+        performedBy: user.id,
+        performedByName: user.name,
+        details: `Activity updated by ${user.name}`,
+        previousValue: null,
+        newValue: null
+      });
+    }
+
     // Add updatedAt timestamp
-    updates.updatedAt = new Date();
+    updates.updatedAt = now;
+
+    // Prepare update operation
+    const updateOperation: any = { $set: updates };
+    if (historyEntries.length > 0) {
+      updateOperation.$push = {
+        activityHistory: { $each: historyEntries }
+      };
+    }
 
     const result = await db.collection('dailylogactivities').findOneAndUpdate(
       { _id: new ObjectId(id) },
-      { $set: updates },
+      updateOperation,
       { returnDocument: 'after' }
     );
 

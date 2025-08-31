@@ -299,7 +299,7 @@ export function SafetyInspectionScheduleTable({ schedules, isLoading, isAdmin }:
       {/* Edit Schedule Dialog */}
       <SafetyInspectionScheduleForm
         trigger={<div />}
-        schedule={null as any}
+        schedule={selectedSchedule}
       />
 
       {/* Create Record Dialog */}

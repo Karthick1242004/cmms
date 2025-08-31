@@ -1,3 +1,13 @@
+export interface ActivityHistoryEntry {
+  timestamp: string;
+  action: 'created' | 'assigned' | 'status_updated' | 'verified' | 'updated';
+  performedBy: string;
+  performedByName: string;
+  details: string;
+  previousValue?: string | null;
+  newValue?: string | null;
+}
+
 export interface DailyLogActivity {
   _id: string;
   date: string; // ISO date string
@@ -9,16 +19,27 @@ export interface DailyLogActivity {
   assetName: string;
   natureOfProblem: string;
   commentsOrSolution: string;
-  attendedBy: string; // Employee ID
+  // Assignment workflow (similar to maintenance)
+  assignedTo?: string; // Employee ID assigned to handle this activity
+  assignedToName?: string;
+  attendedBy: string; // Employee ID (same as assignedTo for simplicity)
   attendedByName: string;
-  verifiedBy?: string; // Employee ID (optional)
-  verifiedByName?: string;
-  status: 'open' | 'in-progress' | 'resolved' | 'verified';
+  // Verification workflow (similar to maintenance)
+  adminVerified: boolean;
+  adminVerifiedBy?: string; // Employee ID of admin who verified
+  adminVerifiedByName?: string;
+  adminVerifiedAt?: string; // ISO timestamp
+  adminNotes?: string; // Admin verification notes
+  verifiedBy?: string; // Employee ID (optional - legacy field)
+  verifiedByName?: string; // Legacy field
+  status: 'open' | 'in-progress' | 'completed' | 'pending_verification' | 'verified';
   priority: 'low' | 'medium' | 'high' | 'critical';
   createdBy: string;
   createdByName: string;
   createdAt: string;
   updatedAt: string;
+  // Activity audit trail
+  activityHistory: ActivityHistoryEntry[];
 }
 
 export interface DailyLogActivityFormData {
@@ -31,11 +52,13 @@ export interface DailyLogActivityFormData {
   assetName: string;
   natureOfProblem: string;
   commentsOrSolution: string;
+  assignedTo?: string; // Employee ID assigned to handle this activity
+  assignedToName?: string;
   attendedBy: string;
   attendedByName: string;
-  verifiedBy?: string;
-  verifiedByName?: string;
-  status?: 'open' | 'in-progress' | 'resolved' | 'verified';
+  verifiedBy?: string; // Legacy field
+  verifiedByName?: string; // Legacy field
+  status?: 'open' | 'in-progress' | 'completed' | 'pending_verification' | 'verified';
   priority?: 'low' | 'medium' | 'high' | 'critical';
 }
 
@@ -180,6 +203,7 @@ export interface DailyLogActivitiesState {
   updateActivity: (id: string, data: Partial<DailyLogActivityFormData>) => Promise<boolean>;
   deleteActivity: (id: string) => Promise<boolean>;
   updateActivityStatus: (id: string, status: string, verifiedBy?: string) => Promise<boolean>;
+  verifyActivity: (id: string, adminNotes?: string) => Promise<boolean>;
   
   // Statistics
   fetchStats: (filters?: { department?: string; startDate?: string; endDate?: string }) => Promise<void>;

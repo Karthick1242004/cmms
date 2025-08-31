@@ -19,10 +19,12 @@ import type { SafetyInspectionSchedule, SafetyInspectionRecord, SafetyChecklistC
 interface SafetyInspectionRecordFormProps {
   trigger: React.ReactNode
   schedule: SafetyInspectionSchedule | null
+  record?: SafetyInspectionRecord | null
+  mode?: 'create' | 'edit'
 }
 
-export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspectionRecordFormProps) {
-  const { addRecord, setRecordDialogOpen, isRecordDialogOpen } = useSafetyInspectionStore()
+export function SafetyInspectionRecordForm({ trigger, schedule, record, mode = 'create' }: SafetyInspectionRecordFormProps) {
+  const { addRecord, updateRecord, setRecordDialogOpen, isRecordDialogOpen } = useSafetyInspectionStore()
   const { user } = useAuthStore()
   const { toast } = useToast()
 
@@ -39,13 +41,37 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
   const [violations, setViolations] = useState<SafetyViolation[]>([])
 
   useEffect(() => {
-    // Only initialize if schedule exists and has checklist categories
+    if (mode === 'edit' && record) {
+      // Initialize form with existing record data
+      console.log('Safety Inspection Record Form: Edit mode - initializing with record data')
+      
+      const recordDate = new Date(record.completedDate)
+      const startTime = record.startTime || '09:00'
+      const endTime = record.endTime || '17:00'
+      
+      setFormData({
+        completedDate: record.completedDate,
+        startTime: startTime,
+        endTime: endTime,
+        status: record.status,
+        complianceStatus: record.complianceStatus,
+        notes: record.notes || "",
+      })
+      
+      // Initialize category results and violations from record
+      setCategoryResults(record.categoryResults || [])
+      setViolations(record.violations || [])
+      
+      return
+    }
+
+    // Create mode - initialize if schedule exists and has checklist categories
     if (!schedule) {
       console.log('Safety Inspection Record Form: No schedule provided')
       return
     }
 
-    console.log('Safety Inspection Record Form: Schedule received:', {
+    console.log('Safety Inspection Record Form: Create mode - Schedule received:', {
       id: schedule.id,
       assetId: schedule.assetId,
       assetName: schedule.assetName,
@@ -131,7 +157,7 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
     
     console.log('Initial category results:', initialCategoryResults)
     setCategoryResults(initialCategoryResults)
-  }, [schedule])
+  }, [schedule, record, mode])
 
   const calculateActualDuration = () => {
     if (formData.startTime && formData.endTime) {
@@ -248,7 +274,7 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
     e.preventDefault()
     
     // Frontend validation
-    if (!schedule) {
+    if (mode === 'create' && !schedule) {
       toast({
         title: "Error",
         description: "No schedule selected. Please try again.",
@@ -257,7 +283,19 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
       return
     }
 
-    if (!schedule.assetId) {
+    if (mode === 'edit' && !record) {
+      toast({
+        title: "Error",
+        description: "No record selected for editing. Please try again.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const currentAssetId = mode === 'edit' ? record?.assetId : schedule?.assetId
+    const currentAssetName = mode === 'edit' ? record?.assetName : schedule?.assetName
+
+    if (!currentAssetId) {
       toast({
         title: "Error", 
         description: "Asset ID is missing. Please try again.",
@@ -266,7 +304,7 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
       return
     }
 
-    if (!schedule.assetName) {
+    if (!currentAssetName) {
       toast({
         title: "Error",
         description: "Asset name is missing. Please try again.",
@@ -358,10 +396,10 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
     };
 
     const recordData: Omit<SafetyInspectionRecord, "id" | "createdAt" | "updatedAt"> = {
-      scheduleId: schedule.id || generateObjectId(),
-      assetId: schedule.assetId,
-      assetName: schedule.assetName,
-      department: schedule.department || user?.department || "Unknown",
+      scheduleId: mode === 'edit' ? record?.scheduleId || generateObjectId() : schedule?.id || generateObjectId(),
+      assetId: currentAssetId,
+      assetName: currentAssetName,
+      department: mode === 'edit' ? record?.department || user?.department || "Unknown" : schedule?.department || user?.department || "Unknown",
       completedDate: formData.completedDate,
       startTime: formData.startTime,
       endTime: formData.endTime,
@@ -374,7 +412,7 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
       notes: formData.notes,
       categoryResults,
       violations,
-      adminVerified: false,
+      adminVerified: mode === 'edit' ? record?.adminVerified || false : false,
       correctiveActionsRequired: violations.length > 0,
     }
 
@@ -433,16 +471,25 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
     console.log('Schedule object for reference:', schedule)
 
     try {
-      await addRecord(finalRecordData)
-      toast({
-        title: "Success",
-        description: "Safety inspection record created successfully!",
-        variant: "default",
-      })
+      if (mode === 'edit' && record) {
+        await updateRecord(record.id, finalRecordData)
+        toast({
+          title: "Success",
+          description: "Safety inspection record updated successfully!",
+          variant: "default",
+        })
+      } else {
+        await addRecord(finalRecordData)
+        toast({
+          title: "Success",
+          description: "Safety inspection record created successfully!",
+          variant: "default",
+        })
+      }
       setRecordDialogOpen(false)
     } catch (error: any) {
-      console.error('Error creating safety inspection record:', error)
-      const errorMessage = error?.message || 'Failed to create safety inspection record. Please try again.'
+      console.error(`Error ${mode === 'edit' ? 'updating' : 'creating'} safety inspection record:`, error)
+      const errorMessage = error?.message || `Failed to ${mode === 'edit' ? 'update' : 'create'} safety inspection record. Please try again.`
       toast({
         title: "Error",
         description: errorMessage,
@@ -466,9 +513,14 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
   const stats = getCompletionStats()
   const overallComplianceScore = calculateOverallComplianceScore()
 
-  // Don't render if no schedule is provided
-  if (!schedule) {
-    console.log('SafetyInspectionRecordForm: No schedule provided')
+  // Don't render if required data is missing
+  if (mode === 'create' && !schedule) {
+    console.log('SafetyInspectionRecordForm: No schedule provided for create mode')
+    return null
+  }
+
+  if (mode === 'edit' && !record) {
+    console.log('SafetyInspectionRecordForm: No record provided for edit mode')
     return null
   }
 
@@ -490,10 +542,13 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Start Safety Inspection - {schedule.assetName}
+            {mode === 'edit' ? `Edit Safety Inspection - ${currentAssetName}` : `Start Safety Inspection - ${schedule?.assetName}`}
           </DialogTitle>
           <DialogDescription>
-            Complete safety inspection checklist and record compliance status for {schedule.title}
+            {mode === 'edit' 
+              ? `Edit safety inspection record for ${record?.assetName}`
+              : `Complete safety inspection checklist and record compliance status for ${schedule?.title}`
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -839,7 +894,7 @@ export function SafetyInspectionRecordForm({ trigger, schedule }: SafetyInspecti
               Cancel
             </Button>
             <Button type="submit">
-              Complete Inspection
+              {mode === 'edit' ? 'Update Inspection' : 'Complete Inspection'}
             </Button>
           </DialogFooter>
         </form>

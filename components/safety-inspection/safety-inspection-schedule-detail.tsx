@@ -161,10 +161,10 @@ export function SafetyInspectionScheduleDetail({
                         <Target className="h-5 w-5" />
                         Status & Actions
                       </span>
-                      <Button onClick={handleStartInspection} className="ml-auto">
+                      {/* <Button onClick={handleStartInspection} className="ml-auto">
                         <Shield className="h-4 w-4 mr-2" />
                         Start Inspection
-                      </Button>
+                      </Button> */}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

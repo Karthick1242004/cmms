@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserContext } from '@/lib/auth-helpers'
 import { sampleSafetyInspectionSchedules } from '@/data/safety-inspection-sample'
 import type { SafetyInspectionSchedule } from '@/types/safety-inspection'
+import { AssetActivityLogService } from '@/lib/asset-activity-log-service'
 
 // In-memory storage for demo purposes (replace with database in production)
 let schedules = [...sampleSafetyInspectionSchedules]
@@ -361,8 +362,29 @@ export async function POST(request: NextRequest) {
         try {
           // Make a call to our performance API to store the assignment
           await storeSafetyInspectionPerformanceData(body, result.data, user);
+
+          // Create asset activity log for schedule creation
+          await AssetActivityLogService.createSafetyInspectionLog({
+            assetId: body.assetId,
+            assetName: body.assetName,
+            activityType: 'safety_inspection_scheduled',
+            createdBy: user?.id || 'system',
+            createdByName: user?.name || 'System',
+            department: body.department,
+            departmentId: body.departmentId || '',
+            context: {
+              scheduleId: result.data.id,
+              inspector: body.assignedInspector,
+              inspectorId: body.assignedInspectorId || '',
+              inspectionType: body.title,
+              frequency: body.frequency,
+              dueDate: body.nextDueDate || body.startDate,
+              priority: body.priority || 'medium'
+            },
+            request
+          });
         } catch (performanceError) {
-          console.error('Error storing safety inspection performance data:', performanceError);
+          console.error('Error storing safety inspection performance data or activity log:', performanceError);
           // Don't fail the main request if performance tracking fails
         }
       }

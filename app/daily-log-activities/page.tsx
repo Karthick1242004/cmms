@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { PageLayout } from '@/components/page-layout';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,19 +11,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2 } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useDepartments } from '@/hooks/use-departments';
 import { LoadingSpinner } from '@/components/loading-spinner';
 import { DailyLogActivityForm } from '@/components/daily-log-activity/daily-log-activity-form';
 import { DailyLogActivityView } from '@/components/daily-log-activity/daily-log-activity-view';
+import { ActivityHistoryDialog } from '@/components/daily-log-activity/activity-history-dialog';
+import { DailyLogActivityRecordsTable } from '@/components/daily-log-activity/daily-log-activity-records-table';
 import { format } from 'date-fns';
 
 const statusColors = {
   'open': 'bg-red-100 text-red-800 border-red-200',
   'in-progress': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'resolved': 'bg-blue-100 text-blue-800 border-blue-200',
+  'completed': 'bg-blue-100 text-blue-800 border-blue-200',
+  'pending_verification': 'bg-orange-100 text-orange-800 border-orange-200',
   'verified': 'bg-green-100 text-green-800 border-green-200',
 };
 
@@ -58,12 +62,34 @@ export default function DailyLogActivitiesPage() {
     deleteActivity,
   } = useDailyLogActivitiesStore();
 
+  const [activeTab, setActiveTab] = useState("activities");
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<any>(null);
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [activityToVerify, setActivityToVerify] = useState<any>(null);
+  const [adminNotes, setAdminNotes] = useState('');
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [activityForHistory, setActivityForHistory] = useState<any>(null);
 
   useEffect(() => {
     fetchActivities();
   }, [fetchActivities]);
+
+  // Apply filters when tab changes
+  useEffect(() => {
+    if (activeTab === "activities") {
+      // Reset record-specific filters when switching to activities
+      if (statusFilter === "verified" || statusFilter === "pending_verification") {
+        setStatusFilter("all");
+      }
+    } else {
+      // Reset activity-specific filters when switching to records
+      if (statusFilter === "open" || statusFilter === "in-progress") {
+        setStatusFilter("all");
+      }
+    }
+  }, [activeTab, statusFilter, setStatusFilter]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -113,13 +139,51 @@ export default function DailyLogActivitiesPage() {
     }
   };
 
+  const handleVerifyClick = (activity: any) => {
+    setActivityToVerify(activity);
+    setAdminNotes('');
+    setVerifyDialogOpen(true);
+  };
+
+  const handleVerifyConfirm = async () => {
+    if (activityToVerify && activityToVerify._id) {
+      const { verifyActivity } = useDailyLogActivitiesStore.getState();
+      const success = await verifyActivity(activityToVerify._id, adminNotes);
+      if (success) {
+        setVerifyDialogOpen(false);
+        setActivityToVerify(null);
+        setAdminNotes('');
+        // Refresh activities to show updated status
+        fetchActivities();
+      }
+    }
+  };
+
+  const handleViewHistory = (activity: any) => {
+    setActivityForHistory(activity);
+    setHistoryDialogOpen(true);
+  };
+
+  // Assignment-based access control (similar to maintenance)
+  const canAccessActivity = (activity: any) => {
+    // Super admin can access any activity
+    if (user?.accessLevel === 'super_admin') return true;
+    // Department admin can access activities in their department
+    if (user?.accessLevel === 'department_admin' && activity.departmentName === user.department) return true;
+    // Normal users can access activities assigned to them or they created
+    if (activity.assignedTo === user?.id || activity.attendedBy === user?.id || activity.createdBy === user?.id) return true;
+    return false;
+  };
+
   const canEditActivity = (activity: any) => {
     // Super admin can edit any activity
     if (user?.accessLevel === 'super_admin') return true;
     // Department admin can edit activities in their department
     if (user?.accessLevel === 'department_admin' && activity.departmentName === user.department) return true;
-    // Normal users can edit activities they created in their department
-    if (activity.createdBy === user?.id && activity.departmentName === user?.department) return true;
+    // Normal users can only edit activities assigned to them
+    if (activity.assignedTo === user?.id || activity.attendedBy === user?.id) return true;
+    // Users can edit activities they created (only if not yet assigned to someone else)
+    if (activity.createdBy === user?.id && (!activity.assignedTo || activity.assignedTo === user?.id)) return true;
     return false;
   };
 
@@ -128,10 +192,30 @@ export default function DailyLogActivitiesPage() {
     if (user?.accessLevel === 'super_admin') return true;
     // Department admin can delete activities in their department
     if (user?.accessLevel === 'department_admin' && activity.departmentName === user.department) return true;
-    // Normal users can delete activities they created in their department
-    if (activity.createdBy === user?.id && activity.departmentName === user?.department) return true;
+    // Normal users can delete activities they created (only if not yet assigned to someone else)
+    if (activity.createdBy === user?.id && (!activity.assignedTo || activity.assignedTo === user?.id)) return true;
     return false;
   };
+
+  const canVerifyActivity = (activity: any) => {
+    // Only admins can verify activities
+    if (user?.accessLevel !== 'super_admin' && user?.accessLevel !== 'department_admin') return false;
+    // Department admin can only verify activities in their department
+    if (user?.accessLevel === 'department_admin' && activity.departmentName !== user.department) return false;
+    // Activity must be completed or pending verification and not already verified
+    return (activity.status === 'completed' || activity.status === 'pending_verification') && !activity.adminVerified;
+  };
+
+  // Filter activities for records tab (completed and verified activities)
+  const getRecordsActivities = () => {
+    return activities.filter(activity => 
+      activity.status === 'completed' || 
+      activity.status === 'pending_verification' || 
+      activity.status === 'verified'
+    );
+  };
+
+  const isAdmin = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin';
 
   return (
     <PageLayout>
@@ -183,7 +267,8 @@ export default function DailyLogActivitiesPage() {
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="open">Open</SelectItem>
                     <SelectItem value="in-progress">In Progress</SelectItem>
-                    <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="pending_verification">Pending Verification</SelectItem>
                     <SelectItem value="verified">Verified</SelectItem>
                   </SelectContent>
                 </Select>
@@ -237,15 +322,28 @@ export default function DailyLogActivitiesPage() {
           </CardContent>
         </Card>
 
-        {/* Activities Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Activities</CardTitle>
-            <CardDescription>
-              Recent daily log activities from all departments
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="activities" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Activities ({activities.length})
+            </TabsTrigger>
+            <TabsTrigger value="records" className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Records ({getRecordsActivities().length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="activities" className="space-y-4">
+            {/* Activities Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Activities</CardTitle>
+                <CardDescription>
+                  Recent daily log activities from all departments
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center p-6">
                 <LoadingSpinner />
@@ -332,16 +430,37 @@ export default function DailyLogActivitiesPage() {
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <User className="h-4 w-4 text-muted-foreground" />
-                            <span>{activity.attendedByName}</span>
+                            <div className="flex flex-col">
+                              <span className={canAccessActivity(activity) ? "font-medium text-green-700" : ""}>
+                                {activity.attendedByName}
+                              </span>
+                              {activity.assignedTo && activity.assignedTo === user?.id && (
+                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 mt-1">
+                                  Assigned to you
+                                </Badge>
+                              )}
+                              {activity.assignedTo && activity.assignedTo !== user?.id && canAccessActivity(activity) && (
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 mt-1">
+                                  You can access
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            variant="outline"
-                            className={statusColors[activity.status]}
-                          >
-                            {activity.status.replace('-', ' ')}
-                          </Badge>
+                          <div className="flex flex-col space-y-1">
+                            <Badge 
+                              variant="outline"
+                              className={statusColors[activity.status]}
+                            >
+                              {activity.status.replace('_', ' ')}
+                            </Badge>
+                            {activity.adminVerified && (
+                              <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-200">
+                                Verified by {activity.adminVerifiedByName}
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
@@ -381,6 +500,15 @@ export default function DailyLogActivitiesPage() {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewHistory(activity);
+                                }}
+                              >
+                                <Clock className="mr-2 h-4 w-4" />
+                                View History
+                              </DropdownMenuItem>
                               {canEditActivity(activity) && (
                                 <DropdownMenuItem
                                   onClick={(e) => {
@@ -390,6 +518,18 @@ export default function DailyLogActivitiesPage() {
                                 >
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit
+                                </DropdownMenuItem>
+                              )}
+                              {canVerifyActivity(activity) && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleVerifyClick(activity);
+                                  }}
+                                  className="text-green-600 focus:text-green-600"
+                                >
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  Verify
                                 </DropdownMenuItem>
                               )}
                               {canDeleteActivity(activity) && (
@@ -415,6 +555,16 @@ export default function DailyLogActivitiesPage() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="records" className="space-y-4">
+            <DailyLogActivityRecordsTable
+              records={getRecordsActivities()}
+              isLoading={isLoading}
+              isAdmin={isAdmin}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Daily Log Activity Form Dialog */}
@@ -426,6 +576,61 @@ export default function DailyLogActivitiesPage() {
         onClose={() => setViewDialogOpen(false)}
         activity={selectedActivity}
       />
+
+      {/* Activity History Dialog */}
+      <ActivityHistoryDialog 
+        isOpen={historyDialogOpen}
+        onClose={() => setHistoryDialogOpen(false)}
+        activity={activityForHistory}
+      />
+
+      {/* Verification Dialog */}
+      <AlertDialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Verify Daily Log Activity</AlertDialogTitle>
+            <AlertDialogDescription>
+              Review and verify the activity completed by {activityToVerify?.attendedByName}
+              {activityToVerify && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <p className="font-medium text-sm">Activity Details:</p>
+                  <p className="text-sm text-gray-600">Date: {activityToVerify.date ? format(new Date(activityToVerify.date), 'MMM dd, yyyy') : 'N/A'}</p>
+                  <p className="text-sm text-gray-600">Asset: {activityToVerify.assetName}</p>
+                  <p className="text-sm text-gray-600">Problem: {activityToVerify.natureOfProblem}</p>
+                  <p className="text-sm text-gray-600">Solution: {activityToVerify.commentsOrSolution}</p>
+                  <p className="text-sm text-gray-600">Status: {activityToVerify.status.replace('_', ' ')}</p>
+                  <p className="text-sm text-gray-600">Priority: {activityToVerify.priority}</p>
+                </div>
+              )}
+              <div className="mt-4">
+                <label className="text-sm font-medium">Admin Verification Notes (Optional)</label>
+                <textarea
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  placeholder="Add verification notes or feedback..."
+                  className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm"
+                  rows={3}
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setVerifyDialogOpen(false);
+              setActivityToVerify(null);
+              setAdminNotes('');
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleVerifyConfirm}
+              className="bg-green-600 hover:bg-green-700 focus:ring-green-600"
+            >
+              Verify Activity
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -12,7 +12,7 @@ import { PageLayout } from "@/components/page-layout"
 import { SafetyInspectionStats } from "@/components/safety-inspection/safety-inspection-stats"
 import { SafetyInspectionScheduleForm } from "@/components/safety-inspection/safety-inspection-schedule-form"
 import { SafetyInspectionScheduleTable } from "@/components/safety-inspection/safety-inspection-schedule-table"
-import { SafetyInspectionRecordTable } from "@/components/safety-inspection/safety-inspection-record-table"
+import { SafetyInspectionRecordTableEnhanced } from "@/components/safety-inspection/safety-inspection-record-table-enhanced"
 import { SafetyInspectionSchedulesReport } from "@/components/safety-inspection/safety-inspection-schedules-report"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
@@ -252,7 +252,7 @@ export default function SafetyInspectionPage() {
           </TabsContent>
 
           <TabsContent value="records" className="space-y-6">
-            <SafetyInspectionRecordTable 
+            <SafetyInspectionRecordTableEnhanced 
               records={filteredRecords}
               schedules={filteredSchedules}
               isLoading={isLoading}

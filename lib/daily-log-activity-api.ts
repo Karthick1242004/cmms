@@ -103,6 +103,17 @@ export const dailyLogActivitiesApi = {
     return response;
   },
 
+  // Verify activity (admin only)
+  verifyActivity: async (id: string, adminNotes?: string): Promise<{ success: boolean; message: string; data?: DailyLogActivity }> => {
+    const payload = { adminNotes };
+    
+    const response = await apiClient.patch<{ success: boolean; message: string; data?: DailyLogActivity }>(
+      `${ENDPOINTS.DAILY_LOG_ACTIVITIES}/${id}/verify`,
+      payload
+    );
+    return response;
+  },
+
   // Get assets by department
   getAssetsByDepartment: async (departmentId: string): Promise<AssetsByDepartmentResponse> => {
     const response = await apiClient.get<AssetsByDepartmentResponse>(`${ENDPOINTS.ASSETS_BY_DEPARTMENT}/${departmentId}`);

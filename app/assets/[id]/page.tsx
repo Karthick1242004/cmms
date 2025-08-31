@@ -39,6 +39,8 @@ import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { Skeleton } from "@/components/ui/skeleton"
 import { assetsApi } from "@/lib/assets-api"
 import { AssetIndividualReport } from "@/components/assets/asset-individual-report"
+import { AssetActivityLogTable } from "@/components/asset-activity-log/asset-activity-log-table"
+import { ActivityLogDemo } from "@/components/asset-activity-log/activity-log-demo"
 
 interface DetailItemProps {
   label: string
@@ -185,6 +187,7 @@ export default function AssetDetailPage() {
     "Financials",
     "Purchase",
     "Associated Customer",
+    "Activity Log",
     "Log",
   ]
 
@@ -606,6 +609,19 @@ export default function AssetDetailPage() {
                       </CardContent>
                     </Card>
                   </TabsContent>
+
+              {/* Activity Log Tab */}
+              <TabsContent value="activitylog" className="mt-4">
+                <ActivityLogDemo 
+                  assetId={asset.id} 
+                  assetName={asset.assetName}
+                />
+                {/* Full implementation (commented out for demo) */}
+                {/* <AssetActivityLogTable 
+                  assetId={asset.id} 
+                  assetName={asset.assetName}
+                /> */}
+              </TabsContent>
 
               {/* Log Tab */}
               <TabsContent value="log" className="mt-4">

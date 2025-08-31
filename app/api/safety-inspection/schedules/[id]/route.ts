@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sampleSafetyInspectionSchedules } from '@/data/safety-inspection-sample'
 import type { SafetyInspectionSchedule } from '@/types/safety-inspection'
+import { getUserContext } from '@/lib/auth-helpers'
+import { AssetActivityLogService } from '@/lib/asset-activity-log-service'
 
 // In-memory storage for demo purposes (replace with database in production)
 let schedules = [...sampleSafetyInspectionSchedules]
@@ -86,6 +88,7 @@ export async function PUT(
   try {
     const { id } = params;
     const body = await request.json();
+    const user = await getUserContext(request);
 
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/safety-inspection/schedules/${id}`, {
@@ -105,6 +108,35 @@ export async function PUT(
     }
 
     const data = await response.json();
+
+    // Create asset activity log for schedule update
+    if (data.success && body.assetId && user) {
+      try {
+        await AssetActivityLogService.createSafetyInspectionLog({
+          assetId: body.assetId,
+          assetName: body.assetName,
+          activityType: 'safety_inspection_updated',
+          createdBy: user.id,
+          createdByName: user.name,
+          department: body.department || user.department,
+          departmentId: body.departmentId || '',
+          context: {
+            scheduleId: id,
+            inspector: body.assignedInspector,
+            inspectorId: body.assignedInspectorId || '',
+            inspectionType: body.title,
+            frequency: body.frequency,
+            dueDate: body.nextDueDate || body.startDate,
+            priority: body.priority || 'medium'
+          },
+          request
+        });
+      } catch (error) {
+        console.error('Failed to create asset activity log for safety inspection schedule update:', error);
+        // Don't fail the main operation if activity log creation fails
+      }
+    }
+
     return NextResponse.json(data, { status: 200 });
 
   } catch (error) {
@@ -122,6 +154,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
+    const user = await getUserContext(request);
     
     console.log('DELETE request for safety inspection schedule ID:', id);
 
@@ -130,6 +163,25 @@ export async function DELETE(
         { success: false, message: 'Invalid schedule ID provided' },
         { status: 400 }
       );
+    }
+
+    // Get schedule details before deletion for activity logging
+    let scheduleData = null;
+    try {
+      const scheduleResponse = await fetch(`${SERVER_BASE_URL}/api/safety-inspection/schedules/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      if (scheduleResponse.ok) {
+        const scheduleResult = await scheduleResponse.json();
+        scheduleData = scheduleResult.data;
+      }
+    } catch (error) {
+      console.warn('Could not fetch schedule data before deletion:', error);
     }
 
     try {
@@ -163,6 +215,35 @@ export async function DELETE(
       }
 
       const data = await response.json();
+
+      // Create asset activity log for schedule deletion
+      if (data.success && scheduleData && user) {
+        try {
+          await AssetActivityLogService.createSafetyInspectionLog({
+            assetId: scheduleData.assetId,
+            assetName: scheduleData.assetName,
+            activityType: 'safety_inspection_deleted',
+            createdBy: user.id,
+            createdByName: user.name,
+            department: scheduleData.department || user.department,
+            departmentId: scheduleData.departmentId || '',
+            context: {
+              scheduleId: id,
+              inspector: scheduleData.assignedInspector,
+              inspectorId: scheduleData.assignedInspectorId || '',
+              inspectionType: scheduleData.title,
+              frequency: scheduleData.frequency,
+              dueDate: scheduleData.nextDueDate || scheduleData.startDate,
+              priority: scheduleData.priority || 'medium'
+            },
+            request
+          });
+        } catch (error) {
+          console.error('Failed to create asset activity log for safety inspection schedule deletion:', error);
+          // Don't fail the main operation if activity log creation fails
+        }
+      }
+
       console.log(`Successfully deleted schedule ${id} from backend database`);
       return NextResponse.json(data, { status: 200 });
     } catch (backendError) {

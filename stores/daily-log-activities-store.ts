@@ -156,7 +156,7 @@ export const useDailyLogActivitiesStore = create<DailyLogActivitiesState>()(
           const state = get();
           const apiFilters = {
             search: state.searchTerm,
-            status: state.statusFilter,
+            status: state.statusFilter as any,
             priority: state.priorityFilter,
             department: state.departmentFilter,
             ...filters
@@ -362,6 +362,44 @@ export const useDailyLogActivitiesStore = create<DailyLogActivitiesState>()(
           } else {
             set((state) => {
               state.error = response.message || 'Failed to update status';
+            });
+            return false;
+          }
+        } catch (error) {
+          set((state) => {
+            state.error = error instanceof Error ? error.message : 'Unknown error occurred';
+          });
+          return false;
+        } finally {
+          set((state) => {
+            state.isLoading = false;
+          });
+        }
+      },
+
+      verifyActivity: async (id, adminNotes) => {
+        try {
+          set((state) => {
+            state.isLoading = true;
+            state.error = null;
+          });
+
+          const response = await dailyLogActivitiesApi.verifyActivity(id, adminNotes);
+
+          if (response.success && response.data) {
+            // Update activities list
+            set((state) => {
+              const index = state.activities.findIndex(a => a._id === id);
+              if (index !== -1) {
+                state.activities[index] = response.data!;
+                state.filteredActivities = state.activities;
+              }
+            });
+
+            return true;
+          } else {
+            set((state) => {
+              state.error = response.message || 'Failed to verify activity';
             });
             return false;
           }
