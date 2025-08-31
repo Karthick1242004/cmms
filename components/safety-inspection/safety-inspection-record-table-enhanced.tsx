@@ -14,8 +14,10 @@ import { MoreHorizontal, CheckCircle, XCircle, Clock, User, Calendar, Eye, Shiel
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { SafetyInspectionScheduleDetail } from "./safety-inspection-schedule-detail"
 import { SafetyInspectionRecordForm } from "./safety-inspection-record-form"
+import { VerificationTroubleshooting } from "./verification-troubleshooting"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
+import { useToast } from "@/hooks/use-toast"
 import type { SafetyInspectionRecord, SafetyInspectionSchedule } from "@/types/safety-inspection"
 import { format } from 'date-fns'
 
@@ -29,6 +31,7 @@ interface SafetyInspectionRecordTableEnhancedProps {
 export function SafetyInspectionRecordTableEnhanced({ records, schedules, isLoading, isAdmin }: SafetyInspectionRecordTableEnhancedProps) {
   const { user } = useAuthStore()
   const { verifyRecord } = useSafetyInspectionStore()
+  const { toast } = useToast()
   
   const [detailDialog, setDetailDialog] = useState<{ open: boolean; schedule: SafetyInspectionSchedule | null }>({
     open: false,
@@ -82,10 +85,25 @@ export function SafetyInspectionRecordTableEnhanced({ records, schedules, isLoad
 
   const handleVerifyConfirm = async () => {
     if (selectedRecord) {
-      await verifyRecord(selectedRecord.id, adminNotes, user?.name)
-      setSelectedRecord(null)
-      setVerifyDialogOpen(false)
-      setAdminNotes("")
+      try {
+        await verifyRecord(selectedRecord.id, adminNotes, user?.name)
+        setSelectedRecord(null)
+        setVerifyDialogOpen(false)
+        setAdminNotes("")
+        toast({
+          title: "Record Verified",
+          description: "Safety inspection record has been successfully verified.",
+        })
+      } catch (error: any) {
+        // Show the API error message to the user
+        const errorMessage = error?.message || "Failed to verify safety inspection record"
+        toast({
+          title: "Verification Failed",
+          description: errorMessage,
+          variant: "destructive"
+        })
+        console.error('Verification error:', error)
+      }
     }
   }
 
@@ -155,9 +173,14 @@ export function SafetyInspectionRecordTableEnhanced({ records, schedules, isLoad
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Safety Inspection Records
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Safety Inspection Records
+            </div>
+            {isAdmin && (
+              <VerificationTroubleshooting />
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>

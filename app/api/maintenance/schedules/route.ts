@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
+import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
@@ -345,8 +346,31 @@ export async function POST(request: NextRequest) {
       try {
         // Make a call to our performance API to store the assignment
         await storeMaintenancePerformanceData(body, data.data, user, request);
+
+        // Create asset activity log for maintenance schedule creation
+        await AssetActivityLogService.createMaintenanceLog({
+          assetId: body.assetId,
+          assetName: body.assetName,
+          activityType: 'maintenance_scheduled',
+          createdBy: user?.id || 'system',
+          createdByName: user?.name || 'System',
+          department: body.department,
+          departmentId: body.departmentId || '',
+          context: {
+            scheduleId: data.data.id,
+            technician: body.assignedTechnician,
+            technicianId: body.assignedTechnicianId || '',
+            maintenanceType: body.maintenanceType || 'General Maintenance',
+            description: body.description || '',
+            priority: body.priority || 'medium',
+            frequency: body.frequency || 'monthly',
+            estimatedDuration: body.estimatedDuration || 0,
+            dueDate: body.nextDueDate || body.startDate
+          },
+          request
+        });
       } catch (performanceError) {
-        console.error('Performance tracking failed:', performanceError);
+        console.error('Performance tracking or activity logging failed:', performanceError);
         // Don't fail the main request if performance tracking fails
       }
     }

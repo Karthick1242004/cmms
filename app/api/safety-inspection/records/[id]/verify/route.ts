@@ -42,11 +42,44 @@ export async function PATCH(
     }
 
     // Department admin can only verify records in their department
-    if (user.accessLevel === 'department_admin' && record.department !== user.department) {
-      return NextResponse.json(
-        { success: false, message: 'Forbidden - You can only verify records in your department' },
-        { status: 403 }
-      );
+    // Enhanced logging for debugging department mismatch issues
+    console.log('Department verification check:', {
+      userDepartment: user.department,
+      recordDepartment: record.department,
+      userAccessLevel: user.accessLevel,
+      userName: user.name,
+      userEmail: user.email,
+      recordId: id,
+      recordInspector: record.inspector,
+      recordInspectorId: record.inspectorId
+    });
+
+    if (user.accessLevel === 'department_admin') {
+      // Case-insensitive, trimmed comparison for department matching
+      const userDeptLower = (user.department || '').toLowerCase().trim();
+      const recordDeptLower = (record.department || '').toLowerCase().trim();
+      
+      if (userDeptLower !== recordDeptLower) {
+        console.error('Department mismatch - verification denied:', {
+          userDepartment: user.department,
+          recordDepartment: record.department,
+          userDepartmentLower: userDeptLower,
+          recordDepartmentLower: recordDeptLower
+        });
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: `Forbidden - You can only verify records in your department. Your department: "${user.department}", Record department: "${record.department}"`,
+            details: {
+              userDepartment: user.department,
+              recordDepartment: record.department,
+              userAccessLevel: user.accessLevel
+            }
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Update the record with verification information

@@ -776,9 +776,9 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                 className="pl-8"
               />
             </div>
-            <ScrollArea className="h-[400px]">
+            <div className="max-h-[300px] overflow-y-auto border rounded-md">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
                     <TableHead>Asset Name</TableHead>
                     <TableHead>Tag</TableHead>
@@ -820,7 +820,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                   <p>No assets found matching your search.</p>
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

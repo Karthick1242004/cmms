@@ -287,12 +287,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     // Handle department assignment based on user access level
-    if (!body.department) {
+    if (!body.department || body.department === '') {
       // If no department provided, use user's department
       body.department = user?.department || 'General'
+      console.log('Department not provided, using user department:', body.department)
     } else if (user && user.accessLevel !== 'super_admin') {
       // Non-super admins can only create schedules for their own department
+      const originalDepartment = body.department
       body.department = user.department
+      console.log(`Department changed from "${originalDepartment}" to user department "${body.department}" for non-super admin`)
+    }
+    
+    // Ensure department is always set
+    if (!body.department || body.department === '') {
+      body.department = 'General'
+      console.warn('Department still empty after assignment, defaulting to "General"')
     }
 
     // Add createdBy information
@@ -356,6 +365,12 @@ export async function POST(request: NextRequest) {
 
     try {
       const result = JSON.parse(responseText)
+      
+      // Ensure department is included in the response if backend doesn't return it
+      if (result.success && result.data && !result.data.department) {
+        console.log('Backend response missing department, adding from request body:', body.department)
+        result.data.department = body.department
+      }
       
       // Store performance data for assigned inspector
       if (result.success && body.assignedInspector && result.data) {

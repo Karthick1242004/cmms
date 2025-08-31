@@ -145,6 +145,12 @@ export async function POST(request: NextRequest) {
     if (!body.department || body.department === '' || user.accessLevel !== 'super_admin') {
       body.department = user.department || 'Unknown';
     }
+    
+    // Ensure department is always set and not undefined
+    if (!body.department || body.department === '') {
+      body.department = user?.department || 'General';
+      console.log('Record creation: Department was empty, using user department:', body.department);
+    }
 
     // Add inspector information if not provided
     if (!body.inspector || body.inspector === '') {
@@ -162,6 +168,29 @@ export async function POST(request: NextRequest) {
       };
       body.scheduleId = generateObjectId();
       console.warn('POST /api/safety-inspection/records - Missing scheduleId, generated temporary ObjectId:', body.scheduleId);
+    } else {
+      // Try to get department from schedule if available
+      try {
+        const scheduleResponse = await fetch(`${SERVER_BASE_URL}/api/safety-inspection/schedules/${body.scheduleId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (scheduleResponse.ok) {
+          const scheduleData = await scheduleResponse.json();
+          if (scheduleData.success && scheduleData.data && scheduleData.data.department) {
+            // Use schedule's department if available and user is not super admin
+            if (user.accessLevel !== 'super_admin') {
+              body.department = scheduleData.data.department;
+              console.log('Record creation: Using department from schedule:', body.department);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Could not fetch schedule department, using user department:', error);
+      }
     }
 
     // If scheduleId is still in old temp format, convert it to valid ObjectId

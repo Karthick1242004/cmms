@@ -40,6 +40,10 @@ export function SafetyInspectionRecordForm({ trigger, schedule, record, mode = '
   const [categoryResults, setCategoryResults] = useState<SafetyChecklistCategoryRecord[]>([])
   const [violations, setViolations] = useState<SafetyViolation[]>([])
 
+  // Calculate current asset info based on mode
+  const currentAssetId = mode === 'edit' ? record?.assetId : schedule?.assetId
+  const currentAssetName = mode === 'edit' ? record?.assetName : schedule?.assetName
+
   useEffect(() => {
     if (mode === 'edit' && record) {
       // Initialize form with existing record data
@@ -291,9 +295,6 @@ export function SafetyInspectionRecordForm({ trigger, schedule, record, mode = '
       })
       return
     }
-
-    const currentAssetId = mode === 'edit' ? record?.assetId : schedule?.assetId
-    const currentAssetName = mode === 'edit' ? record?.assetName : schedule?.assetName
 
     if (!currentAssetId) {
       toast({
@@ -623,19 +624,19 @@ export function SafetyInspectionRecordForm({ trigger, schedule, record, mode = '
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="font-medium">Asset:</span> {schedule.assetName}
+                <span className="font-medium">Asset:</span> {currentAssetName}
               </div>
               <div>
-                <span className="font-medium">Location:</span> {schedule.location}
+                <span className="font-medium">Location:</span> {schedule?.location || record?.location || 'N/A'}
               </div>
               <div>
                 <span className="font-medium">Risk Level:</span> 
-                <Badge className={`ml-2 ${getRiskLevelColor(schedule.riskLevel)}`}>
-                  {schedule.riskLevel}
+                <Badge className={`ml-2 ${getRiskLevelColor(schedule?.riskLevel || 'medium')}`}>
+                  {schedule?.riskLevel || 'medium'}
                 </Badge>
               </div>
               <div>
-                <span className="font-medium">Standards:</span> {schedule.safetyStandards.join(", ")}
+                <span className="font-medium">Standards:</span> {schedule?.safetyStandards?.join(", ") || 'General Safety Standards'}
               </div>
             </CardContent>
           </Card>

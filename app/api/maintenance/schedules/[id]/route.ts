@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
+import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
@@ -92,6 +93,37 @@ export async function PUT(
     }
 
     const data = await response.json();
+
+    // Create asset activity log for maintenance schedule update
+    if (data.success && body.assetId && data.data) {
+      try {
+        await AssetActivityLogService.createMaintenanceLog({
+          assetId: body.assetId,
+          assetName: body.assetName,
+          activityType: 'maintenance_updated',
+          createdBy: user?.id || 'system',
+          createdByName: user?.name || 'System',
+          department: body.department || user?.department || 'General',
+          departmentId: body.departmentId || '',
+          context: {
+            scheduleId: id,
+            technician: body.assignedTechnician,
+            technicianId: body.assignedTechnicianId || '',
+            maintenanceType: body.maintenanceType || 'General Maintenance',
+            description: body.description || '',
+            priority: body.priority || 'medium',
+            frequency: body.frequency || 'monthly',
+            estimatedDuration: body.estimatedDuration || 0,
+            dueDate: body.nextDueDate || body.startDate
+          },
+          request
+        });
+      } catch (error) {
+        console.error('Failed to create asset activity log for maintenance schedule update:', error);
+        // Don't fail the main operation if activity log creation fails
+      }
+    }
+
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error('Error updating maintenance schedule:', error);
@@ -117,6 +149,26 @@ export async function DELETE(
       // unauthenticated request; continue
     }
 
+    // Get schedule details before deletion for activity logging
+    let scheduleData = null;
+    try {
+      const scheduleResponse = await fetch(`${SERVER_BASE_URL}/api/maintenance/schedules/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Department': user?.department || 'General',
+          'X-User-Name': user?.name || 'Test User',
+        },
+      });
+      
+      if (scheduleResponse.ok) {
+        const scheduleResult = await scheduleResponse.json();
+        scheduleData = scheduleResult.data;
+      }
+    } catch (error) {
+      console.warn('Could not fetch schedule data before deletion:', error);
+    }
+
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/schedules/${id}`, {
       method: 'DELETE',
@@ -136,6 +188,37 @@ export async function DELETE(
     }
 
     const data = await response.json();
+
+    // Create asset activity log for maintenance schedule deletion
+    if (data.success && scheduleData && user) {
+      try {
+        await AssetActivityLogService.createMaintenanceLog({
+          assetId: scheduleData.assetId,
+          assetName: scheduleData.assetName,
+          activityType: 'maintenance_deleted',
+          createdBy: user.id,
+          createdByName: user.name,
+          department: scheduleData.department || user.department,
+          departmentId: scheduleData.departmentId || '',
+          context: {
+            scheduleId: id,
+            technician: scheduleData.assignedTechnician,
+            technicianId: scheduleData.assignedTechnicianId || '',
+            maintenanceType: scheduleData.maintenanceType || 'General Maintenance',
+            description: scheduleData.description || '',
+            priority: scheduleData.priority || 'medium',
+            frequency: scheduleData.frequency || 'monthly',
+            estimatedDuration: scheduleData.estimatedDuration || 0,
+            dueDate: scheduleData.nextDueDate || scheduleData.startDate
+          },
+          request
+        });
+      } catch (error) {
+        console.error('Failed to create asset activity log for maintenance schedule deletion:', error);
+        // Don't fail the main operation if activity log creation fails
+      }
+    }
+
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error('Error deleting maintenance schedule:', error);

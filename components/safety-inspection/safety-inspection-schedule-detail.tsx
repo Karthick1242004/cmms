@@ -25,6 +25,7 @@ import {
   Download
 } from "lucide-react"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
+import { useAuthStore } from "@/stores/auth-store"
 import { SafetyInspectionRecordForm } from "./safety-inspection-record-form"
 import { SafetyInspectionScheduleDetailReport } from "./safety-inspection-schedule-detail-report"
 import type { SafetyInspectionSchedule } from "@/types/safety-inspection"
@@ -41,6 +42,7 @@ export function SafetyInspectionScheduleDetail({
   onClose 
 }: SafetyInspectionScheduleDetailProps) {
   const { setSelectedSchedule, setRecordDialogOpen } = useSafetyInspectionStore()
+  const { user } = useAuthStore()
   const [activeTab, setActiveTab] = useState("overview")
   const [isDetailReportOpen, setIsDetailReportOpen] = useState(false)
 
@@ -142,7 +144,7 @@ export function SafetyInspectionScheduleDetail({
                 </Button>
               </div>
             </DialogTitle>
-          </DialogHeader>
+            </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-y-scroll">
             <TabsList className="grid w-full grid-cols-3">
@@ -246,7 +248,7 @@ export function SafetyInspectionScheduleDetail({
                         </div>
                         <div>
                           <label className="text-sm font-medium text-muted-foreground">Department</label>
-                          <p className="text-sm">{schedule.department}</p>
+                          <p className="text-sm">{schedule.department || user?.department || 'Unknown'}</p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-muted-foreground">Assigned Inspector</label>
