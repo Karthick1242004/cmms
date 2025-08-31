@@ -84,8 +84,8 @@ export function VerificationTroubleshooting({ recordId }: VerificationTroublesho
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Access Level:</span>
-                  <Badge variant={user.accessLevel === 'super_admin' ? 'default' : user.accessLevel === 'department_admin' ? 'secondary' : 'outline'}>
-                    {user.accessLevel.replace('_', ' ')}
+                  <Badge variant={user?.accessLevel === 'super_admin' ? 'default' : user?.accessLevel === 'department_admin' ? 'secondary' : 'outline'}>
+                    {user?.accessLevel?.replace('_', ' ') || 'Unknown'}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">

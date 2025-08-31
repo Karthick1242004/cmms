@@ -376,7 +376,7 @@ export default function TicketsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-              <div className="space-y-1">
+              <div className="space-y-w1">
                 <label className="text-xs font-medium">Search</label>
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-3 w-3 text-muted-foreground" />

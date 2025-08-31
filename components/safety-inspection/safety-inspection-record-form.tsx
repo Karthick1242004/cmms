@@ -32,8 +32,8 @@ export function SafetyInspectionRecordForm({ trigger, schedule, record, mode = '
     completedDate: new Date().toISOString().split('T')[0],
     startTime: new Date().toTimeString().slice(0, 5),
     endTime: "",
-    status: "completed" as const,
-    complianceStatus: "compliant" as const,
+    status: "completed" as "completed" | "partially_completed" | "failed" | "in_progress",
+    complianceStatus: "compliant" as "compliant" | "non_compliant" | "requires_attention",
     notes: "",
   })
 
@@ -57,8 +57,8 @@ export function SafetyInspectionRecordForm({ trigger, schedule, record, mode = '
         completedDate: record.completedDate,
         startTime: startTime,
         endTime: endTime,
-        status: record.status,
-        complianceStatus: record.complianceStatus,
+        status: record.status as "completed" | "partially_completed" | "failed" | "in_progress",
+        complianceStatus: record.complianceStatus as "compliant" | "non_compliant" | "requires_attention",
         notes: record.notes || "",
       })
       
@@ -451,8 +451,8 @@ export function SafetyInspectionRecordForm({ trigger, schedule, record, mode = '
     console.log('Submitting safety inspection record:', finalRecordData)
     console.log('Key validation fields:', {
       scheduleId: finalRecordData.scheduleId,
-      scheduleIdOriginal: schedule.id,
-      scheduleIdGenerated: !schedule.id || schedule.id.startsWith('temp_'),
+      scheduleIdOriginal: schedule?.id,
+      scheduleIdGenerated: !schedule?.id || schedule.id.startsWith('temp_'),
       assetId: finalRecordData.assetId,
       inspector: finalRecordData.inspector,
       department: finalRecordData.department,
@@ -465,7 +465,7 @@ export function SafetyInspectionRecordForm({ trigger, schedule, record, mode = '
     })
 
     // Log if we generated a temporary scheduleId
-    if (!schedule.id || schedule.id.startsWith('temp_')) {
+    if (!schedule?.id || schedule.id.startsWith('temp_')) {
       console.warn('Generated temporary scheduleId for safety inspection record:', finalRecordData.scheduleId)
     }
     console.log('All category results:', finalRecordData.categoryResults)
@@ -627,7 +627,7 @@ export function SafetyInspectionRecordForm({ trigger, schedule, record, mode = '
                 <span className="font-medium">Asset:</span> {currentAssetName}
               </div>
               <div>
-                <span className="font-medium">Location:</span> {schedule?.location || record?.location || 'N/A'}
+                <span className="font-medium">Location:</span> {schedule?.location || 'N/A'}
               </div>
               <div>
                 <span className="font-medium">Risk Level:</span> 

@@ -254,7 +254,7 @@ export function SafetyInspectionRecordTableEnhanced({ records, schedules, isLoad
                               Verified
                             </Badge>
                             <div className="text-xs text-muted-foreground">
-                              by {record.adminVerifiedByName}
+                              by {record.adminVerifiedBy}
                             </div>
                           </div>
                         ) : record.status === 'completed' ? (
