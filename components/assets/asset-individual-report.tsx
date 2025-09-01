@@ -1,9 +1,11 @@
 "use client"
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
-import { Download, Package } from 'lucide-react'
+import { Download, Package, Activity } from 'lucide-react'
 import type { AssetDetail } from "@/types/asset"
+import type { ActivityLogEntry } from "@/types/activity-log"
+import { activityLogApi } from "@/lib/activity-log-api"
 
 interface AssetIndividualReportProps {
   asset: AssetDetail
@@ -11,6 +13,43 @@ interface AssetIndividualReportProps {
 }
 
 export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportProps) {
+  const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([])
+  const [loadingLogs, setLoadingLogs] = useState(true)
+  const [logError, setLogError] = useState<string | null>(null)
+
+  // Fetch activity logs when component mounts
+  useEffect(() => {
+    const fetchActivityLogs = async () => {
+      try {
+        setLoadingLogs(true)
+        setLogError(null)
+        
+        console.log('🚀 [Asset Report] - Fetching activity logs for asset:', asset.id)
+        
+        // Fetch all activity logs for this asset (no pagination limit for report)
+        const response = await activityLogApi.getAll({
+          assetId: asset.id,
+          limit: 1000 // Get all logs for the report
+        })
+        
+        if (response.success && response.data) {
+          setActivityLogs(response.data.logs || [])
+          console.log('✅ [Asset Report] - Activity logs fetched:', response.data.logs?.length || 0)
+        } else {
+          setLogError(response.error || 'Failed to fetch activity logs')
+          console.error('❌ [Asset Report] - Failed to fetch activity logs:', response.error)
+        }
+      } catch (error) {
+        setLogError(error instanceof Error ? error.message : 'Unknown error')
+        console.error('❌ [Asset Report] - Error fetching activity logs:', error)
+      } finally {
+        setLoadingLogs(false)
+      }
+    }
+
+    fetchActivityLogs()
+  }, [asset.id])
+
   const handleExportReport = () => {
     // Generate the report HTML
     const reportHTML = generateReportHTML()
@@ -538,6 +577,121 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
         </div>
         ` : ''}
         
+        ${activityLogs.length > 0 ? `
+        <div class="section">
+          <h2 class="section-title">
+            📊 Activity Log (${activityLogs.length} Activities)
+          </h2>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 20%;">Date</th>
+                <th style="width: 15%;">Module</th>
+                <th style="width: 10%;">Action</th>
+                <th style="width: 25%;">Activity</th>
+                <th style="width: 10%;">Priority</th>
+                <th style="width: 10%;">Status</th>
+                <th style="width: 10%;">Created By</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${activityLogs.map(log => {
+                const date = new Date(log.createdAt)
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
+                
+                const moduleColors = {
+                  safety_inspection: '#ef4444',
+                  maintenance: '#3b82f6', 
+                  tickets: '#10b981',
+                  daily_log_activity: '#f59e0b'
+                }
+                
+                const actionColors = {
+                  created: '#6b7280',
+                  updated: '#3b82f6',
+                  completed: '#10b981',
+                  verified: '#8b5cf6',
+                  approved: '#059669',
+                  cancelled: '#ef4444',
+                  deleted: '#ef4444'
+                }
+                
+                const priorityColors = {
+                  low: '#6b7280',
+                  medium: '#f59e0b',
+                  high: '#f97316',
+                  critical: '#ef4444'
+                }
+                
+                const statusColors = {
+                  pending: '#f59e0b',
+                  in_progress: '#3b82f6',
+                  completed: '#10b981',
+                  cancelled: '#ef4444'
+                }
+                
+                return `
+                  <tr>
+                    <td style="font-size: 11px; font-family: monospace;">${formattedDate}</td>
+                    <td>
+                      <span style="background: ${moduleColors[log.module] || '#6b7280'}20; color: ${moduleColors[log.module] || '#6b7280'}; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase;">
+                        ${log.module.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td>
+                      <span style="background: ${actionColors[log.action] || '#6b7280'}20; color: ${actionColors[log.action] || '#6b7280'}; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: capitalize;">
+                        ${log.action}
+                      </span>
+                    </td>
+                    <td>
+                      <div style="max-width: 200px;">
+                        <div style="font-weight: 600; font-size: 12px; margin-bottom: 2px;">${log.title}</div>
+                        <div style="font-size: 10px; color: #6b7280; line-height: 1.3;">${log.description || ''}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <span style="background: ${priorityColors[log.priority] || '#6b7280'}20; color: ${priorityColors[log.priority] || '#6b7280'}; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: capitalize;">
+                        ${log.priority}
+                      </span>
+                    </td>
+                    <td>
+                      <span style="background: ${statusColors[log.status] || '#6b7280'}20; color: ${statusColors[log.status] || '#6b7280'}; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: capitalize;">
+                        ${log.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td style="font-size: 11px;">${log.createdByName || 'System'}</td>
+                  </tr>
+                `
+              }).join('')}
+            </tbody>
+          </table>
+          
+          ${activityLogs.length > 0 ? `
+          <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #1e40af;">Activity Summary</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 12px;">
+              <div>
+                <span style="font-weight: 600;">Total Activities:</span> ${activityLogs.length}
+              </div>
+              <div>
+                <span style="font-weight: 600;">Recent Activity:</span> ${activityLogs.length > 0 ? new Date(activityLogs[0].createdAt).toLocaleDateString() : 'None'}
+              </div>
+              <div>
+                <span style="font-weight: 600;">Most Common Module:</span> ${(() => {
+                  const moduleCounts = activityLogs.reduce((acc, log) => {
+                    acc[log.module] = (acc[log.module] || 0) + 1
+                    return acc
+                  }, {})
+                  const topModule = Object.entries(moduleCounts).sort((a, b) => b[1] - a[1])[0]
+                  return topModule ? topModule[0].replace('_', ' ') + ' (' + topModule[1] + ')' : 'None'
+                })()}
+              </div>
+            </div>
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
+        
         <div class="report-footer">
           <p>Individual Asset Report for <strong>${asset.assetName}</strong> (ID: ${asset.id})</p>
           <p style="margin-top: 4px;">Generated on ${currentDate} at ${currentTime}</p>
@@ -557,17 +711,32 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             Asset Individual Report
           </h3>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-gray-600 mb-4">
             Generate a comprehensive report for <strong>{asset.assetName}</strong> that opens in a new window with print functionality.
           </p>
+          
+          {/* Activity Log Status */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <div className="flex items-center gap-2 text-sm">
+              <Activity className="h-4 w-4 text-blue-600" />
+              {loadingLogs ? (
+                <span className="text-blue-700">Loading activity logs...</span>
+              ) : logError ? (
+                <span className="text-red-600">⚠️ Activity logs unavailable: {logError}</span>
+              ) : (
+                <span className="text-green-700">✅ {activityLogs.length} activity logs included</span>
+              )}
+            </div>
+          </div>
           
           <div className="flex flex-col sm:flex-row gap-3">
             <Button 
               onClick={handleExportReport}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={loadingLogs}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
             >
               <Download className="h-4 w-4 mr-2" />
-              Generate Report
+              {loadingLogs ? 'Loading...' : 'Generate Report'}
             </Button>
             <Button 
               onClick={onClose}
