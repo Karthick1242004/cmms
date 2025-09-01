@@ -24,6 +24,7 @@ export interface MaintenanceSchedule {
 }
 
 export interface MaintenancePart {
+  name: string
   id: string
   partId: string
   partName: string

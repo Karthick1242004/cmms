@@ -50,7 +50,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     nextDueDate: string
     priority: "low" | "medium" | "high" | "critical"
     riskLevel: "low" | "medium" | "high" | "critical"
-    estimatedDuration: number
+    estimatedDuration: number | ''
     assignedInspector: string
     safetyStandards: string[]
   }
@@ -67,7 +67,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     nextDueDate: "",
     priority: "medium",
     riskLevel: "medium",
-    estimatedDuration: 2,
+    estimatedDuration: '',
     assignedInspector: "",
     safetyStandards: [],
   })
@@ -291,6 +291,8 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     
     const scheduleData = {
       ...formData,
+      // Convert empty estimatedDuration to default value
+      estimatedDuration: formData.estimatedDuration === '' ? 2 : formData.estimatedDuration,
       // Include asset details for backward compatibility
       assetName: selectedAsset?.name || "",
       assetTag: selectedAsset?.assetTag || "",
@@ -547,15 +549,13 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                       id="duration"
                       type="number"
                       step="0.5"
-                      value={formData.estimatedDuration === 2 ? '' : formData.estimatedDuration?.toString() || ''}
+                      value={formData.estimatedDuration || ''}
                       onChange={(e) => {
-                        const value = e.target.value === '' ? 2 : parseFloat(e.target.value) || 2;
-                        setFormData(prev => ({ ...prev, estimatedDuration: value }));
-                      }}
-                      onBlur={(e) => {
-                        if (e.target.value === '') {
-                          setFormData(prev => ({ ...prev, estimatedDuration: 2 }));
+                        const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+                        if (e.target.value !== '' && (isNaN(value as number) || (value as number) < 0.5)) {
+                          return; // Don't update if invalid
                         }
+                        setFormData(prev => ({ ...prev, estimatedDuration: value as number }));
                       }}
                       placeholder="2"
                       min="0.5"

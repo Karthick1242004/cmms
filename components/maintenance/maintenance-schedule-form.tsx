@@ -46,7 +46,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     startDate: string
     nextDueDate: string
     priority: "low" | "medium" | "high" | "critical"
-    estimatedDuration: number
+    estimatedDuration: number | ''
     assignedInspector: string
   }
 
@@ -61,7 +61,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     startDate: new Date().toISOString().split('T')[0],
     nextDueDate: "",
     priority: "medium",
-    estimatedDuration: 2,
+    estimatedDuration: '',
     assignedInspector: "",
   })
 
@@ -144,6 +144,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       estimatedTime: 30,
       requiresReplacement: false,
       checklistItems: [],
+      name: ""
     }
     setParts([...parts, newPart])
     // Clear validation error when adding a part
@@ -252,7 +253,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         return false
       }
 
-      // Check if all checklist items have descriptions
+      // Check if all checklist items have descriptionsz
       for (let j = 0; j < part.checklistItems.length; j++) {
         const item = part.checklistItems[j]
         if (!item.description.trim()) {
@@ -295,6 +296,8 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     
     const scheduleData = {
       ...formData,
+      // Convert empty estimatedDuration to default value
+      estimatedDuration: formData.estimatedDuration === '' ? 2 : formData.estimatedDuration,
       location: finalLocation, // Ensure location is always set
       // Include asset details for backward compatibility
       assetName: selectedAsset?.name || "",
@@ -485,15 +488,13 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                 id="duration"
                 type="number"
                 step="0.5"
-                value={formData.estimatedDuration === 2 ? '' : formData.estimatedDuration?.toString() || ''}
+                value={formData.estimatedDuration || ''}
                 onChange={(e) => {
-                  const value = e.target.value === '' ? 2 : parseFloat(e.target.value) || 2;
-                  setFormData(prev => ({ ...prev, estimatedDuration: value }));
-                }}
-                onBlur={(e) => {
-                  if (e.target.value === '') {
-                    setFormData(prev => ({ ...prev, estimatedDuration: 2 }));
+                  const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+                  if (e.target.value !== '' && (isNaN(value as number) || (value as number) < 0.5)) {
+                    return; // Don't update if invalid
                   }
+                  setFormData(prev => ({ ...prev, estimatedDuration: value as number }));
                 }}
                 placeholder="2"
                 min="0.5"
