@@ -140,16 +140,469 @@ export function AssetsOverallReport({ assets, isOpen, onClose }: AssetsOverallRe
   }
 
   const handlePrint = () => {
-    window.print()
+    // Generate the report HTML
+    const reportHTML = generateReportHTML()
+    
+    // Open in new window
+    const newWindow = window.open('about:blank', '_blank')
+    if (newWindow) {
+      newWindow.document.write(reportHTML)
+      newWindow.document.close()
+    }
   }
 
   const handleDownloadReport = async () => {
     setIsGeneratingReport(true)
     
-    setTimeout(() => {
-      window.print()
-      setIsGeneratingReport(false)
-    }, 500)
+    // Generate the report HTML
+    const reportHTML = generateReportHTML()
+    
+    // Open in new window
+    const newWindow = window.open('about:blank', '_blank')
+    if (newWindow) {
+      newWindow.document.write(reportHTML)
+      newWindow.document.close()
+    }
+    
+    setIsGeneratingReport(false)
+  }
+
+  const generateReportHTML = () => {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+    const currentTime = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Assets Comprehensive Report</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: white;
+            padding: 20px;
+          }
+          
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 20px;
+          }
+          
+          .header h1 {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 10px;
+          }
+          
+          .header .subtitle {
+            font-size: 16px;
+            color: #6b7280;
+            margin-bottom: 5px;
+          }
+          
+          .header .timestamp {
+            font-size: 14px;
+            color: #9ca3af;
+          }
+          
+          .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+          }
+          
+          .summary-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+          }
+          
+          .summary-card h3 {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 5px;
+          }
+          
+          .summary-card p {
+            color: #6b7280;
+            font-size: 14px;
+          }
+          
+          .section {
+            margin-bottom: 30px;
+          }
+          
+          .section h2 {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 5px;
+          }
+          
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          
+          th {
+            background: #3b82f6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+          }
+          
+          td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+          }
+          
+          tr:nth-child(even) {
+            background: #f8fafc;
+          }
+          
+          tr:hover {
+            background: #f1f5f9;
+          }
+          
+          .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: capitalize;
+          }
+          
+          .status-operational {
+            background: #dcfce7;
+            color: #166534;
+          }
+          
+          .status-maintenance {
+            background: #fef3c7;
+            color: #92400e;
+          }
+          
+          .status-out-of-service {
+            background: #fee2e2;
+            color: #991b1b;
+          }
+          
+          .status-available {
+            background: #dbeafe;
+            color: #1e40af;
+          }
+          
+          .condition-excellent, .condition-new {
+            background: #dcfce7;
+            color: #166534;
+          }
+          
+          .condition-good {
+            background: #dbeafe;
+            color: #1e40af;
+          }
+          
+          .condition-fair {
+            background: #fef3c7;
+            color: #92400e;
+          }
+          
+          .condition-poor {
+            background: #fee2e2;
+            color: #991b1b;
+          }
+          
+          .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+            user-select: none;
+            border: 2px solid #1d4ed8;
+          }
+          
+          .print-button:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+          }
+          
+          .close-button {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            background: #6b7280;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            user-select: none;
+            border: 1px solid #4b5563;
+          }
+          
+          .close-button:hover {
+            background: #4b5563;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+          }
+          
+          @media print {
+            .print-button, .close-button {
+              display: none;
+            }
+            
+            body {
+              padding: 0;
+            }
+            
+            .header {
+              border-bottom: 2px solid #3b82f6;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-button" onclick="window.print()" title="Click to print or save as PDF">
+          🖨️ Print Report
+        </div>
+        
+        <div class="close-button" onclick="window.close()" title="Close this report window">
+          ❌ Close
+        </div>
+        
+        <div class="header">
+          <h1>ASSETS COMPREHENSIVE REPORT</h1>
+          <div class="subtitle">Generated on ${currentDate}</div>
+          <div class="timestamp">Time: ${currentTime}</div>
+        </div>
+        
+        <div class="summary-grid">
+          <div class="summary-card">
+            <h3>${totalAssets}</h3>
+            <p>Total Assets</p>
+          </div>
+          <div class="summary-card">
+            <h3>${operationalAssets.length}</h3>
+            <p>Operational</p>
+          </div>
+          <div class="summary-card">
+            <h3>${maintenanceAssets.length}</h3>
+            <p>Maintenance</p>
+          </div>
+          <div class="summary-card">
+            <h3>${outOfServiceAssets.length}</h3>
+            <p>Out of Service</p>
+          </div>
+          <div class="summary-card">
+            <h3>$${totalValue.toLocaleString()}</h3>
+            <p>Total Value</p>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h2>Executive Summary</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Count</th>
+                <th>Percentage</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Total Assets</td>
+                <td>${totalAssets}</td>
+                <td>100%</td>
+                <td>$${totalValue.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td>Operational</td>
+                <td>${operationalAssets.length}</td>
+                <td>${totalAssets > 0 ? ((operationalAssets.length / totalAssets) * 100).toFixed(1) : 0}%</td>
+                <td>$${operationalAssets.reduce((sum, asset) => sum + (asset.purchasePrice || 0), 0).toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td>Under Maintenance</td>
+                <td>${maintenanceAssets.length}</td>
+                <td>${totalAssets > 0 ? ((maintenanceAssets.length / totalAssets) * 100).toFixed(1) : 0}%</td>
+                <td>$${maintenanceAssets.reduce((sum, asset) => sum + (asset.purchasePrice || 0), 0).toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td>Out of Service</td>
+                <td>${outOfServiceAssets.length}</td>
+                <td>${totalAssets > 0 ? ((outOfServiceAssets.length / totalAssets) * 100).toFixed(1) : 0}%</td>
+                <td>$${outOfServiceAssets.reduce((sum, asset) => sum + (asset.purchasePrice || 0), 0).toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="section">
+          <h2>Category Analysis</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Total Assets</th>
+                <th>Total Value</th>
+                <th>Maintenance</th>
+                <th>Out of Service</th>
+                <th>Health %</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${Object.entries(assetsByCategory).map(([category, categoryAssets]) => {
+                const categoryMaintenance = categoryAssets.filter(asset => asset.status === "maintenance").length
+                const categoryOutOfService = categoryAssets.filter(asset => asset.status === "out-of-service").length
+                const categoryValue = categoryAssets.reduce((sum, asset) => sum + (asset.purchasePrice || 0), 0)
+                const healthPercentage = categoryAssets.length > 0 ? 
+                  (((categoryAssets.length - categoryMaintenance - categoryOutOfService) / categoryAssets.length) * 100).toFixed(1) : 0
+                
+                return `
+                  <tr>
+                    <td>${category}</td>
+                    <td>${categoryAssets.length}</td>
+                    <td>$${categoryValue.toLocaleString()}</td>
+                    <td>${categoryMaintenance}</td>
+                    <td>${categoryOutOfService}</td>
+                    <td>${healthPercentage}%</td>
+                  </tr>
+                `
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="section">
+          <h2>Department Analysis</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Department</th>
+                <th>Total Assets</th>
+                <th>Total Value</th>
+                <th>Operational</th>
+                <th>Maintenance</th>
+                <th>Health %</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${Object.entries(assetsByDepartment).map(([department, departmentAssets]) => {
+                const departmentOperational = departmentAssets.filter(asset => asset.status === "operational").length
+                const departmentMaintenance = departmentAssets.filter(asset => asset.status === "maintenance").length
+                const departmentValue = departmentAssets.reduce((sum, asset) => sum + (asset.purchasePrice || 0), 0)
+                const healthPercentage = departmentAssets.length > 0 ? 
+                  ((departmentOperational / departmentAssets.length) * 100).toFixed(1) : 0
+                
+                return `
+                  <tr>
+                    <td>${department}</td>
+                    <td>${departmentAssets.length}</td>
+                    <td>$${departmentValue.toLocaleString()}</td>
+                    <td>${departmentOperational}</td>
+                    <td>${departmentMaintenance}</td>
+                    <td>${healthPercentage}%</td>
+                  </tr>
+                `
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="section">
+          <h2>Complete Assets Inventory</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Asset Name</th>
+                <th>Asset Tag</th>
+                <th>Type</th>
+                <th>Department</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Condition</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${assets.map(asset => `
+                <tr>
+                  <td>${asset.name}</td>
+                  <td>${asset.assetTag || 'N/A'}</td>
+                  <td>${asset.type}</td>
+                  <td>${asset.department}</td>
+                  <td>${asset.location}</td>
+                  <td><span class="status-badge status-${asset.status.replace('-', '-')}">${asset.status}</span></td>
+                  <td><span class="status-badge condition-${asset.condition}">${asset.condition}</span></td>
+                  <td>$${(asset.purchasePrice || 0).toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <script>
+          // Auto-close window after 5 minutes of inactivity
+          setTimeout(() => {
+            if (!window.closed) {
+              window.close()
+            }
+          }, 300000) // 5 minutes
+        </script>
+      </body>
+      </html>
+    `
   }
 
   const criticalAssets = getCriticalAssets()
