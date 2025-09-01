@@ -14,11 +14,11 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { TicketCreationForm } from "@/components/ticket-creation-form"
 import { TicketReport } from "@/components/ticket-report"
-import { Plus, Search, Filter, FileText, Clock, AlertCircle, CheckCircle, XCircle, Eye, FileDown, Check, X, Trash2 } from "lucide-react"
+import { TicketListTable } from "@/components/ticket-list-table"
+import { Plus, Search, Filter, FileText } from "lucide-react"
 import { toast } from "sonner"
 import type { Ticket, TicketFilters } from "@/types/ticket"
 import { useAuthStore } from "@/stores/auth-store"
@@ -148,77 +148,18 @@ export default function TicketsPage() {
     filterTickets()
   }, [tickets, searchTerm, statusFilter, priorityFilter, departmentFilter, reportTypeFilter, showOpenTickets])
 
-  // Get priority color
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case 'critical': return 'destructive'
-      case 'high': return 'destructive'
-      case 'medium': return 'default'
-      case 'low': return 'secondary'
-      default: return 'secondary'
-    }
-  }
 
-  // Get status icon and color
-  const getStatusInfo = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'open':
-        return { icon: <AlertCircle className="h-4 w-4" />, color: 'destructive' }
-      case 'in-progress':
-        return { icon: <Clock className="h-4 w-4" />, color: 'default' }
-      case 'pending':
-        return { icon: <Clock className="h-4 w-4" />, color: 'secondary' }
-      case 'completed':
-        return { icon: <CheckCircle className="h-4 w-4" />, color: 'default' }
-      case 'cancelled':
-        return { icon: <XCircle className="h-4 w-4" />, color: 'secondary' }
-      default:
-        return { icon: <AlertCircle className="h-4 w-4" />, color: 'secondary' }
-    }
-  }
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
+
+
+
 
   // Check if department filter should be disabled
   const isDepartmentFilterDisabled = () => {
     return user?.accessLevel !== 'super_admin'
   }
 
-  // Format status for display
-  const formatStatus = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'open': return 'Open'
-      case 'in-progress': return 'In Progress'
-      case 'pending': return 'Pending'
-      case 'completed': return 'Completed'
-      case 'cancelled': return 'Cancelled'
-      default: return status
-    }
-  }
 
-  // Format priority for display
-  const formatPriority = (priority: string) => {
-    return priority.charAt(0).toUpperCase() + priority.slice(1)
-  }
-
-  // Check if user can delete a specific ticket
-  const canDeleteTicket = (ticket: Ticket) => {
-    if (!user) return false
-    
-    // Super admin can delete any ticket
-    if (user.accessLevel === 'super_admin') return true
-    
-    // Department head can delete tickets from their department
-    if (user.accessLevel === 'department_admin' || user.role === 'manager') {
-      return ticket.department === user.department
-    }
-    
-    return false
-  }
 
   // Handle ticket actions
   const handleViewTicket = (ticket: Ticket) => {
@@ -301,6 +242,11 @@ export default function TicketsPage() {
   const canApproveStatus = user?.accessLevel === 'super_admin' || 
                           user?.role === 'manager' || 
                           user?.accessLevel === 'department_admin'
+
+  // Check if user can modify tickets
+  const canModifyTickets = user?.accessLevel === 'super_admin' || 
+                          user?.accessLevel === 'department_admin' || 
+                          user?.role === 'manager'
 
   // Handle status approval
   const handleApproveStatus = async (ticketId: string, action: 'approve' | 'reject') => {
@@ -527,166 +473,17 @@ export default function TicketsPage() {
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs font-medium py-2">Ticket ID</TableHead>
-                      {/* <TableHead className="text-xs font-medium py-2">Subject</TableHead> */}
-                      <TableHead className="text-xs font-medium py-2">Priority</TableHead>
-                      <TableHead className="text-xs font-medium py-2">Status</TableHead>
-                      <TableHead className="text-xs font-medium py-2">Department</TableHead>
-                      <TableHead className="text-xs font-medium py-2">Logged By</TableHead>
-                      <TableHead className="text-xs font-medium py-2">Created</TableHead>
-                      <TableHead className="text-xs font-medium py-2">Type</TableHead>
-                      <TableHead className="text-xs font-medium py-2">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTickets.map((ticket) => {
-                      const statusInfo = getStatusInfo(ticket.status)
-                      return (
-                        <TableRow key={ticket.id} className="hover:bg-muted/50">
-                          <TableCell className="font-mono font-medium text-xs py-2">
-                            <div className="flex items-center gap-1">
-                              <span className="cursor-pointer hover:text-blue-600" onClick={() => handleViewTicket(ticket)}>
-                                {ticket.ticketId}
-                              </span>
-                              {ticket.isOpenTicket && (
-                                <Badge variant="outline" className="text-xs">
-                                  <Eye className="h-2 w-2 mr-1" />
-                                  Open
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          {/* <TableCell className="max-w-xs py-2">
-                            <div className="truncate font-medium text-xs">{ticket.subject}</div>
-                            {ticket.equipmentId && (
-                              <div className="text-xs text-muted-foreground">
-                                Equipment: {ticket.equipmentId}
-                              </div>
-                            )}
-                          </TableCell> */}
-                          <TableCell className="py-2">
-                            <Badge variant={getPriorityColor(ticket.priority) as any} className="text-xs">
-                              {formatPriority(ticket.priority)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="py-2">
-                            <div className="flex items-center gap-1">
-                              <Badge variant={statusInfo.color as any} className="flex items-center gap-1 w-fit text-xs">
-                                {statusInfo.icon}
-                                {formatStatus(ticket.status)}
-                              </Badge>
-                              {(ticket as any)?.statusApproval?.pending && (
-                                <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
-                                  Pending Verification
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs py-2">{ticket.department}</TableCell>
-                          <TableCell className="text-xs py-2">{ticket.loggedBy}</TableCell>
-                          <TableCell className="text-xs py-2">
-                            {formatDate(ticket.loggedDateTime)}
-                            {ticket.timeSinceLogged && (
-                              <div className="text-xs text-muted-foreground">
-                                {ticket.timeSinceLogged}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-2">
-                            <div className="flex flex-wrap gap-1">
-                              {ticket.reportType && Object.entries(ticket.reportType).map(([type, selected]) => 
-                                selected && (
-                                  <Badge key={type} variant="secondary" className="text-xs capitalize">
-                                    {type}
-                                  </Badge>
-                                )
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-2">
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewTicket(ticket)}
-                                className="h-6 w-6 p-0"
-                                title="View Ticket"
-                              >
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleGenerateReport(ticket)}
-                                className="h-6 w-6 p-0"
-                                title="Generate Report"
-                              >
-                                <FileDown className="h-3 w-3" />
-                              </Button>
-                              {canDeleteTicket(ticket) && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteTicket(ticket)}
-                                  className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  title="Delete Ticket"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              )}
-                              {/* Show approval buttons for department heads/admins when there's a pending request */}
-                              {canApproveStatus && 
-                               (ticket as any)?.statusApproval?.pending && 
-                               (user?.accessLevel === 'super_admin' || ticket.department === user?.department) && (
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleApproveStatus(ticket.id, 'approve')}
-                                    className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                    title={`Approve status change to ${(ticket as any)?.statusApproval?.requestedStatus}`}
-                                  >
-                                    <Check className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleApproveStatus(ticket.id, 'reject')}
-                                    className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    title="Reject status change"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              )}
-                              {/* Status change dropdown - only show if not pending approval or user can't approve */}
-                              {ticket.status !== 'cancelled' && 
-                               (!(ticket as any)?.statusApproval?.pending || !canApproveStatus) && (
-                                <Select value={ticket.status} onValueChange={(status) => handleUpdateStatus(ticket.id, status)}>
-                                  <SelectTrigger className="w-auto h-6 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="open">Open</SelectItem>
-                                    <SelectItem value="in-progress">In Progress</SelectItem>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="completed">Completed</SelectItem>
-                                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+              <TicketListTable
+                tickets={filteredTickets}
+                onView={handleViewTicket}
+                onDelete={handleDeleteTicket}
+                onStatusChange={handleUpdateStatus}
+                onApproveStatus={handleApproveStatus}
+                onGenerateReport={handleGenerateReport}
+                canModify={canModifyTickets}
+                canApproveStatus={canApproveStatus}
+                currentUser={user}
+              />
             )}
           </CardContent>
         </Card>

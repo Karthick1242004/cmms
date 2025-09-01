@@ -28,7 +28,8 @@ import {
   MessageSquare,
   Activity,
   Trash2,
-  FileDown
+  FileDown,
+  FileText
 } from "lucide-react"
 import { toast } from "sonner"
 import { ticketsApi } from "@/lib/tickets-api"
@@ -296,48 +297,79 @@ export default function TicketDetailPage() {
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex mt-4 justify-between items-center">
+        <div className="flex flex-col space-y-4">
+          {/* Back Navigation */}
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => router.push("/tickets")}
+              className="flex items-center gap-2"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4" />
+              Back to Tickets
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">{ticket.ticketId}</h1>
-              <p className="text-muted-foreground">{ticket.subject}</p>
-            </div>
           </div>
-          <div className="flex gap-2">
-            {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Ticket
-              </Button>
-            ) : (
-              <>
-                <Button onClick={handleSave} disabled={isSaving}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? "Saving..." : "Save"}
+
+          {/* Main Header */}
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                  {ticket.ticketId}
+                </h1>
+                <Badge variant={statusInfo.color as any} className="flex items-center gap-1">
+                  {statusInfo.icon}
+                  {formatStatus(ticket.status)}
+                </Badge>
+              </div>
+              <h2 className="text-xl font-semibold text-foreground">{ticket.subject}</h2>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Building className="h-4 w-4" />
+                  {ticket.department}
+                </div>
+                <div className="flex items-center gap-1">
+                  <User className="h-4 w-4" />
+                  {ticket.loggedBy}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  {formatDate(ticket.loggedDateTime)}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              {!isEditing ? (
+                <Button onClick={() => setIsEditing(true)} className="flex items-center gap-2">
+                  <Edit className="h-4 w-4" />
+                  Edit Ticket
                 </Button>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              </>
-            )}
-            <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}>
-              <FileDown className="h-4 w-4 mr-2" />
-              Generate Report
-            </Button>
-            {canDeleteTicket() && (
-              <Button variant="destructive" onClick={handleDelete}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+              ) : (
+                <>
+                  <Button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2">
+                    <Save className="h-4 w-4" />
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
+                  <Button variant="outline" onClick={() => setIsEditing(false)} className="flex items-center gap-2">
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </Button>
+                </>
+              )}
+              <Button variant="outline" onClick={() => setIsReportDialogOpen(true)} className="flex items-center gap-2">
+                <FileDown className="h-4 w-4" />
+                Generate Report
               </Button>
-            )}
+              {canDeleteTicket() && (
+                <Button variant="destructive" onClick={handleDelete} className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </PageHeader>
@@ -349,51 +381,60 @@ export default function TicketDetailPage() {
             <TabsTrigger value="activity">Activity Log</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+          <TabsContent value="details" className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
               {/* Basic Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
+              <Card className="shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <User className="h-5 w-5 text-primary" />
                     Basic Information
                   </CardTitle>
+                  <CardDescription>
+                    Core ticket details and specifications
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <Label>Subject</Label>
+                <CardContent className="space-y-6">
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Subject</Label>
                       {isEditing ? (
                         <Input
                           value={formData.subject}
                           onChange={(e) => handleFormChange("subject", e.target.value)}
                           placeholder="Enter ticket subject"
+                          className="h-10"
                         />
                       ) : (
-                        <p className="text-sm">{ticket.subject}</p>
+                        <div className="p-3 bg-muted/50 rounded-md border">
+                          <p className="text-sm font-medium">{ticket.subject}</p>
+                        </div>
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Description</Label>
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Description</Label>
                       {isEditing ? (
                         <Textarea
                           value={formData.description}
                           onChange={(e) => handleFormChange("description", e.target.value)}
                           placeholder="Enter ticket description"
                           rows={4}
+                          className="resize-none"
                         />
                       ) : (
-                        <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
+                        <div className="p-3 bg-muted/50 rounded-md border min-h-[100px]">
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
+                        </div>
                       )}
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Priority</Label>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Priority</Label>
                         {isEditing ? (
                           <Select value={formData.priority} onValueChange={(value) => handleFormChange("priority", value)}>
-                            <SelectTrigger>
+                            <SelectTrigger className="h-10">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -404,17 +445,19 @@ export default function TicketDetailPage() {
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Badge variant={getPriorityColor(ticket.priority) as any}>
-                            {formatPriority(ticket.priority)}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={getPriorityColor(ticket.priority) as any} className="text-sm px-3 py-1">
+                              {formatPriority(ticket.priority)}
+                            </Badge>
+                          </div>
                         )}
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Status</Label>
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Status</Label>
                         {isEditing ? (
                           <Select value={formData.status} onValueChange={(value) => handleFormChange("status", value)}>
-                            <SelectTrigger>
+                            <SelectTrigger className="h-10">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -426,66 +469,92 @@ export default function TicketDetailPage() {
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Badge variant={statusInfo.color as any} className="flex items-center gap-1 w-fit">
-                            {statusInfo.icon}
-                            {formatStatus(ticket.status)}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={statusInfo.color as any} className="flex items-center gap-1 text-sm px-3 py-1">
+                              {statusInfo.icon}
+                              {formatStatus(ticket.status)}
+                            </Badge>
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Department</Label>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <Building className="h-4 w-4" />
+                          Department
+                        </Label>
                         {isEditing ? (
                           <Input
                             value={formData.department}
                             onChange={(e) => handleFormChange("department", e.target.value)}
                             placeholder="Enter department"
+                            className="h-10"
                           />
                         ) : (
-                          <p className="text-sm">{ticket.department}</p>
+                          <div className="p-3 bg-muted/50 rounded-md border">
+                            <p className="text-sm font-medium">{ticket.department}</p>
+                          </div>
                         )}
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Area</Label>
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <Building className="h-4 w-4" />
+                          Area
+                        </Label>
                         {isEditing ? (
                           <Input
                             value={formData.area}
                             onChange={(e) => handleFormChange("area", e.target.value)}
                             placeholder="Enter area"
+                            className="h-10"
                           />
                         ) : (
-                          <p className="text-sm">{ticket.area}</p>
+                          <div className="p-3 bg-muted/50 rounded-md border">
+                            <p className="text-sm font-medium">{ticket.area}</p>
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>In Charge</Label>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          In Charge
+                        </Label>
                         {isEditing ? (
                           <Input
                             value={formData.inCharge}
                             onChange={(e) => handleFormChange("inCharge", e.target.value)}
                             placeholder="Enter person in charge"
+                            className="h-10"
                           />
                         ) : (
-                          <p className="text-sm">{ticket.inCharge}</p>
+                          <div className="p-3 bg-muted/50 rounded-md border">
+                            <p className="text-sm font-medium">{ticket.inCharge}</p>
+                          </div>
                         )}
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Equipment ID</Label>
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <Building className="h-4 w-4" />
+                          Equipment ID
+                        </Label>
                         {isEditing ? (
                           <Input
                             value={formData.equipmentId}
                             onChange={(e) => handleFormChange("equipmentId", e.target.value)}
                             placeholder="Enter equipment ID"
+                            className="h-10"
                           />
                         ) : (
-                          <p className="text-sm">{ticket.equipmentId || "N/A"}</p>
+                          <div className="p-3 bg-muted/50 rounded-md border">
+                            <p className="text-sm font-medium">{ticket.equipmentId || "N/A"}</p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -494,56 +563,63 @@ export default function TicketDetailPage() {
               </Card>
 
               {/* Additional Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building className="h-5 w-5" />
+              <Card className="shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Building className="h-5 w-5 text-primary" />
                     Additional Information
                   </CardTitle>
+                  <CardDescription>
+                    Extended details and configuration options
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Report Type</Label>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Report Type
+                    </Label>
                     {isEditing ? (
-                      <div className="grid gap-2">
-                        <div className="flex items-center space-x-2">
+                      <div className="grid gap-3 p-4 bg-muted/30 rounded-md border">
+                        <div className="flex items-center space-x-3">
                           <Checkbox
                             id="service"
                             checked={formData.reportType.service}
                             onCheckedChange={(checked) => handleReportTypeChange("service", checked as boolean)}
                           />
-                          <Label htmlFor="service">Service</Label>
+                          <Label htmlFor="service" className="text-sm">Service</Label>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-3">
                           <Checkbox
                             id="maintenance"
                             checked={formData.reportType.maintenance}
                             onCheckedChange={(checked) => handleReportTypeChange("maintenance", checked as boolean)}
                           />
-                          <Label htmlFor="maintenance">Maintenance</Label>
+                          <Label htmlFor="maintenance" className="text-sm">Maintenance</Label>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-3">
                           <Checkbox
                             id="incident"
                             checked={formData.reportType.incident}
                             onCheckedChange={(checked) => handleReportTypeChange("incident", checked as boolean)}
                           />
-                          <Label htmlFor="incident">Incident</Label>
+                          <Label htmlFor="incident" className="text-sm">Incident</Label>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-3">
                           <Checkbox
                             id="breakdown"
                             checked={formData.reportType.breakdown}
                             onCheckedChange={(checked) => handleReportTypeChange("breakdown", checked as boolean)}
                           />
-                          <Label htmlFor="breakdown">Breakdown</Label>
+                          <Label htmlFor="breakdown" className="text-sm">Breakdown</Label>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-2">
                         {Object.entries(ticket.reportType).map(([type, selected]) => 
                           selected && (
-                            <Badge key={type} variant="secondary" className="text-xs capitalize">
+                            <Badge key={type} variant="secondary" className="text-sm px-3 py-1 capitalize">
+                              <FileText className="mr-1 h-3 w-3" />
                               {type}
                             </Badge>
                           )
@@ -554,56 +630,78 @@ export default function TicketDetailPage() {
 
                   <Separator />
 
-                  <div className="space-y-2">
-                    <Label>Solution</Label>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Solution
+                    </Label>
                     {isEditing ? (
                       <Textarea
                         value={formData.solution}
                         onChange={(e) => handleFormChange("solution", e.target.value)}
                         placeholder="Enter solution details"
                         rows={4}
+                        className="resize-none"
                       />
                     ) : (
-                      <p className="text-sm whitespace-pre-wrap">{ticket.solution || "No solution provided"}</p>
+                      <div className="p-3 bg-muted/50 rounded-md border min-h-[100px]">
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                          {ticket.solution || "No solution provided"}
+                        </p>
+                      </div>
                     )}
                   </div>
 
                   <Separator />
 
-                  <div className="space-y-2">
-                    <Label>Access Control</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Access Control</Label>
+                    <div className="p-4 bg-muted/30 rounded-md border">
+                      <div className="flex items-center space-x-3">
                         <Checkbox
                           id="openTicket"
                           checked={isEditing ? formData.isOpenTicket : ticket.isOpenTicket}
                           onCheckedChange={(checked) => handleFormChange("isOpenTicket", checked)}
                           disabled={!isEditing}
                         />
-                        <Label htmlFor="openTicket">Open Ticket (visible to all departments)</Label>
+                        <Label htmlFor="openTicket" className="text-sm">
+                          Open Ticket (visible to all departments)
+                        </Label>
                       </div>
                     </div>
                   </div>
 
                   <Separator />
 
-                  <div className="space-y-2">
-                    <Label>Timeline</Label>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>Created: {formatDate(ticket.loggedDateTime)}</span>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Timeline
+                    </Label>
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-md border">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Created</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(ticket.loggedDateTime)}</p>
+                        </div>
                       </div>
                       {ticket.ticketCloseDate && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>Closed: {formatDate(ticket.ticketCloseDate)}</span>
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">Closed</p>
+                            <p className="text-xs text-muted-foreground">{formatDate(ticket.ticketCloseDate)}</p>
+                          </div>
                         </div>
                       )}
                       {ticket.totalTime && (
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          <span>Total Time: {ticket.totalTime} hours</span>
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">Total Time</p>
+                            <p className="text-xs text-muted-foreground">{ticket.totalTime} hours</p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -613,71 +711,89 @@ export default function TicketDetailPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="activity" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
+          <TabsContent value="activity" className="space-y-6">
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Activity className="h-5 w-5 text-primary" />
                   Activity Log
                 </CardTitle>
                 <CardDescription>
                   Track all activities and updates for this ticket
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Add new activity */}
-                  <div className="flex gap-2">
+              <CardContent className="space-y-6">
+                {/* Add new activity */}
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <div className="flex gap-3">
                     <Input
                       placeholder="Add a remark..."
                       value={newActivityRemark}
                       onChange={(e) => setNewActivityRemark(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && handleAddActivity()}
+                      className="flex-1 h-10"
                     />
-                    <Button onClick={handleAddActivity} disabled={isAddingActivity || !newActivityRemark.trim()}>
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Add
+                    <Button 
+                      onClick={handleAddActivity} 
+                      disabled={isAddingActivity || !newActivityRemark.trim()}
+                      className="flex items-center gap-2"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Add Remark
                     </Button>
                   </div>
+                </div>
 
-                  {/* Activity log entries */}
-                  <div className="space-y-4">
-                    {ticket.activityLog && ticket.activityLog.length > 0 ? (
-                      ticket.activityLog.map((activity, index) => (
-                        <div key={index} className="flex gap-4 p-4 border rounded-lg">
-                          <div className="flex-shrink-0">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                {/* Activity log entries */}
+                <div className="space-y-4">
+                  {ticket.activityLog && ticket.activityLog.length > 0 ? (
+                    <div className="relative">
+                      {/* Timeline line */}
+                      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
+                      
+                      {ticket.activityLog.map((activity, index) => (
+                        <div key={index} className="relative flex gap-4 pb-6 last:pb-0">
+                          {/* Timeline dot */}
+                          <div className="flex-shrink-0 relative z-10">
+                            <div className="w-3 h-3 bg-primary rounded-full border-2 border-background shadow-sm"></div>
                           </div>
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                <span className="font-medium">{activity.loggedBy}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {activity.action}
-                                </Badge>
+                          
+                          {/* Activity content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="p-4 bg-card border rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium text-sm">{activity.loggedBy}</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {activity.action}
+                                  </Badge>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDate(activity.date)}
+                                </span>
                               </div>
-                              <span className="text-sm text-muted-foreground">
-                                {formatDate(activity.date)}
-                              </span>
+                              
+                              <p className="text-sm leading-relaxed mb-2">{activity.remarks}</p>
+                              
+                              {activity.duration && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  <span>Duration: {activity.duration} minutes</span>
+                                </div>
+                              )}
                             </div>
-                            <p className="text-sm">{activity.remarks}</p>
-                            {activity.duration && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                <span>Duration: {activity.duration} minutes</span>
-                              </div>
-                            )}
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No activity log entries yet</p>
-                      </div>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Activity className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                      <h3 className="text-lg font-medium mb-2">No activity yet</h3>
+                      <p className="text-sm">Activity log entries will appear here as the ticket progresses.</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
