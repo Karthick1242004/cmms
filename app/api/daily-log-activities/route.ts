@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
-import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -252,25 +252,44 @@ export async function POST(request: NextRequest) {
     // Create asset activity log entry
     if (createdActivity) {
       try {
-        await AssetActivityLogService.createDailyLogActivityLog({
-          assetId: body.assetId,
-          assetName: body.assetName,
-          activityType: 'daily_log_created',
-          createdBy: user.id,
-          createdByName: user.name,
-          department: body.departmentName,
-          departmentId: body.departmentId,
-          context: {
-            activityId: createdActivity._id.toString(),
-            natureOfProblem: body.natureOfProblem,
-            solution: body.commentsOrSolution,
-            attendedBy: body.attendedByName,
-            attendedById: body.attendedBy,
-            area: body.area,
-            time: body.time
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
+        
+        const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': request.headers.get('Authorization') || '',
+            'Cookie': request.headers.get('Cookie') || '',
           },
-          request
+          body: JSON.stringify({
+            assetId: body.assetId,
+            assetName: body.assetName,
+            assetTag: body.assetTag,
+            module: 'daily_log_activity',
+            action: 'created',
+            title: 'Daily Activity Created',
+            description: `Daily activity created: ${body.natureOfProblem}`,
+            assignedTo: body.assignedTo,
+            assignedToName: body.assignedToName,
+            priority: (body.priority || 'medium').toLowerCase() as any,
+            status: 'pending',
+            recordId: createdActivity._id.toString(),
+            recordType: 'daily_activity',
+            metadata: {
+              area: body.area,
+              time: body.time,
+              notes: body.commentsOrSolution
+            }
+          })
         });
+        
+        if (activityLogResponse.ok) {
+          console.log('✅ [Daily Activity] - Activity log created');
+        } else {
+          console.error('❌ [Daily Activity] - Activity log creation failed:', await activityLogResponse.text());
+        }
       } catch (error) {
         console.error('Failed to create asset activity log:', error);
         // Don't fail the main operation if activity log creation fails

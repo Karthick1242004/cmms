@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
+
 
 export async function PATCH(
   request: NextRequest,
@@ -105,36 +105,52 @@ export async function PATCH(
       );
     }
 
-    // Create asset activity log for verification
+    // Create activity log for verification
     try {
-      await AssetActivityLogService.createSafetyInspectionLog({
-        assetId: record.assetId,
-        assetName: record.assetName,
-        activityType: 'safety_inspection_verified',
-        createdBy: user.id,
-        createdByName: user.name,
-        department: record.department,
-        departmentId: '',
-        context: {
+      console.log('🚀 [Safety Inspection] - Creating verification activity log');
+      
+      const protocol = request.headers.get('x-forwarded-proto') || 'http';
+      const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+      const baseUrl = `${protocol}://${host}`;
+      
+      const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': request.headers.get('Authorization') || '',
+          'Cookie': request.headers.get('Cookie') || '',
+        },
+        body: JSON.stringify({
+          assetId: record.assetId,
+          assetName: record.assetName,
+          assetTag: record.assetTag,
+          module: 'safety_inspection',
+          action: 'verified',
+          title: 'Safety Inspection Verified',
+          description: `Safety inspection verified by ${user.name}`,
+          assignedTo: record.inspectorId,
+          assignedToName: record.inspector,
+          priority: 'medium',
+          status: 'completed',
           recordId: id,
-          inspector: record.inspector,
-          inspectorId: record.inspectorId,
-          inspectionType: 'Safety Inspection Verification',
-          complianceScore: record.overallComplianceScore,
-          violations: record.violations?.length || 0,
-          duration: record.actualDuration
-        },
-        additionalData: {
-          verifiedBy: user.id,
-          verifiedByName: user.name,
+          recordType: 'inspection_verification',
           metadata: {
-            notes: `Admin verification: ${adminNotes || 'No additional notes'}`
+            verifiedBy: user.name,
+            complianceScore: record.overallComplianceScore,
+            violations: record.violations?.length || 0,
+            duration: record.actualDuration,
+            notes: adminNotes || 'No additional notes'
           }
-        },
-        request
+        })
       });
+      
+      if (activityLogResponse.ok) {
+        console.log('✅ [Safety Inspection] - Verification activity log created');
+      } else {
+        console.error('❌ [Safety Inspection] - Verification activity log creation failed:', await activityLogResponse.text());
+      }
     } catch (error) {
-      console.error('Failed to create asset activity log for safety inspection verification:', error);
+      console.error('❌ [Safety Inspection] - Failed to create verification activity log:', error);
       // Don't fail the main operation if activity log creation fails
     }
 

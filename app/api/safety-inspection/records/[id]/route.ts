@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getUserContext } from '@/lib/auth-helpers'
+import { activityLogApi } from '@/lib/activity-log-api'
 import { sampleSafetyInspectionRecords } from '@/data/safety-inspection-sample'
 import type { SafetyInspectionRecord } from '@/types/safety-inspection'
 
@@ -51,6 +53,14 @@ export async function PUT(
     const { id } = params;
     const body = await request.json();
 
+    const user = await getUserContext(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
+    }
+
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/safety-inspection/records/${id}`, {
       method: 'PUT',
@@ -69,6 +79,40 @@ export async function PUT(
     }
 
     const data = await response.json();
+    
+    // Create activity log for update
+    if (data.success && data.data && body.assetId) {
+      try {
+        console.log('🚀 [Safety Inspection] - Creating update activity log');
+        
+        await activityLogApi.create({
+          assetId: body.assetId,
+          assetName: body.assetName,
+          assetTag: body.assetTag,
+          module: 'safety_inspection',
+          action: 'updated',
+          title: 'Safety Inspection Updated',
+          description: `Safety inspection record updated by ${user.name}`,
+          assignedTo: body.inspectorId,
+          assignedToName: body.inspector,
+          priority: 'medium',
+          status: body.status || 'in_progress',
+          recordId: id,
+          recordType: 'inspection_record',
+          metadata: {
+            complianceScore: body.overallComplianceScore,
+            violations: body.violations?.length || 0,
+            duration: body.actualDuration,
+            notes: body.inspectorNotes
+          }
+        });
+        
+        console.log('✅ [Safety Inspection] - Update activity log created');
+      } catch (error) {
+        console.error('❌ [Safety Inspection] - Failed to create update activity log:', error);
+      }
+    }
+
     return NextResponse.json(data, { status: 200 });
 
   } catch (error) {

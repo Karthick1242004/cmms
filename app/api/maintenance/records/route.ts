@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
+
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
@@ -214,29 +214,47 @@ export async function POST(request: NextRequest) {
         // Update performance data to mark the maintenance task as completed
         await updateMaintenancePerformanceData(body, data.data, user, request);
 
-        // Create asset activity log for maintenance completion
-        await AssetActivityLogService.createMaintenanceLog({
-          assetId: body.assetId,
-          assetName: body.assetName,
-          activityType: 'maintenance_completed',
-          createdBy: user?.id || 'system',
-          createdByName: user?.name || 'System',
-          department: body.department,
-          departmentId: body.departmentId || '',
-          context: {
-            recordId: data.data.id,
-            technician: body.technician,
-            technicianId: body.technicianId || '',
-            maintenanceType: body.maintenanceType || 'General Maintenance',
-            description: body.description || '',
-            duration: body.actualDuration || 0,
-            status: body.status || 'completed',
-            priority: body.priority || 'medium',
-            components: body.componentsReplaced || [],
-            cost: body.cost || 0
+        // Create activity log
+        console.log('🚀 [Maintenance] - Creating activity log');
+        
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
+        
+        const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': request.headers.get('Authorization') || '',
+            'Cookie': request.headers.get('Cookie') || '',
           },
-          request
+          body: JSON.stringify({
+            assetId: body.assetId,
+            assetName: body.assetName,
+            assetTag: body.assetTag,
+            module: 'maintenance',
+            action: 'completed',
+            title: 'Maintenance Completed',
+            description: `${body.maintenanceType || 'Maintenance'} completed by ${body.technician}`,
+            assignedTo: body.technicianId,
+            assignedToName: body.technician,
+            priority: (body.priority || 'medium').toLowerCase() as any,
+            status: 'completed',
+            recordId: data.data.id,
+            recordType: 'maintenance_record',
+            metadata: {
+              cost: body.cost,
+              duration: body.actualDuration,
+              notes: body.description
+            }
+          })
         });
+        
+        if (activityLogResponse.ok) {
+          console.log('✅ [Maintenance] - Activity log created');
+        } else {
+          console.error('❌ [Maintenance] - Activity log creation failed:', await activityLogResponse.text());
+        }
       } catch (performanceError) {
         console.error('Error updating performance data or creating activity log:', performanceError);
         // Don't fail the main request if performance tracking fails

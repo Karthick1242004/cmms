@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
+import { activityLogApi } from '@/lib/activity-log-api';
 
 export async function GET(
   request: NextRequest,

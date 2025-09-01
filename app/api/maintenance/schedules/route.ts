@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
+
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
@@ -347,28 +347,47 @@ export async function POST(request: NextRequest) {
         // Make a call to our performance API to store the assignment
         await storeMaintenancePerformanceData(body, data.data, user, request);
 
-        // Create asset activity log for maintenance schedule creation
-        await AssetActivityLogService.createMaintenanceLog({
-          assetId: body.assetId,
-          assetName: body.assetName,
-          activityType: 'maintenance_scheduled',
-          createdBy: user?.id || 'system',
-          createdByName: user?.name || 'System',
-          department: body.department,
-          departmentId: body.departmentId || '',
-          context: {
-            scheduleId: data.data.id,
-            technician: body.assignedTechnician,
-            technicianId: body.assignedTechnicianId || '',
-            maintenanceType: body.maintenanceType || 'General Maintenance',
-            description: body.description || '',
-            priority: body.priority || 'medium',
-            frequency: body.frequency || 'monthly',
-            estimatedDuration: body.estimatedDuration || 0,
-            dueDate: body.nextDueDate || body.startDate
+        // Create activity log
+        console.log('🚀 [Maintenance] - Creating schedule activity log');
+        
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
+        
+        const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': request.headers.get('Authorization') || '',
+            'Cookie': request.headers.get('Cookie') || '',
           },
-          request
+          body: JSON.stringify({
+            assetId: body.assetId,
+            assetName: body.assetName,
+            assetTag: body.assetTag,
+            module: 'maintenance',
+            action: 'created',
+            title: 'Maintenance Scheduled',
+            description: `${body.maintenanceType || 'Maintenance'} scheduled for ${body.assetName}`,
+            assignedTo: body.assignedTechnicianId,
+            assignedToName: body.assignedTechnician,
+            priority: (body.priority || 'medium').toLowerCase() as any,
+            status: 'pending',
+            recordId: data.data.id,
+            recordType: 'maintenance_schedule',
+            metadata: {
+              duration: body.estimatedDuration,
+              nextDue: body.nextDueDate,
+              notes: body.description
+            }
+          })
         });
+        
+        if (activityLogResponse.ok) {
+          console.log('✅ [Maintenance] - Schedule activity log created');
+        } else {
+          console.error('❌ [Maintenance] - Schedule activity log creation failed:', await activityLogResponse.text());
+        }
       } catch (performanceError) {
         console.error('Performance tracking or activity logging failed:', performanceError);
         // Don't fail the main request if performance tracking fails

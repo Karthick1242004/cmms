@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-import { AssetActivityLogService } from '@/lib/asset-activity-log-service';
+import { activityLogApi } from '@/lib/activity-log-api';
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';

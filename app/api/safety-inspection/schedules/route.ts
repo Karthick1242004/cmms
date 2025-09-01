@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserContext } from '@/lib/auth-helpers'
 import { sampleSafetyInspectionSchedules } from '@/data/safety-inspection-sample'
 import type { SafetyInspectionSchedule } from '@/types/safety-inspection'
-import { AssetActivityLogService } from '@/lib/asset-activity-log-service'
+import { activityLogApi } from '@/lib/activity-log-api'
 
 // In-memory storage for demo purposes (replace with database in production)
 let schedules = [...sampleSafetyInspectionSchedules]
