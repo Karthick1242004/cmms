@@ -693,36 +693,35 @@ export default function ShiftDetailsPage() {
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-full p-0" align="end">
-                              <Command>
+                              <Command className="w-full">
                                 <CommandInput placeholder="Search employees..." />
                                 <CommandEmpty>
                                   {employees.length === 0 ? "No employees found in this department" : "No employees match your search."}
                                 </CommandEmpty>
-                                <CommandGroup>
-                                  <CommandList>
-                                    {employees.map((emp) => (
-                                      <CommandItem
-                                        key={emp.id}
-                                        value={emp.name}
-                                        onSelect={() => {
-                                          handleEmployeeChange(emp.employeeId || emp.id);
-                                          setShowEmployeeDropdown(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            selectedEmployeeId === (emp.employeeId || emp.id) ? "opacity-100" : "opacity-0"
-                                          )}
-                                        />
-                                        <div className="flex flex-col">
-                                          <span>{emp.name}</span>
-                                          <span className="text-xs text-muted-foreground">{emp.role} - {emp.email}</span>
-                                        </div>
-                                      </CommandItem>
-                                    ))}
-                                  </CommandList>
-                                </CommandGroup>
+                                <div className="max-h-[200px] overflow-y-auto p-1">
+                                  {employees.map((emp) => (
+                                    <CommandItem
+                                      key={emp.id}
+                                      value={emp.name}
+                                      onSelect={() => {
+                                        handleEmployeeChange(emp.employeeId || emp.id);
+                                        setShowEmployeeDropdown(false);
+                                      }}
+                                      className="py-2 cursor-pointer hover:bg-accent"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          selectedEmployeeId === (emp.employeeId || emp.id) ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span>{emp.name}</span>
+                                        <span className="text-xs text-muted-foreground">{emp.role} - {emp.email}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </div>
                               </Command>
                             </PopoverContent>
                           </Popover>
@@ -794,36 +793,35 @@ export default function ShiftDetailsPage() {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-full p-0" align="end">
-                            <Command>
+                            <Command className="w-full">
                               <CommandInput placeholder="Search employees..." />
                               <CommandEmpty>
                                 {employees.length === 0 ? "No employees found in your department" : "No employees match your search."}
                               </CommandEmpty>
-                              <CommandGroup>
-                                <CommandList>
-                                  {employees.map((emp) => (
-                                    <CommandItem
-                                      key={emp.id}
-                                      value={emp.name}
-                                      onSelect={() => {
-                                        handleEmployeeChange(emp.employeeId || emp.id);
-                                        setShowEmployeeDropdown(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          selectedEmployeeId === (emp.employeeId || emp.id) ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      <div className="flex flex-col">
-                                        <span>{emp.name}</span>
-                                        <span className="text-xs text-muted-foreground">{emp.role} - {emp.email}</span>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </CommandList>
-                              </CommandGroup>
+                              <div className="max-h-[200px] overflow-y-auto p-1">
+                                {employees.map((emp) => (
+                                  <CommandItem
+                                    key={emp.id}
+                                    value={emp.name}
+                                    onSelect={() => {
+                                      handleEmployeeChange(emp.employeeId || emp.id);
+                                      setShowEmployeeDropdown(false);
+                                    }}
+                                    className="py-2 cursor-pointer hover:bg-accent"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedEmployeeId === (emp.employeeId || emp.id) ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{emp.name}</span>
+                                      <span className="text-xs text-muted-foreground">{emp.role} - {emp.email}</span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </div>
                             </Command>
                           </PopoverContent>
                         </Popover>

@@ -12,7 +12,10 @@ import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Trash2, Shield, AlertTriangle, Search } from "lucide-react"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Plus, Trash2, Shield, AlertTriangle, Search, Users, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { useAssets } from "@/hooks/use-assets"
@@ -37,6 +40,9 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   const [selectedDepartment, setSelectedDepartment] = useState(
     isSuperAdmin ? "" : user?.department || ""
   )
+
+  // State for inspector dropdown
+  const [showInspectorDropdown, setShowInspectorDropdown] = useState(false)
 
   type FormData = {
     assetId: string
@@ -341,12 +347,13 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
       nextDueDate: "",
       priority: "medium",
       riskLevel: "medium",
-      estimatedDuration: 2,
+      estimatedDuration: '',
       assignedInspector: "",
       safetyStandards: [],
     })
     setCategories([])
     setSelectedDepartment(isSuperAdmin ? "" : user?.department || "")
+    setShowInspectorDropdown(false)
   }
 
   return (
@@ -577,33 +584,80 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                   </div>
 
                   {/* Assigned Inspector */}
-                  <div className="space-y-2">
-                    <Label htmlFor="inspector">Assigned Inspector</Label>
-                    <Select 
-                      value={formData.assignedInspector} 
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, assignedInspector: value }))}
-                      disabled={isSuperAdmin && !selectedDepartment}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={
-                          isSuperAdmin && !selectedDepartment 
-                            ? "Select department first" 
-                            : "Select inspector"
-                        } />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isLoadingEmployees ? (
-                          <SelectItem value="loading" disabled>Loading employees...</SelectItem>
-                        ) : (
-                          employeesData?.data?.employees?.map((employee) => (
-                            <SelectItem key={employee.id} value={employee.name}>
-                              {employee.name} - {employee.role}
-                            </SelectItem>
-                          ))
+                                      <div className="space-y-2">
+                      <Label htmlFor="inspector">Assigned Inspector</Label>
+                      <div className="relative">
+                        <Input
+                          value={formData.assignedInspector || ""}
+                          placeholder={
+                            isSuperAdmin && !selectedDepartment 
+                              ? "Select department first" 
+                              : "Search inspector"
+                          }
+                          disabled={isSuperAdmin && !selectedDepartment}
+                          readOnly
+                          className="cursor-pointer"
+                          onClick={() => !(isSuperAdmin && !selectedDepartment) && setShowInspectorDropdown(true)}
+                        />
+                        {!(isSuperAdmin && !selectedDepartment) && employeesData?.data?.employees && employeesData.data.employees.length > 0 && (
+                          <Popover open={showInspectorDropdown} onOpenChange={setShowInspectorDropdown}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                                type="button"
+                                onClick={() => setShowInspectorDropdown(true)}
+                              >
+                                <Users className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="end">
+                              <Command className="w-full">
+                                <CommandInput placeholder="Search inspectors..." />
+                                <CommandEmpty>
+                                  {employeesData.data.employees.length === 0 ? "No employees found in this department" : "No employees match your search."}
+                                </CommandEmpty>
+                                <div className="max-h-[200px] overflow-y-auto p-1">
+                                  {employeesData.data.employees.map((employee) => (
+                                    <CommandItem
+                                      key={employee.id}
+                                      value={employee.name}
+                                      onSelect={() => {
+                                        setFormData(prev => ({ ...prev, assignedInspector: employee.name }))
+                                        setShowInspectorDropdown(false)
+                                      }}
+                                      className="py-2 cursor-pointer hover:bg-accent"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          formData.assignedInspector === employee.name ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span>{employee.name}</span>
+                                        <span className="text-xs text-muted-foreground">{employee.role} - {employee.email}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </div>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      </div>
+                      {isSuperAdmin && !selectedDepartment && (
+                        <p className="text-xs text-muted-foreground">
+                          Please select a department first to choose an inspector
+                        </p>
+                      )}
+                      {!(isSuperAdmin && !selectedDepartment) && employeesData?.data?.employees && employeesData.data.employees.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          No employees found in this department
+                        </p>
+                      )}
+                    </div>
                 </div>
 
                 <div className="space-y-2">
