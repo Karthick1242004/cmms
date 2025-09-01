@@ -93,6 +93,12 @@ export interface AssetsState {
   isLoading: boolean
   isDialogOpen: boolean
   selectedAsset: Asset | null
+  // Pagination state
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  hasNext: boolean
+  hasPrevious: boolean
   // currentAssetDetail: AssetDetail | null // For detail page state management
 
   setAssets: (assets: Asset[]) => void
@@ -107,6 +113,9 @@ export interface AssetsState {
   setSelectedAsset: (asset: Asset | null) => void
   filterAssets: (category?: string) => void // Add optional category for filtering
   fetchAssets: (filters?: any) => Promise<void> // Add optional filters parameter
+  setPage: (page: number) => void // Set current page
+  nextPage: () => void // Go to next page
+  previousPage: () => void // Go to previous page
   clearCache: () => void // Clear cache and reset state
   // fetchAssetDetail: (id: string) => Promise<AssetDetail | null>
 }

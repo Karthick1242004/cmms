@@ -32,6 +32,12 @@ export const useAssetsStore = create<AssetsState>()(
         isLoading: false,
         isDialogOpen: false,
         selectedAsset: null,
+        // Pagination state
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: 0,
+        hasNext: false,
+        hasPrevious: false,
 
         setAssets: (assets) =>
           set((state) => {
@@ -178,6 +184,28 @@ export const useAssetsStore = create<AssetsState>()(
           }),
 
         // Clear cache and force refresh
+        setPage: (page: number) => {
+          set((state) => {
+            state.currentPage = page
+          })
+        },
+
+        nextPage: () => {
+          set((state) => {
+            if (state.hasNext) {
+              state.currentPage += 1
+            }
+          })
+        },
+
+        previousPage: () => {
+          set((state) => {
+            if (state.hasPrevious) {
+              state.currentPage -= 1
+            }
+          })
+        },
+
         clearCache: () => {
           set((state) => {
             state.assets = []
@@ -185,6 +213,12 @@ export const useAssetsStore = create<AssetsState>()(
             state.searchTerm = ""
             state.statusFilter = "all"
             state.conditionFilter = "all"
+            // Reset pagination state
+            state.currentPage = 1
+            state.totalPages = 1
+            state.totalCount = 0
+            state.hasNext = false
+            state.hasPrevious = false
           })
         },
 
@@ -217,46 +251,28 @@ export const useAssetsStore = create<AssetsState>()(
           })
 
           try {
-            // Fetch all pages to get complete asset list
-            let allAssets: AssetDetail[] = []
-            let currentPage = 1
-            let hasMore = true
-
-            console.log('Starting to fetch all assets with pagination...')
-
-            while (hasMore) {
-              const paginatedFilters = { ...filters, page: currentPage, limit: 50 }
-              console.log(`Fetching page ${currentPage} with filters:`, paginatedFilters)
-              
-              const response = await assetsApi.getAssets(paginatedFilters)
-              
-              if (response.success && response.data) {
-                console.log(`Page ${currentPage} response:`, {
-                  assetsCount: response.data.assets.length,
-                  pagination: response.data.pagination
-                })
-                
-                allAssets = [...allAssets, ...response.data.assets]
-                
-                // Check if there are more pages
-                if (response.data.pagination) {
-                  hasMore = response.data.pagination.hasNext
-                  currentPage++
-                  console.log(`Pagination info - hasNext: ${hasMore}, currentPage: ${currentPage}`)
-                } else {
-                  hasMore = false
-                }
-              } else {
-                console.error(`Failed to fetch page ${currentPage}:`, response.error || response.message)
-                hasMore = false
-              }
+            // Use proper pagination with limit 15
+            const paginatedFilters = { 
+              ...filters, 
+              page: filters.page || 1, 
+              limit: 15 
             }
-
-            console.log(`Finished fetching all pages. Total assets: ${allAssets.length}`)
-
-            if (allAssets.length > 0) {
-              // Transform AssetDetail to Asset for list views
-              const transformedAssets: Asset[] = allAssets.map((detail: AssetDetail) => ({
+            
+            console.log('Fetching assets with pagination:', paginatedFilters)
+            
+            const response = await assetsApi.getAssets(paginatedFilters)
+            
+            if (response.success && response.data) {
+              console.log('Assets response:', {
+                assetsCount: response.data.assets.length,
+                pagination: response.data.pagination
+              })
+              
+              const currentAssets = response.data.assets
+              
+              if (currentAssets.length > 0) {
+                // Transform AssetDetail to Asset for list views
+                const transformedAssets: Asset[] = currentAssets.map((detail: AssetDetail) => ({
                 id: detail.id,
                 name: detail.assetName,
                 assetTag: detail.serialNo, // Or assetTag if available directly
@@ -298,6 +314,14 @@ export const useAssetsStore = create<AssetsState>()(
                 state.assets = transformedAssets
                 state.filteredAssets = transformedAssets
                 state.isLoading = false
+                // Update pagination state
+                if (response.data.pagination) {
+                  state.currentPage = response.data.pagination.currentPage
+                  state.totalPages = response.data.pagination.totalPages
+                  state.totalCount = response.data.pagination.totalCount
+                  state.hasNext = response.data.pagination.hasNext
+                  state.hasPrevious = response.data.pagination.hasPrevious
+                }
               })
             } else {
               console.log('No assets found')
@@ -305,14 +329,40 @@ export const useAssetsStore = create<AssetsState>()(
                 state.assets = []
                 state.filteredAssets = []
                 state.isLoading = false
+                // Reset pagination state
+                state.currentPage = 1
+                state.totalPages = 1
+                state.totalCount = 0
+                state.hasNext = false
+                state.hasPrevious = false
               })
             }
+          } else {
+            console.log('No assets found')
+            set((state) => {
+              state.assets = []
+              state.filteredAssets = []
+              state.isLoading = false
+              // Reset pagination state
+              state.currentPage = 1
+              state.totalPages = 1
+              state.totalCount = 0
+              state.hasNext = false
+              state.hasPrevious = false
+            })
+          }
           } catch (error) {
             console.error('Error fetching assets:', error)
             set((state) => {
               state.assets = []
               state.filteredAssets = []
               state.isLoading = false
+              // Reset pagination state on error
+              state.currentPage = 1
+              state.totalPages = 1
+              state.totalCount = 0
+              state.hasNext = false
+              state.hasPrevious = false
             })
           }
         },

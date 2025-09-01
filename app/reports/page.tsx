@@ -33,18 +33,59 @@ export default function ReportsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
 
-  // Fetch reports data
+  // Helper function to get auth headers (consistent with other API calls)
+  const getAuthHeaders = () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    
+    // Add JWT token if available
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth-token')
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+    }
+    
+    return headers
+  }
+
+  // Fetch reports data with proper authentication
   const fetchReportsData = async (selectedTimeRange: string = timeRange) => {
     try {
       setIsRefreshing(true)
-      const response = await fetch(`/api/reports?timeRange=${selectedTimeRange}&type=overview`)
+      
+      // Get auth headers for the request
+      const headers = getAuthHeaders()
+      
+      const response = await fetch(
+        `/api/reports?timeRange=${selectedTimeRange}&type=overview`,
+        {
+          method: 'GET',
+          headers
+        }
+      )
       
       if (!response.ok) {
-        throw new Error('Failed to fetch reports data')
+        if (response.status === 401) {
+          toast({
+            title: "Authentication Error",
+            description: "Please log in to access reports.",
+            variant: "destructive"
+          })
+          // Could redirect to login page here
+          return
+        }
+        throw new Error(`Failed to fetch reports data: ${response.status}`)
       }
       
       const data = await response.json()
-      setReportData(data.data)
+      
+      if (data.success) {
+        setReportData(data.data)
+      } else {
+        throw new Error(data.message || 'Invalid response format')
+      }
       
     } catch (error) {
       console.error('Error fetching reports data:', error)
@@ -61,22 +102,43 @@ export default function ReportsPage() {
     }
   }
 
-  // Fetch additional data for specific tabs
+  // Fetch additional data for specific tabs with proper authentication
   const fetchTabData = async (tabType: string) => {
     try {
-      const response = await fetch(`/api/reports?timeRange=${timeRange}&type=${tabType}`)
+      // Get auth headers for the request
+      const headers = getAuthHeaders()
+      
+      const response = await fetch(
+        `/api/reports?timeRange=${timeRange}&type=${tabType}`,
+        {
+          method: 'GET',
+          headers
+        }
+      )
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch ${tabType} data`)
+        if (response.status === 401) {
+          toast({
+            title: "Authentication Error",
+            description: "Please log in to access reports.",
+            variant: "destructive"
+          })
+          return
+        }
+        throw new Error(`Failed to fetch ${tabType} data: ${response.status}`)
       }
       
       const data = await response.json()
       
-      // Update specific section of reportData
-      setReportData((prev: any) => ({
-        ...prev,
-        [tabType]: data.data
-      }))
+      if (data.success) {
+        // Update specific section of reportData
+        setReportData((prev: any) => ({
+          ...prev,
+          [tabType]: data.data
+        }))
+      } else {
+        throw new Error(data.message || 'Invalid response format')
+      }
       
     } catch (error) {
       console.error(`Error fetching ${tabType} data:`, error)

@@ -19,6 +19,15 @@ import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
 import { AssetCreationForm } from "@/components/asset-creation-form"
 import { AssetEditForm } from "@/components/asset-edit-form"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 import { useAssetsStore } from "@/stores/assets-store"
 import { useAuthStore } from "@/stores/auth-store"
@@ -57,7 +66,16 @@ export default function AllAssetsPage() {
     isLoading, 
     fetchAssets,
     deleteAsset,
-    clearCache
+    clearCache,
+    // Pagination state
+    currentPage,
+    totalPages,
+    totalCount,
+    hasNext,
+    hasPrevious,
+    setPage,
+    nextPage,
+    previousPage
   } = useAssetsStore()
   
   // Use auth store for permissions
@@ -77,9 +95,9 @@ export default function AllAssetsPage() {
   })
 
   useEffect(() => {
-    // Fetch assets from API
-    fetchAssets()
-  }, [])
+    // Fetch assets from API with current page
+    fetchAssets({ page: currentPage })
+  }, [currentPage])
 
   // Debug log to see what assets are in the store
   useEffect(() => {
@@ -543,7 +561,7 @@ export default function AllAssetsPage() {
 
         {/* Results count */}
         <div className="text-sm text-muted-foreground">
-          Showing {filteredAssets.length} of {assets.length} assets
+          Showing {assets.length} of {totalCount} assets (Page {currentPage} of {totalPages})
         </div>
       </PageHeader>
 
@@ -571,6 +589,77 @@ export default function AllAssetsPage() {
               <p className="text-center text-muted-foreground py-8">No assets found. Try adding some assets first.</p>
             )}
           </>
+        )}
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-6">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (hasPrevious) {
+                        previousPage()
+                      }
+                    }}
+                    className={!hasPrevious ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum
+                  if (totalPages <= 5) {
+                    pageNum = i + 1
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i
+                  } else {
+                    pageNum = currentPage - 2 + i
+                  }
+                  
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setPage(pageNum)
+                        }}
+                        isActive={currentPage === pageNum}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                })}
+                
+                {totalPages > 5 && currentPage < totalPages - 2 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (hasNext) {
+                        nextPage()
+                      }
+                    }}
+                    className={!hasNext ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         )}
       </PageContent>
 

@@ -9,9 +9,27 @@ export async function GET(request: NextRequest) {
     // Get user context for department filtering
     const user = await getUserContext(request);
     
-    // TEMPORARY: Allow access even without authentication for testing
+    // Extract JWT token from the request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+    
+    // Validate authentication for reports access
+    if (!token) {
+      console.warn('No authentication token provided for reports API');
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Authentication required for reports access',
+          code: 'NO_TOKEN'
+        },
+        { status: 401 }
+      );
+    }
+    
+    // TEMPORARY: Allow access even without user context for testing
     if (!user) {
-      // unauthenticated request; continue with limited data
+      console.warn('No user context available, proceeding with limited data');
     }
 
     const { searchParams } = new URL(request.url);
@@ -32,11 +50,20 @@ export async function GET(request: NextRequest) {
       queryParams.append('department', user.department);
     }
 
-    // Set user headers for backend authentication
+    // Set headers for internal API authentication
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
+    // CRITICAL: Add JWT token for internal API calls
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      console.log('JWT token added to headers for internal calls');
+    } else {
+      console.warn('No JWT token available for internal API calls');
+    }
+
+    // Add user context headers if available
     if (user) {
       headers['x-user-id'] = user.id;
       headers['x-user-name'] = user.name;
@@ -77,6 +104,36 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Internal API client with proper error handling and monitoring
+async function makeInternalAPICall(url: string, headers: Record<string, string>): Promise<any> {
+  const startTime = Date.now();
+  try {
+    const response = await fetch(url, { headers });
+    const duration = Date.now() - startTime;
+    
+    // Monitor API performance (requirement: <200ms)
+    if (duration > 200) {
+      console.warn(`PERFORMANCE_ALERT: Internal API call to ${url} took ${duration}ms (>200ms threshold)`);
+    }
+    
+    if (!response.ok) {
+      console.error(`Internal API call failed: ${url} - Status: ${response.status}`);
+      if (response.status === 401) {
+        console.error('SECURITY_ALERT: Authentication failed for internal API call');
+      }
+      return { data: {}, error: response.status };
+    }
+    
+    const data = await response.json();
+    console.log(`Internal API call successful: ${url} - Duration: ${duration}ms`);
+    return { data, error: null };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`Internal API call error: ${url} - Duration: ${duration}ms`, error);
+    return { data: {}, error: 500 };
+  }
+}
+
 // Helper function to generate reports data from existing endpoints
 async function generateReportsData(
   user: any,
@@ -89,43 +146,71 @@ async function generateReportsData(
   const timeRanges = getTimeRangeFilters(timeRange, now);
   
   try {
-    // Fetch data from existing endpoints in parallel
+    console.log('=== INTERNAL API CALLS DEBUG ===');
+    console.log('selfOrigin:', selfOrigin);
+    console.log('Headers being sent:', headers);
+    console.log('Assets URL:', `${selfOrigin}/api/assets`);
+    
+    // Prepare headers for internal calls
+    const internalHeaders = { ...headers, 'x-internal-request': 'true' };
+    
+    // Fetch data from existing endpoints in parallel using robust client
     const [
-      maintenanceResponse,
-      ticketsResponse,
-      assetsResponse,
-      partsResponse
+      maintenanceResult,
+      ticketsResult,
+      assetsResult,
+      partsResult
     ] = await Promise.allSettled([
-      // Fetch maintenance records
-      fetch(`${selfOrigin}/api/maintenance?type=records&startDate=${timeRanges.startDate}&endDate=${timeRanges.endDate}`, {
-        headers: { ...headers, 'x-internal-request': 'true' }
-      }),
-      // Fetch tickets
-      fetch(`${selfOrigin}/api/tickets?startDate=${timeRanges.startDate}&endDate=${timeRanges.endDate}`, {
-        headers: { ...headers, 'x-internal-request': 'true' }
-      }),
-      // Fetch assets
-      fetch(`${selfOrigin}/api/assets`, {
-        headers: { ...headers, 'x-internal-request': 'true' }
-      }),
-      // Fetch parts
-      fetch(`${selfOrigin}/api/parts`, {
-        headers: { ...headers, 'x-internal-request': 'true' }
-      })
+      makeInternalAPICall(
+        `${selfOrigin}/api/maintenance?type=records&startDate=${timeRanges.startDate}&endDate=${timeRanges.endDate}&limit=1000`,
+        internalHeaders
+      ),
+      makeInternalAPICall(
+        `${selfOrigin}/api/tickets?startDate=${timeRanges.startDate}&endDate=${timeRanges.endDate}&limit=1000`,
+        internalHeaders
+      ),
+      makeInternalAPICall(
+        `${selfOrigin}/api/assets?limit=1000`,
+        internalHeaders
+      ),
+      makeInternalAPICall(
+        `${selfOrigin}/api/parts?limit=1000`,
+        internalHeaders
+      )
     ]);
 
-    // Process responses
-    const maintenanceData = maintenanceResponse.status === 'fulfilled' && maintenanceResponse.value.ok 
-      ? await maintenanceResponse.value.json() : { data: { records: [] } };
+    // Process responses with comprehensive error handling
+    console.log('=== REPORTS API PROCESSING START ===');
     
-    const ticketsData = ticketsResponse.status === 'fulfilled' && ticketsResponse.value.ok 
-      ? await ticketsResponse.value.json() : { data: { tickets: [] } };
+    // Extract data from Promise.allSettled results
+    const maintenanceData = maintenanceResult.status === 'fulfilled' && !maintenanceResult.value.error
+      ? maintenanceResult.value.data : { data: { records: [] } };
     
-    const assetsData = assetsResponse.status === 'fulfilled' && assetsResponse.value.ok 
-      ? await assetsResponse.value.json() : { data: { assets: [] } };
+    const ticketsData = ticketsResult.status === 'fulfilled' && !ticketsResult.value.error
+      ? ticketsResult.value.data : { data: { tickets: [] } };
     
-    const partsData = partsResponse.status === 'fulfilled' && partsResponse.value.ok 
-      ? await partsResponse.value.json() : { data: { parts: [] } };
+    const assetsData = assetsResult.status === 'fulfilled' && !assetsResult.value.error
+      ? assetsResult.value.data : { data: { assets: [] } };
+    
+    const partsData = partsResult.status === 'fulfilled' && !partsResult.value.error
+      ? partsResult.value.data : { data: { parts: [] } };
+    
+    // Log authentication failures for monitoring
+    if (assetsResult.status === 'fulfilled' && assetsResult.value.error === 401) {
+      console.error('SECURITY_ALERT: Assets API authentication failed - reports will show 0 assets');
+    }
+    if (partsResult.status === 'fulfilled' && partsResult.value.error === 401) {
+      console.error('SECURITY_ALERT: Parts API authentication failed - reports will show 0 parts');
+    }
+
+    // Log essential data metrics for monitoring
+    const assetsCount = assetsData?.data?.assets?.length || 0;
+    const ticketsCount = ticketsData?.data?.tickets?.length || 0;
+    const recordsCount = maintenanceData?.data?.records?.length || 0;
+    const partsCount = partsData?.data?.parts?.length || 0;
+    
+    console.log(`Data retrieved: ${assetsCount} assets, ${ticketsCount} tickets, ${recordsCount} maintenance records, ${partsCount} parts`);
+    console.log('=== REPORTS API PROCESSING END ===');
 
     // Generate analytics based on report type
     switch (reportType) {
@@ -177,6 +262,9 @@ function generateOverviewReport(maintenanceData: any, ticketsData: any, assetsDa
   const tickets = ticketsData.tickets || [];
   const assets = assetsData.assets || [];
   const parts = partsData.parts || [];
+  
+  // Log final counts for verification
+  console.log(`Overview generation: ${assets.length} assets, ${tickets.length} tickets, ${records.length} records, ${parts.length} parts`);
 
   // Calculate maintenance costs
   const maintenanceCosts = records.reduce((total: number, record: any) => {
