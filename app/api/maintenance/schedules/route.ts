@@ -299,10 +299,15 @@ export async function POST(request: NextRequest) {
       body.parts = []; // Keep empty array, but ensure it's properly formatted
     }
 
-    // Fix parts validation issues - ensure partId is populated for each part
+    // Fix parts validation issues - ensure assetPartId and partId are populated for each part
     if (body.parts && body.parts.length > 0) {
       body.parts = body.parts.map((part: any, index: number) => {
-        // Generate partId if missing or empty
+        // Generate assetPartId if missing or empty
+        if (!part.assetPartId || part.assetPartId.trim() === '') {
+          part.assetPartId = `ASSET_PART_${Date.now()}_${index}`;
+        }
+        
+        // Generate partId for backward compatibility (backend expects this)
         if (!part.partId || part.partId.trim() === '') {
           part.partId = `PART_${Date.now()}_${index}`;
         }
@@ -310,15 +315,71 @@ export async function POST(request: NextRequest) {
         // Ensure all required fields are present
         return {
           ...part,
-          partId: part.partId,
+          id: part.id || `part_${Date.now()}_${index}`,
+          assetPartId: part.assetPartId,
+          partId: part.partId, // Required by backend validation
           partName: part.partName || 'Unnamed Part',
           partSku: part.partSku || '',
           estimatedTime: part.estimatedTime || 30,
           requiresReplacement: part.requiresReplacement || false,
-          checklistItems: part.checklistItems || []
+          instructions: part.instructions || ''
         };
       });
     }
+
+    // Handle checklist transformation for backward compatibility with backend
+    let generalChecklist: any[] = [];
+    if (body.checklist && body.checklist.length > 0) {
+      generalChecklist = body.checklist.map((item: any, index: number) => ({
+        ...item,
+        id: item.id || `check_${Date.now()}_${index}`,
+        description: item.description || '',
+        isRequired: item.isRequired !== false, // Default to true
+        status: item.status || 'pending'
+      }));
+      console.log('✅ Maintenance Schedule - General checklist found:', generalChecklist.length, 'items');
+    }
+
+    // CRITICAL FIX: Backend expects checklist items inside parts, not as separate field
+    // Transform new frontend structure to backend-compatible structure
+    if (generalChecklist.length > 0) {
+      if (body.parts && body.parts.length > 0) {
+        // Add general checklist to the first part (for backend compatibility)
+        body.parts[0].checklistItems = generalChecklist;
+        console.log('🔄 Transformed general checklist to parts[0].checklistItems for backend compatibility');
+      } else {
+        // Create a general maintenance part to hold the checklist
+        const generalPart = {
+          id: `general_part_${Date.now()}`,
+          assetPartId: `general_asset_part_${Date.now()}`,
+          partId: `GENERAL_PART_${Date.now()}`,
+          partName: 'General Maintenance',
+          partSku: 'GENERAL',
+          estimatedTime: 30,
+          requiresReplacement: false,
+          instructions: 'General maintenance tasks',
+          checklistItems: generalChecklist
+        };
+        body.parts = [generalPart];
+        console.log('🔄 Created general part to hold checklist items for backend compatibility');
+      }
+    }
+
+    // Remove the separate checklist field since backend doesn't expect it
+    delete body.checklist;
+    console.log('🗑️ Removed separate checklist field for backend compatibility');
+
+    // Debug: Log what we're sending to backend
+    console.log('📤 Maintenance Schedule - Sending to backend:', {
+      title: body.title,
+      assetId: body.assetId,
+      partsCount: body.parts?.length || 0,
+      hasChecklistField: !!body.checklist,
+      partsWithChecklist: body.parts?.map((p: any) => ({ 
+        partName: p.partName, 
+        checklistItems: p.checklistItems?.length || 0 
+      })) || []
+    });
 
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/schedules`, {
@@ -340,6 +401,48 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    
+    // Debug: Log what we received from backend
+    console.log('📥 Maintenance Schedule - Response from backend:', {
+      success: data.success,
+      hasData: !!data.data,
+      dataKeys: data.data ? Object.keys(data.data) : [],
+      hasChecklist: !!(data.data?.checklist),
+      checklistLength: data.data?.checklist?.length || 0,
+      partsWithChecklist: data.data?.parts?.map((p: any) => ({ 
+        partName: p.partName, 
+        checklistItems: p.checklistItems?.length || 0 
+      })) || []
+    });
+
+    // CRITICAL FIX: Transform response back to new frontend structure
+    // Extract checklist from parts and return as separate field
+    if (data.success && data.data && data.data.parts) {
+      let extractedChecklist: any[] = [];
+      
+      // Extract checklist items from all parts
+      data.data.parts.forEach((part: any) => {
+        if (part.checklistItems && part.checklistItems.length > 0) {
+          extractedChecklist = extractedChecklist.concat(part.checklistItems);
+        }
+      });
+
+      // Add the extracted checklist as a separate field
+      if (extractedChecklist.length > 0) {
+        data.data.checklist = extractedChecklist;
+        console.log('🔄 Extracted checklist from parts back to separate field:', extractedChecklist.length, 'items');
+      }
+
+      // Optional: Clean up parts by removing checklistItems if they were general maintenance
+      data.data.parts = data.data.parts.filter((part: any) => {
+        // Keep all parts, but clean up if it's the general maintenance part we created
+        if (part.partName === 'General Maintenance' && part.partSku === 'GENERAL') {
+          // This was our synthetic part, we can remove it or keep it based on requirements
+          console.log('🧹 Found synthetic general maintenance part, keeping it for now');
+        }
+        return true; // Keep all parts for now
+      });
+    }
     
     // Store performance data for assigned technician
     if (data.success && body.assignedTechnician && body.assignedTechnician.trim() !== '' && data.data) {

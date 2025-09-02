@@ -130,7 +130,7 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                 <TableHead>Date</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Completion</TableHead>
+                {/* <TableHead>Completion</TableHead> */}
                 <TableHead>Verified</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -179,7 +179,7 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    {/* <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="w-16 bg-secondary rounded-full h-2">
                           <div 
@@ -194,7 +194,7 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                           {stats.percentage}%
                         </span>
                       </div>
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell>
                       {record.adminVerified ? (
                         <div className="flex items-center gap-2">
@@ -358,60 +358,107 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                 </Card>
               </div>
 
-              {/* Parts Status */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Parts Maintenance Details</h3>
-                {selectedRecord.partsStatus.map((part, index) => (
-                  <Card key={index}>
+              {/* General Maintenance Checklist */}
+              {selectedRecord.generalChecklist && selectedRecord.generalChecklist.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Maintenance Checklist</h3>
+                  <Card className="border-l-4 border-l-green-500">
                     <CardHeader>
-                      <CardTitle className="text-base flex items-center justify-between">
-                        {part.partName}
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          <span className="text-sm font-normal">{part.timeSpent} min</span>
-                          {part.replaced && (
-                            <Badge variant="secondary">Replaced</Badge>
-                          )}
-                        </div>
-                      </CardTitle>
+                      <CardTitle className="text-base">General Maintenance Tasks</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div><strong>Condition:</strong> {part.condition}</div>
-                        <div><strong>Replaced:</strong> {part.replaced ? "Yes" : "No"}</div>
-                        {part.replacementNotes && (
-                          <div className="col-span-2">
-                            <strong>Replacement Notes:</strong> {part.replacementNotes}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <strong>Checklist Items:</strong>
-                        <div className="mt-2 space-y-2">
-                          {part.checklistItems.map((item, itemIndex) => (
-                            <div key={itemIndex} className="flex items-center justify-between p-2 border rounded">
-                              <div className="flex items-center gap-2">
-                                {item.completed ? (
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
-                                ) : (
-                                  <XCircle className="h-4 w-4 text-red-500" />
-                                )}
-                                <span className={item.completed ? "line-through text-muted-foreground" : ""}>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {selectedRecord.generalChecklist.map((item, itemIndex) => (
+                          <div key={item.itemId} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              {item.completed ? (
+                                <CheckCircle className="h-5 w-5 text-green-500" />
+                              ) : (
+                                <XCircle className="h-5 w-5 text-red-500" />
+                              )}
+                              <div className="flex-1">
+                                <span className={`font-medium ${item.completed ? "line-through text-muted-foreground" : ""}`}>
                                   {item.description}
                                 </span>
+                                {item.notes && (
+                                  <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
+                                )}
                               </div>
-                              <Badge variant={item.status === "completed" ? "default" : item.status === "failed" ? "destructive" : "secondary"}>
-                                {item.status}
-                              </Badge>
                             </div>
-                          ))}
-                        </div>
+                            <Badge variant={
+                              item.status === "completed" ? "default" : 
+                              item.status === "failed" ? "destructive" : 
+                              item.status === "skipped" ? "secondary" : "outline"
+                            }>
+                              {item.status}
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Parts Status */}
+              {selectedRecord.partsStatus && selectedRecord.partsStatus.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Parts Maintenance Details</h3>
+                  {selectedRecord.partsStatus.map((part, index) => (
+                    <Card key={index} className="border-l-4 border-l-blue-500">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center justify-between">
+                          {part.partName}
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span className="text-sm font-normal">{part.timeSpent} min</span>
+                            {part.replaced && (
+                              <Badge variant="secondary">Replaced</Badge>
+                            )}
+                          </div>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div><strong>Condition:</strong> {part.condition}</div>
+                          <div><strong>Replaced:</strong> {part.replaced ? "Yes" : "No"}</div>
+                          {part.replacementNotes && (
+                            <div className="col-span-2">
+                              <strong>Replacement Notes:</strong> {part.replacementNotes}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Only show part-specific checklist if it exists */}
+                        {part.checklistItems && part.checklistItems.length > 0 && (
+                          <div>
+                            <strong>Part-Specific Checklist:</strong>
+                            <div className="mt-2 space-y-2">
+                              {part.checklistItems.map((item, itemIndex) => (
+                                <div key={itemIndex} className="flex items-center justify-between p-2 border rounded">
+                                  <div className="flex items-center gap-2">
+                                    {item.completed ? (
+                                      <CheckCircle className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                      <XCircle className="h-4 w-4 text-red-500" />
+                                    )}
+                                    <span className={item.completed ? "line-through text-muted-foreground" : ""}>
+                                      {item.description}
+                                    </span>
+                                  </div>
+                                  <Badge variant={item.status === "completed" ? "default" : item.status === "failed" ? "destructive" : "secondary"}>
+                                    {item.status}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
 
               {/* Notes */}
               {(selectedRecord.notes || selectedRecord.adminNotes) && (

@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandInput, CommandItem } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Plus, Trash2, Edit, Users, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
@@ -20,6 +21,7 @@ import { useLocations } from "@/hooks/use-locations"
 import { useEmployees } from "@/hooks/use-employees"
 import { useDepartments } from "@/hooks/use-departments"
 import type { MaintenanceSchedule, MaintenancePart, MaintenanceChecklistItem } from "@/types/maintenance"
+import type { AssetDetail } from "@/types/asset"
 
 interface MaintenanceScheduleFormProps {
   trigger: React.ReactNode
@@ -45,7 +47,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     assetId: string
     department: string
     location: string
-    title: string
+    title: "preventive" | "normal" | "routine"
     description: string
     frequency: "daily" | "weekly" | "monthly" | "quarterly" | "annually" | "custom"
     customFrequencyDays: number
@@ -60,7 +62,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     assetId: "",
     department: isSuperAdmin ? "" : user?.department || "",
     location: "",
-    title: "",
+    title: "preventive",
     description: "",
     frequency: "monthly",
     customFrequencyDays: 30,
@@ -87,7 +89,11 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
 
 
   const [parts, setParts] = useState<MaintenancePart[]>([])
+  const [checklist, setChecklist] = useState<MaintenanceChecklistItem[]>([])
+  const [selectedAssetParts, setSelectedAssetParts] = useState<any[]>([])
   const [partsValidationError, setPartsValidationError] = useState<string>("")
+  const [checklistValidationError, setChecklistValidationError] = useState<string>("")
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   // Initialize form with schedule data if editing
   useEffect(() => {
@@ -96,7 +102,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         assetId: schedule.assetId,
         department: schedule.department || "",
         location: schedule.location,
-        title: schedule.title,
+        title: schedule.title as "preventive" | "normal" | "routine",
         description: schedule.description || "",
         frequency: schedule.frequency,
         customFrequencyDays: schedule.customFrequencyDays || 30,
@@ -106,11 +112,9 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         estimatedDuration: schedule.estimatedDuration,
         assignedInspector: schedule.assignedTechnician || "",
       })
-      // Create a deep copy of parts to ensure mutability
-      setParts(schedule.parts.map(part => ({
-        ...part,
-        checklistItems: [...(part.checklistItems || [])]
-      })))
+      // Set parts and checklist from schedule
+      setParts(schedule.parts || [])
+      setChecklist(schedule.checklist || [])
       
       // Set selected department for super admin when editing
       if (isSuperAdmin && schedule.department) {
@@ -132,7 +136,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   }
 
   // Handle asset change
-  const handleAssetChange = (assetId: string) => {
+  const handleAssetChange = async (assetId: string) => {
     const selectedAsset = assetsData?.data?.assets.find(asset => asset.id === assetId)
     if (selectedAsset) {
       setFormData(prev => ({
@@ -140,20 +144,57 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         assetId,
         location: selectedAsset.location, // Auto-fill location from asset
       }))
+      
+      // Clear previously selected parts when changing asset
+      setParts([])
+      
+      // Fetch asset details to get parts BOM
+      try {
+        const token = localStorage.getItem('auth-token')
+        const response = await fetch(`/api/assets/${assetId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (response.ok) {
+          const assetDetails = await response.json()
+          const assetData = assetDetails.data as AssetDetail
+          
+          // Set available asset parts for selection
+          if (assetData.partsBOM && Array.isArray(assetData.partsBOM) && assetData.partsBOM.length > 0) {
+            setSelectedAssetParts(assetData.partsBOM)
+            console.log('Parts found:', assetData.partsBOM.length)
+          } else {
+            // No parts available for this asset
+            setSelectedAssetParts([])
+            console.log('No parts available for this asset')
+          }
+        } else {
+          console.error('Failed to fetch asset details:', response.status)
+          setSelectedAssetParts([])
+        }
+      } catch (error) {
+        console.error('Failed to fetch asset details:', error)
+        setSelectedAssetParts([])
+      }
+    } else {
+      setSelectedAssetParts([])
     }
   }
 
-  const addPart = () => {
+  const addPartFromAsset = (assetPart: any) => {
     const timestamp = Date.now()
     const newPart: MaintenancePart = {
       id: `part_${timestamp}`,
-      partId: `PART_${timestamp}`, // Generate unique partId
-      partName: "",
-      partSku: "",
+      assetPartId: assetPart.id || `asset_part_${timestamp}`,
+      partId: `PART_${timestamp}`, // For backend compatibility
+      partName: assetPart.name || assetPart.partName || "",
+      partSku: assetPart.sku || assetPart.partNumber || "",
       estimatedTime: 30,
       requiresReplacement: false,
-      checklistItems: [],
-      name: ""
+      instructions: ""
     }
     setParts([...parts, newPart])
     // Clear validation error when adding a part
@@ -162,13 +203,23 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     }
   }
 
+  const addChecklistItem = () => {
+    const newItem: MaintenanceChecklistItem = {
+      id: `check_${Date.now()}`,
+      description: "",
+      isRequired: true,
+      status: "pending",
+    }
+    setChecklist([...checklist, newItem])
+    // Clear validation error when adding checklist item
+    if (checklistValidationError && checklist.length === 0) {
+      setChecklistValidationError("")
+    }
+  }
+
   const updatePart = (index: number, updates: Partial<MaintenancePart>) => {
     const updatedParts = parts.map((part, idx) => 
-      idx === index ? { 
-        ...part, 
-        ...updates,
-        checklistItems: [...(part.checklistItems || [])] // Preserve checklistItems array
-      } : part
+      idx === index ? { ...part, ...updates } : part
     )
     setParts(updatedParts)
   }
@@ -177,55 +228,15 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     setParts(parts.filter((_, i) => i !== index))
   }
 
-  const addChecklistItem = (partIndex: number) => {
-    const newItem: MaintenanceChecklistItem = {
-      id: `check_${Date.now()}`,
-      description: "",
-      isRequired: true,
-      status: "pending",
-    }
-    const updatedParts = parts.map((part, index) => {
-      if (index === partIndex) {
-        return {
-          ...part,
-          checklistItems: [...(part.checklistItems || []), newItem]
-        }
-      }
-      return part
-    })
-    setParts(updatedParts)
-    // Clear validation error when adding checklist item
-    if (partsValidationError) {
-      setPartsValidationError("")
-    }
+  const updateChecklistItem = (itemIndex: number, updates: Partial<MaintenanceChecklistItem>) => {
+    const updatedChecklist = checklist.map((item, idx) => 
+      idx === itemIndex ? { ...item, ...updates } : item
+    )
+    setChecklist(updatedChecklist)
   }
 
-  const updateChecklistItem = (partIndex: number, itemIndex: number, updates: Partial<MaintenanceChecklistItem>) => {
-    const updatedParts = parts.map((part, index) => {
-      if (index === partIndex) {
-        return {
-          ...part,
-          checklistItems: part.checklistItems.map((item, idx) => 
-            idx === itemIndex ? { ...item, ...updates } : item
-          )
-        }
-      }
-      return part
-    })
-    setParts(updatedParts)
-  }
-
-  const removeChecklistItem = (partIndex: number, itemIndex: number) => {
-    const updatedParts = parts.map((part, index) => {
-      if (index === partIndex) {
-        return {
-          ...part,
-          checklistItems: part.checklistItems.filter((_, i) => i !== itemIndex)
-        }
-      }
-      return part
-    })
-    setParts(updatedParts)
+  const removeChecklistItem = (itemIndex: number) => {
+    setChecklist(checklist.filter((_, i) => i !== itemIndex))
   }
 
   const calculateNextDueDate = (frequency: string, startDate: string, customDays?: number) => {
@@ -246,55 +257,87 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     setFormData(prev => ({ ...prev, nextDueDate: nextDue }))
   }, [formData.frequency, formData.startDate, formData.customFrequencyDays])
 
-  // Validation function for parts and checklist
-  const validatePartsAndChecklist = (): boolean => {
-    // Check if at least one part exists
-    if (parts.length === 0) {
-      setPartsValidationError("At least one part is required for maintenance schedule")
+  // Validation function for checklist
+  const validateChecklist = (): boolean => {
+    // Check if at least one checklist item exists
+    if (checklist.length === 0) {
+      setChecklistValidationError("At least one checklist item is required for maintenance schedule")
       return false
     }
 
-    // Check if each part has at least one checklist item
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i]
-      if (!part.checklistItems || part.checklistItems.length === 0) {
-        setPartsValidationError(`Part "${part.name || `Part ${i + 1}`}" must have at least one checklist item`)
+    // Check if all checklist items have descriptions
+    for (let i = 0; i < checklist.length; i++) {
+      const item = checklist[i]
+      if (!item.description.trim()) {
+        setChecklistValidationError(`Checklist item ${i + 1} must have a description`)
         return false
-      }
-
-      // Check if all checklist items have descriptionsz
-      for (let j = 0; j < part.checklistItems.length; j++) {
-        const item = part.checklistItems[j]
-        if (!item.description.trim()) {
-          setPartsValidationError(`Part "${part.name || `Part ${i + 1}`}" has checklist items without descriptions`)
-          return false
-        }
       }
     }
 
-    setPartsValidationError("")
+    setChecklistValidationError("")
     return true
+  }
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+    
+    // Required field validations
+    if (!formData.assetId) {
+      errors.assetId = "Asset is required"
+    }
+    
+    if (!formData.department) {
+      errors.department = "Department is required"
+    }
+    
+    if (!formData.location) {
+      errors.location = "Location is required"
+    }
+    
+    if (!formData.title) {
+      errors.title = "Maintenance title is required"
+    }
+    
+    if (!formData.frequency) {
+      errors.frequency = "Frequency is required"
+    }
+    
+    if (!formData.startDate) {
+      errors.startDate = "Start date is required"
+    }
+    
+    if (!formData.priority) {
+      errors.priority = "Priority is required"
+    }
+    
+    if (formData.estimatedDuration === '' || formData.estimatedDuration === null) {
+      errors.estimatedDuration = "Estimated duration is required"
+    } else if (formData.estimatedDuration < 0.5) {
+      errors.estimatedDuration = "Duration must be at least 0.5 hours"
+    }
+    
+    if (!formData.assignedInspector) {
+      errors.assignedInspector = "Assigned inspector is required"
+    }
+    
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Frontend validation to match backend requirements
-    if (formData.title.length < 5) {
-      console.error('❌ Frontend validation failed: Title must be at least 5 characters');
-      // Could add toast notification here
-      return;
-    }
+    // Clear previous validation errors
+    setValidationErrors({})
     
-    if (formData.title.length > 200) {
-      console.error('❌ Frontend validation failed: Title must be at most 200 characters');
-      // Could add toast notification here
-      return;
+    // Validate form fields
+    if (!validateForm()) {
+      return
     }
 
-    // Validate parts and checklist items
-    if (!validatePartsAndChecklist()) {
-      return;
+    // Validate checklist items (mandatory)
+    if (!validateChecklist()) {
+      return
     }
     
     // Get selected asset details for additional fields
@@ -317,7 +360,17 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       status: "active" as const,
       createdBy: user?.email || "admin",
       parts,
+      checklist,
     }
+
+    // Debug: Log what we're sending to API
+    console.log('📤 Frontend - Maintenance Schedule Data:', {
+      title: scheduleData.title,
+      assetId: scheduleData.assetId,
+      partsCount: parts.length,
+      checklistCount: checklist.length,
+      checklist: checklist
+    })
 
 
 
@@ -334,7 +387,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       assetId: "",
       department: isSuperAdmin ? "" : user?.department || "",
       location: "",
-      title: "",
+      title: "preventive",
       description: "",
       frequency: "monthly",
       customFrequencyDays: 30,
@@ -345,6 +398,8 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       assignedInspector: "",
     })
     setParts([])
+    setChecklist([])
+    setSelectedAssetParts([])
     setSelectedDepartment(isSuperAdmin ? "" : user?.department || "")
     setShowInspectorDropdown(false)
   }
@@ -355,6 +410,8 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       if (!open) {
         // Clear validation errors when dialog is closed
         setPartsValidationError("")
+        setChecklistValidationError("")
+        setValidationErrors({})
       }
     }}>
       <DialogTrigger asChild>
@@ -398,7 +455,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                 onValueChange={handleAssetChange}
                 disabled={isSuperAdmin && !selectedDepartment}
               >
-                <SelectTrigger>
+                <SelectTrigger className={validationErrors.assetId ? "border-red-500" : ""}>
                   <SelectValue placeholder={
                     isSuperAdmin && !selectedDepartment 
                       ? "Select department first" 
@@ -417,30 +474,35 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                   )}
                 </SelectContent>
               </Select>
+              {validationErrors.assetId && (
+                <p className="text-sm text-red-500 mt-1">{validationErrors.assetId}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="title">Maintenance Title</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="e.g., Monthly Filter Replacement (minimum 5 characters)"
-                required
-                minLength={5}
-                maxLength={200}
-              />
-              {formData.title && formData.title.length < 5 && (
-                <p className="text-sm text-red-500 mt-1">
-                  Title must be at least 5 characters (currently {formData.title.length})
-                </p>
+              <Select 
+                value={formData.title} 
+                onValueChange={(value: FormData["title"]) => setFormData(prev => ({ ...prev, title: value }))}
+              >
+                <SelectTrigger className={validationErrors.title ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select maintenance title" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="preventive">Preventive Maintenance</SelectItem>
+                  <SelectItem value="normal">Normal Maintenance</SelectItem>
+                  <SelectItem value="routine">Routine Maintenance</SelectItem>
+                </SelectContent>
+              </Select>
+              {validationErrors.title && (
+                <p className="text-sm text-red-500 mt-1">{validationErrors.title}</p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="frequency">Frequency</Label>
               <Select value={formData.frequency} onValueChange={(value: FormData["frequency"]) => setFormData(prev => ({ ...prev, frequency: value }))}>
-                <SelectTrigger>
+                <SelectTrigger className={validationErrors.frequency ? "border-red-500" : ""}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -452,6 +514,9 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                   <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
+              {validationErrors.frequency && (
+                <p className="text-sm text-red-500 mt-1">{validationErrors.frequency}</p>
+              )}
             </div>
 
             {formData.frequency === "custom" && (
@@ -480,7 +545,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
               <Select value={formData.priority} onValueChange={(value: FormData["priority"]) => setFormData(prev => ({ ...prev, priority: value }))}>
-                <SelectTrigger>
+                <SelectTrigger className={validationErrors.priority ? "border-red-500" : ""}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -490,6 +555,9 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                   <SelectItem value="critical">Critical</SelectItem>
                 </SelectContent>
               </Select>
+              {validationErrors.priority && (
+                <p className="text-sm text-red-500 mt-1">{validationErrors.priority}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -508,8 +576,12 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                 }}
                 placeholder="2"
                 min="0.5"
+                className={validationErrors.estimatedDuration ? "border-red-500" : ""}
                 required
               />
+              {validationErrors.estimatedDuration && (
+                <p className="text-sm text-red-500 mt-1">{validationErrors.estimatedDuration}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -519,8 +591,12 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                 type="date"
                 value={formData.startDate}
                 onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                className={validationErrors.startDate ? "border-red-500" : ""}
                 required
               />
+              {validationErrors.startDate && (
+                <p className="text-sm text-red-500 mt-1">{validationErrors.startDate}</p>
+              )}
             </div>
 
             {/* Location Selection */}
@@ -530,7 +606,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                 value={formData.location} 
                 onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className={validationErrors.location ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select location" />
                 </SelectTrigger>
                 <SelectContent>
@@ -545,6 +621,9 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                   )}
                 </SelectContent>
               </Select>
+              {validationErrors.location && (
+                <p className="text-sm text-red-500 mt-1">{validationErrors.location}</p>
+              )}
             </div>
 
             {/* Assigned Inspector */}
@@ -560,7 +639,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                   }
                   disabled={isSuperAdmin && !selectedDepartment}
                   readOnly
-                  className="cursor-pointer"
+                  className={`cursor-pointer ${validationErrors.assignedInspector ? "border-red-500" : ""}`}
                   onClick={() => !(isSuperAdmin && !selectedDepartment) && setShowInspectorDropdown(true)}
                 />
                 {!(isSuperAdmin && !selectedDepartment) && employeesData?.data?.employees && employeesData.data.employees.length > 0 && (
@@ -621,6 +700,9 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                   No employees found in this department
                 </p>
               )}
+              {validationErrors.assignedInspector && (
+                <p className="text-sm text-red-500 mt-1">{validationErrors.assignedInspector}</p>
+              )}
             </div>
           </div>
 
@@ -634,73 +716,110 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
             />
           </div>
 
-          {/* Parts Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">
-                Parts & Checklist 
-                <span className="text-red-500 ml-1">*</span>
-                <span className="text-sm font-normal text-muted-foreground ml-2">
-                  (At least 1 part with checklist items required)
-                </span>
-              </h3>
-              <Button type="button" variant="outline" onClick={addPart}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Part
-              </Button>
-            </div>
-
-            {/* Validation Error Display */}
-            {partsValidationError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                <p className="text-sm text-red-600">{partsValidationError}</p>
+          {/* Asset Parts Section */}
+          {formData.assetId && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Asset Parts (Optional)</h3>
+                {selectedAssetParts.length > 0 ? (
+                  <Badge variant="outline">{selectedAssetParts.length} parts available</Badge>
+                ) : (
+                  <Badge variant="secondary">Loading parts...</Badge>
+                )}
               </div>
-            )}
-
-            {/* No Parts Message */}
-            {parts.length === 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-center">
-                <p className="text-sm text-blue-600 mb-2">No parts added yet</p>
-                <p className="text-xs text-blue-500">Add at least one part with checklist items to continue</p>
-              </div>
-            )}
-
-            {parts.map((part, partIndex) => (
-              <Card key={part.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Part {partIndex + 1}</CardTitle>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removePart(partIndex)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+              
+              {selectedAssetParts.length > 0 ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <p className="text-sm text-blue-600 mb-3">Select parts from this asset that need maintenance (multi-select):</p>
+                  <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
+                    {selectedAssetParts.map((assetPart, index) => {
+                      const isSelected = parts.some(p => p.assetPartId === (assetPart.id || `asset_part_${index}`))
+                      const partId = assetPart.id || `asset_part_${index}`
+                      
+                      return (
+                        <div key={index} className="flex items-center space-x-3 p-3 bg-white rounded border hover:bg-gray-50">
+                          <Checkbox
+                            id={`part-${partId}`}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                addPartFromAsset(assetPart)
+                              } else {
+                                // Remove the part
+                                setParts(parts.filter(p => p.assetPartId !== partId))
+                              }
+                            }}
+                          />
+                          <div className="flex-1">
+                            <label 
+                              htmlFor={`part-${partId}`}
+                              className="font-medium cursor-pointer"
+                            >
+                              {assetPart.name || assetPart.partName || assetPart.description || 'Unnamed Part'}
+                            </label>
+                            {(assetPart.sku || assetPart.partNumber || assetPart.materialCode) && (
+                              <span className="text-xs text-muted-foreground ml-2 block">
+                                SKU: {assetPart.sku || assetPart.partNumber || assetPart.materialCode}
+                              </span>
+                            )}
+                            {assetPart.description && assetPart.description !== (assetPart.name || assetPart.partName) && (
+                              <p className="text-xs text-gray-500 mt-1">{assetPart.description}</p>
+                            )}
+                          </div>
+                          {isSelected && (
+                            <Badge variant="secondary" className="text-xs">Selected</Badge>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Part Name</Label>
-                      <Input
-                        value={part.partName}
-                        onChange={(e) => updatePart(partIndex, { partName: e.target.value })}
-                        placeholder="e.g., Air Filter"
-                      />
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-center">
+                  <p className="text-sm text-gray-600">No parts available for this asset</p>
+                  <p className="text-xs text-gray-500 mt-1">This asset doesn't have any parts defined in its Bill of Materials (BOM)</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Selected Parts Section */}
+          {parts.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Selected Parts for Maintenance</h3>
+                <Badge variant="outline">{parts.length} parts selected</Badge>
+              </div>
+
+              {parts.map((part, partIndex) => (
+                <Card key={part.id} className="border-l-4 border-l-blue-500">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <CardTitle className="text-base">{part.partName || `Part ${partIndex + 1}`}</CardTitle>
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
+                          <span>SKU: {part.partSku || 'N/A'}</span>
+                          <span>Est. Time: {part.estimatedTime}min</span>
+                          {part.requiresReplacement && (
+                            <Badge variant="secondary" className="text-xs">Replacement Required</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removePart(partIndex)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Part SKU</Label>
-                      <Input
-                        value={part.partSku}
-                        onChange={(e) => updatePart(partIndex, { partSku: e.target.value })}
-                        placeholder="e.g., AF-HEPA-001"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Estimated Time (min)</Label>
-                                              <Input
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Estimated Time (min)</Label>
+                        <Input
                           type="number"
                           value={part.estimatedTime === 30 ? '' : part.estimatedTime?.toString() || ''}
                           onChange={(e) => {
@@ -715,19 +834,19 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                           placeholder="30"
                           min="1"
                         />
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 pt-6">
+                        <input
+                          type="checkbox"
+                          id={`replacement-${partIndex}`}
+                          checked={part.requiresReplacement}
+                          onChange={(e) => updatePart(partIndex, { requiresReplacement: e.target.checked })}
+                        />
+                        <Label htmlFor={`replacement-${partIndex}`}>Requires Replacement</Label>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`replacement-${partIndex}`}
-                        checked={part.requiresReplacement}
-                        onChange={(e) => updatePart(partIndex, { requiresReplacement: e.target.checked })}
-                      />
-                      <Label htmlFor={`replacement-${partIndex}`}>Requires Replacement</Label>
-                    </div>
                     {part.requiresReplacement && (
                       <div className="space-y-2">
                         <Label>Replacement Frequency (cycles)</Label>
@@ -745,56 +864,82 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                           }}
                           placeholder="1"
                           min="1"
-                          className="w-20"
+                          className="w-32"
                         />
                       </div>
                     )}
-                  </div>
 
-                  {/* Checklist Items */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Checklist Items</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addChecklistItem(partIndex)}
-                      >
-                        <Plus className="mr-1 h-3 w-3" />
-                        Add Item
-                      </Button>
+                    <div className="space-y-2">
+                      <Label>Special Instructions</Label>
+                      <Textarea
+                        value={part.instructions || ""}
+                        onChange={(e) => updatePart(partIndex, { instructions: e.target.value })}
+                        placeholder="Any special instructions for handling this part..."
+                        rows={2}
+                      />
                     </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-                    {part.checklistItems.map((item, itemIndex) => (
-                      <div key={item.id} className="flex items-center space-x-2">
-                        <Input
-                          value={item.description}
-                          onChange={(e) => updateChecklistItem(partIndex, itemIndex, { description: e.target.value })}
-                          placeholder="Checklist item description"
-                          className="flex-1"
-                        />
-                        <div className="flex items-center space-x-1">
-                          <input
-                            type="checkbox"
-                            checked={item.isRequired}
-                            onChange={(e) => updateChecklistItem(partIndex, itemIndex, { isRequired: e.target.checked })}
-                          />
-                          <Label className="text-xs">Required</Label>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeChecklistItem(partIndex, itemIndex)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Maintenance Checklist Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                Maintenance Checklist 
+                <span className="text-red-500 ml-1">*</span>
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  (At least 1 checklist item required)
+                </span>
+              </h3>
+              <Button type="button" variant="outline" onClick={addChecklistItem}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Checklist Item
+              </Button>
+            </div>
+
+            {/* Validation Error Display */}
+            {checklistValidationError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <p className="text-sm text-red-600">{checklistValidationError}</p>
+              </div>
+            )}
+
+            {/* No Checklist Message */}
+            {checklist.length === 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-center">
+                <p className="text-sm text-blue-600 mb-2">No checklist items added yet</p>
+                <p className="text-xs text-blue-500">Add at least one checklist item to continue</p>
+              </div>
+            )}
+
+            {checklist.map((item, itemIndex) => (
+              <div key={item.id} className="flex items-center space-x-2 p-3 border rounded-md">
+                <Input
+                  value={item.description}
+                  onChange={(e) => updateChecklistItem(itemIndex, { description: e.target.value })}
+                  placeholder="Checklist item description (e.g., Check oil level, Inspect belts...)"
+                  className="flex-1"
+                />
+                <div className="flex items-center space-x-1">
+                  <input
+                    type="checkbox"
+                    checked={item.isRequired}
+                    onChange={(e) => updateChecklistItem(itemIndex, { isRequired: e.target.checked })}
+                  />
+                  <Label className="text-xs">Required</Label>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeChecklistItem(itemIndex)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             ))}
           </div>
 

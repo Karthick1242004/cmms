@@ -79,7 +79,7 @@ export default function MaintenancePage() {
       <PageHeader>
         <div className="flex mt-4 justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Preventive Maintenance</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Maintenance Schedules</h1>
             <p className="text-muted-foreground">
               Manage maintenance schedules and track completion records
             </p>

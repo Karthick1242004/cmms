@@ -21,19 +21,20 @@ export interface MaintenanceSchedule {
   createdAt: string
   updatedAt: string
   parts: MaintenancePart[]
+  checklist: MaintenanceChecklistItem[] // Separate checklist items
 }
 
 export interface MaintenancePart {
-  name: string
   id: string
-  partId: string
+  assetPartId: string // Reference to actual asset part
+  partId: string // Backward compatibility with backend
   partName: string
   partSku: string
-  checklistItems: MaintenanceChecklistItem[]
   estimatedTime: number // in minutes
   requiresReplacement: boolean
   replacementFrequency?: number // in cycles
   lastReplacementDate?: string
+  instructions?: string // Special instructions for handling this part
 }
 
 export interface MaintenanceChecklistItem {
@@ -60,6 +61,7 @@ export interface MaintenanceRecord {
   overallCondition: "excellent" | "good" | "fair" | "poor"
   notes?: string
   partsStatus: MaintenancePartRecord[]
+  generalChecklist: MaintenanceChecklistRecord[] // General maintenance checklist items
   images?: string[]
   adminVerified: boolean
   adminVerifiedBy?: string

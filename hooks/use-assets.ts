@@ -113,16 +113,7 @@ export function useAssets(options: UseAssetsOptions = {}) {
         }
         
         const queryString = searchParams.toString()
-        const url = `/api/assets${queryString ? `?${queryString}` : ''}`
-        
-        // Debug logging
-        console.log('useAssets - API Call:', {
-          url,
-          queryString,
-          options,
-          department: options.department
-        })
-        
+        const url = `/api/assets${queryString ? `?${queryString}` : ''}` 
         const token = localStorage.getItem('auth-token')
         const response = await fetch(url, {
           method: 'GET',

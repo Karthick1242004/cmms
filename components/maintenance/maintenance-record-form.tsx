@@ -86,6 +86,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
   }
 
   const [partsStatus, setPartsStatus] = useState<MaintenancePartRecord[]>([])
+  const [generalChecklist, setGeneralChecklist] = useState<MaintenanceChecklistRecord[]>([])
 
   useEffect(() => {
     // Initialize parts status from schedule
@@ -96,20 +97,25 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
         replaced: false,
         condition: "good",
         timeSpent: part.estimatedTime,
-        checklistItems: part.checklistItems.map((item, index) => {
-          const itemId = item.id || `${part.id}_item_${index}_${Date.now()}`
-          return {
-            itemId,
-            description: item.description,
-            completed: false,
-            status: "completed" as const,
-            notes: "",
-          }
-        })
+        checklistItems: [] // Parts no longer have their own checklist items in the new structure
       }
     })
     
     setPartsStatus(initialPartsStatus)
+
+    // Initialize general maintenance checklist
+    const initialGeneralChecklist: MaintenanceChecklistRecord[] = schedule.checklist?.map((item, index) => {
+      const itemId = item.id || `general_item_${index}_${Date.now()}`
+      return {
+        itemId,
+        description: item.description,
+        completed: false,
+        status: "completed" as const,
+        notes: "",
+      }
+    }) || []
+    
+    setGeneralChecklist(initialGeneralChecklist)
   }, [schedule])
 
   const updatePartStatus = (partIndex: number, updates: Partial<MaintenancePartRecord>) => {
@@ -125,6 +131,15 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       ...updates
     }
     setPartsStatus(updatedParts)
+  }
+
+  const updateGeneralChecklistItem = (itemIndex: number, updates: Partial<MaintenanceChecklistRecord>) => {
+    const updatedChecklist = [...generalChecklist]
+    updatedChecklist[itemIndex] = {
+      ...updatedChecklist[itemIndex],
+      ...updates
+    }
+    setGeneralChecklist(updatedChecklist)
   }
 
   const calculateActualDuration = () => {
@@ -145,11 +160,22 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
   }
 
   const getCompletionStats = () => {
-    const totalItems = partsStatus.reduce((sum, part) => sum + part.checklistItems.length, 0)
-    const completedItems = partsStatus.reduce((sum, part) => 
+    const partItems = partsStatus.reduce((sum, part) => sum + part.checklistItems.length, 0)
+    const partCompletedItems = partsStatus.reduce((sum, part) => 
       sum + part.checklistItems.filter(item => item.completed).length, 0
     )
-    return { total: totalItems, completed: completedItems, percentage: totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0 }
+    
+    const generalItems = generalChecklist.length
+    const generalCompletedItems = generalChecklist.filter(item => item.completed).length
+    
+    const totalItems = partItems + generalItems
+    const completedItems = partCompletedItems + generalCompletedItems
+    
+    return { 
+      total: totalItems, 
+      completed: completedItems, 
+      percentage: totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0 
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -179,6 +205,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       overallCondition: formData.overallCondition,
       notes: formData.notes,
       partsStatus,
+      generalChecklist,
       adminVerified: false,
     }
 
@@ -318,147 +345,208 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
             </CardContent>
           </Card>
 
-          {/* Parts Checklist */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Parts Maintenance Checklist</h3>
-            
-            {partsStatus.map((part, partIndex) => (
-              <Card key={part.partId}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{part.partName}</CardTitle>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4" />
-                      <Input
-                        type="number"
-                        value={part.timeSpent === 0 ? '' : part.timeSpent?.toString() || ''}
-                        onChange={(e) => {
-                          const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
-                          updatePartStatus(partIndex, { timeSpent: value });
-                        }}
-                        onBlur={(e) => {
-                          if (e.target.value === '') {
-                            updatePartStatus(partIndex, { timeSpent: 0 });
-                          }
-                        }}
-                        placeholder="0"
-                        className="w-20"
-                        min="0"
-                      />
-                      <span className="text-sm text-muted-foreground">min</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Part Condition and Replacement */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Part Condition</Label>
-                      <Select 
-                        value={part.condition} 
-                        onValueChange={(value) => updatePartStatus(partIndex, { condition: value as any })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="excellent">Excellent</SelectItem>
-                          <SelectItem value="good">Good</SelectItem>
-                          <SelectItem value="fair">Fair</SelectItem>
-                          <SelectItem value="poor">Poor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
+          {/* Parts Section */}
+          {partsStatus.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Parts Maintenance</h3>
+              
+              {partsStatus.map((part, partIndex) => (
+                <Card key={part.partId} className="border-l-4 border-l-blue-500">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{part.partName}</CardTitle>
                       <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`replaced-${partIndex}`}
-                          checked={part.replaced}
-                          onCheckedChange={(checked) => updatePartStatus(partIndex, { replaced: checked as boolean })}
-                        />
-                        <Label htmlFor={`replaced-${partIndex}`}>Part Replaced</Label>
-                      </div>
-                      {part.replaced && (
+                        <Clock className="h-4 w-4" />
                         <Input
-                          placeholder="Replacement part ID or notes"
-                          value={part.replacementNotes || ""}
-                          onChange={(e) => updatePartStatus(partIndex, { replacementNotes: e.target.value })}
+                          type="number"
+                          value={part.timeSpent === 0 ? '' : part.timeSpent?.toString() || ''}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                            updatePartStatus(partIndex, { timeSpent: value });
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === '') {
+                              updatePartStatus(partIndex, { timeSpent: 0 });
+                            }
+                          }}
+                          placeholder="0"
+                          className="w-20"
+                          min="0"
                         />
-                      )}
+                        <span className="text-sm text-muted-foreground">min</span>
+                      </div>
                     </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Checklist Items */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">Checklist Items</Label>
-                    {part.checklistItems.map((item, itemIndex) => (
-                      <div key={item.itemId} className="space-y-2 p-3 border rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Checkbox
-                              checked={item.completed}
-                              onCheckedChange={(checked) => 
-                                updateChecklistItem(partIndex, itemIndex, { 
-                                  completed: checked as boolean,
-                                  status: checked ? "completed" : "failed"
-                                })
-                              }
-                            />
-                            <span className={item.completed ? "line-through text-muted-foreground" : ""}>
-                              {item.description}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center space-x-2">
-                            <Select
-                              value={item.status}
-                              onValueChange={(value) => updateChecklistItem(partIndex, itemIndex, { status: value as any })}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="completed">
-                                  <div className="flex items-center space-x-2">
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
-                                    <span>Completed</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="failed">
-                                  <div className="flex items-center space-x-2">
-                                    <XCircle className="h-4 w-4 text-red-500" />
-                                    <span>Failed</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="skipped">
-                                  <div className="flex items-center space-x-2">
-                                    <SkipForward className="h-4 w-4 text-yellow-500" />
-                                    <span>Skipped</span>
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Part Condition and Replacement */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Part Condition</Label>
+                        <Select 
+                          value={part.condition} 
+                          onValueChange={(value) => updatePartStatus(partIndex, { condition: value as any })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="excellent">Excellent</SelectItem>
+                            <SelectItem value="good">Good</SelectItem>
+                            <SelectItem value="fair">Fair</SelectItem>
+                            <SelectItem value="poor">Poor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`replaced-${partIndex}`}
+                            checked={part.replaced}
+                            onCheckedChange={(checked) => updatePartStatus(partIndex, { replaced: checked as boolean })}
+                          />
+                          <Label htmlFor={`replaced-${partIndex}`}>Part Replaced</Label>
                         </div>
-                        
-                        {(item.status === "failed" || item.status === "skipped" || item.notes) && (
-                          <Textarea
-                            placeholder={`Notes for ${item.status} item...`}
-                            value={item.notes || ""}
-                            onChange={(e) => updateChecklistItem(partIndex, itemIndex, { notes: e.target.value })}
-                            className="mt-2"
-                            rows={2}
+                        {part.replaced && (
+                          <Input
+                            placeholder="Replacement part ID or notes"
+                            value={part.replacementNotes || ""}
+                            onChange={(e) => updatePartStatus(partIndex, { replacementNotes: e.target.value })}
                           />
                         )}
                       </div>
-                    ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* General Maintenance Checklist */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Maintenance Checklist</h3>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const newItem: MaintenanceChecklistRecord = {
+                    itemId: `manual_item_${Date.now()}`,
+                    description: "",
+                    completed: false,
+                    status: "completed",
+                    notes: "",
+                  }
+                  setGeneralChecklist([...generalChecklist, newItem])
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Checklist Item
+              </Button>
+            </div>
+            
+            {generalChecklist.length === 0 ? (
+              <Card className="border-l-4 border-l-blue-500">
+                <CardContent className="p-4">
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      This maintenance schedule doesn't have predefined checklist items.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Use "Add Checklist Item" to create maintenance tasks as needed.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              generalChecklist.map((item, itemIndex) => (
+                <Card key={item.itemId} className="border-l-4 border-l-green-500">
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <Checkbox
+                            checked={item.completed}
+                            onCheckedChange={(checked) => 
+                              updateGeneralChecklistItem(itemIndex, { 
+                                completed: checked as boolean,
+                                status: checked ? "completed" : "failed"
+                              })
+                            }
+                          />
+                          {item.description ? (
+                            <span className={`font-medium ${item.completed ? "line-through text-muted-foreground" : ""}`}>
+                              {item.description}
+                            </span>
+                          ) : (
+                            <Input
+                              placeholder="Enter checklist item description..."
+                              value={item.description}
+                              onChange={(e) => updateGeneralChecklistItem(itemIndex, { description: e.target.value })}
+                              className="flex-1"
+                            />
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <Select
+                            value={item.status}
+                            onValueChange={(value) => updateGeneralChecklistItem(itemIndex, { status: value as any })}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="completed">
+                                <div className="flex items-center space-x-2">
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                  <span>Completed</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="failed">
+                                <div className="flex items-center space-x-2">
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                  <span>Failed</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="skipped">
+                                <div className="flex items-center space-x-2">
+                                  <SkipForward className="h-4 w-4 text-yellow-500" />
+                                  <span>Skipped</span>
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updatedChecklist = generalChecklist.filter((_, i) => i !== itemIndex)
+                              setGeneralChecklist(updatedChecklist)
+                            }}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {(item.status === "failed" || item.status === "skipped" || item.notes) && (
+                        <Textarea
+                          placeholder={`Notes for ${item.status} item...`}
+                          value={item.notes || ""}
+                          onChange={(e) => updateGeneralChecklistItem(itemIndex, { notes: e.target.value })}
+                          className="mt-2"
+                          rows={2}
+                        />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
 
           {/* Overall Notes */}
