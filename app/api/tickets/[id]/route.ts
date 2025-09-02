@@ -225,6 +225,74 @@ export async function PUT(
     // Save the updated ticket
     const updatedTicket = await ticket.save();
 
+    // Create asset activity log entry if ticket has an asset
+    if (updatedTicket.equipmentId) {
+      try {
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
+        
+        console.log('🚀 [Ticket Update] - Creating activity log for ticket update');
+        
+        // Fetch asset details for activity log
+        let assetName = 'Unknown Asset';
+        let assetTag = '';
+        try {
+          const { db } = await connectToDatabase();
+          if (ObjectId.isValid(updatedTicket.equipmentId)) {
+            const assetDoc = await db.collection('assets').findOne({ _id: new ObjectId(updatedTicket.equipmentId) });
+            if (assetDoc) {
+              assetName = assetDoc.assetName || assetDoc.name || 'Unknown Asset';
+              assetTag = assetDoc.serialNo || assetDoc.assetTag || '';
+            }
+          }
+        } catch (assetError) {
+          console.error('Error fetching asset for activity log:', assetError);
+        }
+        
+        const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': request.headers.get('Authorization') || '',
+            'Cookie': request.headers.get('Cookie') || '',
+          },
+          body: JSON.stringify({
+            assetId: updatedTicket.equipmentId,
+            assetName: assetName,
+            assetTag: assetTag,
+            module: 'ticket',
+            action: 'updated',
+            title: 'Ticket Updated',
+            description: `Ticket details updated: ${updatedTicket.title || updatedTicket.subject}`,
+            assignedTo: user?.id || '',
+            assignedToName: user?.name || 'Unknown User',
+            priority: updatedTicket.priority.toLowerCase() as any,
+            status: 'in_progress',
+            recordId: updatedTicket._id.toString(),
+            recordType: 'ticket_update',
+            metadata: {
+              ticketId: updatedTicket.ticketId,
+              department: updatedTicket.department,
+              area: updatedTicket.area,
+              inCharge: updatedTicket.inCharge,
+              ticketStatus: updatedTicket.status,
+              updateType: 'details_modified'
+            }
+          })
+        });
+        
+        if (activityLogResponse.ok) {
+          console.log('✅ [Ticket Update] - Activity log created for ticket update');
+        } else {
+          console.error('❌ [Ticket Update] - Activity log creation failed:', await activityLogResponse.text());
+        }
+      } catch (error) {
+        console.error('❌ [Ticket Update] - Failed to create activity log:', error);
+        // Don't fail the main operation if activity log creation fails
+      }
+    }
+
     // Transform the response to match frontend expectations
     const transformedTicket = {
       ...updatedTicket.toJSON(),

@@ -271,7 +271,7 @@ export default function EmployeeDetailPage() {
 
       <div className="space-y-6 mt-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 h-12">
+          <TabsList className="grid w-full grid-cols-4 h-12">
             <TabsTrigger value="overview" className="text-sm font-medium">
               <User className="mr-2 h-4 w-4" />
               Overview
@@ -287,10 +287,6 @@ export default function EmployeeDetailPage() {
             <TabsTrigger value="analytics" className="text-sm font-medium">
               <BarChart3 className="mr-2 h-4 w-4" />
               Analytics
-            </TabsTrigger>
-            <TabsTrigger value="assets" className="text-sm font-medium">
-              <Target className="mr-2 h-4 w-4" />
-              Assets
             </TabsTrigger>
           </TabsList>
 

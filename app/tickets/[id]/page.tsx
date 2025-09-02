@@ -542,18 +542,41 @@ export default function TicketDetailPage() {
                       <div className="space-y-3">
                         <Label className="text-sm font-medium flex items-center gap-2">
                           <Building className="h-4 w-4" />
-                          Equipment ID
+                          Linked Asset
                         </Label>
                         {isEditing ? (
                           <Input
                             value={formData.equipmentId}
                             onChange={(e) => handleFormChange("equipmentId", e.target.value)}
-                            placeholder="Enter equipment ID"
+                            placeholder="Enter asset ID"
                             className="h-10"
                           />
                         ) : (
                           <div className="p-3 bg-muted/50 rounded-md border">
-                            <p className="text-sm font-medium">{ticket.equipmentId || "N/A"}</p>
+                            {ticket.asset ? (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium">{ticket.asset.name}</p>
+                                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                  <span>Tag: {ticket.asset.assetTag}</span>
+                                  <span>•</span>
+                                  <span>Type: {ticket.asset.type}</span>
+                                  <span>•</span>
+                                  <span>Location: {ticket.asset.location}</span>
+                                  <span>•</span>
+                                  <span>Status: {ticket.asset.status}</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Department: {ticket.asset.department}
+                                </div>
+                              </div>
+                            ) : ticket.equipmentId ? (
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium">Asset ID: {ticket.equipmentId}</p>
+                                <p className="text-xs text-muted-foreground">Asset details not available</p>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">No asset linked</p>
+                            )}
                           </div>
                         )}
                       </div>

@@ -303,6 +303,74 @@ export async function POST(request: NextRequest) {
     const ticket = new Ticket(ticketData);
     const savedTicket = await ticket.save();
 
+    // Create asset activity log entry if ticket has an asset
+    if (savedTicket.equipmentId) {
+      try {
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
+        
+        console.log('🚀 [Ticket] - Creating activity log for ticket creation');
+        
+        // Fetch asset details for activity log
+        let assetName = 'Unknown Asset';
+        let assetTag = '';
+        try {
+          const { db } = await connectToDatabase();
+          if (ObjectId.isValid(savedTicket.equipmentId)) {
+            const assetDoc = await db.collection('assets').findOne({ _id: new ObjectId(savedTicket.equipmentId) });
+            if (assetDoc) {
+              assetName = assetDoc.assetName || assetDoc.name || 'Unknown Asset';
+              assetTag = assetDoc.serialNo || assetDoc.assetTag || '';
+            }
+          }
+        } catch (assetError) {
+          console.error('Error fetching asset for activity log:', assetError);
+        }
+        
+        const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': request.headers.get('Authorization') || '',
+            'Cookie': request.headers.get('Cookie') || '',
+          },
+          body: JSON.stringify({
+            assetId: savedTicket.equipmentId,
+            assetName: assetName,
+            assetTag: assetTag,
+            module: 'ticket',
+            action: 'created',
+            title: 'Ticket Created',
+            description: `Ticket created: ${savedTicket.title || savedTicket.subject}`,
+            assignedTo: user?.id || '',
+            assignedToName: user?.name || savedTicket.loggedBy || 'Unknown User',
+            priority: savedTicket.priority.toLowerCase() as any,
+            status: 'pending',
+            recordId: savedTicket._id.toString(),
+            recordType: 'ticket',
+            metadata: {
+              ticketId: savedTicket.ticketId,
+              department: savedTicket.department,
+              area: savedTicket.area,
+              inCharge: savedTicket.inCharge,
+              reportType: savedTicket.category || 'general',
+              ticketStatus: savedTicket.status
+            }
+          })
+        });
+        
+        if (activityLogResponse.ok) {
+          console.log('✅ [Ticket] - Activity log created for ticket creation');
+        } else {
+          console.error('❌ [Ticket] - Activity log creation failed:', await activityLogResponse.text());
+        }
+      } catch (error) {
+        console.error('❌ [Ticket] - Failed to create activity log:', error);
+        // Don't fail the main operation if activity log creation fails
+      }
+    }
+
     // Transform the response to match frontend expectations
     const response = {
       ...savedTicket.toJSON(),
