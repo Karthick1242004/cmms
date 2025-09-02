@@ -239,6 +239,8 @@ export async function POST(request: NextRequest) {
       createdByName: body.createdByName,
       createdAt: now,
       updatedAt: now,
+      // Image data
+      images: body.images || [],
       // Activity history
       activityHistory: historyEntries,
     };

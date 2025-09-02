@@ -38,6 +38,8 @@ export interface DailyLogActivity {
   createdByName: string;
   createdAt: string;
   updatedAt: string;
+  // Image Information
+  images?: string[]; // Array of Cloudinary URLs for uploaded images
   // Activity audit trail
   activityHistory: ActivityHistoryEntry[];
 }
@@ -60,6 +62,9 @@ export interface DailyLogActivityFormData {
   verifiedByName?: string; // Legacy field
   status?: 'open' | 'in-progress' | 'completed' | 'pending_verification' | 'verified';
   priority?: 'low' | 'medium' | 'high' | 'critical';
+  // Image Information
+  images?: string[]; // Array of Cloudinary URLs for uploaded images
+  imageFiles?: File[]; // Array of File objects for new uploads
 }
 
 export interface DailyLogActivityFilters {

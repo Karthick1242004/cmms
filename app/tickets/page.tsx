@@ -520,7 +520,7 @@ export default function TicketsPage() {
           </CardHeader>
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <div className="px-6 border-b">
+              <div className="px-6 border-b pb-2">
                 <TabsList className="grid w-fit grid-cols-2">
                   <TabsTrigger value="activities" className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />

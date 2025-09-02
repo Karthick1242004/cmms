@@ -17,7 +17,9 @@ import {
   Hash,
   FileText,
   Eye,
-  X
+  X,
+  ImageIcon,
+  ZoomIn
 } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { format } from 'date-fns';
@@ -46,6 +48,10 @@ interface DailyLogActivityViewProps {
 
 export function DailyLogActivityView({ isOpen, onClose, activity }: DailyLogActivityViewProps) {
   if (!activity) return null;
+
+  const handleImageClick = (imageUrl: string) => {
+    window.open(imageUrl, '_blank');
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -208,6 +214,46 @@ export function DailyLogActivityView({ isOpen, onClose, activity }: DailyLogActi
               </div>
             </CardContent>
           </Card>
+
+          {/* Activity Images */}
+          {activity.images && activity.images.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Activity Images ({activity.images.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {activity.images.map((imageUrl, index) => (
+                    <div 
+                      key={index} 
+                      className="relative group cursor-pointer"
+                      onClick={() => handleImageClick(imageUrl)}
+                    >
+                      <div className="aspect-square border-2 border-dashed border-muted-foreground/25 rounded-lg overflow-hidden bg-muted/50 hover:bg-muted/70 transition-colors">
+                        <img
+                          src={imageUrl}
+                          alt={`Activity image ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground mt-1">
+                        Image {index + 1}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground mt-4">
+                  Click on any image to view it in full size
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Audit Trail */}
           <Card>

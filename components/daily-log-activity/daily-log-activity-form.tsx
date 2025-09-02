@@ -19,6 +19,8 @@ import { employeesApi } from '@/lib/employees-api';
 import { dailyLogActivitiesApi } from '@/lib/daily-log-activity-api';
 import { useAuthStore } from '@/stores/auth-store';
 import { LoadingSpinner } from '@/components/loading-spinner';
+import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary-config';
+import { DailyLogActivityImageUpload } from './daily-log-activity-image-upload';
 import { toast } from 'sonner';
 import type { 
   DailyLogActivityFormData, 
@@ -71,6 +73,8 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     attendedByName: '',
     priority: 'medium',
     status: 'open',
+    images: [],
+    imageFiles: [],
   });
 
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
@@ -78,6 +82,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
 
   // Load employees on component mount
@@ -157,6 +162,8 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
         verifiedByName: activityToEdit.verifiedByName,
         priority: activityToEdit.priority,
         status: activityToEdit.status,
+        images: activityToEdit.images || [],
+        imageFiles: [],
       });
     } else {
       // Reset form for new activity
@@ -174,6 +181,8 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
         attendedByName: '',
         priority: 'medium',
         status: 'open',
+        images: [],
+        imageFiles: [],
       };
 
       // For non-super-admin users, auto-select their department
@@ -235,10 +244,38 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     }
 
     try {
+      setIsUploadingImages(true);
+      
+      // Upload new images to Cloudinary
+      let uploadedImageUrls: string[] = [...(formData.images || [])];
+      
+      if (formData.imageFiles && formData.imageFiles.length > 0) {
+        console.log('🖼️ UPLOADING DAILY LOG ACTIVITY IMAGES');
+        toast.info('Uploading images...');
+        
+        for (const imageFile of formData.imageFiles) {
+          try {
+            const imageUrl = await uploadToCloudinary(imageFile, 'daily-log-activities/images');
+            uploadedImageUrls.push(imageUrl);
+            console.log('🖼️ Daily log image uploaded:', imageUrl);
+          } catch (error) {
+            console.error('🖼️ Image upload failed:', error);
+            toast.error(`Failed to upload image: ${imageFile.name}`);
+          }
+        }
+      }
+
+      // Prepare form data with uploaded image URLs
+      const submissionData = {
+        ...formData,
+        images: uploadedImageUrls,
+        imageFiles: undefined, // Remove file objects before submission
+      };
+
       const activityToEdit = selectedActivity || editingActivity;
       const success = isEditMode && activityToEdit
-        ? await updateActivity(activityToEdit._id, formData)
-        : await createActivity(formData);
+        ? await updateActivity(activityToEdit._id, submissionData)
+        : await createActivity(submissionData);
 
       if (success) {
         toast.success(isEditMode ? 'Activity updated successfully' : 'Activity created successfully');
@@ -247,6 +284,8 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     } catch (error) {
       console.error('Error saving activity:', error);
       toast.error('Failed to save activity');
+    } finally {
+      setIsUploadingImages(false);
     }
   };
 
@@ -638,15 +677,24 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
             </CardContent>
           </Card>
 
+          {/* Image Upload Section */}
+          <DailyLogActivityImageUpload
+            images={formData.images || []}
+            imageFiles={formData.imageFiles || []}
+            onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
+            onImageFilesChange={(imageFiles) => setFormData(prev => ({ ...prev, imageFiles }))}
+            maxImages={5}
+          />
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" disabled={isLoading || isUploadingImages}>
+              {isLoading || isUploadingImages ? (
                 <div className="flex items-center gap-2">
                   <LoadingSpinner />
-                  Saving...
+                  {isUploadingImages ? 'Uploading images...' : 'Saving...'}
                 </div>
               ) : (
                 isEditMode ? 'Update Activity' : 'Create Activity'
