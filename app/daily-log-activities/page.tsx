@@ -20,6 +20,7 @@ import { DailyLogActivityForm } from '@/components/daily-log-activity/daily-log-
 import { DailyLogActivityView } from '@/components/daily-log-activity/daily-log-activity-view';
 import { ActivityHistoryDialog } from '@/components/daily-log-activity/activity-history-dialog';
 import { DailyLogActivityRecordsTable } from '@/components/daily-log-activity/daily-log-activity-records-table';
+import { DailyActivityStatusDialog } from '@/components/daily-log-activity/daily-activity-status-dialog';
 import { format } from 'date-fns';
 
 const statusColors = {
@@ -60,6 +61,7 @@ export default function DailyLogActivitiesPage() {
     setViewDialogOpen,
     setEditMode,
     deleteActivity,
+    updateActivityStatus,
   } = useDailyLogActivitiesStore();
 
   const [activeTab, setActiveTab] = useState("activities");
@@ -71,6 +73,8 @@ export default function DailyLogActivitiesPage() {
   const [adminNotes, setAdminNotes] = useState('');
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [activityForHistory, setActivityForHistory] = useState<any>(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [activityToUpdateStatus, setActivityToUpdateStatus] = useState<any>(null);
 
   useEffect(() => {
     fetchActivities();
@@ -96,6 +100,22 @@ export default function DailyLogActivitiesPage() {
     setTimeout(() => {
       fetchActivities();
     }, 300);
+  };
+
+  // Handler for status updates
+  const handleStatusUpdate = async (activityId: string, newStatus: string, remarks?: string) => {
+    const success = await updateActivityStatus(activityId, newStatus, remarks);
+    if (success) {
+      // Refresh activities to get updated data
+      fetchActivities();
+    }
+    return success;
+  };
+
+  // Handler for opening status dialog
+  const handleStatusClick = (activity: any) => {
+    setActivityToUpdateStatus(activity);
+    setStatusDialogOpen(true);
   };
 
   const handleStatusFilter = (value: string) => {
@@ -451,7 +471,12 @@ export default function DailyLogActivitiesPage() {
                           <div className="flex flex-col space-y-1">
                             <Badge 
                               variant="outline"
-                              className={statusColors[activity.status]}
+                              className={`${statusColors[activity.status]} cursor-pointer hover:opacity-80 transition-opacity`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusClick(activity);
+                              }}
+                              title="Click to change status"
                             >
                               {activity.status.replace('_', ' ')}
                             </Badge>
@@ -582,6 +607,15 @@ export default function DailyLogActivitiesPage() {
         isOpen={historyDialogOpen}
         onClose={() => setHistoryDialogOpen(false)}
         activity={activityForHistory}
+      />
+
+      {/* Status Update Dialog */}
+      <DailyActivityStatusDialog
+        isOpen={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
+        activity={activityToUpdateStatus}
+        onStatusUpdate={handleStatusUpdate}
+        userRole={user?.accessLevel}
       />
 
       {/* Verification Dialog */}

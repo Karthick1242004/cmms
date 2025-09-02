@@ -202,7 +202,7 @@ export interface DailyLogActivitiesState {
   createActivity: (data: DailyLogActivityFormData) => Promise<boolean>;
   updateActivity: (id: string, data: Partial<DailyLogActivityFormData>) => Promise<boolean>;
   deleteActivity: (id: string) => Promise<boolean>;
-  updateActivityStatus: (id: string, status: string, verifiedBy?: string) => Promise<boolean>;
+  updateActivityStatus: (id: string, status: string, remarks?: string) => Promise<boolean>;
   verifyActivity: (id: string, adminNotes?: string) => Promise<boolean>;
   
   // Statistics

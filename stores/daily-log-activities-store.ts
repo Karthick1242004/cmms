@@ -339,14 +339,14 @@ export const useDailyLogActivitiesStore = create<DailyLogActivitiesState>()(
         }
       },
 
-      updateActivityStatus: async (id, status, verifiedBy) => {
+      updateActivityStatus: async (id, status, remarks) => {
         try {
           set((state) => {
             state.isLoading = true;
             state.error = null;
           });
 
-          const response = await dailyLogActivitiesApi.updateStatus(id, status, verifiedBy);
+          const response = await dailyLogActivitiesApi.updateStatus(id, status, remarks);
 
           if (response.success && response.data) {
             // Update activities list

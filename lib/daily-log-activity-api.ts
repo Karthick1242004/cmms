@@ -89,11 +89,11 @@ export const dailyLogActivitiesApi = {
   updateStatus: async (
     id: string, 
     status: string, 
-    verifiedBy?: string
+    remarks?: string
   ): Promise<{ success: boolean; message: string; data?: DailyLogActivity }> => {
-    const payload: UpdateStatusRequest = {
-      status: status as 'open' | 'in-progress' | 'resolved' | 'verified',
-      ...(verifiedBy && { verifiedBy })
+    const payload = {
+      status: status as 'open' | 'in-progress' | 'completed' | 'pending_verification' | 'verified' | 'resolved',
+      ...(remarks && { remarks })
     };
 
     const response = await apiClient.patch<{ success: boolean; message: string; data?: DailyLogActivity }>(
