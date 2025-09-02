@@ -14,11 +14,14 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { TicketCreationForm } from "@/components/ticket-creation-form"
 import { TicketReport } from "@/components/ticket-report"
 import { TicketListTable } from "@/components/ticket-list-table"
-import { Plus, Search, Filter, FileText } from "lucide-react"
+import { TicketRecordsTable } from "@/components/ticket-records-table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Plus, Search, Filter, FileText, Shield } from "lucide-react"
 import { toast } from "sonner"
 import type { Ticket, TicketFilters } from "@/types/ticket"
 import { useAuthStore } from "@/stores/auth-store"
@@ -38,6 +41,10 @@ export default function TicketsPage() {
   const [showOpenTickets, setShowOpenTickets] = useState(false)
   const [selectedTicketForReport, setSelectedTicketForReport] = useState<Ticket | null>(null)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("activities")
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false)
+  const [ticketToVerify, setTicketToVerify] = useState<Ticket | null>(null)
+  const [adminNotes, setAdminNotes] = useState('')
   
   const { user } = useAuthStore()
   
@@ -248,6 +255,60 @@ export default function TicketsPage() {
                           user?.accessLevel === 'department_admin' || 
                           user?.role === 'manager'
 
+  // Check if user can verify tickets
+  const canVerifyTickets = user?.accessLevel === 'super_admin' || 
+                          user?.accessLevel === 'department_admin'
+
+  // Filter tickets for records tab (completed and verified tickets)
+  const getRecordsTickets = () => {
+    return filteredTickets.filter(ticket => 
+      ticket.status === 'completed' || ticket.status === 'verified'
+    )
+  }
+
+  // Handle ticket verification
+  const handleVerifyTicket = (ticket: Ticket) => {
+    setTicketToVerify(ticket)
+    setAdminNotes('')
+    setVerifyDialogOpen(true)
+  }
+
+  const handleVerifyConfirm = async () => {
+    if (!ticketToVerify) return false
+
+    try {
+      const response = await fetch(`/api/tickets/${ticketToVerify.id}/verify`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          adminNotes: adminNotes.trim() || undefined
+        }),
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success('Ticket verified successfully')
+        
+        // Update the ticket in the lists
+        const updatedTicket = result.data as Ticket
+        setTickets(prev => prev.map(t => t.id === ticketToVerify.id ? updatedTicket : t))
+        setFilteredTickets(prev => prev.map(t => t.id === ticketToVerify.id ? updatedTicket : t))
+        
+        setVerifyDialogOpen(false)
+        setTicketToVerify(null)
+        setAdminNotes('')
+        return true
+      } else {
+        toast.error(result.message || 'Failed to verify ticket')
+        return false
+      }
+    } catch (error) {
+      console.error('Error verifying ticket:', error)
+      toast.error('Error verifying ticket')
+      return false
+    }
+  }
+
   // Handle status approval
   const handleApproveStatus = async (ticketId: string, action: 'approve' | 'reject') => {
     try {
@@ -441,12 +502,12 @@ export default function TicketsPage() {
           </CardContent>
         </Card>
 
-        {/* Tickets Table */}
+        {/* Tickets Tabs */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <FileText className="h-4 w-4" />
-              Tickets ({filteredTickets.length})
+              Tickets Management
             </CardTitle>
             <CardDescription className="text-sm">
               {showOpenTickets 
@@ -458,6 +519,21 @@ export default function TicketsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="px-6 border-b">
+                <TabsList className="grid w-fit grid-cols-2">
+                  <TabsTrigger value="activities" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Activities ({filteredTickets.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="records" className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Records ({getRecordsTickets().length})
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="activities" className="mt-0">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-muted-foreground">Loading tickets...</div>
@@ -473,18 +549,39 @@ export default function TicketsPage() {
                 </Button>
               </div>
             ) : (
-              <TicketListTable
-                tickets={filteredTickets}
-                onView={handleViewTicket}
-                onDelete={handleDeleteTicket}
-                onStatusChange={handleUpdateStatus}
-                onApproveStatus={handleApproveStatus}
-                onGenerateReport={handleGenerateReport}
-                canModify={canModifyTickets}
-                canApproveStatus={canApproveStatus}
-                currentUser={user}
-              />
-            )}
+                  <TicketListTable
+                    tickets={filteredTickets}
+                    onView={handleViewTicket}
+                    onDelete={handleDeleteTicket}
+                    onStatusChange={handleUpdateStatus}
+                    onApproveStatus={handleApproveStatus}
+                    onGenerateReport={handleGenerateReport}
+                    onVerify={handleVerifyTicket}
+                    canModify={canModifyTickets}
+                    canApproveStatus={canApproveStatus}
+                    canVerify={canVerifyTickets}
+                    currentUser={user}
+                  />
+                )}
+              </TabsContent>
+
+              <TabsContent value="records" className="mt-0">
+                <TicketRecordsTable
+                  records={getRecordsTickets()}
+                  isLoading={isLoading}
+                  isAdmin={canVerifyTickets}
+                  onVerify={async (ticketId: string, adminNotes?: string) => {
+                    const ticket = tickets.find(t => t.id === ticketId)
+                    if (ticket) {
+                      setTicketToVerify(ticket)
+                      setAdminNotes(adminNotes || '')
+                      return await handleVerifyConfirm()
+                    }
+                    return false
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
@@ -499,6 +596,74 @@ export default function TicketsPage() {
             }}
           />
         )}
+
+        {/* Ticket Verification Dialog */}
+        <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Verify Ticket</DialogTitle>
+              <DialogDescription>
+                Review and verify the ticket completion
+              </DialogDescription>
+            </DialogHeader>
+            
+            {ticketToVerify && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <strong>Ticket ID:</strong> {ticketToVerify.ticketId}
+                  </div>
+                  <div>
+                    <strong>Priority:</strong> {ticketToVerify.priority}
+                  </div>
+                  <div>
+                    <strong>Department:</strong> {ticketToVerify.department}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> {ticketToVerify.status}
+                  </div>
+                  <div className="col-span-2">
+                    <strong>Subject:</strong> {ticketToVerify.subject}
+                  </div>
+                  <div className="col-span-2">
+                    <strong>Description:</strong> {ticketToVerify.description}
+                  </div>
+                  {ticketToVerify.solution && (
+                    <div className="col-span-2">
+                      <strong>Solution:</strong> {ticketToVerify.solution}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Admin Verification Notes</label>
+                  <Textarea
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    placeholder="Add verification notes or feedback..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setVerifyDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleVerifyConfirm}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                Verify Ticket
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </PageContent>
     </PageLayout>
   )

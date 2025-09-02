@@ -20,7 +20,8 @@ import {
   User,
   Building,
   Calendar,
-  FileText
+  FileText,
+  Shield
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Ticket } from "@/types/ticket"
@@ -32,8 +33,10 @@ interface TicketListTableProps {
   onStatusChange?: (ticketId: string, status: string) => void
   onApproveStatus?: (ticketId: string, action: 'approve' | 'reject') => void
   onGenerateReport?: (ticket: Ticket) => void
+  onVerify?: (ticket: Ticket) => void
   canModify?: boolean
   canApproveStatus?: boolean
+  canVerify?: boolean
   currentUser?: any
 }
 
@@ -44,8 +47,10 @@ export function TicketListTable({
   onStatusChange, 
   onApproveStatus,
   onGenerateReport,
+  onVerify,
   canModify = true,
   canApproveStatus = false,
+  canVerify = false,
   currentUser
 }: TicketListTableProps) {
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
@@ -74,6 +79,12 @@ export function TicketListTable({
         return { 
           icon: <CheckCircle className="h-3 w-3" />, 
           color: 'bg-green-100 text-green-800 border-green-200',
+          variant: 'default' as const
+        }
+      case 'verified':
+        return { 
+          icon: <Shield className="h-3 w-3" />, 
+          color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
           variant: 'default' as const
         }
       case 'cancelled':
@@ -133,6 +144,18 @@ export function TicketListTable({
     if (currentUser?.accessLevel === 'department_admin' && ticket.department === currentUser?.department) return true
     return ticket.loggedBy === currentUser?.name
   }
+
+  const canVerifyTicket = (ticket: Ticket) => {
+    if (!canVerify) return false
+    // Only admins can verify tickets
+    if (currentUser?.accessLevel !== 'super_admin' && currentUser?.accessLevel !== 'department_admin') return false
+    // Department admin can only verify tickets in their department
+    if (currentUser?.accessLevel === 'department_admin' && ticket.department !== currentUser?.department) return false
+    // Ticket must be completed and not already verified
+    return ticket.status === 'completed' && !ticket.adminVerified
+  }
+
+
 
   const handleStatusUpdate = async (ticketId: string, status: string) => {
     setIsUpdating(ticketId)
@@ -334,6 +357,15 @@ export function TicketListTable({
                           <FileDown className="mr-2 h-4 w-4" />
                           Generate Report
                         </DropdownMenuItem>
+                        {canVerifyTicket(ticket) && (
+                          <DropdownMenuItem 
+                            className="text-green-600" 
+                            onClick={() => onVerify?.(ticket)}
+                          >
+                            <Shield className="mr-2 h-4 w-4" />
+                            Verify Ticket
+                          </DropdownMenuItem>
+                        )}
                         {canDeleteTicket(ticket) && (
                           <DropdownMenuItem 
                             className="text-red-600" 

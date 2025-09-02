@@ -20,9 +20,20 @@ export interface Ticket {
     status: string;
   }; // Asset details (populated from equipmentId)
   reviewedBy?: string;
-  status: 'open' | 'in-progress' | 'pending' | 'completed' | 'cancelled';
+  status: 'open' | 'in-progress' | 'pending' | 'completed' | 'cancelled' | 'verified';
   ticketCloseDate?: string; // ISO date string
   totalTime?: number; // Total time in hours
+  
+  // Verification and personnel tracking
+  createdBy?: string; // Employee ID who created the ticket
+  createdByName?: string; // Employee name who created the ticket
+  attendedBy?: string; // Employee ID who is handling/attended the ticket
+  attendedByName?: string; // Employee name who is handling/attended the ticket
+  verifiedBy?: string; // Admin ID who verified the ticket
+  verifiedByName?: string; // Admin name who verified the ticket
+  verifiedAt?: string; // ISO date string when verified
+  adminVerified?: boolean; // Whether ticket has been admin verified
+  adminNotes?: string; // Admin verification notes
   
   // Report Type
   reportType: {
@@ -44,6 +55,9 @@ export interface Ticket {
   
   // Activity log
   activityLog: ActivityLogEntry[];
+  
+  // Activity history for personnel tracking
+  activityHistory?: TicketActivityHistoryEntry[];
   
   // Metadata
   createdAt: string; // ISO date string
@@ -69,6 +83,16 @@ export interface ActivityLogEntry {
   loggedBy: string;
   remarks: string;
   action: 'Created' | 'Updated' | 'Assigned' | 'Comment' | 'Status Change' | 'Closed';
+}
+
+export interface TicketActivityHistoryEntry {
+  timestamp: string; // ISO date string
+  action: 'created' | 'status_updated' | 'assigned' | 'attended' | 'verified' | 'notes_added';
+  performedBy: string; // Employee ID
+  performedByName: string; // Employee name
+  details: string; // Description of what was changed
+  previousValue?: any; // Previous value (for updates)
+  newValue?: any; // New value (for updates)
 }
 
 export interface TicketFormData {
@@ -186,4 +210,5 @@ export interface TicketsState {
   updateTicketStatus: (id: string, status: string, remarks?: string) => Promise<void>;
   assignTicket: (id: string, assignedUsers: string[], assignedDepartments: string[], remarks?: string) => Promise<void>;
   addActivityLog: (id: string, remarks: string, duration?: number, action?: string) => Promise<void>;
+  verifyTicket: (id: string, adminNotes?: string) => Promise<boolean>;
 } 
