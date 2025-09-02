@@ -10,6 +10,15 @@ export interface Ticket {
   area: string;
   inCharge: string;
   equipmentId?: string; // Asset ID (optional)
+  asset?: {
+    id: string;
+    name: string;
+    assetTag: string;
+    type: string;
+    location: string;
+    department: string;
+    status: string;
+  }; // Asset details (populated from equipmentId)
   reviewedBy?: string;
   status: 'open' | 'in-progress' | 'pending' | 'completed' | 'cancelled';
   ticketCloseDate?: string; // ISO date string

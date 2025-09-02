@@ -1,7 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-import connectDB from '@/lib/mongodb';
+import connectDB, { connectToDatabase } from '@/lib/mongodb';
 import Ticket from '@/models/Ticket';
+import { ObjectId } from 'mongodb';
+
+// Helper function to fetch asset details
+async function fetchAssetDetails(assetId: string) {
+  try {
+    const { db } = await connectToDatabase();
+    console.log('Fetching asset with ID:', assetId);
+    
+    // Validate ObjectId format
+    if (!ObjectId.isValid(assetId)) {
+      console.error('Invalid ObjectId format:', assetId);
+      return null;
+    }
+    
+    const asset = await db.collection('assets').findOne({ _id: new ObjectId(assetId) });
+    console.log('Asset found:', !!asset);
+    
+    if (asset) {
+      const assetDetails = {
+        id: asset._id.toString(),
+        name: asset.assetName || asset.name || 'Unknown Asset',
+        assetTag: asset.serialNo || asset.assetTag || '',
+        type: asset.category || asset.type || '',
+        location: asset.location || '',
+        department: asset.department || '',
+        status: asset.statusText || asset.status || 'Unknown'
+      };
+      console.log('Asset details:', assetDetails);
+      return assetDetails;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching asset details:', error);
+    return null;
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -88,45 +124,58 @@ export async function GET(request: NextRequest) {
       Ticket.countDocuments(filter)
     ]);
 
-    // Transform the tickets to match frontend expectations
-    const transformedTickets = tickets.map((ticket: any, index) => ({
-      ...ticket,
-      id: (ticket._id as any).toString(),
-      subject: ticket.title, // Map title back to subject for frontend compatibility
-      
-      // Generate ticketId for legacy tickets that don't have one
-      ticketId: ticket.ticketId || `TKT-LEGACY-${index + 1}`,
-      
-      // Ensure reportType always exists with proper structure
-      reportType: ticket.reportType || {
-        service: ticket.category === 'service',
-        maintenance: ticket.category === 'maintenance',
-        incident: ticket.category === 'incident',
-        breakdown: ticket.category === 'breakdown'
-      },
-      
-      // Ensure date fields are properly formatted
-      loggedDateTime: ticket.loggedDateTime || ticket.createdAt || new Date().toISOString(),
-      
-      // Map loggedBy field - use loggedBy if exists, otherwise fallback to createdBy
-      loggedBy: ticket.loggedBy || ticket.createdBy || 'Unknown User',
-      
-      // Ensure other required fields have fallbacks
-      assignedDepartments: ticket.assignedDepartments || [],
-      assignedUsers: ticket.assignedUsers || [],
-      activityLog: ticket.activityLog || [],
-      
-      // Ensure required string fields exist
-      company: ticket.company || 'Unknown Company',
-      area: ticket.area || 'Unknown Area',
-      inCharge: ticket.inCharge || 'Unknown',
-      reportedVia: ticket.reportedVia || 'Web Portal',
-      
-      // Ensure statusApproval is included in frontend data
-      statusApproval: ticket.statusApproval || { pending: false },
-      
-      _id: undefined // Remove _id to avoid confusion
-    }));
+    // Transform the tickets to match frontend expectations with asset details
+    const transformedTickets = await Promise.all(
+      tickets.map(async (ticket: any, index) => {
+        // Fetch asset details if equipmentId exists
+        let asset = null;
+        if (ticket.equipmentId) {
+          asset = await fetchAssetDetails(ticket.equipmentId);
+        }
+
+        return {
+          ...ticket,
+          id: (ticket._id as any).toString(),
+          subject: ticket.title, // Map title back to subject for frontend compatibility
+          
+          // Generate ticketId for legacy tickets that don't have one
+          ticketId: ticket.ticketId || `TKT-LEGACY-${index + 1}`,
+          
+          // Include asset details
+          asset,
+          
+          // Ensure reportType always exists with proper structure
+          reportType: ticket.reportType || {
+            service: ticket.category === 'service',
+            maintenance: ticket.category === 'maintenance',
+            incident: ticket.category === 'incident',
+            breakdown: ticket.category === 'breakdown'
+          },
+          
+          // Ensure date fields are properly formatted
+          loggedDateTime: ticket.loggedDateTime || ticket.createdAt || new Date().toISOString(),
+          
+          // Map loggedBy field - use loggedBy if exists, otherwise fallback to createdBy
+          loggedBy: ticket.loggedBy || ticket.createdBy || 'Unknown User',
+          
+          // Ensure other required fields have fallbacks
+          assignedDepartments: ticket.assignedDepartments || [],
+          assignedUsers: ticket.assignedUsers || [],
+          activityLog: ticket.activityLog || [],
+          
+          // Ensure required string fields exist
+          company: ticket.company || 'Unknown Company',
+          area: ticket.area || 'Unknown Area',
+          inCharge: ticket.inCharge || 'Unknown',
+          reportedVia: ticket.reportedVia || 'Web Portal',
+          
+          // Ensure statusApproval is included in frontend data
+          statusApproval: ticket.statusApproval || { pending: false },
+          
+          _id: undefined // Remove _id to avoid confusion
+        };
+      })
+    );
 
     // Calculate pagination info
     const totalPages = Math.ceil(totalCount / limit);

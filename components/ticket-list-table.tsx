@@ -28,7 +28,7 @@ import type { Ticket } from "@/types/ticket"
 interface TicketListTableProps {
   tickets: Ticket[]
   onView?: (ticket: Ticket) => void
-  onDelete?: (ticketId: string) => void
+  onDelete?: (ticket: Ticket) => void
   onStatusChange?: (ticketId: string, status: string) => void
   onApproveStatus?: (ticketId: string, action: 'approve' | 'reject') => void
   onGenerateReport?: (ticket: Ticket) => void
@@ -161,6 +161,7 @@ export function TicketListTable({
             <TableHead className="w-[100px]">Priority</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
             <TableHead className="w-[100px]">Department</TableHead>
+            <TableHead className="w-[140px]">Asset</TableHead>
             <TableHead className="w-[120px]">Logged By</TableHead>
             <TableHead className="w-[140px]">Created</TableHead>
             <TableHead className="w-[100px]">Type</TableHead>
@@ -216,6 +217,19 @@ export function TicketListTable({
                     <Building className="mr-1 h-3 w-3 text-muted-foreground" />
                     {ticket.department}
                   </div>
+                </TableCell>
+                
+                <TableCell>
+                  {ticket.asset ? (
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{ticket.asset.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {ticket.asset.assetTag} • {ticket.asset.type}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No asset</span>
+                  )}
                 </TableCell>
                 
                 <TableCell>
@@ -323,7 +337,7 @@ export function TicketListTable({
                         {canDeleteTicket(ticket) && (
                           <DropdownMenuItem 
                             className="text-red-600" 
-                            onClick={() => onDelete?.(ticket.id)}
+                            onClick={() => onDelete?.(ticket)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete

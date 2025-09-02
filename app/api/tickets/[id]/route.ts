@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-import connectDB from '@/lib/mongodb';
+import connectDB, { connectToDatabase } from '@/lib/mongodb';
 import Ticket from '@/models/Ticket';
+import { ObjectId } from 'mongodb';
 
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
@@ -45,6 +46,38 @@ export async function GET(
       }
     }
 
+    // Fetch asset details if equipmentId exists
+    let asset = null;
+    if (ticket.equipmentId) {
+      try {
+        const { db } = await connectToDatabase();
+        console.log('Fetching asset with ID:', ticket.equipmentId);
+        
+        // Validate ObjectId format
+        if (!ObjectId.isValid(ticket.equipmentId)) {
+          console.error('Invalid ObjectId format:', ticket.equipmentId);
+        } else {
+          const assetDoc = await db.collection('assets').findOne({ _id: new ObjectId(ticket.equipmentId) });
+          console.log('Asset found:', !!assetDoc);
+          
+          if (assetDoc) {
+            asset = {
+              id: assetDoc._id.toString(),
+              name: assetDoc.assetName || assetDoc.name || 'Unknown Asset',
+              assetTag: assetDoc.serialNo || assetDoc.assetTag || '',
+              type: assetDoc.category || assetDoc.type || '',
+              location: assetDoc.location || '',
+              department: assetDoc.department || '',
+              status: assetDoc.statusText || assetDoc.status || 'Unknown'
+            };
+            console.log('Asset details:', asset);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching asset details:', error);
+      }
+    }
+
     // Transform the ticket to match frontend expectations
     const transformedTicket = {
       ...ticket,
@@ -53,6 +86,9 @@ export async function GET(
       
       // Generate ticketId for legacy tickets that don't have one
       ticketId: ticket.ticketId || `TKT-LEGACY-1`,
+      
+      // Include asset details
+      asset,
       
       // Ensure reportType always exists with proper structure
       reportType: ticket.reportType || {

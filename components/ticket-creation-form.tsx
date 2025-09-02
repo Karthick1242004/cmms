@@ -17,6 +17,7 @@ import type { TicketFormData } from "@/types/ticket"
 import { useDepartments } from "@/hooks/use-departments"
 import { useLocations } from "@/hooks/use-locations"
 import { useEmployees } from "@/hooks/use-employees"
+import { useAssets } from "@/hooks/use-assets"
 import { useAuthStore } from "@/stores/auth-store"
 import {
   Command,
@@ -45,6 +46,7 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
   const [openLocations, setOpenLocations] = useState(false)
   const [openInCharge, setOpenInCharge] = useState(false)
   const [openAssignedUsers, setOpenAssignedUsers] = useState(false)
+  const [openAssets, setOpenAssets] = useState(false)
 
   // Get current user for auto-department selection
   const { user } = useAuthStore()
@@ -90,6 +92,29 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
     department: formData.assignedDepartments.length > 0 ? formData.assignedDepartments.join(',') : undefined,
     status: 'active'
   })
+
+  // Fetch assets for the department with proper cascading
+  const { data: assetsData, isLoading: isLoadingAssets, error: assetsError } = useAssets({
+    department: formData.department || undefined
+  })
+
+  // Determine if department should be locked based on user role
+  const isDepartmentLocked = user?.accessLevel !== 'super_admin' && user?.department
+
+  // Clear asset selection when department changes
+  useEffect(() => {
+    if (formData.department && formData.equipmentId) {
+      // Check if the selected asset belongs to the new department
+      const selectedAsset = assetsData?.data?.assets?.find(
+        (asset) => asset.id === formData.equipmentId
+      )
+      
+      if (!selectedAsset || selectedAsset.department !== formData.department) {
+        // Clear asset selection if it doesn't belong to the new department
+        handleInputChange('equipmentId', '')
+      }
+    }
+  }, [formData.department, assetsData?.data?.assets])
 
   // Remove the useEffect for auto-department selection since it's now handled in initial state
   // useEffect(() => {
@@ -342,7 +367,7 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
               <Select 
                 value={formData.department} 
                 onValueChange={handleDepartmentChange}
-                disabled={isLoadingDepartments || (user?.accessLevel !== 'super_admin' && user?.department)}
+                disabled={isLoadingDepartments || isDepartmentLocked}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={isLoadingDepartments ? "Loading departments..." : "Select department"} />
@@ -352,11 +377,19 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
                     <SelectItem value="" disabled>
                       Error loading departments
                     </SelectItem>
-                  ) : departmentsData?.data?.departments?.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>
-                      {dept.name}
+                  ) : isDepartmentLocked ? (
+                    // For non-super_admin users, show only their department
+                    <SelectItem value={user?.department || ''} disabled>
+                      {user?.department || 'Your Department'}
                     </SelectItem>
-                  )) || []}
+                  ) : (
+                    // For super_admin users, show all departments
+                    departmentsData?.data?.departments?.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </SelectItem>
+                    )) || []
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -476,13 +509,107 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="equipmentId">Equipment ID</Label>
-              <Input 
-                id="equipmentId"
-                value={formData.equipmentId}
-                onChange={(e) => handleInputChange('equipmentId', e.target.value)}
-                placeholder="Asset/Equipment ID (optional)"
-              />
+              <Label htmlFor="equipmentId">Asset/Equipment (Optional)</Label>
+              <Popover open={openAssets} onOpenChange={setOpenAssets}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openAssets}
+                    className="w-full justify-between text-left font-normal"
+                    disabled={!formData.department}
+                  >
+                    {formData.equipmentId ? (
+                      (() => {
+                        const selectedAsset = assetsData?.data?.assets?.find(
+                          (asset) => asset.id === formData.equipmentId
+                        )
+                        return selectedAsset ? (
+                          <span>{selectedAsset.name} ({selectedAsset.assetTag})</span>
+                        ) : (
+                          <span className="text-muted-foreground">Asset not found</span>
+                        )
+                      })()
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {!formData.department 
+                          ? (user?.accessLevel === 'super_admin' 
+                              ? 'Select department first' 
+                              : 'No department assigned')
+                          : 'Select asset (optional)'
+                        }
+                      </span>
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command className="w-full">
+                    <CommandInput placeholder="Search assets..." />
+                    <CommandEmpty>No assets found</CommandEmpty>
+                    <div className="max-h-[200px] overflow-y-auto p-1">
+                      {/* Clear selection option */}
+                      <CommandItem
+                        value=""
+                        onSelect={() => {
+                          handleInputChange('equipmentId', '')
+                          setOpenAssets(false)
+                        }}
+                        className="py-2 cursor-pointer hover:bg-accent"
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", !formData.equipmentId ? "opacity-100" : "opacity-0")} />
+                        <span className="text-muted-foreground">No asset selected</span>
+                      </CommandItem>
+                      
+                      {isLoadingAssets ? (
+                        <CommandItem disabled className="py-2">
+                          <span className="text-muted-foreground">Loading assets...</span>
+                        </CommandItem>
+                      ) : assetsError ? (
+                        <CommandItem disabled className="py-2">
+                          <span className="text-red-500">Error loading assets</span>
+                        </CommandItem>
+                      ) : !formData.department ? (
+                        <CommandItem disabled className="py-2">
+                          <span className="text-muted-foreground">
+                            {user?.accessLevel === 'super_admin' 
+                              ? 'Please select a department first' 
+                              : 'No department assigned'
+                            }
+                          </span>
+                        </CommandItem>
+                      ) : assetsData?.data?.assets?.length === 0 ? (
+                        <CommandItem disabled className="py-2">
+                          <span className="text-muted-foreground">No assets found in {formData.department}</span>
+                        </CommandItem>
+                      ) : (
+                        assetsData?.data?.assets?.map((asset) => (
+                          <CommandItem
+                            key={asset.id}
+                            value={`${asset.name} ${asset.assetTag} ${asset.type} ${asset.location}`}
+                            onSelect={() => {
+                              handleInputChange('equipmentId', asset.id)
+                              setOpenAssets(false)
+                            }}
+                            className="py-2 cursor-pointer hover:bg-accent"
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", formData.equipmentId === asset.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{asset.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {asset.assetTag} • {asset.type} • {asset.location} • {asset.status}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))
+                      )}
+                    </div>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {assetsError && (
+                <p className="text-xs text-red-500">Error loading assets: {assetsError}</p>
+              )}
             </div>
 
             <div className="space-y-2">
