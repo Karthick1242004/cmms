@@ -251,11 +251,11 @@ export const useAssetsStore = create<AssetsState>()(
           })
 
           try {
-            // Use proper pagination with limit 15
+            // Use proper pagination with limit 15 (or 1000 for dropdowns)
             const paginatedFilters = { 
               ...filters, 
               page: filters.page || 1, 
-              limit: 15 
+              limit: filters.fetchAll ? 1000 : 15  // Use large limit for dropdowns
             }
             
             console.log('Fetching assets with pagination:', paginatedFilters)

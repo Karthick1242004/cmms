@@ -81,12 +81,14 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   // Fetch data with appropriate filters
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments()
   const { data: assetsData, isLoading: isLoadingAssets } = useAssets({
-    department: selectedDepartment || undefined
+    department: selectedDepartment || undefined,
+    fetchAll: true // Fetch all assets for dropdown
   })
   const { data: locationsData, isLoading: isLoadingLocations } = useLocations()
   const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees({
     department: selectedDepartment || undefined,
-    status: 'active'
+    status: 'active',
+    fetchAll: true // Fetch all employees for dropdown
   })
 
   const [categories, setCategories] = useState<SafetyChecklistCategory[]>([])

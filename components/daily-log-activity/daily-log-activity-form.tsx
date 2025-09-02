@@ -84,7 +84,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     const loadEmployees = async () => {
       try {
         setIsLoadingEmployees(true);
-        const response = await employeesApi.getAll({ limit: 100 });
+        const response = await employeesApi.getAll({ limit: 1000 }); // Increased limit to get all employees
         if (response.success && response.data) {
           const employeeOptions = response.data.employees.map(emp => ({
             id: emp.id,

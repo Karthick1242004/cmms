@@ -257,8 +257,8 @@ export function StockTransactionForm({
         await Promise.all([
           fetchParts(),
           fetchLocations(),
-          fetchAssets(),
-          fetchEmployees(),
+          fetchAssets({ fetchAll: true }), // Fetch all assets for dropdown
+          fetchEmployees({ fetchAll: true }), // Fetch all employees for dropdown
         ]);
       } catch (error) {
         console.error('Error loading form data:', error);

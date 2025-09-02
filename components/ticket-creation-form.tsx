@@ -85,17 +85,20 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
   const { data: locationsData, isLoading: isLoadingLocations, error: locationsError } = useLocations()
   const { data: employeesData, isLoading: isLoadingEmployees, error: employeesError } = useEmployees({
     department: formData.department || undefined,
-    status: 'active'
+    status: 'active',
+    fetchAll: true // Fetch all employees for dropdown
   })
   
   const { data: assignedEmployeesData, isLoading: isLoadingAssignedEmployees } = useEmployees({
     department: formData.assignedDepartments.length > 0 ? formData.assignedDepartments.join(',') : undefined,
-    status: 'active'
+    status: 'active',
+    fetchAll: true // Fetch all employees for dropdown
   })
 
   // Fetch assets for the department with proper cascading
   const { data: assetsData, isLoading: isLoadingAssets, error: assetsError } = useAssets({
-    department: formData.department || undefined
+    department: formData.department || undefined,
+    fetchAll: true // Fetch all assets for dropdown
   })
 
   // Determine if department should be locked based on user role

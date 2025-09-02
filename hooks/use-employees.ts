@@ -35,6 +35,9 @@ interface UseEmployeesOptions {
   department?: string
   status?: string
   role?: string
+  limit?: number
+  page?: number
+  fetchAll?: boolean // New option to fetch all data for dropdowns
 }
 
 export function useEmployees(options: UseEmployeesOptions = {}) {
@@ -53,6 +56,15 @@ export function useEmployees(options: UseEmployeesOptions = {}) {
         if (options.department) searchParams.append('department', options.department)
         if (options.status) searchParams.append('status', options.status)
         if (options.role) searchParams.append('role', options.role)
+        
+        // Handle pagination - for dropdowns, fetch all data
+        if (options.fetchAll) {
+          searchParams.append('limit', '1000') // Large limit to get all data
+          searchParams.append('page', '1')
+        } else {
+          if (options.limit) searchParams.append('limit', options.limit.toString())
+          if (options.page) searchParams.append('page', options.page.toString())
+        }
         
         const queryString = searchParams.toString()
         const url = `/api/employees${queryString ? `?${queryString}` : ''}`
@@ -89,7 +101,7 @@ export function useEmployees(options: UseEmployeesOptions = {}) {
     }
 
     fetchEmployees()
-  }, [options.department, options.status, options.role])
+  }, [options.department, options.status, options.role, options.limit, options.page, options.fetchAll])
 
   return { data, isLoading, error }
 }

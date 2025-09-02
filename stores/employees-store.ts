@@ -158,18 +158,25 @@ export const useEmployeesStore = create<EmployeesState>()(
             })
           }),
 
-        fetchEmployees: async () => {
+        fetchEmployees: async (options = {}) => {
           set((state) => {
             state.isLoading = true
           })
 
           try {
             const user = useAuthStore.getState().user
-            const params: any = { limit: 100 }
+            const params: any = { 
+              limit: options.fetchAll ? 1000 : 100  // Use large limit for dropdowns
+            }
 
             // If not super_admin, filter by department
             if (user?.accessLevel !== 'super_admin') {
               params.department = user?.department
+            }
+
+            // Apply any additional filters
+            if (options.department) {
+              params.department = options.department
             }
 
             const response = await employeesApi.getAll(params)

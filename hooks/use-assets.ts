@@ -65,6 +65,9 @@ interface UseAssetsOptions {
   status?: string
   type?: string
   location?: string
+  limit?: number
+  page?: number
+  fetchAll?: boolean // New option to fetch all data for dropdowns
 }
 
 // Helper function to map API status to our expected status
@@ -99,6 +102,15 @@ export function useAssets(options: UseAssetsOptions = {}) {
         if (options.status) searchParams.append('status', options.status)
         if (options.type) searchParams.append('type', options.type)
         if (options.location) searchParams.append('location', options.location)
+        
+        // Handle pagination - for dropdowns, fetch all data
+        if (options.fetchAll) {
+          searchParams.append('limit', '1000') // Large limit to get all data
+          searchParams.append('page', '1')
+        } else {
+          if (options.limit) searchParams.append('limit', options.limit.toString())
+          if (options.page) searchParams.append('page', options.page.toString())
+        }
         
         const queryString = searchParams.toString()
         const url = `/api/assets${queryString ? `?${queryString}` : ''}`
@@ -156,7 +168,7 @@ export function useAssets(options: UseAssetsOptions = {}) {
     }
 
     fetchAssets()
-  }, [options.department, options.status, options.type, options.location])
+  }, [options.department, options.status, options.type, options.location, options.limit, options.page, options.fetchAll])
 
   return { data, isLoading, error }
 }

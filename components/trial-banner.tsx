@@ -226,10 +226,11 @@ export function TrialStatusIndicator() {
         <div className="text-xs text-orange-700">
           <strong>{timeLeft.days} days, {timeLeft.hours} hours</strong> remaining
         </div>
-        <div className="text-xs text-orange-600">
+        {/* <div className="text-xs text-orange-600">
           All features active during trial
-        </div>
+        </div> */}
       </div>
     </div>
   )
 }
+
