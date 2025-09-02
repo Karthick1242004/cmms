@@ -78,9 +78,6 @@ export const useAssetsStore = create<AssetsState>()(
               
               // Update location asset counts in the background
               updateLocationAssetCounts()
-              
-              // Return the transformed asset data for sync operations
-              return transformedAsset
             } else {
               // Throw error if API response indicates failure
               throw new Error(response.error || response.message || 'Failed to create asset')
@@ -258,15 +255,11 @@ export const useAssetsStore = create<AssetsState>()(
               limit: filters.fetchAll ? 1000 : 15  // Use large limit for dropdowns
             }
             
-            console.log('Fetching assets with pagination:', paginatedFilters)
             
             const response = await assetsApi.getAssets(paginatedFilters)
             
             if (response.success && response.data) {
-              console.log('Assets response:', {
-                assetsCount: response.data.assets.length,
-                pagination: response.data.pagination
-              })
+              
               
               const currentAssets = response.data.assets
               
@@ -295,14 +288,13 @@ export const useAssetsStore = create<AssetsState>()(
               }))
 
               // Debug log to see the transformed data
-              console.log('Total transformed assets:', transformedAssets.length)
-              console.log('Asset names:', transformedAssets.map(a => a.name))
+
 
               // Check for the specific assets we're looking for
               const targetAssets = transformedAssets.filter(asset => 
                 asset.name.includes('asdad') || asset.name.includes('Weighing Scale 100kg')
               )
-              console.log('Found target assets:', targetAssets)
+
 
               // Check for assets missing department field
               const assetsWithoutDepartment = transformedAssets.filter(asset => !asset.department || asset.department === "N/A")
@@ -324,7 +316,7 @@ export const useAssetsStore = create<AssetsState>()(
                 }
               })
             } else {
-              console.log('No assets found')
+
               set((state) => {
                 state.assets = []
                 state.filteredAssets = []
@@ -338,7 +330,7 @@ export const useAssetsStore = create<AssetsState>()(
               })
             }
           } else {
-            console.log('No assets found')
+
             set((state) => {
               state.assets = []
               state.filteredAssets = []

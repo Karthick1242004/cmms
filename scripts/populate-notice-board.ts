@@ -99,7 +99,7 @@ async function populateNoticeBoard() {
   }
 
   // Summary
-  console.log('\n📊 Population Summary:');
+  //console.log
   console.log(`   ✅ Successfully created: ${successCount} notices`);
   console.log(`   ❌ Failed to create: ${failureCount} notices`);
   console.log(`   📈 Total processed: ${sampleNotices.length} notices`);

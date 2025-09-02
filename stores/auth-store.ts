@@ -10,8 +10,8 @@ import { toast } from "sonner"
 // Users are created through the secure employee management system
 
 export const useAuthStore = create<AuthState>()(
-  persist(
-    devtools(
+  devtools(
+    persist(
       immer((set, get) => ({
         user: null,
         isAuthenticated: false,
@@ -326,11 +326,11 @@ export const useAuthStore = create<AuthState>()(
       })),
       {
         name: "auth-storage",
-        partialize: (state) => ({
+        partialize: (state: AuthState) => ({
           user: state.user,
           isAuthenticated: state.isAuthenticated,
         }),
-      },
+      }
     ),
   ),
 )

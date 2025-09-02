@@ -9,12 +9,10 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log('🚀 [Ticket Verify API] - Starting verification process')
     
     // Get user context
     const user = await getUserContext(request)
     if (!user) {
-      console.log('❌ [Ticket Verify API] - No user context')
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
         { status: 401 }

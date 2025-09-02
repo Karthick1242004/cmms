@@ -124,7 +124,6 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
   deleteSchedule: async (id) => {
     set({ isLoading: true })
     try {
-      console.log(`Attempting to delete safety inspection schedule: ${id}`)
       await safetyInspectionSchedulesApi.delete(id)
       
       // Remove from local state regardless of backend response
@@ -133,9 +132,6 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
         const beforeCount = state.schedules.length;
         const filteredSchedules = state.schedules.filter(schedule => schedule.id !== id);
         const afterCount = filteredSchedules.length;
-        
-        console.log(`Removed schedule ${id} from local state. Count: ${beforeCount} -> ${afterCount}`);
-        
         return {
           schedules: filteredSchedules,
           isLoading: false
