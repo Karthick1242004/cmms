@@ -21,38 +21,38 @@ const generateSignature = (params: Record<string, any>): string => {
 }
 
 export const uploadToCloudinary = async (file: File, folder = 'assets'): Promise<string> => {
-  console.log('🔧 CLOUDINARY UPLOAD STARTED')
-  console.log('File details:', {
-    name: file.name,
-    size: file.size,
-    type: file.type,
-    folder: folder
-  })
+  // console.log('🔧 CLOUDINARY UPLOAD STARTED')
+  // console.log('File details:', {
+  //   name: file.name,
+  //   size: file.size,
+  //   type: file.type,
+  //   folder: folder
+  // })
 
   try {
     // Use unsigned upload with your preset
-    console.log('📝 Using unsigned upload with preset: cmms_assets')
+    // console.log('📝 Using unsigned upload with preset: cmms_assets')
     const formData = new FormData()
     formData.append('file', file)
     formData.append('upload_preset', 'cmms_assets')
     formData.append('folder', folder)
 
-    console.log('📤 Uploading to Cloudinary...')
+    // console.log('📤 Uploading to Cloudinary...')
     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`, {
       method: 'POST',
       body: formData,
     })
 
-    console.log('📥 Cloudinary response status:', response.status)
+    // console.log('📥 Cloudinary response status:', response.status)
     const result = await response.json()
-    console.log('📥 Cloudinary response data:', result)
+    // console.log('📥 Cloudinary response data:', result)
 
     if (!response.ok) {
       throw new Error(`Cloudinary upload failed: ${result.error?.message || 'Unknown error'}`)
     }
 
     if (result.secure_url) {
-      console.log('✅ Upload successful! URL:', result.secure_url)
+      // console.log('✅ Upload successful! URL:', result.secure_url)
       return result.secure_url
     } else {
       throw new Error('No secure_url in Cloudinary response')
@@ -65,7 +65,7 @@ export const uploadToCloudinary = async (file: File, folder = 'assets'): Promise
     const fileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
     const placeholderUrl = `/placeholder.svg?height=150&width=250&text=${encodeURIComponent(fileName)}`
     
-    console.log('🔄 Using placeholder as final fallback:', placeholderUrl)
+    // console.log('🔄 Using placeholder as final fallback:', placeholderUrl)
     return placeholderUrl
   }
   

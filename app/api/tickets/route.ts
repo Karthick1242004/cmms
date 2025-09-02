@@ -296,7 +296,8 @@ export async function POST(request: NextRequest) {
       solution: body.solution,
       isOpenTicket: body.isOpenTicket || false,
       assignedDepartments: body.assignedDepartments || [],
-      assignedUsers: body.assignedUsers || []
+      assignedUsers: body.assignedUsers || [],
+      images: body.images || []
     };
 
     // Create the ticket

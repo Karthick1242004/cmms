@@ -47,6 +47,9 @@ export interface ITicket extends Document {
   assignedDepartments: string[]
   assignedUsers: string[]
   
+  // Images
+  images?: string[]
+  
   // Activity log
   activityLog: Array<{
     date: Date
@@ -190,6 +193,12 @@ const TicketSchema = new Schema<ITicket>({
     trim: true
   }],
   assignedUsers: [{
+    type: String,
+    trim: true
+  }],
+  
+  // Images
+  images: [{
     type: String,
     trim: true
   }],

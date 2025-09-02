@@ -53,7 +53,6 @@ export const useAuthStore = create<AuthState>()(
                 shiftInfo: data.user.shiftInfo,
               }
 
-              console.log('🏪 [AUTH-STORE] Setting auth state...', { user })
 
               set((state) => {
                 state.user = user
@@ -61,40 +60,26 @@ export const useAuthStore = create<AuthState>()(
                 state.isLoading = false
               })
 
-              console.log('🏪 [AUTH-STORE] Auth state updated successfully')
 
               // Store token in localStorage
               if (data.token) {
                 localStorage.setItem('auth-token', data.token)
-                console.log('🏪 [AUTH-STORE] Token stored in localStorage')
               }
 
               // Force trigger persistence by manually saving the state
               const currentState = get()
-              console.log('🏪 [AUTH-STORE] Current state after update:', {
-                isAuthenticated: currentState.isAuthenticated,
-                user: currentState.user?.name,
-                isLoading: currentState.isLoading
-              })
+              
 
               // Verify persistence is working
               setTimeout(() => {
                 const updatedState = get()
                 const persistedState = localStorage.getItem('auth-storage')
-                console.log('🏪 [AUTH-STORE] Persistence check:', {
-                  currentState: {
-                    isAuthenticated: updatedState.isAuthenticated,
-                    hasUser: !!updatedState.user
-                  },
-                  persistedState: persistedState
-                })
 
                 // If Zustand didn't persist correctly, manually save
                 if (persistedState) {
                   try {
                     const parsed = JSON.parse(persistedState)
                     if (!parsed.state?.isAuthenticated || !parsed.state?.user) {
-                      console.log('🏪 [AUTH-STORE] Zustand persistence failed, manually saving...')
                       const stateToSave = {
                         state: {
                           user: updatedState.user,
@@ -103,7 +88,6 @@ export const useAuthStore = create<AuthState>()(
                         version: 0
                       }
                       localStorage.setItem('auth-storage', JSON.stringify(stateToSave))
-                      console.log('🏪 [AUTH-STORE] Manually saved state:', stateToSave)
                     }
                   } catch (e) {
                     console.error('🏪 [AUTH-STORE] Error checking persisted state:', e)
@@ -116,7 +100,7 @@ export const useAuthStore = create<AuthState>()(
                 description: data.profileStatus?.isComplete ? 'Welcome back!' : 'Please complete your profile for the best experience.'
               })
 
-              console.log('🏪 [AUTH-STORE] Login completed successfully')
+
               return true
             } else {
               set((state) => {

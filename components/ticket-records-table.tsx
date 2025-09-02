@@ -381,6 +381,11 @@ export function TicketRecordsTable({ records, isLoading, isAdmin, onVerify }: Ti
                     <strong>Asset:</strong> {selectedRecord.asset.name} ({selectedRecord.asset.assetTag})
                   </div>
                 )}
+                {selectedRecord.images && selectedRecord.images.length > 0 && (
+                  <div className="col-span-2">
+                    <strong>Images:</strong> {selectedRecord.images.length} image(s) attached
+                  </div>
+                )}
                 {selectedRecord.verifiedByName && (
                   <div className="col-span-2">
                     <strong>Verified By:</strong> {selectedRecord.verifiedByName}

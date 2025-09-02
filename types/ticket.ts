@@ -63,6 +63,9 @@ export interface Ticket {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
   
+  // Images
+  images?: string[];
+  
   // Virtual fields (computed on frontend)
   timeSinceLogged?: string;
   
@@ -122,6 +125,10 @@ export interface TicketFormData {
   isOpenTicket: boolean;
   assignedDepartments: string[];
   assignedUsers: string[];
+  
+  // Images
+  images?: string[];
+  imageFiles?: File[];
 }
 
 export interface TicketFilters {

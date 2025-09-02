@@ -14,6 +14,8 @@ import { Switch } from "@/components/ui/switch"
 import { Calendar, Clock, Save, AlertCircle, FileText, User, Building2, X, Check, ChevronsUpDown } from "lucide-react"
 import { toast } from "sonner"
 import type { TicketFormData } from "@/types/ticket"
+import { TicketImageUpload } from "@/components/ticket-image-upload"
+import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary-config"
 import { useDepartments } from "@/hooks/use-departments"
 import { useLocations } from "@/hooks/use-locations"
 import { useEmployees } from "@/hooks/use-employees"
@@ -42,6 +44,7 @@ interface TicketCreationFormProps {
 
 export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: TicketCreationFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploadingImages, setIsUploadingImages] = useState(false)
   const [openDepartments, setOpenDepartments] = useState(false)
   const [openLocations, setOpenLocations] = useState(false)
   const [openInCharge, setOpenInCharge] = useState(false)
@@ -77,6 +80,8 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
       isOpenTicket: false,
       assignedDepartments: [],
       assignedUsers: [],
+      images: [],
+      imageFiles: [],
     };
   });
 
@@ -204,7 +209,29 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
     }
 
     setIsLoading(true)
+    setIsUploadingImages(true)
     try {
+      // Upload new images to Cloudinary
+      let uploadedImageUrls: string[] = [];
+      
+      if (formData.imageFiles && formData.imageFiles.length > 0) {
+        console.log('🖼️ UPLOADING TICKET IMAGES');
+        toast.info('Uploading images...');
+        
+        for (const imageFile of formData.imageFiles) {
+          try {
+            const imageUrl = await uploadToCloudinary(imageFile, 'tickets/images');
+            uploadedImageUrls.push(imageUrl);
+            console.log('🖼️ Ticket image uploaded:', imageUrl);
+          } catch (error) {
+            console.error('🖼️ Image upload failed:', error);
+            toast.error(`Failed to upload image: ${imageFile.name}`);
+          }
+        }
+      }
+
+      setIsUploadingImages(false);
+
       // Create ticket data with proper field mapping for backend
       const ticketData = {
         // Map frontend fields to backend fields
@@ -232,6 +259,8 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
         loggedBy: user?.name || 'Unknown User',
         status: 'open', // Changed to lowercase to match backend validation
         loggedDateTime: new Date().toISOString(),
+        // Images
+        images: uploadedImageUrls,
       }
 
       // Call API to create ticket
@@ -296,11 +325,11 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? (
+          <Button onClick={handleSubmit} disabled={isLoading || isUploadingImages}>
+            {isLoading || isUploadingImages ? (
               <>
                 <Save className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
+                {isUploadingImages ? 'Uploading images...' : 'Creating...'}
               </>
             ) : (
               <>
@@ -971,6 +1000,15 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
           </div>
         </CardContent>
       </Card>
+
+      {/* Image Upload */}
+      <TicketImageUpload
+        images={formData.images || []}
+        imageFiles={formData.imageFiles || []}
+        onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
+        onImageFilesChange={(imageFiles) => setFormData(prev => ({ ...prev, imageFiles }))}
+        maxImages={5}
+      />
     </div>
   )
 } 
