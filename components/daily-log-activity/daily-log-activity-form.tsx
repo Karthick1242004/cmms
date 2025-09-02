@@ -78,6 +78,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
 
   // Load employees on component mount
   useEffect(() => {
@@ -572,31 +573,67 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
             <CardContent>
               <div className="space-y-2">
                 <Label htmlFor="attendedBy">Attended By *</Label>
-                <Select 
-                  value={formData.attendedBy} 
-                  onValueChange={handleEmployeeChange}
-                  disabled={isLoadingEmployees}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select employee..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoadingEmployees ? (
-                      <SelectItem value="loading" disabled>
-                        <div className="flex items-center gap-2">
-                          <LoadingSpinner />
-                          Loading employees...
+                <div className="relative">
+                  <Input
+                    value={formData.attendedByName || ""}
+                    placeholder={isLoadingEmployees ? "Loading employees..." : "Select employee..."}
+                    disabled={isLoadingEmployees}
+                    readOnly
+                    className="cursor-pointer"
+                    onClick={() => !isLoadingEmployees && setShowEmployeeDropdown(true)}
+                  />
+                  <Popover open={showEmployeeDropdown} onOpenChange={setShowEmployeeDropdown}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                        type="button"
+                        onClick={() => setShowEmployeeDropdown(true)}
+                        disabled={isLoadingEmployees}
+                      >
+                        <User className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="end">
+                      <Command>
+                        <CommandInput placeholder="Search employees..." />
+                        <CommandEmpty>
+                          {employees.length === 0 ? "No employees found" : "No employees match your search."}
+                        </CommandEmpty>
+                        <div className="max-h-[200px] overflow-y-auto p-1">
+                          {employees.map((employee) => (
+                            <CommandItem
+                              key={employee.id}
+                              value={employee.name}
+                              onSelect={() => {
+                                handleEmployeeChange(employee.id);
+                                setShowEmployeeDropdown(false);
+                              }}
+                              className="py-2 cursor-pointer hover:bg-accent"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.attendedBy === employee.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span>{employee.name}</span>
+                                <span className="text-xs text-muted-foreground">{employee.role} - {employee.department}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
                         </div>
-                      </SelectItem>
-                    ) : (
-                      employees.map((employee) => (
-                        <SelectItem key={employee.id} value={employee.id}>
-                          {employee.name} ({employee.department})
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {employees.length === 0 && !isLoadingEmployees && (
+                  <p className="text-xs text-muted-foreground">
+                    No employees found
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

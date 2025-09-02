@@ -155,6 +155,14 @@ export function TicketListTable({
     return ticket.status === 'completed' && !ticket.adminVerified
   }
 
+  const canEditTicket = (ticket: Ticket) => {
+    // Verified tickets cannot be edited
+    if (ticket.status === 'verified') return false
+    // Cancelled tickets cannot be edited
+    if (ticket.status === 'cancelled') return false
+    return true
+  }
+
 
 
   const handleStatusUpdate = async (ticketId: string, status: string) => {
@@ -291,8 +299,9 @@ export function TicketListTable({
                 
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
-                    {/* Status change dropdown - only show if not pending approval or user can't approve */}
+                    {/* Status change dropdown - only show if not cancelled, not verified, and not pending approval */}
                     {ticket.status !== 'cancelled' && 
+                     ticket.status !== 'verified' &&
                      (!(ticket as any)?.statusApproval?.pending || !canApproveStatus) && (
                       <Select 
                         value={ticket.status} 

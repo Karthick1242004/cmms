@@ -12,8 +12,8 @@ export async function PATCH(
     console.log('🚀 [Ticket Verify API] - Starting verification process')
     
     // Get user context
-    const userContext = await getUserContext(request)
-    if (!userContext) {
+    const user = await getUserContext(request)
+    if (!user) {
       console.log('❌ [Ticket Verify API] - No user context')
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
@@ -21,7 +21,6 @@ export async function PATCH(
       )
     }
 
-    const { user } = userContext
     console.log('👤 [Ticket Verify API] - User:', user.name, 'Access Level:', user.accessLevel)
 
     // Check if user has admin privileges
@@ -191,7 +190,7 @@ export async function PATCH(
       { 
         success: false, 
         message: 'Internal server error during verification',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
       },
       { status: 500 }
     )
