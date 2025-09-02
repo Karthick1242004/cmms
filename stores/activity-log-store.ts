@@ -30,6 +30,7 @@ interface ActivityLogState {
 interface ActivityLogActions {
   fetchLogs: (filters?: ActivityLogFilters) => Promise<void>
   createLog: (data: CreateActivityLogRequest) => Promise<boolean>
+  deleteLog: (id: string) => Promise<boolean>
   setFilters: (filters: ActivityLogFilters) => void
   clearError: () => void
   reset: () => void
@@ -117,6 +118,36 @@ export const useActivityLogStore = create<ActivityLogState & ActivityLogActions>
     } catch (error) {
       console.error('❌ [Activity Log Store] - Create error:', error)
       set({ error: 'Failed to create activity log' })
+      return false
+    }
+  },
+
+  deleteLog: async (id: string): Promise<boolean> => {
+    try {
+      console.log('🚀 [Activity Log Store] - Deleting log:', id)
+      
+      const response = await activityLogApi.delete(id)
+      
+      if (response.success) {
+        // Remove the deleted log from the current list
+        set((state) => ({
+          logs: state.logs.filter(log => log.id !== id),
+          pagination: {
+            ...state.pagination,
+            total: Math.max(0, state.pagination.total - 1)
+          }
+        }))
+        
+        console.log('✅ [Activity Log Store] - Deleted activity log')
+        return true
+      } else {
+        console.error('❌ [Activity Log Store] - Delete failed:', response.message)
+        set({ error: response.message || 'Failed to delete activity log' })
+        return false
+      }
+    } catch (error) {
+      console.error('❌ [Activity Log Store] - Delete error:', error)
+      set({ error: 'Failed to delete activity log' })
       return false
     }
   },

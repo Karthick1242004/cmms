@@ -271,8 +271,8 @@ export async function POST(request: NextRequest) {
             action: 'created',
             title: 'Daily Activity Created',
             description: `Daily activity created: ${body.natureOfProblem}`,
-            assignedTo: body.assignedTo,
-            assignedToName: body.assignedToName,
+            assignedTo: body.assignedTo || body.attendedBy,
+            assignedToName: body.assignedToName || body.attendedByName,
             priority: (body.priority || 'medium').toLowerCase() as any,
             status: 'pending',
             recordId: createdActivity._id.toString(),
@@ -280,7 +280,8 @@ export async function POST(request: NextRequest) {
             metadata: {
               area: body.area,
               time: body.time,
-              notes: body.commentsOrSolution
+              notes: body.commentsOrSolution,
+              attendedBy: body.attendedByName
             }
           })
         });

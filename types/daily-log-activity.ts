@@ -32,7 +32,7 @@ export interface DailyLogActivity {
   adminNotes?: string; // Admin verification notes
   verifiedBy?: string; // Employee ID (optional - legacy field)
   verifiedByName?: string; // Legacy field
-  status: 'open' | 'in-progress' | 'completed' | 'pending_verification' | 'verified';
+  status: 'open' | 'in-progress' | 'completed' | 'pending_verification' | 'verified' | 'resolved';
   priority: 'low' | 'medium' | 'high' | 'critical';
   createdBy: string;
   createdByName: string;

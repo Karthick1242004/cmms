@@ -112,6 +112,57 @@ export async function PATCH(
     // Fetch the updated activity
     const updatedActivity = await db.collection('dailylogactivities').findOne({ _id: new ObjectId(id) });
 
+    // Create activity log for verification
+    if (updatedActivity) {
+      try {
+        console.log('🚀 [Daily Activity] - Creating verification activity log');
+        
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
+        
+        const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': request.headers.get('Authorization') || '',
+            'Cookie': request.headers.get('Cookie') || '',
+          },
+          body: JSON.stringify({
+            assetId: updatedActivity.assetId,
+            assetName: updatedActivity.assetName,
+            assetTag: updatedActivity.assetTag || '',
+            module: 'daily_log_activity',
+            action: 'verified',
+            title: 'Daily Activity Verified',
+            description: `Daily activity verified by ${user.name}: ${updatedActivity.natureOfProblem}`,
+            assignedTo: updatedActivity.assignedTo || updatedActivity.attendedBy,
+            assignedToName: updatedActivity.assignedToName || updatedActivity.attendedByName,
+            priority: (updatedActivity.priority || 'medium').toLowerCase() as any,
+            status: 'completed',
+            recordId: id,
+            recordType: 'daily_activity_verification',
+            metadata: {
+              verifiedBy: user.name,
+              area: updatedActivity.area,
+              time: updatedActivity.time,
+              notes: adminNotes || 'No additional notes',
+              commentsOrSolution: updatedActivity.commentsOrSolution
+            }
+          })
+        });
+        
+        if (activityLogResponse.ok) {
+          console.log('✅ [Daily Activity] - Verification activity log created');
+        } else {
+          console.error('❌ [Daily Activity] - Verification activity log creation failed:', await activityLogResponse.text());
+        }
+      } catch (error) {
+        console.error('❌ [Daily Activity] - Failed to create verification activity log:', error);
+        // Don't fail the main operation if activity log creation fails
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Daily log activity verified successfully',

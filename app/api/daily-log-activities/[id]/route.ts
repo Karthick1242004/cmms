@@ -265,6 +265,84 @@ export async function PUT(
       { returnDocument: 'after' }
     );
 
+    // Create activity log entries for significant status changes
+    if (result && updates.status && updates.status !== existingActivity.status) {
+      try {
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
+        
+        console.log('🚀 [Daily Activity] - Creating activity log for status change:', updates.status);
+        
+        // Define completion states
+        const completionStates = ['completed', 'pending_verification', 'verified', 'resolved'];
+        const isCompleted = completionStates.includes(updates.status);
+        
+        // Define action mapping
+        let action = 'updated';
+        let title = 'Daily Activity Updated';
+        let activityLogStatus = 'in_progress';
+        
+        if (updates.status === 'verified') {
+          action = 'verified';
+          title = 'Daily Activity Verified';
+          activityLogStatus = 'completed';
+        } else if (updates.status === 'resolved' || updates.status === 'completed') {
+          action = 'completed';
+          title = 'Daily Activity Completed';
+          activityLogStatus = 'completed';
+        } else if (updates.status === 'pending_verification') {
+          action = 'completed';
+          title = 'Daily Activity Completed (Pending Verification)';
+          activityLogStatus = 'completed';
+        }
+
+        let activityLogData: any = {
+          assetId: result.assetId,
+          assetName: result.assetName,
+          assetTag: result.assetTag || '',
+          module: 'daily_log_activity',
+          action: action,
+          title: title,
+          description: isCompleted 
+            ? `Daily activity ${action}: ${result.natureOfProblem}` 
+            : `Daily activity status changed to ${updates.status}: ${result.natureOfProblem}`,
+          assignedTo: result.assignedTo || result.attendedBy,
+          assignedToName: result.assignedToName || result.attendedByName,
+          priority: (result.priority || 'medium').toLowerCase() as any,
+          status: activityLogStatus,
+          recordId: result._id.toString(),
+          recordType: 'daily_activity_update',
+          metadata: {
+            area: result.area,
+            time: result.time,
+            previousStatus: existingActivity.status,
+            newStatus: updates.status,
+            notes: result.commentsOrSolution
+          }
+        };
+
+        const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': request.headers.get('Authorization') || '',
+            'Cookie': request.headers.get('Cookie') || '',
+          },
+          body: JSON.stringify(activityLogData)
+        });
+        
+        if (activityLogResponse.ok) {
+          console.log('✅ [Daily Activity] - Status change activity log created');
+        } else {
+          console.error('❌ [Daily Activity] - Status change activity log creation failed:', await activityLogResponse.text());
+        }
+      } catch (error) {
+        console.error('❌ [Daily Activity] - Failed to create status change activity log:', error);
+        // Don't fail the main operation if activity log creation fails
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Daily log activity updated successfully',

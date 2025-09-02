@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useActivityLogStore } from '@/stores/activity-log-store'
+import { useAuthStore } from '@/stores/auth-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -10,9 +11,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Search, Calendar, User, AlertTriangle, CheckCircle, Clock, Archive } from 'lucide-react'
+import { 
+  Search, 
+  Calendar, 
+  User, 
+  AlertTriangle, 
+  CheckCircle, 
+  Clock, 
+  Archive, 
+  Trash2, 
+  MoreHorizontal 
+} from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import type { ActivityModule, ActivityAction, ActivityPriority, ActivityStatus } from '@/types/activity-log'
+import type { ActivityModule, ActivityAction, ActivityPriority, ActivityStatus, ActivityLogEntry } from '@/types/activity-log'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface ActivityLogTableProps {
   assetId: string
@@ -65,14 +92,49 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
     loading,
     error,
     fetchLogs,
-    setFilters
+    setFilters,
+    deleteLog
   } = useActivityLogStore()
+
+  const { user } = useAuthStore()
 
   const [searchTerm, setSearchTerm] = useState('')
   const [moduleFilter, setModuleFilter] = useState<ActivityModule | 'all'>('all')
   const [actionFilter, setActionFilter] = useState<ActivityAction | 'all'>('all')
   const [priorityFilter, setPriorityFilter] = useState<ActivityPriority | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<ActivityStatus | 'all'>('all')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [logToDelete, setLogToDelete] = useState<ActivityLogEntry | null>(null)
+
+  // Check if user can delete activity logs
+  const canDeleteLog = (log: ActivityLogEntry) => {
+    // Only super_admin and department_admin can delete activity logs
+    if (user?.accessLevel !== 'super_admin' && user?.accessLevel !== 'department_admin') {
+      return false
+    }
+    
+    // Department admin can only delete logs from their department
+    if (user?.accessLevel === 'department_admin' && log.department !== user.department) {
+      return false
+    }
+    
+    return true
+  }
+
+  const handleDeleteClick = (log: ActivityLogEntry) => {
+    setLogToDelete(log)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (logToDelete) {
+      const success = await deleteLog(logToDelete.id!)
+      if (success) {
+        setDeleteDialogOpen(false)
+        setLogToDelete(null)
+      }
+    }
+  }
 
   // Fetch logs when component mounts or filters change
   useEffect(() => {
@@ -250,12 +312,13 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Created By</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12">
+                  <TableCell colSpan={9} className="text-center py-12">
                     <div className="text-gray-500">
                       <Archive className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p className="text-lg font-medium">No activity logs found</p>
@@ -327,6 +390,28 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                           <p className="text-gray-400">{new Date(log.createdAt).toLocaleDateString()}</p>
                         </div>
                       </TableCell>
+                      
+                      <TableCell>
+                        {canDeleteLog(log) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteClick(log)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
                     </TableRow>
                   )
                 })
@@ -363,6 +448,32 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Activity Log</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this activity log? This action cannot be undone.
+              <br />
+              <br />
+              <strong>Activity:</strong> {logToDelete?.title}
+              <br />
+              <strong>Description:</strong> {logToDelete?.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

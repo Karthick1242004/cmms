@@ -47,5 +47,16 @@ export const activityLogApi = {
     console.log('🚀 [Activity Log Client] - POST response:', result.success)
     
     return result
+  },
+
+  // Delete activity log
+  delete: async (id: string): Promise<{ success: boolean; message: string }> => {
+    console.log('🚀 [Activity Log Client] - DELETE request:', id)
+    
+    const result = await apiClient.delete<{ success: boolean; message: string }>(`${ENDPOINTS.ACTIVITY_LOGS}/${id}`)
+    
+    console.log('🚀 [Activity Log Client] - DELETE response:', result.success)
+    
+    return result
   }
 }
