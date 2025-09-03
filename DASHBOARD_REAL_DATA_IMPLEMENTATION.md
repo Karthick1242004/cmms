@@ -76,7 +76,7 @@ The original issue was that the dashboard stats were trying to fetch data from a
   ```
 
 ### 3. **Database Connection Configuration**
-- **MongoDB URI**: Uses your provided connection string to `mongodb+srv://karthick1242004:9894783774@karthick124.8ruyxjc.mongodb.net/cmms`
+
 - **Database**: `cmms`
 - **Collections Used**:
   - `assets` - For total assets count
@@ -138,7 +138,7 @@ If you encounter any issues:
 
 1. **Check environment variables** are set in `.env.local`:
    ```
-   MONGODB_URI=mongodb+srv://karthick1242004:9894783774@karthick124.8ruyxjc.mongodb.net/cmms
+
    ```
 
 2. **Verify MongoDB connection** by running:
