@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart, LineChart, PieChart, RefreshCw } from "lucide-react"
+import { BarChart, LineChart, PieChart, RefreshCw, BarChart3, Circle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 import { 
@@ -32,6 +32,12 @@ export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
+
+  // Chart type state for different sections
+  const [maintenanceChartType, setMaintenanceChartType] = useState<'bar' | 'pie' | 'line'>('bar')
+  const [assetChartType, setAssetChartType] = useState<'pie' | 'bar' | 'donut'>('pie')
+  const [metricsChartType, setMetricsChartType] = useState<'pie' | 'bar' | 'area'>('pie')
+  const [inventoryChartType, setInventoryChartType] = useState<'donut' | 'pie' | 'bar'>('donut')
 
   // Helper function to get auth headers (consistent with other API calls)
   const getAuthHeaders = () => {
@@ -1192,29 +1198,67 @@ export default function ReportsPage() {
   const costTrendData = reportData?.charts?.costTrend || getFallbackReportData().charts.costTrend
   const completionRateData = reportData?.charts?.completionRate || getFallbackReportData().charts.completionRate
   const uptimeData = reportData?.charts?.uptime || getFallbackReportData().charts.uptime
-  const maintenanceTypeData = reportData?.charts?.maintenanceTypes || getFallbackReportData().charts.maintenanceTypes
+  // Enhanced maintenance type data with guaranteed colors
+  const baseMaintentanceTypeData = reportData?.charts?.maintenanceTypes || getFallbackReportData().charts.maintenanceTypes
+  const maintenanceColors = ["#06b6d4", "#f59e0b", "#10b981", "#8b5cf6", "#ef4444"]
+  const maintenanceTypeData = baseMaintentanceTypeData.map((item: any, index: number) => ({
+    ...item,
+    fill: item.fill || maintenanceColors[index % maintenanceColors.length]
+  }))
 
-  // Additional data for specific tabs (loaded on demand)
-  const assetPerformanceData = reportData?.assets?.performance || [
-    { name: "Good", value: 1, fill: "#06b6d4" },
-    { name: "Out of Service", value: 0, fill: "#ef4444" },
-    { name: "Under Maintenance", value: 0, fill: "#f59e0b" },
-    { name: "Operational", value: 0, fill: "#10b981" },
+  // Enhanced asset performance data with guaranteed colors  
+  const baseAssetPerformanceData = reportData?.assets?.performance || [
+    { name: "Good", value: 1 },
+    { name: "Out of Service", value: 0 },
+    { name: "Under Maintenance", value: 0 },
+    { name: "Operational", value: 0 },
+  ]
+  const assetColors = ["#06b6d4", "#ef4444", "#f59e0b", "#10b981", "#8b5cf6"]
+  const assetPerformanceData = baseAssetPerformanceData.map((item: any, index: number) => ({
+    ...item,
+    fill: item.fill || assetColors[index % assetColors.length]
+  }))
+
+  // Enhanced maintenance metrics data with guaranteed colors
+  const baseMaintenanceMetricsData = reportData?.maintenance?.metrics || [
+    { name: "MTTR", value: 0 },
+    { name: "MTBF", value: 0 },
+    { name: "Availability", value: 0 },
+    { name: "Reliability", value: 0 },
+  ]
+  const metricsColors = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"]
+  const maintenanceMetricsData = baseMaintenanceMetricsData.map((item: any, index: number) => ({
+    ...item,
+    fill: item.fill || metricsColors[index % metricsColors.length]
+  }))
+
+  // Enhanced inventory data with guaranteed colors
+  const baseInventoryData = reportData?.inventory?.distribution || [
+    { category: "Critical Parts", value: 0 },
+    { category: "Standard Parts", value: 0 },
+    { category: "Consumables", value: 0 },
+    { category: "Tools", value: 0 },
   ]
 
-  const maintenanceMetricsData = reportData?.maintenance?.metrics || [
-    { name: "MTTR", value: 0, fill: "#8b5cf6" },
-    { name: "MTBF", value: 0, fill: "#06b6d4" },
-    { name: "Availability", value: 0, fill: "#10b981" },
-    { name: "Reliability", value: 0, fill: "#f59e0b" },
+  // Color palette for inventory categories
+  const inventoryColors = [
+    "#ef4444", // Red for Critical Parts
+    "#06b6d4", // Cyan for Standard Parts  
+    "#10b981", // Green for Consumables
+    "#f59e0b", // Orange for Tools
+    "#8b5cf6", // Purple for additional categories
+    "#f97316", // Orange-red for extras
+    "#06d6a0", // Mint green 
+    "#fbbf24", // Yellow
+    "#ec4899", // Pink
+    "#6366f1", // Indigo
   ]
 
-  const inventoryData = reportData?.inventory?.distribution || [
-    { category: "Critical Parts", value: 0, fill: "#ef4444" },
-    { category: "Standard Parts", value: 0, fill: "#06b6d4" },
-    { category: "Consumables", value: 0, fill: "#10b981" },
-    { category: "Tools", value: 0, fill: "#f59e0b" },
-  ]
+  // Ensure each inventory item has a color
+  const inventoryData = baseInventoryData.map((item: any, index: number) => ({
+    ...item,
+    fill: item.fill || inventoryColors[index % inventoryColors.length]
+  }))
 
   const chartConfig = {
     cost: { label: "Cost ($)", color: "#06b6d4" },
@@ -1224,6 +1268,259 @@ export default function ReportsPage() {
     corrective: { label: "Corrective", color: "#f59e0b" },
     predictive: { label: "Predictive", color: "#10b981" },
     hours: { label: "Hours", color: "#8b5cf6" },
+  }
+
+  // Helper function to render maintenance chart based on type
+  const renderMaintenanceChart = (type: 'bar' | 'pie' | 'line') => {
+    switch (type) {
+      case 'bar':
+        return (
+          <RechartsBarChart data={maintenanceTypeData} height={250}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" fontSize={10} />
+            <YAxis fontSize={10} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              {maintenanceTypeData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Bar>
+          </RechartsBarChart>
+        )
+      case 'line':
+        return (
+          <RechartsLineChart data={maintenanceTypeData} height={250}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" fontSize={10} />
+            <YAxis fontSize={10} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Line 
+              type="monotone" 
+              dataKey="value" 
+              stroke="#06b6d4" 
+              strokeWidth={3}
+              dot={{ fill: "#06b6d4", r: 4 }}
+            />
+          </RechartsLineChart>
+        )
+      case 'pie':
+      default:
+        return (
+          <RechartsPieChart width={300} height={250}>
+            <Pie
+              data={maintenanceTypeData}
+              cx="50%"
+              cy="50%"
+              outerRadius={80}
+              dataKey="value"
+              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              labelLine={false}
+            >
+              {maintenanceTypeData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+            <ChartTooltip 
+              content={<ChartTooltipContent />}
+              formatter={(value) => [`${value} tasks`, '']}
+            />
+          </RechartsPieChart>
+        )
+    }
+  }
+
+  // Helper function to render asset performance chart based on type
+  const renderAssetChart = (type: 'pie' | 'bar' | 'donut') => {
+    switch (type) {
+      case 'bar':
+        return (
+          <RechartsBarChart data={assetPerformanceData} height={250}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" fontSize={10} />
+            <YAxis fontSize={10} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              {assetPerformanceData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Bar>
+          </RechartsBarChart>
+        )
+      case 'donut':
+        return (
+          <RechartsPieChart width={300} height={250}>
+            <Pie
+              data={assetPerformanceData}
+              cx="50%"
+              cy="50%"
+              innerRadius={40}
+              outerRadius={80}
+              dataKey="value"
+              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              labelLine={false}
+            >
+              {assetPerformanceData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+            <ChartTooltip 
+              content={<ChartTooltipContent />}
+              formatter={(value) => [`${value} assets`, '']}
+            />
+          </RechartsPieChart>
+        )
+      case 'pie':
+      default:
+        return (
+          <RechartsPieChart width={300} height={250}>
+            <Pie
+              data={assetPerformanceData}
+              cx="50%"
+              cy="50%"
+              outerRadius={80}
+              dataKey="value"
+              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              labelLine={false}
+            >
+              {assetPerformanceData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+            <ChartTooltip 
+              content={<ChartTooltipContent />}
+              formatter={(value) => [`${value} assets`, '']}
+            />
+          </RechartsPieChart>
+        )
+    }
+  }
+
+  // Helper function to render maintenance metrics chart based on type
+  const renderMetricsChart = (type: 'pie' | 'bar' | 'area') => {
+    switch (type) {
+      case 'bar':
+        return (
+          <RechartsBarChart data={maintenanceMetricsData} height={250}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" fontSize={10} />
+            <YAxis fontSize={10} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              {maintenanceMetricsData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Bar>
+          </RechartsBarChart>
+        )
+      case 'area':
+        return (
+          <AreaChart data={maintenanceMetricsData} height={250}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" fontSize={10} />
+            <YAxis fontSize={10} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Area 
+              type="monotone" 
+              dataKey="value" 
+              stroke="#8b5cf6"
+              fill="#8b5cf6"
+              fillOpacity={0.3}
+            />
+          </AreaChart>
+        )
+      case 'pie':
+      default:
+        return (
+          <RechartsPieChart width={300} height={250}>
+            <Pie
+              data={maintenanceMetricsData}
+              cx="50%"
+              cy="50%"
+              outerRadius={80}
+              dataKey="value"
+              label={({ name, value }) => `${name}: ${value}${name.includes('MTTR') || name.includes('MTBF') ? 'hrs' : '%'}`}
+              labelLine={false}
+            >
+              {maintenanceMetricsData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+            <ChartTooltip 
+              content={<ChartTooltipContent />}
+              formatter={(value, name) => [
+                `${value}${String(name).includes('MTTR') || String(name).includes('MTBF') ? ' hrs' : '%'}`, 
+                name
+              ]}
+            />
+          </RechartsPieChart>
+        )
+    }
+  }
+
+  // Helper function to render inventory chart based on type
+  const renderInventoryChart = (type: 'donut' | 'pie' | 'bar') => {
+    switch (type) {
+      case 'bar':
+        return (
+          <RechartsBarChart data={inventoryData} height={250}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="category" fontSize={10} />
+            <YAxis fontSize={10} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              {inventoryData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Bar>
+          </RechartsBarChart>
+        )
+      case 'pie':
+        return (
+          <RechartsPieChart width={300} height={250}>
+            <Pie
+              data={inventoryData}
+              cx="50%"
+              cy="50%"
+              outerRadius={80}
+              dataKey="value"
+              label={({ category, percent }) => `${category}: ${(percent * 100).toFixed(0)}%`}
+              labelLine={false}
+            >
+              {inventoryData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+            <ChartTooltip 
+              content={<ChartTooltipContent />}
+              formatter={(value) => [`${value} units`, '']}
+            />
+          </RechartsPieChart>
+        )
+      case 'donut':
+      default:
+        return (
+          <RechartsPieChart width={300} height={250}>
+            <Pie
+              data={inventoryData}
+              cx="50%"
+              cy="50%"
+              innerRadius={40}
+              outerRadius={80}
+              dataKey="value"
+              label={({ category, percent }) => `${category}: ${(percent * 100).toFixed(0)}%`}
+              labelLine={false}
+            >
+              {inventoryData.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+            <ChartTooltip 
+              content={<ChartTooltipContent />}
+              formatter={(value) => [`${value} units`, '']}
+            />
+          </RechartsPieChart>
+        )
+    }
   }
 
   // Show loading state
@@ -1424,31 +1721,43 @@ export default function ReportsPage() {
 
           <Card className="transition-all duration-300 hover:shadow-md">
             <CardHeader>
-              <CardTitle>Maintenance Overview</CardTitle>
-              <CardDescription>Comprehensive view of maintenance activities</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Maintenance Overview</CardTitle>
+                  <CardDescription>Comprehensive view of maintenance activities</CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant={maintenanceChartType === 'bar' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMaintenanceChartType('bar')}
+                    className="p-2"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={maintenanceChartType === 'pie' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMaintenanceChartType('pie')}
+                    className="p-2"
+                  >
+                    <PieChart className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={maintenanceChartType === 'line' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMaintenanceChartType('line')}
+                    className="p-2"
+                  >
+                    <LineChart className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64 w-full flex justify-center">
                 <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
-                  <RechartsPieChart width={300} height={250}>
-                    <Pie
-                      data={maintenanceTypeData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {maintenanceTypeData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip 
-                      content={<ChartTooltipContent />}
-                      formatter={(value) => [`${value} tasks`, '']}
-                    />
-                  </RechartsPieChart>
+                  {renderMaintenanceChart(maintenanceChartType)}
                 </ChartContainer>
               </div>
             </CardContent>
@@ -1472,31 +1781,43 @@ export default function ReportsPage() {
         <TabsContent value="assets" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Asset Performance</CardTitle>
-              <CardDescription>Analysis of asset performance and reliability</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Asset Performance</CardTitle>
+                  <CardDescription>Analysis of asset performance and reliability</CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant={assetChartType === 'pie' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setAssetChartType('pie')}
+                    className="p-2"
+                  >
+                    <PieChart className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={assetChartType === 'bar' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setAssetChartType('bar')}
+                    className="p-2"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={assetChartType === 'donut' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setAssetChartType('donut')}
+                    className="p-2"
+                  >
+                    <Circle className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64 w-full flex justify-center">
                 <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
-                  <RechartsPieChart width={300} height={250}>
-                    <Pie
-                      data={assetPerformanceData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {assetPerformanceData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip 
-                      content={<ChartTooltipContent />}
-                      formatter={(value) => [`${value} assets`, '']}
-                    />
-                  </RechartsPieChart>
+                  {renderAssetChart(assetChartType)}
                 </ChartContainer>
               </div>
             </CardContent>
@@ -1506,34 +1827,43 @@ export default function ReportsPage() {
         <TabsContent value="maintenance" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Maintenance Metrics</CardTitle>
-              <CardDescription>Key performance indicators for maintenance operations</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Maintenance Metrics</CardTitle>
+                  <CardDescription>Key performance indicators for maintenance operations</CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant={metricsChartType === 'pie' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMetricsChartType('pie')}
+                    className="p-2"
+                  >
+                    <PieChart className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={metricsChartType === 'bar' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMetricsChartType('bar')}
+                    className="p-2"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={metricsChartType === 'area' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMetricsChartType('area')}
+                    className="p-2"
+                  >
+                    <LineChart className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64 w-full flex justify-center">
                 <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
-                  <RechartsPieChart width={300} height={250}>
-                    <Pie
-                      data={maintenanceMetricsData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}${name.includes('MTTR') || name.includes('MTBF') ? 'hrs' : '%'}`}
-                      labelLine={false}
-                    >
-                      {maintenanceMetricsData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip 
-                      content={<ChartTooltipContent />}
-                      formatter={(value, name) => [
-                        `${value}${String(name).includes('MTTR') || String(name).includes('MTBF') ? ' hrs' : '%'}`, 
-                        name
-                      ]}
-                    />
-                  </RechartsPieChart>
+                  {renderMetricsChart(metricsChartType)}
                 </ChartContainer>
               </div>
             </CardContent>
@@ -1543,32 +1873,43 @@ export default function ReportsPage() {
         <TabsContent value="inventory" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Inventory Analysis</CardTitle>
-              <CardDescription>Stock levels and inventory turnover metrics</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Inventory Analysis</CardTitle>
+                  <CardDescription>Stock levels and inventory turnover metrics</CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant={inventoryChartType === 'donut' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setInventoryChartType('donut')}
+                    className="p-2"
+                  >
+                    <Circle className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={inventoryChartType === 'pie' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setInventoryChartType('pie')}
+                    className="p-2"
+                  >
+                    <PieChart className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={inventoryChartType === 'bar' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setInventoryChartType('bar')}
+                    className="p-2"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64 w-full flex justify-center">
                 <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
-                  <RechartsPieChart width={300} height={250}>
-                    <Pie
-                      data={inventoryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={80}
-                      dataKey="value"
-                      label={({ category, percent }) => `${category}: ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {inventoryData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip 
-                      content={<ChartTooltipContent />}
-                      formatter={(value) => [`${value} units`, '']}
-                    />
-                  </RechartsPieChart>
+                  {renderInventoryChart(inventoryChartType)}
                 </ChartContainer>
               </div>
             </CardContent>
