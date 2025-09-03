@@ -25,7 +25,7 @@ import { InventoryHistoryDialog } from "@/components/parts/inventory-history-dia
 import { syncPartLinksToAssetBOM, syncPartDeletion } from "@/lib/asset-part-sync"
 import type { PartAssetSyncData, PartDeletionSyncData } from "@/lib/asset-part-sync"
 
-// Extracted form to prevent re-mount on every parent render (fixes input focus loss)
+// Extracted form to prevent re-mount on every parent render (fixes input focus loss
 function PartFormStandalone({
   isEdit = false,
   formData,
@@ -39,6 +39,7 @@ function PartFormStandalone({
   availableAssets,
   existingCategories,
   onAddNewCategory,
+  validationErrors = {},
 }: {
   isEdit?: boolean
   formData: Partial<Part>
@@ -52,6 +53,7 @@ function PartFormStandalone({
   availableAssets: Array<{ id: string; name: string; department: string }>
   existingCategories: string[]
   onAddNewCategory: (categoryName: string) => void
+  validationErrors?: Record<string, string>
 }) {
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState("")
@@ -142,7 +144,11 @@ function PartFormStandalone({
             value={formData.partNumber || ""}
             onChange={(e) => onInputChange('partNumber', e.target.value)}
             placeholder="e.g., HF-200-01"
+            className={validationErrors.partNumber ? "border-red-500 focus:border-red-500" : ""}
           />
+          {validationErrors.partNumber && (
+            <p className="text-sm text-red-500">{validationErrors.partNumber}</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="name">Part Name *</Label>
@@ -151,7 +157,11 @@ function PartFormStandalone({
             value={formData.name || ""}
             onChange={(e) => onInputChange('name', e.target.value)}
             placeholder="e.g., Hydraulic Filter"
+            className={validationErrors.name ? "border-red-500 focus:border-red-500" : ""}
           />
+          {validationErrors.name && (
+            <p className="text-sm text-red-500">{validationErrors.name}</p>
+          )}
         </div>
       </div>
       
@@ -165,9 +175,12 @@ function PartFormStandalone({
               value={formData.sku || ""}
               onChange={(e) => onInputChange('sku', e.target.value)}
               placeholder="e.g., SKU-HF200"
-              className="pl-8"
+              className={`pl-8 ${validationErrors.sku ? "border-red-500 focus:border-red-500" : ""}`}
             />
           </div>
+          {validationErrors.sku && (
+            <p className="text-sm text-red-500">{validationErrors.sku}</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="materialCode">Material Code *</Label>
@@ -176,7 +189,11 @@ function PartFormStandalone({
             value={formData.materialCode || ""}
             onChange={(e) => onInputChange('materialCode', e.target.value)}
             placeholder="e.g., MAT-HYD-FLT"
+            className={validationErrors.materialCode ? "border-red-500 focus:border-red-500" : ""}
           />
+          {validationErrors.materialCode && (
+            <p className="text-sm text-red-500">{validationErrors.materialCode}</p>
+          )}
         </div>
       </div>
 
@@ -197,7 +214,7 @@ function PartFormStandalone({
               id="category"
               value={formData.category || ""}
               onChange={(e) => onInputChange('category', e.target.value)}
-              className="flex-1 px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className={`flex-1 px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${validationErrors.category ? "border-red-500 focus:border-red-500" : ""}`}
               aria-label="Select part category"
             >
               <option value="">Select category</option>
@@ -216,6 +233,9 @@ function PartFormStandalone({
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+          {validationErrors.category && (
+            <p className="text-sm text-red-500">{validationErrors.category}</p>
+          )}
           {showNewCategoryInput && (
             <div className="flex gap-2 mt-2">
               <Input
@@ -244,7 +264,7 @@ function PartFormStandalone({
             id="department"
             value={formData.department || ""}
             onChange={(e) => onInputChange('department', e.target.value)}
-            className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className={`w-full px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${validationErrors.department ? "border-red-500 focus:border-red-500" : ""}`}
             disabled={!isSuperAdmin}
             aria-label="Select department"
           >
@@ -262,6 +282,9 @@ function PartFormStandalone({
                 )
             }
           </select>
+          {validationErrors.department && (
+            <p className="text-sm text-red-500">{validationErrors.department}</p>
+          )}
           {!isSuperAdmin && (
             <p className="text-sm text-muted-foreground">
               Department is auto-selected based on your role
@@ -526,13 +549,17 @@ function PartFormStandalone({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="supplier">Supplier</Label>
+          <Label htmlFor="supplier">Supplier *</Label>
           <Input
             id="supplier"
             value={formData.supplier || ""}
             onChange={(e) => onInputChange('supplier', e.target.value)}
             placeholder="Enter supplier name"
+            className={validationErrors.supplier ? "border-red-500 focus:border-red-500" : ""}
           />
+          {validationErrors.supplier && (
+            <p className="text-sm text-red-500">{validationErrors.supplier}</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
@@ -603,11 +630,13 @@ export default function PartsPage() {
   const [locations, setLocations] = useState<Location[]>([])
   const [availableAssets, setAvailableAssets] = useState<Array<{ id: string; name: string; department: string }>>([])
   const [newlyAddedCategories, setNewlyAddedCategories] = useState<string[]>([])
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   const { user } = useAuthStore()
   const isAdmin = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
   const isSuperAdmin = user?.accessLevel === 'super_admin'
+  const canCreateParts = !!user // Everyone can create parts
 
   // Form state for create/edit
   const [formData, setFormData] = useState<Partial<Part>>({
@@ -819,11 +848,97 @@ export default function PartsPage() {
   const uniqueLocations = [...new Set(parts.map(part => part.location).filter(Boolean))]
   const existingCategories = [...new Set([...parts.map(part => part.category).filter(Boolean), ...newlyAddedCategories])]
 
+  // Validation functions
+  const validateField = (field: string, value: any): string => {
+    switch (field) {
+      case 'partNumber':
+        if (!value || value.trim() === '') return 'Part Number is required'
+        if (value.length < 3) return 'Part Number must be at least 3 characters'
+        return ''
+      case 'name':
+        if (!value || value.trim() === '') return 'Part Name is required'
+        if (value.length < 2) return 'Part Name must be at least 2 characters'
+        return ''
+      case 'sku':
+        if (!value || value.trim() === '') return 'SKU Code is required'
+        if (value.length < 3) return 'SKU Code must be at least 3 characters'
+        return ''
+      case 'materialCode':
+        if (!value || value.trim() === '') return 'Material Code is required'
+        if (value.length < 3) return 'Material Code must be at least 3 characters'
+        return ''
+      case 'category':
+        if (!value || value.trim() === '') return 'Category is required'
+        return ''
+      case 'department':
+        if (!value || value.trim() === '') return 'Department is required'
+        return ''
+      case 'supplier':
+        if (!value || value.trim() === '') return 'Supplier is required'
+        return ''
+      case 'quantity':
+        if (value < 0) return 'Quantity cannot be negative'
+        return ''
+      case 'minStockLevel':
+        if (value < 0) return 'Minimum stock level cannot be negative'
+        return ''
+      case 'unitPrice':
+        if (value < 0) return 'Unit price cannot be negative'
+        return ''
+      default:
+        return ''
+    }
+  }
+
+  const validateForm = (): boolean => {
+    const requiredFields = ['partNumber', 'name', 'sku', 'materialCode', 'category', 'department', 'supplier']
+    const errors: Record<string, string> = {}
+    
+    // Validate required fields
+    requiredFields.forEach(field => {
+      const error = validateField(field, formData[field as keyof Part])
+      if (error) {
+        errors[field] = error
+      }
+    })
+
+    // Validate numeric fields
+    const numericFields = ['quantity', 'minStockLevel', 'unitPrice']
+    numericFields.forEach(field => {
+      if (formData[field as keyof Part] !== undefined) {
+        const error = validateField(field, formData[field as keyof Part])
+        if (error) {
+          errors[field] = error
+        }
+      }
+    })
+
+    // Validate location belongs to department (if provided)
+    if (formData.location && formData.department) {
+      const selectedLocation = locations.find(loc => loc.name === formData.location)
+      if (selectedLocation && selectedLocation.department !== formData.department) {
+        errors.location = 'Selected location does not belong to the selected department'
+      }
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleInputChange = (field: keyof Part, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }))
+    
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[field]
+        return newErrors
+      })
+    }
   }
 
   const handleAddNewCategory = (categoryName: string) => {
@@ -833,28 +948,14 @@ export default function PartsPage() {
   }
 
   const handleSubmit = async (isEdit: boolean = false) => {
+    // Validate form before submission
+    if (!validateForm()) {
+      toast.error('Please fix the validation errors before submitting')
+      return
+    }
+
     setIsLoading(true)
     try {
-      // Validate required fields (location is optional)
-      const requiredFields = ['partNumber', 'name', 'sku', 'materialCode', 'category', 'department', 'supplier']
-      const missingFields = requiredFields.filter(field => !formData[field as keyof Part])
-      
-      if (missingFields.length > 0) {
-        toast.error(`Please fill in required fields: ${missingFields.join(', ')}`)
-        setIsLoading(false)
-        return
-      }
-
-      // Validate location belongs to selected department (if provided)
-      if (formData.location && formData.department) {
-        const selectedLocation = locations.find(loc => loc.name === formData.location)
-        if (selectedLocation && selectedLocation.department !== formData.department) {
-          toast.error('Selected location does not belong to the selected department')
-          setIsLoading(false)
-          return
-        }
-      }
-
       // Get auth token for API calls
       const token = localStorage.getItem('auth-token')
       if (!token) {
@@ -977,6 +1078,7 @@ export default function PartsPage() {
           isCritical: false,
         })
         setSelectedPart(null)
+        setValidationErrors({}) // Clear validation errors
       } else {
         // Handle API errors
         if (response.status === 409) {
@@ -1005,6 +1107,7 @@ export default function PartsPage() {
       department: isSuperAdmin ? part.department : (user?.department || part.department)
     }
     setFormData(editFormData)
+    setValidationErrors({}) // Clear any existing validation errors
     setIsEditDialogOpen(true)
   }
 
@@ -1134,8 +1237,13 @@ export default function PartsPage() {
                 Sync from Assets
               </Button>
             )} */}
-            {isAdmin && (
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            {canCreateParts && (
+              <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+                setIsCreateDialogOpen(open)
+                if (open) {
+                  setValidationErrors({}) // Clear validation errors when opening
+                }
+              }}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
@@ -1161,6 +1269,7 @@ export default function PartsPage() {
                     availableAssets={availableAssets}
                     existingCategories={existingCategories}
                     onAddNewCategory={handleAddNewCategory}
+                    validationErrors={validationErrors}
                   />
                 </DialogContent>
               </Dialog>
@@ -1486,6 +1595,7 @@ export default function PartsPage() {
             availableAssets={availableAssets}
             existingCategories={existingCategories}
             onAddNewCategory={handleAddNewCategory}
+            validationErrors={validationErrors}
           />
         </DialogContent>
       </Dialog>
