@@ -17,11 +17,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { TicketCreationForm } from "@/components/ticket-creation-form"
-import { TicketReport } from "@/components/ticket-report"
+import { TicketsOverallReport } from "@/components/ticket/tickets-overall-report"
+import { generateIndividualTicketReport } from "@/components/ticket/ticket-individual-report"
 import { TicketListTable } from "@/components/ticket-list-table"
 import { TicketRecordsTable } from "@/components/ticket-records-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Search, Filter, FileText, Shield } from "lucide-react"
+import { Plus, Search, Filter, FileText, Shield, BarChart3 } from "lucide-react"
 import { toast } from "sonner"
 import type { Ticket, TicketFilters } from "@/types/ticket"
 import { useAuthStore } from "@/stores/auth-store"
@@ -39,12 +40,11 @@ export default function TicketsPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [reportTypeFilter, setReportTypeFilter] = useState("all")
   const [showOpenTickets, setShowOpenTickets] = useState(false)
-  const [selectedTicketForReport, setSelectedTicketForReport] = useState<Ticket | null>(null)
-  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("activities")
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false)
   const [ticketToVerify, setTicketToVerify] = useState<Ticket | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
+  const [isOverallReportOpen, setIsOverallReportOpen] = useState(false)
   
   const { user } = useAuthStore()
   
@@ -175,8 +175,7 @@ export default function TicketsPage() {
   }
 
   const handleGenerateReport = (ticket: Ticket) => {
-    setSelectedTicketForReport(ticket)
-    setIsReportDialogOpen(true)
+    generateIndividualTicketReport({ ticket });
   }
 
   const handleDeleteTicket = async (ticket: Ticket) => {
@@ -341,35 +340,39 @@ export default function TicketsPage() {
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex justify-between mt-4 items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Tickets</h1>
-            <p className="text-muted-foreground">Manage support tickets and service requests</p>
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Ticket
+                  <div className="flex justify-between mt-4 items-center">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Tickets</h1>
+              <p className="text-muted-foreground">Manage support tickets and service requests</p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => setIsOverallReportOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Generate Report
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-              {/* <DialogHeader>
-                <DialogTitle>Create New Ticket</DialogTitle>
-                <DialogDescription>
-                  Report an issue or request service from your team
-                </DialogDescription>
-              </DialogHeader> */}
-              <TicketCreationForm 
-                onSuccess={() => {
-                  setIsDialogOpen(false)
-                  fetchTickets() // Refresh the tickets list
-                }}
-                onCancel={() => setIsDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Ticket
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                  <TicketCreationForm 
+                    onSuccess={() => {
+                      setIsDialogOpen(false)
+                      fetchTickets() // Refresh the tickets list
+                    }}
+                    onCancel={() => setIsDialogOpen(false)}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
       </PageHeader>
 
       <PageContent>
@@ -585,18 +588,6 @@ export default function TicketsPage() {
           </CardContent>
         </Card>
 
-        {/* Ticket Report Dialog */}
-        {selectedTicketForReport && (
-          <TicketReport
-            ticket={selectedTicketForReport}
-            isOpen={isReportDialogOpen}
-            onClose={() => {
-              setIsReportDialogOpen(false)
-              setSelectedTicketForReport(null)
-            }}
-          />
-        )}
-
         {/* Ticket Verification Dialog */}
         <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
           <DialogContent>
@@ -664,6 +655,13 @@ export default function TicketsPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Overall Report */}
+        <TicketsOverallReport
+          tickets={tickets}
+          isOpen={isOverallReportOpen}
+          onClose={() => setIsOverallReportOpen(false)}
+        />
       </PageContent>
     </PageLayout>
   )
