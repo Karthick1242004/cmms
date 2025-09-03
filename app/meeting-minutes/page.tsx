@@ -31,7 +31,8 @@ import {
   Clock3,
   Archive,
   Building2,
-  Loader2
+  Loader2,
+  BarChart3
 } from 'lucide-react';
 import { useMeetingMinutesList, useMeetingMinutesActions, useMeetingMinutesStats, useSelectedMeetingMinutes } from '@/stores/meeting-minutes-store';
 import { useDepartments } from '@/hooks/use-departments';
@@ -39,6 +40,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import type { MeetingMinutes, MeetingMinutesFilters } from '@/types/meeting-minutes';
 import { MeetingMinutesForm } from '@/components/meeting-minutes/meeting-minutes-form';
 import { MeetingMinutesView } from '@/components/meeting-minutes/meeting-minutes-view';
+import { MeetingMinutesOverallReport } from '@/components/meeting-minutes/meeting-minutes-overall-report';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -56,6 +58,9 @@ export default function MeetingMinutesPage() {
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('meetingDateTime');
   const [sortOrder, setSortOrder] = useState<string>('desc');
+
+  // Report dialog state
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   // Hooks
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -325,25 +330,35 @@ export default function MeetingMinutesPage() {
                 )}
               </div>
 
-              {/* Create Button */}
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Meeting Minutes
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Create Meeting Minutes</DialogTitle>
-                  </DialogHeader>
-                  <MeetingMinutesForm
-                    onSuccess={handleCreateSuccess}
-                    onCancel={() => setIsCreateDialogOpen(false)}
-                    userContext={userContext!}
-                  />
-                </DialogContent>
-              </Dialog>
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setReportDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Generate Report
+                </Button>
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Meeting Minutes
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Create Meeting Minutes</DialogTitle>
+                    </DialogHeader>
+                    <MeetingMinutesForm
+                      onSuccess={handleCreateSuccess}
+                      onCancel={() => setIsCreateDialogOpen(false)}
+                      userContext={userContext!}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </CardHeader>
 
@@ -581,6 +596,13 @@ export default function MeetingMinutesPage() {
           isOpen={isViewDialogOpen}
           onClose={() => setViewDialogOpen(false)}
           meetingMinutes={selectedMeetingMinutes}
+        />
+
+        {/* Meeting Minutes Overall Report Dialog */}
+        <MeetingMinutesOverallReport
+          meetingMinutes={meetingMinutes}
+          isOpen={reportDialogOpen}
+          onClose={() => setReportDialogOpen(false)}
         />
       </div>
     </PageLayout>

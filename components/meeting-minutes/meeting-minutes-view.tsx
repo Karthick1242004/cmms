@@ -23,11 +23,13 @@ import {
   Target,
   Paperclip,
   Download,
-  Timer
+  Timer,
+  BarChart3
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { MeetingMinutes, ActionItem } from '@/types/meeting-minutes';
 import { cn } from '@/lib/utils';
+import { generateIndividualMeetingMinutesReport } from './meeting-minutes-individual-report';
 
 const statusColors = {
   'published': 'bg-green-100 text-green-800 border-green-200',
@@ -77,14 +79,25 @@ export function MeetingMinutesView({ isOpen, onClose, meetingMinutes }: MeetingM
               <Eye className="h-5 w-5" />
               Meeting Minutes Details
             </DialogTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onClose}
-              className="h-6 w-6 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generateIndividualMeetingMinutesReport({ meetingMinutes })}
+                className="flex items-center gap-2"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Report
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onClose}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
