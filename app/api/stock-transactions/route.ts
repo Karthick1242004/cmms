@@ -42,6 +42,28 @@ const StockTransactionSchema = new mongoose.Schema({
     maxlength: [500, 'Description cannot exceed 500 characters']
   },
   
+  // New vendor and procurement fields
+  materialCode: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'Material code cannot exceed 50 characters']
+  },
+  purchaseOrderNumber: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'Purchase order number cannot exceed 50 characters']
+  },
+  vendorName: {
+    type: String,
+    trim: true,
+    maxlength: [200, 'Vendor name cannot exceed 200 characters']
+  },
+  vendorContact: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Vendor contact cannot exceed 100 characters']
+  },
+  
   // Source/Destination Information
   sourceLocation: { 
     type: String,
@@ -295,6 +317,10 @@ export async function GET(request: NextRequest) {
       transactionDate: transaction.transactionDate,
       referenceNumber: transaction.referenceNumber,
       description: transaction.description,
+      materialCode: transaction.materialCode,
+      purchaseOrderNumber: transaction.purchaseOrderNumber,
+      vendorName: transaction.vendorName,
+      vendorContact: transaction.vendorContact,
       sourceLocation: transaction.sourceLocation,
       destinationLocation: transaction.destinationLocation,
       supplier: transaction.supplier,
@@ -314,6 +340,7 @@ export async function GET(request: NextRequest) {
       approvedByName: transaction.approvedByName,
       approvedAt: transaction.approvedAt,
       status: transaction.status,
+      priority: transaction.priority,
       notes: transaction.notes,
       internalNotes: transaction.internalNotes,
       totalItems: transaction.totalItems,
@@ -392,6 +419,10 @@ export async function POST(request: NextRequest) {
       transactionDate: savedTransaction.transactionDate,
       referenceNumber: savedTransaction.referenceNumber,
       description: savedTransaction.description,
+      materialCode: savedTransaction.materialCode,
+      purchaseOrderNumber: savedTransaction.purchaseOrderNumber,
+      vendorName: savedTransaction.vendorName,
+      vendorContact: savedTransaction.vendorContact,
       sourceLocation: savedTransaction.sourceLocation,
       destinationLocation: savedTransaction.destinationLocation,
       supplier: savedTransaction.supplier,

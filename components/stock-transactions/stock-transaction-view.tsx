@@ -266,6 +266,36 @@ export function StockTransactionView({
           </CardContent>
         </Card>
 
+        {/* Vendor Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Vendor & Procurement
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="text-muted-foreground">Material Code:</span>
+                <p className="font-medium">{transaction.materialCode || 'Not specified'}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Purchase Order:</span>
+                <p className="font-medium">{transaction.purchaseOrderNumber || 'Not specified'}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Vendor Name:</span>
+                <p className="font-medium">{transaction.vendorName || 'Not specified'}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Vendor Contact:</span>
+                <p className="font-medium">{transaction.vendorContact || 'Not specified'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Summary */}
         <Card>
           <CardHeader>

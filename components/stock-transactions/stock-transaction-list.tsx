@@ -418,10 +418,12 @@ export function StockTransactionList({
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead>Material Code</TableHead>
+                  <TableHead>PO Number</TableHead>
+                  <TableHead>Vendor Name</TableHead>
+                  {/* <TableHead>Vendor Contact</TableHead> */}
                   <TableHead>Items</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Created By</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -430,7 +432,7 @@ export function StockTransactionList({
               <TableBody>
                 {filteredTransactions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8">
+                    <TableCell colSpan={11} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
                         <Package className="h-8 w-8 text-muted-foreground" />
                         <p className="text-muted-foreground">
@@ -463,15 +465,25 @@ export function StockTransactionList({
                         {format(new Date(transaction.transactionDate), 'MMM dd, yyyy')}
                       </TableCell>
                       <TableCell>
-                        <div className="max-w-[200px] truncate" title={transaction.description}>
-                          {transaction.description}
+                        <div className="text-sm">
+                          {transaction.materialCode || '-'}
                         </div>
-                        {transaction.referenceNumber && (
-                          <div className="text-sm text-muted-foreground">
-                            Ref: {transaction.referenceNumber}
-                          </div>
-                        )}
                       </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {transaction.purchaseOrderNumber || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {transaction.vendorName || '-'}
+                        </div>
+                      </TableCell>
+                      {/* <TableCell>
+                        <div className="text-sm">
+                          {transaction.vendorContact || '-'}
+                        </div>
+                      </TableCell> */}
                       <TableCell>
                         <div className="text-sm">
                           {transaction.totalItems || transaction.items.length} item{(transaction.totalItems || transaction.items.length) !== 1 ? 's' : ''}
@@ -487,12 +499,6 @@ export function StockTransactionList({
                         >
                           {getStatusIcon(transaction.status)}
                           <span className="capitalize">{transaction.status}</span>
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getPriorityBadgeVariant(transaction.priority)}>
-                          {transaction.priority === 'urgent' && <AlertTriangle className="h-3 w-3 mr-1" />}
-                          <span className="capitalize">{transaction.priority}</span>
                         </Badge>
                       </TableCell>
                       <TableCell>

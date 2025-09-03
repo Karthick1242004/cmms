@@ -77,6 +77,21 @@ const stockTransactionFormSchema = z.object({
     .min(1, "Description is required")
     .min(10, "Description must be at least 10 characters")
     .max(500, "Description cannot exceed 500 characters"),
+  
+  // New vendor and procurement fields
+  materialCode: z.string()
+    .max(50, "Material code cannot exceed 50 characters")
+    .optional(),
+  purchaseOrderNumber: z.string()
+    .max(50, "Purchase order number cannot exceed 50 characters")
+    .optional(),
+  vendorName: z.string()
+    .max(200, "Vendor name cannot exceed 200 characters")
+    .optional(),
+  vendorContact: z.string()
+    .max(100, "Vendor contact cannot exceed 100 characters")
+    .optional(),
+    
   sourceLocation: z.string()
     .max(200, "Source location cannot exceed 200 characters")
     .optional(),
@@ -225,6 +240,10 @@ export function StockTransactionForm({
       transactionDate: initialData?.transactionDate ? new Date(initialData.transactionDate) : new Date(),
       referenceNumber: initialData?.referenceNumber || '',
       description: initialData?.description || '',
+      materialCode: initialData?.materialCode || '',
+      purchaseOrderNumber: initialData?.purchaseOrderNumber || '',
+      vendorName: initialData?.vendorName || '',
+      vendorContact: initialData?.vendorContact || '',
       sourceLocation: initialData?.sourceLocation || '',
       destinationLocation: initialData?.destinationLocation || '',
       supplier: initialData?.supplier || '',
@@ -257,8 +276,8 @@ export function StockTransactionForm({
         await Promise.all([
           fetchParts(),
           fetchLocations(),
-          fetchAssets({ fetchAll: true }), // Fetch all assets for dropdown
-          fetchEmployees({ fetchAll: true }), // Fetch all employees for dropdown
+          fetchAssets(), // Fetch all assets for dropdown
+          fetchEmployees(), // Fetch all employees for dropdown
         ]);
       } catch (error) {
         console.error('Error loading form data:', error);
@@ -689,6 +708,66 @@ export function StockTransactionForm({
                   <FormLabel>Reference Number</FormLabel>
                   <FormControl>
                     <Input placeholder="PO#, WO#, etc." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Material Code */}
+            <FormField
+              control={form.control}
+              name="materialCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Material Code (MC)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter material code" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Purchase Order Number */}
+            <FormField
+              control={form.control}
+              name="purchaseOrderNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Purchase Order Number (PO)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter PO number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Vendor Name */}
+            <FormField
+              control={form.control}
+              name="vendorName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vendor Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter vendor name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Vendor Contact */}
+            <FormField
+              control={form.control}
+              name="vendorContact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vendor Contact</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Phone, email, or contact person" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

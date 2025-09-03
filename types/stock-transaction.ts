@@ -19,6 +19,12 @@ export interface StockTransaction {
   referenceNumber?: string;
   description: string;
   
+  // New vendor and procurement fields
+  materialCode?: string; // Material Code (MC)
+  purchaseOrderNumber?: string; // Purchase Order Number (PO)
+  vendorName?: string; // Vendor Name
+  vendorContact?: string; // Vendor Contact
+  
   // Source/Destination Information
   sourceLocation?: string;
   destinationLocation?: string;
@@ -77,6 +83,13 @@ export interface StockTransactionFormData {
   transactionDate: string;
   referenceNumber?: string;
   description: string;
+  
+  // New vendor and procurement fields
+  materialCode?: string;
+  purchaseOrderNumber?: string;
+  vendorName?: string;
+  vendorContact?: string;
+  
   sourceLocation?: string;
   destinationLocation?: string;
   supplier?: string;
