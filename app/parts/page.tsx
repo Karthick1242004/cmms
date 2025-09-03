@@ -270,20 +270,30 @@ function PartFormStandalone({
         </div>
         <div className="space-y-2">
           <Label htmlFor="location">Location</Label>
-          <select
-            id="location"
-            value={formData.location || ""}
-            onChange={(e) => onInputChange('location', e.target.value)}
-            className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Select location"
-          >
-            <option value="">Select location</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.name}>
-                {loc.name}
-              </option>
-            ))}
-          </select>
+          <Select value={formData.location || "none"} onValueChange={(value) => onInputChange('location', value === "none" ? "" : value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No location assigned</SelectItem>
+              {locations
+                .filter(location => 
+                  isSuperAdmin || 
+                  location.department === (formData.department || currentUserDepartment)
+                )
+                .map((location) => (
+                <SelectItem key={location.id} value={location.name}>
+                  {location.name} - {location.type}
+                  {location.code && ` (${location.code})`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {locations.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No locations available. Contact admin to add locations.
+            </p>
+          )}
         </div>
       </div>
 
@@ -580,6 +590,7 @@ export default function PartsPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [stockFilter, setStockFilter] = useState("all")
+  const [locationFilter, setLocationFilter] = useState("all")
   const [parts, setParts] = useState<Part[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -635,6 +646,17 @@ export default function PartsPage() {
       setFormData(prev => ({ ...prev, department: user.department }))
     }
   }, [user, isSuperAdmin, formData.department])
+
+  // Clear location when department changes (for super admins)
+  useEffect(() => {
+    if (isSuperAdmin && formData.department) {
+      // Keep location if it belongs to the new department
+      const availableLocationsForDept = locations.filter(loc => loc.department === formData.department)
+      if (formData.location && !availableLocationsForDept.some(loc => loc.name === formData.location)) {
+        setFormData(prev => ({ ...prev, location: "" }))
+      }
+    }
+  }, [formData.department, locations, isSuperAdmin])
 
   const fetchParts = async (autoSync = false) => {
     setIsLoading(true)
@@ -773,15 +795,19 @@ export default function PartsPage() {
       part.partNumber.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       part.sku.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       part.materialCode.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      part.supplier.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      part.supplier.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      (part.location && part.location.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
 
     const matchesDepartment = departmentFilter === "all" || part.department === departmentFilter
     const matchesCategory = categoryFilter === "all" || part.category === categoryFilter
+    const matchesLocation = locationFilter === "all" || 
+      (locationFilter === "no_location" && (!part.location || part.location === "")) ||
+      part.location === locationFilter
     const matchesStock = stockFilter === "all" || 
       (stockFilter === "low" && part.quantity <= part.minStockLevel) ||
       (stockFilter === "normal" && part.quantity > part.minStockLevel)
 
-    return matchesSearch && matchesDepartment && matchesCategory && matchesStock
+    return matchesSearch && matchesDepartment && matchesCategory && matchesLocation && matchesStock
   })
 
   // Calculate summary statistics
@@ -790,6 +816,7 @@ export default function PartsPage() {
   const totalValue = filteredParts.reduce((sum, part) => sum + (part.quantity * part.unitPrice), 0)
   const uniqueDepartments = [...new Set(parts.map(part => part.department))]
   const uniqueCategories = [...new Set(parts.map(part => part.category))]
+  const uniqueLocations = [...new Set(parts.map(part => part.location).filter(Boolean))]
   const existingCategories = [...new Set([...parts.map(part => part.category).filter(Boolean), ...newlyAddedCategories])]
 
   const handleInputChange = (field: keyof Part, value: any) => {
@@ -808,14 +835,24 @@ export default function PartsPage() {
   const handleSubmit = async (isEdit: boolean = false) => {
     setIsLoading(true)
     try {
-      // Validate required fields
-      const requiredFields = ['partNumber', 'name', 'sku', 'materialCode', 'category', 'department', 'supplier', 'location']
+      // Validate required fields (location is optional)
+      const requiredFields = ['partNumber', 'name', 'sku', 'materialCode', 'category', 'department', 'supplier']
       const missingFields = requiredFields.filter(field => !formData[field as keyof Part])
       
       if (missingFields.length > 0) {
         toast.error(`Please fill in required fields: ${missingFields.join(', ')}`)
         setIsLoading(false)
         return
+      }
+
+      // Validate location belongs to selected department (if provided)
+      if (formData.location && formData.department) {
+        const selectedLocation = locations.find(loc => loc.name === formData.location)
+        if (selectedLocation && selectedLocation.department !== formData.department) {
+          toast.error('Selected location does not belong to the selected department')
+          setIsLoading(false)
+          return
+        }
       }
 
       // Get auth token for API calls
@@ -1176,13 +1213,13 @@ export default function PartsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-5">
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
               <div className="space-y-1">
                 <label className="text-xs font-medium">Search</label>
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-3 w-3 text-muted-foreground" />
                   <Input
-                    placeholder="Search parts, SKU, material code..."
+                    placeholder="Search parts, locations..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-7 h-8 text-sm"
@@ -1221,6 +1258,22 @@ export default function PartsPage() {
               </div>
 
               <div className="space-y-1">
+                <label className="text-xs font-medium">Location</label>
+                <Select value={locationFilter} onValueChange={setLocationFilter}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="All locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    <SelectItem value="no_location">No Location Assigned</SelectItem>
+                    {uniqueLocations.map(location => (
+                      <SelectItem key={location} value={location}>{location}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
                 <label className="text-xs font-medium">Stock Level</label>
                 <Select value={stockFilter} onValueChange={setStockFilter}>
                   <SelectTrigger className="h-8 text-sm">
@@ -1234,13 +1287,23 @@ export default function PartsPage() {
                 </Select>
               </div>
 
-              {/* <div className="space-y-1">
+              <div className="space-y-1">
                 <label className="text-xs font-medium">Actions</label>
-                <Button variant="outline" size="sm" className="w-full h-8 text-xs">
-                  <Download className="mr-1 h-3 w-3" />
-                  Export
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full h-8 text-xs"
+                  onClick={() => {
+                    setSearchTerm("")
+                    setDepartmentFilter("all")
+                    setCategoryFilter("all")
+                    setLocationFilter("all")
+                    setStockFilter("all")
+                  }}
+                >
+                  Clear Filters
                 </Button>
-              </div> */}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1264,6 +1327,7 @@ export default function PartsPage() {
                     <TableHead className="text-xs font-medium py-2">Part Details</TableHead>
                     <TableHead className="text-xs font-medium py-2">SKU / Material Code</TableHead>
                     <TableHead className="text-xs font-medium py-2">Category</TableHead>
+                    <TableHead className="text-xs font-medium py-2">Location</TableHead>
                     <TableHead className="text-xs font-medium py-2">Linked Assets</TableHead>
                     <TableHead className="text-xs font-medium py-2">Stock Status</TableHead>
                     <TableHead className="text-xs font-medium py-2">Quantity</TableHead>
@@ -1299,6 +1363,17 @@ export default function PartsPage() {
                           <Badge variant="secondary" className="text-xs">
                             {part.category}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="text-xs">
+                            {part.location ? (
+                              <Badge variant="outline" className="text-xs">
+                                {part.location}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground italic">No location</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="space-y-1">
