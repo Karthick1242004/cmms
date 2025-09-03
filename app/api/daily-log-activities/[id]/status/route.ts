@@ -101,6 +101,17 @@ export async function PATCH(
       );
     }
 
+    // Auto-set end time when activity is completed or verified (if not already set)
+    const currentTime = new Date().toTimeString().slice(0, 5); // HH:MM format
+    const shouldSetEndTime = (finalStatus === 'completed' || finalStatus === 'verified') && !existingActivity.endTime;
+    
+    // Calculate downtime if setting end time
+    let downtime = null;
+    if (shouldSetEndTime && existingActivity.startTime) {
+      const { calculateDowntime } = await import('@/lib/downtime-utils');
+      downtime = calculateDowntime(existingActivity.startTime, currentTime);
+    }
+
     // Prepare update data
     const updateData: any = {
       $set: {
@@ -108,7 +119,11 @@ export async function PATCH(
         updatedAt: now,
         lastUpdatedBy: user.id,
         lastUpdatedByName: user.name,
-        ...(remarks && { statusChangeRemarks: remarks })
+        ...(remarks && { statusChangeRemarks: remarks }),
+        ...(shouldSetEndTime && { 
+          endTime: currentTime,
+          ...(downtime !== null && { downtime })
+        })
       },
       $push: {
         activityHistory: historyEntry

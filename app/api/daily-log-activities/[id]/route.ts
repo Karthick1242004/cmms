@@ -92,7 +92,8 @@ export async function PUT(
       if (user.accessLevel === 'department_admin' && existingActivity.departmentName === user.department) return true;
       
       // Regular users can only update activities assigned to them
-      if (existingActivity.assignedTo === user.id || existingActivity.attendedBy === user.id) return true;
+      const attendedBy = Array.isArray(existingActivity.attendedBy) ? existingActivity.attendedBy : [existingActivity.attendedBy];
+      if (existingActivity.assignedTo === user.id || attendedBy.includes(user.id)) return true;
       
       // Users can update activities they created
       if (existingActivity.createdBy === user.id) return true;
@@ -154,16 +155,34 @@ export async function PUT(
       updates.assetName = asset.assetName;
     }
 
-    // Validate attendedBy if being updated
+    // Validate attendedBy if being updated (support both single and multiple attendees)
     if (updates.attendedBy) {
-      const employee = await db.collection('employees').findOne({ _id: new ObjectId(updates.attendedBy) });
-      if (!employee) {
-        return NextResponse.json(
-          { success: false, message: 'Invalid employee specified for attended by' },
-          { status: 400 }
-        );
+      const attendedByArray = Array.isArray(updates.attendedBy) ? updates.attendedBy : [updates.attendedBy];
+      const validatedAttendees = [];
+      const attendeeNames = [];
+      const attendeeDetails = [];
+
+      for (const attendeeId of attendedByArray) {
+        const employee = await db.collection('employees').findOne({ _id: new ObjectId(attendeeId) });
+        if (!employee) {
+          return NextResponse.json(
+            { success: false, message: `Invalid employee specified for attended by: ${attendeeId}` },
+            { status: 400 }
+          );
+        }
+        validatedAttendees.push(attendeeId);
+        attendeeNames.push(employee.name);
+        attendeeDetails.push({
+          id: employee._id.toString(),
+          name: employee.name,
+          role: employee.role || '',
+          department: employee.department || ''
+        });
       }
-      updates.attendedByName = employee.name;
+
+      updates.attendedBy = validatedAttendees;
+      updates.attendedByName = attendeeNames;
+      updates.attendedByDetails = attendeeDetails;
     }
 
     // Validate verifiedBy if being updated
@@ -246,6 +265,20 @@ export async function PUT(
         previousValue: null,
         newValue: null
       });
+    }
+
+    // Calculate downtime if both start and end times are available
+    if ((updates.startTime || existingActivity.startTime) && (updates.endTime || existingActivity.endTime)) {
+      const startTime = updates.startTime || existingActivity.startTime;
+      const endTime = updates.endTime || existingActivity.endTime;
+      
+      if (startTime && endTime) {
+        const { calculateDowntime } = await import('@/lib/downtime-utils');
+        const calculatedDowntime = calculateDowntime(startTime, endTime);
+        if (calculatedDowntime !== null) {
+          updates.downtime = calculatedDowntime;
+        }
+      }
     }
 
     // Add updatedAt timestamp

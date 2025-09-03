@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
       // Normal users can only see activities assigned to them or in their department
       filter.$or = [
         { assignedTo: user.id }, // Activities assigned to them
-        { attendedBy: user.id }, // Activities they are attending to
+        { attendedBy: user.id }, // Activities they are attending to (single attendee)
+        { attendedBy: { $in: [user.id] } }, // Activities they are attending to (multiple attendees)
         { createdBy: user.id }, // Activities they created
         // Also include unassigned activities in their department for assignment purposes
         { 
@@ -174,11 +175,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate required fields
-    if (!body.time || !body.area || !body.departmentId || !body.assetId || !body.natureOfProblem || !body.commentsOrSolution || !body.attendedBy) {
+    const startTime = body.startTime || body.time; // Support both legacy and new field
+    const attendedBy = Array.isArray(body.attendedBy) ? body.attendedBy : [body.attendedBy]; // Ensure array format
+    
+    if (!startTime || !body.area || !body.departmentId || !body.assetId || 
+        !body.natureOfProblem || !body.commentsOrSolution || 
+        attendedBy.length === 0 || attendedBy[0] === '') {
       return NextResponse.json(
-        { success: false, message: 'Required fields are missing' },
+        { success: false, message: 'Required fields are missing including start time and at least one attendee' },
         { status: 400 }
       );
+    }
+
+    // Process attendee data
+    const attendedByArray = Array.isArray(body.attendedBy) ? body.attendedBy : [body.attendedBy];
+    const attendedByNameArray = Array.isArray(body.attendedByName) ? body.attendedByName : [body.attendedByName];
+    
+    // Prepare time and downtime data
+    body.startTime = startTime;
+    body.time = startTime; // Keep legacy field for backward compatibility
+    body.attendedBy = attendedByArray;
+    body.attendedByName = attendedByNameArray;
+    
+    // Calculate downtime if both start and end times are provided
+    let calculatedDowntime = null;
+    if (body.startTime && body.endTime) {
+      const { calculateDowntime } = await import('@/lib/downtime-utils');
+      calculatedDowntime = calculateDowntime(body.startTime, body.endTime);
     }
 
     const now = new Date();
@@ -213,6 +236,9 @@ export async function POST(request: NextRequest) {
     const activityData = {
       date: body.date ? new Date(body.date) : new Date(),
       time: body.time,
+      startTime: body.startTime,
+      endTime: body.endTime || null,
+      downtime: calculatedDowntime,
       area: body.area,
       departmentId: body.departmentId,
       departmentName: body.departmentName,

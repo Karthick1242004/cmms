@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { LoadingSpinner } from '@/components/loading-spinner';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary-config';
 import { DailyLogActivityImageUpload } from './daily-log-activity-image-upload';
+import { calculateDowntime, formatDowntime, isValidTimeFormat } from '@/lib/downtime-utils';
 import { toast } from 'sonner';
 import type { 
   DailyLogActivityFormData, 
@@ -62,6 +63,8 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
   const [formData, setFormData] = useState<DailyLogActivityFormData>({
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().slice(0, 5),
+    startTime: new Date().toTimeString().slice(0, 5),
+    endTime: '',
     area: '',
     departmentId: '',
     departmentName: '',
@@ -69,8 +72,9 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     assetName: '',
     natureOfProblem: '',
     commentsOrSolution: '',
-    attendedBy: '',
-    attendedByName: '',
+    attendedBy: [],
+    attendedByName: [],
+    attendedByDetails: [],
     priority: 'medium',
     status: 'open',
     images: [],
@@ -84,6 +88,13 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [calculatedDowntime, setCalculatedDowntime] = useState<number | null>(null);
+
+  // Calculate downtime when start or end time changes
+  useEffect(() => {
+    const downtime = calculateDowntime(formData.startTime, formData.endTime);
+    setCalculatedDowntime(downtime);
+  }, [formData.startTime, formData.endTime]);
 
   // Load employees on component mount
   useEffect(() => {
@@ -148,7 +159,9 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
       const activityToEdit = selectedActivity || editingActivity;
       setFormData({
         date: new Date(activityToEdit.date).toISOString().split('T')[0],
-        time: activityToEdit.time,
+        time: activityToEdit.time || activityToEdit.startTime,
+        startTime: activityToEdit.startTime || activityToEdit.time,
+        endTime: activityToEdit.endTime || '',
         area: activityToEdit.area,
         departmentId: activityToEdit.departmentId,
         departmentName: activityToEdit.departmentName,
@@ -156,8 +169,9 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
         assetName: activityToEdit.assetName,
         natureOfProblem: activityToEdit.natureOfProblem,
         commentsOrSolution: activityToEdit.commentsOrSolution,
-        attendedBy: activityToEdit.attendedBy,
-        attendedByName: activityToEdit.attendedByName,
+        attendedBy: Array.isArray(activityToEdit.attendedBy) ? activityToEdit.attendedBy : [activityToEdit.attendedBy],
+        attendedByName: Array.isArray(activityToEdit.attendedByName) ? activityToEdit.attendedByName : [activityToEdit.attendedByName],
+        attendedByDetails: activityToEdit.attendedByDetails || [],
         verifiedBy: activityToEdit.verifiedBy,
         verifiedByName: activityToEdit.verifiedByName,
         priority: activityToEdit.priority,
@@ -170,6 +184,8 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
       const defaultFormData: DailyLogActivityFormData = {
         date: new Date().toISOString().split('T')[0],
         time: new Date().toTimeString().slice(0, 5),
+        startTime: new Date().toTimeString().slice(0, 5),
+        endTime: '',
         area: '',
         departmentId: '',
         departmentName: '',
@@ -177,8 +193,9 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
         assetName: '',
         natureOfProblem: '',
         commentsOrSolution: '',
-        attendedBy: '',
-        attendedByName: '',
+        attendedBy: [],
+        attendedByName: [],
+        attendedByDetails: [],
         priority: 'medium',
         status: 'open',
         images: [],
@@ -225,11 +242,35 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
   const handleEmployeeChange = (employeeId: string) => {
     const employee = employees.find(e => e.id === employeeId);
     if (employee) {
-      setFormData(prev => ({
-        ...prev,
-        attendedBy: employee.id,
-        attendedByName: employee.name,
-      }));
+      setFormData(prev => {
+        const isAlreadySelected = prev.attendedBy.includes(employee.id);
+        
+        if (isAlreadySelected) {
+          // Remove employee if already selected
+          return {
+            ...prev,
+            attendedBy: prev.attendedBy.filter(id => id !== employee.id),
+            attendedByName: prev.attendedByName.filter(name => name !== employee.name),
+            attendedByDetails: prev.attendedByDetails?.filter(detail => detail.id !== employee.id),
+          };
+        } else {
+          // Add employee if not selected
+          return {
+            ...prev,
+            attendedBy: [...prev.attendedBy, employee.id],
+            attendedByName: [...prev.attendedByName, employee.name],
+            attendedByDetails: [
+              ...(prev.attendedByDetails || []),
+              {
+                id: employee.id,
+                name: employee.name,
+                role: employee.role,
+                department: employee.department,
+              }
+            ],
+          };
+        }
+      });
     }
   };
 
@@ -238,8 +279,20 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
 
     // Validation
     if (!formData.area || !formData.departmentId || !formData.assetId || 
-        !formData.natureOfProblem || !formData.commentsOrSolution || !formData.attendedBy) {
-      toast.error('Please fill in all required fields');
+        !formData.natureOfProblem || !formData.commentsOrSolution || 
+        !formData.startTime || formData.attendedBy.length === 0) {
+      toast.error('Please fill in all required fields including start time and at least one attendee');
+      return;
+    }
+
+    // Validate time formats
+    if (!isValidTimeFormat(formData.startTime)) {
+      toast.error('Please enter a valid start time in HH:MM format');
+      return;
+    }
+
+    if (formData.endTime && !isValidTimeFormat(formData.endTime)) {
+      toast.error('Please enter a valid end time in HH:MM format');
       return;
     }
 
@@ -268,6 +321,8 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
       // Prepare form data with uploaded image URLs
       const submissionData = {
         ...formData,
+        time: formData.startTime, // Keep legacy field for backward compatibility
+        downtime: calculatedDowntime, // Include calculated downtime
         images: uploadedImageUrls,
         imageFiles: undefined, // Remove file objects before submission
       };
@@ -318,7 +373,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                 Basic Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Date *</Label>
                 <Input
@@ -331,18 +386,38 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="time">Time *</Label>
+                <Label htmlFor="startTime">Start Time *</Label>
                 <div className="relative">
                   <Clock className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="time"
+                    id="startTime"
                     type="time"
-                    value={formData.time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
+                    value={formData.startTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
                     className="pl-8"
                     required
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="endTime">End Time</Label>
+                <div className="relative">
+                  <Clock className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={formData.endTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                    className="pl-8"
+                    placeholder="Optional"
+                  />
+                </div>
+                {calculatedDowntime !== null && (
+                  <p className="text-sm text-muted-foreground">
+                    Downtime: <span className="font-medium text-primary">{formatDowntime(calculatedDowntime)}</span>
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -611,11 +686,11 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label htmlFor="attendedBy">Attended By *</Label>
+                <Label htmlFor="attendedBy">Attended By * (Multiple Selection Allowed)</Label>
                 <div className="relative">
                   <Input
-                    value={formData.attendedByName || ""}
-                    placeholder={isLoadingEmployees ? "Loading employees..." : "Select employee..."}
+                    value={formData.attendedByName.length > 0 ? `${formData.attendedByName.length} employee(s) selected` : ""}
+                    placeholder={isLoadingEmployees ? "Loading employees..." : "Select employees (multiple allowed)..."}
                     disabled={isLoadingEmployees}
                     readOnly
                     className="cursor-pointer"
@@ -641,28 +716,31 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                           {employees.length === 0 ? "No employees found" : "No employees match your search."}
                         </CommandEmpty>
                         <div className="max-h-[200px] overflow-y-auto p-1">
-                          {employees.map((employee) => (
-                            <CommandItem
-                              key={employee.id}
-                              value={employee.name}
-                              onSelect={() => {
-                                handleEmployeeChange(employee.id);
-                                setShowEmployeeDropdown(false);
-                              }}
-                              className="py-2 cursor-pointer hover:bg-accent"
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.attendedBy === employee.id ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              <div className="flex flex-col">
-                                <span>{employee.name}</span>
-                                <span className="text-xs text-muted-foreground">{employee.role} - {employee.department}</span>
-                              </div>
-                            </CommandItem>
-                          ))}
+                          {employees.map((employee) => {
+                            const isSelected = formData.attendedBy.includes(employee.id);
+                            return (
+                              <CommandItem
+                                key={employee.id}
+                                value={employee.name}
+                                onSelect={() => {
+                                  handleEmployeeChange(employee.id);
+                                  // Don't close dropdown for multiple selection
+                                }}
+                                className="py-2 cursor-pointer hover:bg-accent"
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    isSelected ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span>{employee.name}</span>
+                                  <span className="text-xs text-muted-foreground">{employee.role} - {employee.department}</span>
+                                </div>
+                              </CommandItem>
+                            );
+                          })}
                         </div>
                       </Command>
                     </PopoverContent>
@@ -672,6 +750,32 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                   <p className="text-xs text-muted-foreground">
                     No employees found
                   </p>
+                )}
+
+                {/* Show selected attendees */}
+                {formData.attendedByDetails && formData.attendedByDetails.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <Label>Selected Attendees</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.attendedByDetails.map((attendee) => (
+                        <div key={attendee.id} className="flex items-center gap-2 bg-secondary text-secondary-foreground rounded-md px-3 py-1 text-sm">
+                          <User className="h-3 w-3" />
+                          <span>{attendee.name}</span>
+                          <span className="text-xs text-muted-foreground">({attendee.role})</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                            onClick={() => handleEmployeeChange(attendee.id)}
+                            title={`Remove ${attendee.name}`}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </CardContent>

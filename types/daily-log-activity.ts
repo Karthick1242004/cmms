@@ -11,7 +11,10 @@ export interface ActivityHistoryEntry {
 export interface DailyLogActivity {
   _id: string;
   date: string; // ISO date string
-  time: string; // HH:MM format
+  time: string; // HH:MM format - Start time (legacy field)
+  startTime: string; // HH:MM format - Activity start time
+  endTime?: string; // HH:MM format - Activity end time (optional)
+  downtime?: number; // Calculated downtime in minutes
   area: string;
   departmentId: string;
   departmentName: string;
@@ -22,8 +25,14 @@ export interface DailyLogActivity {
   // Assignment workflow (similar to maintenance)
   assignedTo?: string; // Employee ID assigned to handle this activity
   assignedToName?: string;
-  attendedBy: string; // Employee ID (same as assignedTo for simplicity)
-  attendedByName: string;
+  attendedBy: string | string[]; // Employee ID(s) - can be single or multiple
+  attendedByName: string | string[]; // Employee name(s) - can be single or multiple
+  attendedByDetails?: Array<{
+    id: string;
+    name: string;
+    role: string;
+    department: string;
+  }>; // Detailed info for multiple attendees
   // Verification workflow (similar to maintenance)
   adminVerified: boolean;
   adminVerifiedBy?: string; // Employee ID of admin who verified
@@ -46,7 +55,9 @@ export interface DailyLogActivity {
 
 export interface DailyLogActivityFormData {
   date?: string;
-  time: string;
+  time: string; // Legacy field for backward compatibility
+  startTime: string; // HH:MM format - Activity start time
+  endTime?: string; // HH:MM format - Activity end time (optional)
   area: string;
   departmentId: string;
   departmentName: string;
@@ -56,8 +67,14 @@ export interface DailyLogActivityFormData {
   commentsOrSolution: string;
   assignedTo?: string; // Employee ID assigned to handle this activity
   assignedToName?: string;
-  attendedBy: string;
-  attendedByName: string;
+  attendedBy: string[]; // Array of Employee IDs for multiple attendees
+  attendedByName: string[]; // Array of Employee names for multiple attendees
+  attendedByDetails?: Array<{
+    id: string;
+    name: string;
+    role: string;
+    department: string;
+  }>; // Detailed info for multiple attendees
   verifiedBy?: string; // Legacy field
   verifiedByName?: string; // Legacy field
   status?: 'open' | 'in-progress' | 'completed' | 'pending_verification' | 'verified';

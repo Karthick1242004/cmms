@@ -69,6 +69,17 @@ export async function PATCH(
 
     const now = new Date();
     const timestamp = now.toISOString();
+    
+    // Auto-set end time when activity is verified (if not already set)
+    const currentTime = new Date().toTimeString().slice(0, 5); // HH:MM format
+    const shouldSetEndTime = !activity.endTime;
+    
+    // Calculate downtime if setting end time
+    let downtime = null;
+    if (shouldSetEndTime && activity.startTime) {
+      const { calculateDowntime } = await import('@/lib/downtime-utils');
+      downtime = calculateDowntime(activity.startTime, currentTime);
+    }
 
     // Create activity history entry
     const historyEntry = {
@@ -90,7 +101,11 @@ export async function PATCH(
         adminVerifiedByName: user.name,
         adminVerifiedAt: timestamp,
         adminNotes: adminNotes || null,
-        updatedAt: now
+        updatedAt: now,
+        ...(shouldSetEndTime && { 
+          endTime: currentTime,
+          ...(downtime !== null && { downtime })
+        })
       },
       $push: {
         activityHistory: historyEntry

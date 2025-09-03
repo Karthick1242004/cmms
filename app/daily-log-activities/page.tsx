@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw, Timer } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
+import { formatDowntime, getDowntimeBadgeClasses, calculateDowntime } from '@/lib/downtime-utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useDepartments } from '@/hooks/use-departments';
 import { LoadingSpinner } from '@/components/loading-spinner';
@@ -192,7 +193,8 @@ export default function DailyLogActivitiesPage() {
     // Department admin can access activities in their department
     if (user?.accessLevel === 'department_admin' && activity.departmentName === user.department) return true;
     // Normal users can access activities assigned to them or they created
-    if (activity.assignedTo === user?.id || activity.attendedBy === user?.id || activity.createdBy === user?.id) return true;
+    const attendedBy = Array.isArray(activity.attendedBy) ? activity.attendedBy : [activity.attendedBy];
+    if (activity.assignedTo === user?.id || attendedBy.includes(user?.id) || activity.createdBy === user?.id) return true;
     return false;
   };
 
@@ -202,7 +204,8 @@ export default function DailyLogActivitiesPage() {
     // Department admin can edit activities in their department
     if (user?.accessLevel === 'department_admin' && activity.departmentName === user.department) return true;
     // Normal users can only edit activities assigned to them
-    if (activity.assignedTo === user?.id || activity.attendedBy === user?.id) return true;
+    const attendedBy = Array.isArray(activity.attendedBy) ? activity.attendedBy : [activity.attendedBy];
+    if (activity.assignedTo === user?.id || attendedBy.includes(user?.id)) return true;
     // Users can edit activities they created (only if not yet assigned to someone else)
     if (activity.createdBy === user?.id && (!activity.assignedTo || activity.assignedTo === user?.id)) return true;
     return false;
@@ -393,18 +396,19 @@ export default function DailyLogActivitiesPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="text-sm">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Area</TableHead>
-                      <TableHead>Asset</TableHead>
-                      <TableHead>Problem</TableHead>
-                      <TableHead>Attended By</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Date & Start Time</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Duration/Downtime</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Area</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Asset</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Problem</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Attended By</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Status</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Priority</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Department</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -413,107 +417,169 @@ export default function DailyLogActivitiesPage() {
                         e.stopPropagation();
                         handleViewActivity(activity);
                       }}>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <TableCell className="px-2 py-2">
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
                             <div>
-                              <div className="font-medium">
-                                {format(new Date(activity.date), 'MMM dd, yyyy')}
+                              <div className="text-xs font-medium">
+                                {format(new Date(activity.date), 'MMM dd')}
                               </div>
-                              <div className="text-sm text-muted-foreground">
-                                {activity.time}
+                              <div className="text-xs text-muted-foreground">
+                                {activity.startTime || activity.time}
                               </div>
+                              {activity.endTime && (
+                                <div className="text-xs text-muted-foreground">
+                                  End: {activity.endTime}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span>{activity.area}</span>
+                        <TableCell className="px-2 py-2">
+                          <div className="flex items-center space-x-1">
+                            <Timer className="h-3 w-3 text-muted-foreground" />
+                            <div>
+                              {(() => {
+                                // Priority 1: Show stored downtime if available
+                                if (activity.downtime !== null && activity.downtime !== undefined) {
+                                  return (
+                                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${getDowntimeBadgeClasses(activity.downtime)}`}>
+                                      {formatDowntime(activity.downtime)}
+                                    </div>
+                                  );
+                                }
+                                
+                                // Priority 2: Calculate downtime if both start and end times are available
+                                if (activity.endTime && activity.startTime) {
+                                  const calculatedDowntime = calculateDowntime(activity.startTime, activity.endTime);
+                                  if (calculatedDowntime !== null) {
+                                    return (
+                                      <div className={`text-xs font-medium px-2 py-1 rounded-full ${getDowntimeBadgeClasses(calculatedDowntime)}`}>
+                                        {formatDowntime(calculatedDowntime)}
+                                      </div>
+                                    );
+                                  }
+                                }
+                                
+                                // Priority 3: Show status-based info for completed activities without time data
+                                if (activity.status === 'completed' || activity.status === 'verified') {
+                                  return (
+                                    <div className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-800 border border-green-200">
+                                      Completed
+                                    </div>
+                                  );
+                                }
+                                
+                                // Priority 4: Show "In Progress" for ongoing activities
+                                return (
+                                  <div className="text-xs text-muted-foreground">
+                                    In Progress
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2 py-2">
+                          <div className="flex items-center space-x-1">
+                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs">{activity.area}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-2 py-2">
                           <div>
-                            <div className="font-medium">{activity.assetName}</div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-xs font-medium">{activity.assetName}</div>
+                            <div className="text-xs text-muted-foreground">
                               ID: {activity.assetId.slice(-6)}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2 py-2">
                           <div className="max-w-xs">
-                            <div className="truncate font-medium">{activity.natureOfProblem.slice(0, 20)}...</div>
-                            <div className="text-sm text-muted-foreground truncate">
-                              {activity.commentsOrSolution.slice(0, 20)}...
+                            <div className="truncate text-xs font-medium">{activity.natureOfProblem.slice(0, 15)}...</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {activity.commentsOrSolution.slice(0, 15)}...
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
+                        <TableCell className="px-2 py-2">
+                          <div className="flex items-center space-x-1">
+                            <User className="h-3 w-3 text-muted-foreground" />
                             <div className="flex flex-col">
-                              <span className={canAccessActivity(activity) ? "font-medium text-green-700" : ""}>
-                                {activity.attendedByName}
-                              </span>
+                              {Array.isArray(activity.attendedByName) ? (
+                                <div className="space-y-1">
+                                  <span className={`text-xs ${canAccessActivity(activity) ? "font-medium text-green-700" : ""}`}>
+                                    {activity.attendedByName.length} attendee(s)
+                                  </span>
+                                  <div className="text-xs text-muted-foreground">
+                                    {activity.attendedByName.slice(0, 1).join(', ')}
+                                    {activity.attendedByName.length > 1 && ` +${activity.attendedByName.length - 1} more`}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className={`text-xs ${canAccessActivity(activity) ? "font-medium text-green-700" : ""}`}>
+                                  {activity.attendedByName}
+                                </span>
+                              )}
                               {activity.assignedTo && activity.assignedTo === user?.id && (
-                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 mt-1">
+                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 mt-1 px-1 py-0">
                                   Assigned to you
                                 </Badge>
                               )}
                               {activity.assignedTo && activity.assignedTo !== user?.id && canAccessActivity(activity) && (
-                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 mt-1">
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 mt-1 px-1 py-0">
                                   You can access
                                 </Badge>
                               )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2 py-2">
                           <div className="flex flex-col space-y-1">
                             <Badge 
                               variant="outline"
-                              className={`${statusColors[activity.status]} flex flex-row justify-center gap-2 text-center cursor-pointer hover:opacity-80 transition-opacity`}
+                              className={`text-xs ${statusColors[activity.status]} flex flex-row justify-center gap-1 text-center cursor-pointer hover:opacity-80 transition-opacity`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleStatusClick(activity);
                               }}
                               title="Click to change status"
                             >
-                              {activity.status.replace('_', ' ')} <RefreshCw className="h-3 w-3" />
+                              {activity.status.replace('_', ' ')} <RefreshCw className="h-2 w-2" />
                             </Badge>
                             {activity.adminVerified && (
-                              <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-200">
-                                Verified by {activity.adminVerifiedByName}
-                              </Badge>
+                              <div  className="text-xs">
+                                Verified by {activity.adminVerifiedByName || activity.verifiedByName || 'Admin'}
+                              </div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
+                        <TableCell className="px-2 py-2">
+                          <div className="flex items-center space-x-1">
                             {activity.priority === 'critical' && (
-                              <AlertTriangle className="h-4 w-4 text-red-500" />
+                              <AlertTriangle className="h-3 w-3 text-red-500" />
                             )}
                             <Badge 
                               variant="outline"
-                              className={priorityColors[activity.priority]}
+                              className={`text-xs ${priorityColors[activity.priority]}`}
                             >
                               {activity.priority}
                             </Badge>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{activity.departmentName}</span>
+                        <TableCell className="px-2 py-2">
+                          <span className="text-xs">{activity.departmentName}</span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2 py-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={(e) => e.stopPropagation()}
-                                className="h-8 w-8 p-0"
+                                className="h-6 w-6 p-0"
                               >
-                                <MoreHorizontal className="h-4 w-4" />
+                                <MoreHorizontal className="h-3 w-3" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">

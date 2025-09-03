@@ -19,11 +19,13 @@ import {
   Eye,
   X,
   ImageIcon,
-  ZoomIn
+  ZoomIn,
+  Timer
 } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { format } from 'date-fns';
 import type { DailyLogActivity } from '@/types/daily-log-activity';
+import { formatDowntime, getDowntimeBadgeClasses } from '@/lib/downtime-utils';
 
 const statusColors = {
   'open': 'bg-red-100 text-red-800 border-red-200',
@@ -31,6 +33,7 @@ const statusColors = {
   'completed': 'bg-blue-100 text-blue-800 border-blue-200',
   'pending_verification': 'bg-orange-100 text-orange-800 border-orange-200',
   'verified': 'bg-green-100 text-green-800 border-green-200',
+  'resolved': 'bg-green-100 text-green-800 border-green-200',
 };
 
 const priorityColors = {
@@ -85,9 +88,36 @@ export function DailyLogActivityView({ isOpen, onClose, activity }: DailyLogActi
                       <div className="font-semibold text-lg">
                         {format(new Date(activity.date), 'EEEE, MMMM dd, yyyy')}
                       </div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {activity.time}
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Start: {activity.startTime || activity.time}
+                        </div>
+                        {activity.endTime && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            End: {activity.endTime}
+                          </div>
+                        )}
+                        {activity.downtime !== null && activity.downtime !== undefined ? (
+                          <div className="flex items-center gap-1">
+                            <Timer className="h-3 w-3" />
+                            Downtime: 
+                            <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${getDowntimeBadgeClasses(activity.downtime)}`}>
+                              {formatDowntime(activity.downtime)}
+                            </span>
+                          </div>
+                        ) : activity.endTime ? (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Timer className="h-3 w-3" />
+                            Calculating downtime...
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Timer className="h-3 w-3" />
+                            Activity in progress
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -109,6 +139,15 @@ export function DailyLogActivityView({ isOpen, onClose, activity }: DailyLogActi
                   >
                     {activity.priority} priority
                   </Badge>
+                  {activity.adminVerified && (
+                    <Badge 
+                      variant="outline"
+                      className="bg-green-100 text-green-800 border-green-200"
+                    >
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Verified by {activity.adminVerifiedByName || activity.verifiedByName || 'Admin'}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -196,18 +235,53 @@ export function DailyLogActivityView({ isOpen, onClose, activity }: DailyLogActi
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Attended By</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-base">{activity.attendedByName}</p>
+                  <div className="mt-2">
+                    {Array.isArray(activity.attendedByName) ? (
+                      <div className="flex flex-wrap gap-2">
+                        {activity.attendedByDetails && activity.attendedByDetails.length > 0 ? (
+                          activity.attendedByDetails.map((attendee, index) => (
+                            <Badge key={index} variant="secondary" className="flex items-center gap-1 px-3 py-1">
+                              <User className="h-3 w-3" />
+                              <span>{attendee.name}</span>
+                              <span className="text-xs text-muted-foreground">({attendee.role})</span>
+                            </Badge>
+                          ))
+                        ) : (
+                          activity.attendedByName.map((name, index) => (
+                            <Badge key={index} variant="secondary" className="flex items-center gap-1 px-3 py-1">
+                              <User className="h-3 w-3" />
+                              <span>{name}</span>
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                      <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1 w-fit">
+                        <User className="h-3 w-3" />
+                        <span>{activity.attendedByName}</span>
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 
-                {activity.verifiedBy && activity.verifiedByName && (
+                {(activity.adminVerifiedBy || activity.verifiedBy) && (activity.adminVerifiedByName || activity.verifiedByName) && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Verified By</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <p className="text-base">{activity.verifiedByName}</p>
+                    <div className="mt-2">
+                      <Badge variant="outline" className="flex w-fit items-center gap-1 px-3 py-1 bg-green-50 text-green-800 border-green-200">
+                        <CheckCircle className="h-3 w-3" />
+                        <span>{activity.adminVerifiedByName || activity.verifiedByName}</span>
+                      </Badge>
+                      {activity.adminVerifiedAt && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Verified on {format(new Date(activity.adminVerifiedAt), 'MMM dd, yyyy • h:mm a')}
+                        </p>
+                      )}
+                      {activity.adminNotes && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Notes: {activity.adminNotes}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
