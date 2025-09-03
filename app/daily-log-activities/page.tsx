@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useDepartments } from '@/hooks/use-departments';
@@ -29,6 +29,7 @@ const statusColors = {
   'completed': 'bg-blue-100 text-blue-800 border-blue-200',
   'pending_verification': 'bg-orange-100 text-orange-800 border-orange-200',
   'verified': 'bg-green-100 text-green-800 border-green-200',
+  'resolved': 'bg-green-100 text-green-800 border-green-200',
 };
 
 const priorityColors = {
@@ -471,14 +472,14 @@ export default function DailyLogActivitiesPage() {
                           <div className="flex flex-col space-y-1">
                             <Badge 
                               variant="outline"
-                              className={`${statusColors[activity.status]} cursor-pointer hover:opacity-80 transition-opacity`}
+                              className={`${statusColors[activity.status]} flex flex-row justify-center gap-2 text-center cursor-pointer hover:opacity-80 transition-opacity`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleStatusClick(activity);
                               }}
                               title="Click to change status"
                             >
-                              {activity.status.replace('_', ' ')}
+                              {activity.status.replace('_', ' ')} <RefreshCw className="h-3 w-3" />
                             </Badge>
                             {activity.adminVerified && (
                               <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-200">
