@@ -29,7 +29,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, Search, Edit, Trash2, Phone, Mail, Loader2, Eye, EyeOff, RefreshCw, Copy } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Phone, Mail, Loader2, Eye, EyeOff, RefreshCw, Copy, BarChart3 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -48,6 +48,8 @@ import {
 } from "@/components/ui/pagination"
 import { Filter, X } from "lucide-react"
 import { useDebounce } from "@/hooks/use-debounce"
+import { EmployeeStatsWidget } from "@/components/employees/employee-stats-widget"
+import { EmployeesOverallReport } from "@/components/employees/employees-overall-report"
 
 export default function EmployeesPage() {
   const router = useRouter()
@@ -84,6 +86,9 @@ export default function EmployeesPage() {
   // Delete confirmation dialog state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
+
+  // Report dialog state
+  const [reportDialogOpen, setReportDialogOpen] = useState(false)
 
   // TanStack Query hooks
   const { user: authUser } = useAuthStore()
@@ -524,13 +529,28 @@ export default function EmployeesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Employees</h1>
           <p className="text-muted-foreground">Manage department employees and their responsibilities</p>
         </div>
-        {canCreateEmployees && (
-          <Button onClick={handleCreateEmployee}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Employee
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setReportDialogOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <BarChart3 className="h-4 w-4" />
+            Generate Report
           </Button>
-        )}
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+          {canCreateEmployees && (
+            <Button onClick={handleCreateEmployee}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Employee
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Employee Statistics Widget */}
+      <EmployeeStatsWidget className="mb-6" />
+
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>{editingEmployee ? "Edit Employee" : "Add New Employee"}</DialogTitle>
@@ -804,7 +824,6 @@ export default function EmployeesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
 
       {/* Search and Filters */}
       <div className="space-y-4">
@@ -1068,6 +1087,13 @@ export default function EmployeesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Employees Report Dialog */}
+      <EmployeesOverallReport
+        employees={employees}
+        isOpen={reportDialogOpen}
+        onClose={() => setReportDialogOpen(false)}
+      />
     </div>
   )
 }
