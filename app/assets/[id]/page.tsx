@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useNavigation } from "@/hooks/use-navigation"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,6 +33,7 @@ import {
   Trash2,
   Upload,
   Printer,
+  ArrowLeft,
 } from "lucide-react"
 import type { AssetDetail } from "@/types/asset"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
@@ -62,6 +63,7 @@ const DetailItem: React.FC<DetailItemProps> = ({ label, value, className, icon: 
 
 export default function AssetDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const assetId = params.id as string
   const { navigate } = useNavigation()
   const [asset, setAsset] = useState<AssetDetail | null>(null)
@@ -192,30 +194,46 @@ export default function AssetDetailPage() {
   return (
     <PageLayout>
       <PageHeader>
-        <div className="flex mt-4 flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center">
-              <Package className="h-6 w-6 mr-2 text-primary" />
-              Asset Details
-            </h1>
-            <p className="text-muted-foreground">Viewing details for asset: {asset.assetName}</p>
-          </div>
-          <div className="flex space-x-2 flex-wrap gap-2">
-            <Button 
-              onClick={() => setIsReportOpen(true)}
-              variant="outline"
+        <div className="flex flex-col space-y-4">
+          {/* Back Navigation */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/assets")}
+              className="flex items-center gap-2"
             >
-              <Printer className="mr-2 h-4 w-4" /> Individual Report
+              <ArrowLeft className="h-4 w-4" />
+              Back to Assets
             </Button>
-            {/* <Button variant="outline">
-              <Edit className="mr-2 h-4 w-4" /> Move To
-            </Button> */}
-            <Button variant="outline">
-              <List className="mr-2 h-4 w-4" /> Equipment List
-            </Button>
-            <Button onClick={() => navigate("/tickets")}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Create Work Order
-            </Button>
+          </div>
+
+          {/* Main Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight flex items-center">
+                <Package className="h-6 w-6 mr-2 text-primary" />
+                Asset Details
+              </h1>
+              <p className="text-muted-foreground">Viewing details for asset: {asset.assetName}</p>
+            </div>
+            <div className="flex space-x-2 flex-wrap gap-2">
+              <Button 
+                onClick={() => setIsReportOpen(true)}
+                variant="outline"
+              >
+                <Printer className="mr-2 h-4 w-4" /> Individual Report
+              </Button>
+              {/* <Button variant="outline">
+                <Edit className="mr-2 h-4 w-4" /> Move To
+              </Button> */}
+              <Button variant="outline">
+                <List className="mr-2 h-4 w-4" /> Equipment List
+              </Button>
+              <Button onClick={() => navigate("/tickets")}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Create Work Order
+              </Button>
+            </div>
           </div>
         </div>
       </PageHeader>
