@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +21,14 @@ import {
   X,
   ImageIcon,
   ZoomIn,
-  Timer
+  Timer,
+  Download
 } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { format } from 'date-fns';
 import type { DailyLogActivity } from '@/types/daily-log-activity';
 import { formatDowntime, getDowntimeBadgeClasses } from '@/lib/downtime-utils';
+import { generateIndividualReport } from './daily-log-activity-individual-report';
 
 const statusColors = {
   'open': 'bg-red-100 text-red-800 border-red-200',
@@ -56,6 +59,10 @@ export function DailyLogActivityView({ isOpen, onClose, activity }: DailyLogActi
     window.open(imageUrl, '_blank');
   };
 
+  const handleGenerateReport = () => {
+    generateIndividualReport({ activity });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -65,14 +72,25 @@ export function DailyLogActivityView({ isOpen, onClose, activity }: DailyLogActi
               <Eye className="h-5 w-5" />
               Activity Log Details
             </DialogTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onClose}
-              className="h-6 w-6 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateReport}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Report
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onClose}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 

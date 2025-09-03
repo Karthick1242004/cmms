@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw, Timer } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw, Timer, BarChart3 } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { formatDowntime, getDowntimeBadgeClasses, calculateDowntime } from '@/lib/downtime-utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -22,6 +22,7 @@ import { DailyLogActivityView } from '@/components/daily-log-activity/daily-log-
 import { ActivityHistoryDialog } from '@/components/daily-log-activity/activity-history-dialog';
 import { DailyLogActivityRecordsTable } from '@/components/daily-log-activity/daily-log-activity-records-table';
 import { DailyActivityStatusDialog } from '@/components/daily-log-activity/daily-activity-status-dialog';
+import { DailyLogActivitiesOverallReport } from '@/components/daily-log-activity/daily-log-activities-overall-report';
 import { format } from 'date-fns';
 
 const statusColors = {
@@ -77,6 +78,7 @@ export default function DailyLogActivitiesPage() {
   const [activityForHistory, setActivityForHistory] = useState<any>(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [activityToUpdateStatus, setActivityToUpdateStatus] = useState<any>(null);
+  const [isOverallReportOpen, setIsOverallReportOpen] = useState(false);
 
   useEffect(() => {
     fetchActivities();
@@ -252,10 +254,20 @@ export default function DailyLogActivitiesPage() {
               Track and manage daily operational activities across departments
             </p>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Activity
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => setIsOverallReportOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Generate Report
+            </Button>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Activity
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -766,6 +778,13 @@ export default function DailyLogActivitiesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Overall Report */}
+      <DailyLogActivitiesOverallReport
+        activities={activities}
+        isOpen={isOverallReportOpen}
+        onClose={() => setIsOverallReportOpen(false)}
+      />
     </PageLayout>
   );
 }
