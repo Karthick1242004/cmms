@@ -31,6 +31,7 @@ import { useLocations } from "@/hooks/use-locations"
 import { useToast } from "@/hooks/use-toast"
 import type { ShiftDetail } from "@/types/shift-detail"
 import { EmployeeShiftHistoryDialog } from "@/components/shift-details/employee-shift-history-dialog"
+import { ShiftStatsWidget } from "@/components/shift-details/shift-stats-widget"
 import { 
   Pagination,
   PaginationContent,
@@ -668,6 +669,9 @@ export default function ShiftDetailsPage() {
           </Button>
         )}
       </div>
+
+      {/* Shift Statistics Widget */}
+      <ShiftStatsWidget className="mb-6" />
 
                       {canManageShiftDetails && (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
