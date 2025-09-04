@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -65,6 +66,7 @@ const getLocationId = (location: Location | null): string => {
 }
 
 export default function LocationsPage() {
+  const router = useRouter()
   const { user } = useAuthStore()
   const isSuperAdmin = user?.accessLevel === 'super_admin'
   const isDepartmentAdmin = user?.accessLevel === 'department_admin'
@@ -423,6 +425,11 @@ export default function LocationsPage() {
 
   const handleInputChange = (field: string, value: string) => {
     handleFieldChange(field as keyof LocationFormData, value)
+  }
+
+  // Navigation handler for location details
+  const handleLocationClick = (locationId: string) => {
+    router.push(`/locations/${locationId}`)
   }
 
   // Function to update asset counts for all locations
@@ -920,8 +927,13 @@ export default function LocationsPage() {
                         <MapPin className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <div className="font-medium">{location.name}</div>
-                        
+                        <div 
+                          className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer"
+                          onClick={() => handleLocationClick(getLocationId(location))}
+                          title="Click to view location details"
+                        >
+                          {location.name}
+                        </div>
                         <div className="text-xs text-muted-foreground">{location.description}</div>
                       </div>
                     </div>

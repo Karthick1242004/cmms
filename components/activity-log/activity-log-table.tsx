@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useActivityLogStore } from '@/stores/activity-log-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { Badge } from '@/components/ui/badge'
@@ -20,7 +21,8 @@ import {
   Clock, 
   Archive, 
   Trash2, 
-  MoreHorizontal 
+  MoreHorizontal,
+  ExternalLink
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import type { ActivityModule, ActivityAction, ActivityPriority, ActivityStatus, ActivityLogEntry } from '@/types/activity-log'
@@ -85,6 +87,7 @@ const statusColors = {
 }
 
 export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) {
+  const router = useRouter()
   const {
     logs,
     pagination,
@@ -133,6 +136,33 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
         setDeleteDialogOpen(false)
         setLogToDelete(null)
       }
+    }
+  }
+
+  // Navigate to activity log details based on module and record ID
+  const handleNavigateToActivity = (log: ActivityLogEntry) => {
+    const { module, recordId } = log
+    
+    switch (module) {
+      case 'safety_inspection':
+        router.push('/safety-inspection')
+        break
+      case 'maintenance':
+        router.push('/maintenance')
+        break
+      case 'tickets':
+        if (recordId) {
+          router.push(`/tickets/${recordId}`)
+        } else {
+          router.push('/tickets')
+        }
+        break
+      case 'daily_log_activity':
+        router.push('/daily-log-activities')
+        break
+      default:
+        console.warn('Unknown module for navigation:', module)
+        break
     }
   }
 
@@ -392,25 +422,36 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                       </TableCell>
                       
                       <TableCell>
-                        {canDeleteLog(log) && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Open menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteClick(log)}
-                                className="text-red-600 focus:text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleNavigateToActivity(log)}
+                            className="h-8 px-2 text-blue-600 hover:text-blue-800"
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                          </Button>
+                          
+                          {canDeleteLog(log) && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Open menu</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(log)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )

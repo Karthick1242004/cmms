@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const skip = (page - 1) * limit
 
-    console.log('🚀 [Activity Log API] - GET request', { user: user.name, filters })
 
     const { db } = await connectToDatabase()
     
@@ -182,12 +181,6 @@ export async function POST(request: NextRequest) {
 
     const body: CreateActivityLogRequest = await request.json()
     
-    console.log('🚀 [Activity Log API] - POST request', { 
-      user: user.name, 
-      module: body.module, 
-      action: body.action,
-      assetId: body.assetId 
-    })
 
     // Validation
     if (!body.assetId || !body.module || !body.action || !body.title || !body.recordId) {
@@ -200,7 +193,7 @@ export async function POST(request: NextRequest) {
     const { db } = await connectToDatabase()
     
     // Create activity log entry
-    const activityLog: Omit<ActivityLogEntry, 'id'> = {
+    const activityLog = {
       assetId: body.assetId,
       assetName: body.assetName,
       assetTag: body.assetTag,
@@ -236,7 +229,7 @@ export async function POST(request: NextRequest) {
     // Get created log
     const createdLog = await db.collection('activitylogs').findOne({ _id: result.insertedId })
     
-    console.log('✅ [Activity Log API] - Created activity log:', result.insertedId)
+
 
     return NextResponse.json({
       success: true,

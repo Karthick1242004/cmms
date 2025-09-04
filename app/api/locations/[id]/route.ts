@@ -3,6 +3,41 @@ import { getUserContext } from '@/lib/auth-helpers';
 import connectDB from '@/lib/mongodb';
 import Location from '@/models/Location';
 
+// Helper function to fetch assets for a location
+async function fetchAssetsForLocation(request: NextRequest, locationName: string) {
+  try {
+    // Extract authentication token from the incoming request
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') ||
+                  request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      console.warn('No authentication token available for asset fetching');
+      return [];
+    }
+
+    // Call the Next.js assets API to get assets for this location
+    const response = await fetch(`${request.nextUrl.origin}/api/assets?location=${encodeURIComponent(locationName)}&limit=1000`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch assets for location: ${response.status} ${response.statusText}`);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.data?.assets || [];
+  } catch (error) {
+    console.error('Error fetching assets for location:', error);
+    return [];
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -22,7 +57,7 @@ export async function GET(
     await connectDB();
 
     // Find location by ID
-    const location = await Location.findById(id);
+    const location = await Location.findById(id).lean();
     
     if (!location) {
       return NextResponse.json(
@@ -39,9 +74,43 @@ export async function GET(
       );
     }
 
+    // Fetch linked assets for this location
+    const linkedAssets = await fetchAssetsForLocation(request, location.name);
+
+    // Calculate total asset value
+    const totalAssetValue = linkedAssets.reduce((sum: number, asset: any) => {
+      return sum + (asset.currentValue || asset.purchasePrice || 0);
+    }, 0);
+
+    // Transform _id to id for frontend compatibility and add asset data
+    const transformedLocation = {
+      ...location,
+      id: location._id,
+      _id: undefined,
+      linkedAssets: linkedAssets.map((asset: any) => ({
+        id: asset.id || asset._id,
+        assetName: asset.assetName,
+        assetCode: asset.assetCode,
+        category: asset.category,
+        status: asset.statusText || asset.status || 'Unknown',
+        condition: asset.condition,
+        purchasePrice: asset.purchasePrice || 0,
+        currentValue: asset.currentValue || asset.purchasePrice || 0,
+        location: asset.location,
+        department: asset.department,
+        assignedTo: asset.assignedTo || '',
+        lastMaintenanceDate: asset.lastMaintenanceDate || '',
+        nextMaintenanceDate: asset.nextMaintenanceDate || '',
+        createdAt: asset.createdAt
+      })),
+      assetCount: linkedAssets.length,
+      totalAssetValue: totalAssetValue
+    };
+
     return NextResponse.json({
       success: true,
-      data: location
+      data: transformedLocation,
+      message: 'Location retrieved successfully'
     }, { status: 200 });
   } catch (error) {
     console.error('Error fetching location:', error);
