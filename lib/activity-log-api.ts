@@ -26,6 +26,8 @@ export const activityLogApi = {
     if (filters?.dateTo) params.append('dateTo', filters.dateTo)
     if (filters?.search) params.append('search', filters.search)
     if (filters?.showDeleted) params.append('showDeleted', 'true')
+    if (filters?.page) params.append('page', filters.page.toString())
+    if (filters?.limit) params.append('limit', filters.limit.toString())
 
     const url = `${ENDPOINTS.ACTIVITY_LOGS}${params.toString() ? `?${params.toString()}` : ''}`
     

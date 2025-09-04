@@ -100,6 +100,8 @@ export interface ActivityLogFilters {
   dateTo?: string
   search?: string
   showDeleted?: boolean
+  page?: number
+  limit?: number
 }
 
 export interface ActivityLogListResponse {
