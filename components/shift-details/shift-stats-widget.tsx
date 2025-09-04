@@ -127,7 +127,7 @@ export function ShiftStatsWidget({ className }: ShiftStatsWidgetProps) {
       {/* Total Employees with Shifts */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Employees in Shift</CardTitle>
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -143,7 +143,7 @@ export function ShiftStatsWidget({ className }: ShiftStatsWidgetProps) {
       {/* Active Employees */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Active Today</CardTitle>
+          <CardTitle className="text-sm font-medium">Active Today in Shift</CardTitle>
           <UserCheck className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
