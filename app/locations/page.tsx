@@ -19,6 +19,15 @@ import { Plus, Search, Edit, Trash2, MapPin, Building, Loader2, RefreshCw, Filte
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { toast } from "sonner"
 import { useAuthStore } from "@/stores/auth-store"
 import { useDepartments } from "@/hooks/use-departments"
@@ -41,6 +50,14 @@ interface Location {
   updatedAt: string
 }
 
+interface LocationPagination {
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  hasNext: boolean
+  hasPrevious: boolean
+}
+
 // Helper function to get the correct ID field
 const getLocationId = (location: Location | null): string => {
   if (!location) return ''
@@ -55,6 +72,8 @@ export default function LocationsPage() {
   const canDelete = isSuperAdmin // Only super admin can delete
   
   const [locations, setLocations] = useState<Location[]>([])
+  const [pagination, setPagination] = useState<LocationPagination | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
@@ -89,13 +108,34 @@ export default function LocationsPage() {
   // Debounced search term
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
-  // Fetch locations from API
-  const fetchLocations = async () => {
+  // Fetch locations from API with pagination
+  const fetchLocations = async (page = 1) => {
     try {
       setIsLoading(true)
       const token = localStorage.getItem('auth-token')
       
-      const response = await fetch('/api/locations', {
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10' // Items per page
+      })
+      
+      // Add search filter if exists
+      if (debouncedSearchTerm.trim()) {
+        params.append('search', debouncedSearchTerm.trim())
+      }
+      
+      // Add type filter if exists
+      if (selectedType) {
+        params.append('type', selectedType)
+      }
+      
+      // Add status filter if exists 
+      if (selectedStatus) {
+        params.append('status', selectedStatus)
+      }
+      
+      const response = await fetch(`/api/locations?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -106,6 +146,7 @@ export default function LocationsPage() {
       if (response.ok) {
         const data = await response.json()
         setLocations(data.data.locations || [])
+        setPagination(data.data.pagination || null)
       } else {
         console.error('Failed to fetch locations')
         toast.error('Failed to load locations')
@@ -118,11 +159,22 @@ export default function LocationsPage() {
     }
   }
 
-  // Load locations on component mount
+  // Load locations on component mount and when page changes
   useEffect(() => {
-    fetchLocations()
-    
-    // Auto-update asset counts in the background for super admins
+    fetchLocations(currentPage)
+  }, [currentPage])
+  
+  // Fetch locations when search or filters change (reset to page 1)
+  useEffect(() => {
+    if (currentPage === 1) {
+      fetchLocations(1)
+    } else {
+      setCurrentPage(1) // This will trigger the previous useEffect
+    }
+  }, [debouncedSearchTerm, selectedType, selectedStatus])
+  
+  // Auto-update asset counts in the background for super admins
+  useEffect(() => {
     if (isSuperAdmin) {
       // Update asset counts silently in the background after a short delay
       const timer = setTimeout(async () => {
@@ -145,7 +197,7 @@ export default function LocationsPage() {
     }
   }, [isSuperAdmin])
 
-  // Get unique values for filter options
+  // Get unique values for filter options (these should be managed by server-side filtering)
   const uniqueTypes = useMemo(() => {
     const types = locations
       .filter(location => location != null)
@@ -164,73 +216,9 @@ export default function LocationsPage() {
     return parentLocations
   }, [locations])
 
-  // Apply all filters
-  const filteredLocations = useMemo(() => {
-    return locations
-      .filter(location => location != null) // Filter out null/undefined locations
-      .filter((location) => {
-        // Search filter
-        if (debouncedSearchTerm) {
-          const searchLower = debouncedSearchTerm.toLowerCase()
-          const matchesSearch = 
-            location.name.toLowerCase().includes(searchLower) ||
-            location.code.toLowerCase().includes(searchLower) ||
-            location.type.toLowerCase().includes(searchLower) ||
-            location.description.toLowerCase().includes(searchLower) ||
-            location.address.toLowerCase().includes(searchLower)
-          if (!matchesSearch) return false
-        }
-
-        // Department filter
-        if (selectedDepartment && location.department !== selectedDepartment) {
-          return false
-        }
-
-        // Type filter
-        if (selectedType && location.type !== selectedType) {
-          return false
-        }
-
-        // Status filter
-        if (selectedStatus && location.status !== selectedStatus) {
-          return false
-        }
-
-        // Parent location filter
-        if (selectedParentLocation) {
-          if (selectedParentLocation === "none" && location.parentLocation) {
-            return false
-          }
-          if (selectedParentLocation !== "none" && location.parentLocation !== selectedParentLocation) {
-            return false
-          }
-        }
-
-        // Asset count range filter
-        if (assetCountRange) {
-          const count = location.assetCount
-          switch (assetCountRange) {
-            case "0":
-              if (count !== 0) return false
-              break
-            case "1-5":
-              if (count < 1 || count > 5) return false
-              break
-            case "6-10":
-              if (count < 6 || count > 10) return false
-              break
-            case "11-20":
-              if (count < 11 || count > 20) return false
-              break
-            case "20+":
-              if (count <= 20) return false
-              break
-          }
-        }
-
-        return true
-      })
-  }, [locations, debouncedSearchTerm, selectedDepartment, selectedType, selectedStatus, selectedParentLocation, assetCountRange])
+  // Since we now use server-side filtering, we don't need client-side filtering
+  // The locations from the API are already filtered
+  const filteredLocations = locations.filter(location => location != null)
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
@@ -371,7 +359,8 @@ export default function LocationsPage() {
         toast.success(editingLocation ? 'Location updated successfully!' : 'Location created successfully!')
         setIsDialogOpen(false)
         resetForm()
-        fetchLocations() // Refresh the list
+        setCurrentPage(1) // Reset to page 1 and refresh
+        fetchLocations(1) // Refresh the list
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         console.error('API Error:', errorData) // Debug log
@@ -414,7 +403,8 @@ export default function LocationsPage() {
 
       if (response.ok) {
         toast.success('Location deleted successfully!')
-        fetchLocations() // Refresh the list
+        setCurrentPage(1) // Reset to page 1 and refresh
+        fetchLocations(1) // Refresh the list
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         
@@ -456,7 +446,7 @@ export default function LocationsPage() {
 
       if (response.ok) {
         toast.success('Asset counts updated successfully!')
-        fetchLocations() // Refresh the locations list
+        fetchLocations(currentPage) // Refresh the current page
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         toast.error(errorData.message || 'Failed to update asset counts')
@@ -755,12 +745,19 @@ export default function LocationsPage() {
         </div>
 
         {/* Results Summary */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            Showing {filteredLocations.length} of {locations.length} locations
-            {hasActiveFilters && " (filtered)"}
-          </span>
-        </div>
+        {pagination && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>
+              Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalCount)} of {pagination.totalCount} locations
+              {hasActiveFilters && " (filtered)"}
+            </span>
+            {hasActiveFilters && (
+              <div className="text-blue-600">
+                Filtered results
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filters Panel */}
         {showFilters && (
@@ -996,6 +993,77 @@ export default function LocationsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex justify-center mt-6">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (pagination.hasPrevious) {
+                      setCurrentPage(pagination.currentPage - 1)
+                    }
+                  }}
+                  className={!pagination.hasPrevious ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {/* Page numbers */}
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                let pageNum
+                if (pagination.totalPages <= 5) {
+                  pageNum = i + 1
+                } else if (pagination.currentPage <= 3) {
+                  pageNum = i + 1
+                } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                  pageNum = pagination.totalPages - 4 + i
+                } else {
+                  pageNum = pagination.currentPage - 2 + i
+                }
+                
+                return (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setCurrentPage(pageNum)
+                      }}
+                      isActive={pagination.currentPage === pageNum}
+                      className="cursor-pointer"
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              })}
+              
+              {pagination.totalPages > 5 && pagination.currentPage < pagination.totalPages - 2 && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (pagination.hasNext) {
+                      setCurrentPage(pagination.currentPage + 1)
+                    }
+                  }}
+                  className={!pagination.hasNext ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   )
 }
