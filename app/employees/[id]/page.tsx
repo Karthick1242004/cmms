@@ -115,7 +115,9 @@ export default function EmployeeDetailPage() {
           return
         }
       } catch (performanceError) {
-        console.log('Performance data not available, falling back to employee API')
+        // Performance data not available - this is expected for employees without performance records
+        // Gracefully falling back to calculated metrics from employee activities
+        console.log('Performance record not found for employee:', employeeId, '- using calculated metrics instead')
       }
       
       // Fallback to regular employee API
@@ -125,6 +127,60 @@ export default function EmployeeDetailPage() {
         setEmployee(response.data)
         setUsePerformanceData(false)
       } else {
+        // If employee not found in main database, try to check if this is from shift details
+        // by attempting to fetch shift details for this employee
+        try {
+          const shiftResponse = await fetch(`/api/shift-details?employeeId=${employeeId}&limit=1`)
+          if (shiftResponse.ok) {
+            const shiftData = await shiftResponse.json()
+            if (shiftData.success && shiftData.data?.shiftDetails?.length > 0) {
+              const shiftDetail = shiftData.data.shiftDetails[0]
+              
+              // Create a synthetic employee record from shift details
+              const syntheticEmployee: EmployeeDetail = {
+                id: employeeId,
+                name: shiftDetail.employeeName,
+                email: shiftDetail.email,
+                phone: shiftDetail.phone,
+                department: shiftDetail.department,
+                role: shiftDetail.role || 'Employee',
+                status: shiftDetail.status === 'active' ? 'active' : 'inactive',
+                avatar: '/placeholder-user.jpg',
+                employeeId: shiftDetail.employeeId?.toString() || employeeId,
+                joinDate: shiftDetail.joinDate || '',
+                supervisor: shiftDetail.supervisor || '',
+                accessLevel: 'normal_user',
+                workShift: shiftDetail.shiftType || 'Day',
+                workHistory: [],
+                assetAssignments: [],
+                currentAssignments: [],
+                performanceMetrics: {
+                  completedTasks: 0,
+                  pendingTasks: 0,
+                  averageCompletionTime: 0,
+                  qualityScore: 0,
+                  attendanceRate: 0,
+                  safetyIncidents: 0
+                },
+                totalWorkHours: 0,
+                productivityScore: 0,
+                reliabilityScore: 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              }
+              
+              setEmployee(syntheticEmployee)
+              setUsePerformanceData(false)
+              
+              // Show a notification that this is limited data from shift details
+              toast.info('Displaying limited information from shift details. Complete employee profile not found.')
+              return
+            }
+          }
+        } catch (shiftError) {
+          console.log('No shift details found either')
+        }
+        
         setError(response.message || 'Failed to fetch employee details')
         toast.error('Failed to load employee details')
       }

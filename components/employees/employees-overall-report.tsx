@@ -355,10 +355,64 @@ export function EmployeesOverallReport({ employees, isOpen, onClose }: Employees
               box-shadow: none;
               max-width: none;
             }
+            .print-controls {
+              display: none !important;
+            }
           }
         </style>
       </head>
       <body>
+        <div class="print-controls" style="
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          z-index: 1000;
+          display: flex;
+          gap: 10px;
+        ">
+          <button style="
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+            user-select: none;
+            border: 2px solid #1d4ed8;
+            font-size: 14px;
+          " 
+          onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.2)'"
+          onmouseout="this.style.background='#3b82f6'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+          onclick="window.print()"
+          title="Click to print or save as PDF"
+          >
+            🖨️ Print Report
+          </button>
+          
+          <button style="
+            background: #6b7280;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            user-select: none;
+            border: 1px solid #4b5563;
+          " 
+          onmouseover="this.style.background='#4b5563'; this.style.boxShadow='0 4px 16px rgba(0,0,0,0.15)'"
+          onmouseout="this.style.background='#6b7280'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'"
+          onclick="window.close()"
+          title="Close this report window"
+          >
+            ❌ Close
+          </button>
+        </div>
         <div class="container">
           <!-- Header -->
           <div class="header">

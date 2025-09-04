@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -51,6 +52,7 @@ const SHIFT_TYPES = [
 const WORK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 export default function ShiftDetailsPage() {
+  const router = useRouter()
   const { user } = useAuthStore()
   const { toast } = useToast()
   const isSuperAdmin = user?.accessLevel === 'super_admin'
@@ -495,8 +497,8 @@ export default function ShiftDetailsPage() {
     setDialogOpen(open)
   }
 
-  // Handle employee name click to show shift history
-  const handleEmployeeNameClick = (shift: ShiftDetail) => {
+  // Handle employee name click to route to employee details
+  const handleEmployeeNameClick = async (shift: ShiftDetail) => {
     // Use multiple strategies to find employee - prioritize employeeId, then email, then shift record ID
     let employeeIdentifier: string | null = null;
     
@@ -516,15 +518,45 @@ export default function ShiftDetailsPage() {
     if (!employeeIdentifier) {
       toast({
         title: "Error",
-        description: "Unable to load employee shift history. No valid identifier found.",
+        description: "Unable to navigate to employee details. No valid identifier found.",
         variant: "destructive",
       })
       return
     }
 
-    setHistoryEmployeeId(employeeIdentifier)
-    setHistoryEmployeeName(shift.employeeName)
-    setEmployeeHistoryDialogOpen(true)
+    // Check if this employee exists in the actual employee database
+    try {
+      // Try to fetch the employee first to verify they exist
+      const response = await fetch(`/api/employees/${employeeIdentifier}`)
+      
+      if (response.ok) {
+        // Employee exists, route normally
+        router.push(`/employees/${employeeIdentifier}`)
+      } else if (response.status === 404) {
+        // Employee not found in main database, but we have shift data
+        // Show a more detailed information dialog instead of routing
+        toast({
+          title: "Employee Profile Not Found",
+          description: `${shift.employeeName} has shift details but no complete employee profile. Contact admin to create a full employee record.`,
+          variant: "default",
+        })
+        
+        // Optionally, we could show a basic info dialog here
+        setHistoryEmployeeId(shift.employeeId.toString())
+        setHistoryEmployeeName(shift.employeeName)
+        setEmployeeHistoryDialogOpen(true)
+      } else {
+        // Other error occurred
+        throw new Error(`HTTP ${response.status}`)
+      }
+    } catch (error) {
+      console.error('Error checking employee existence:', error)
+      toast({
+        title: "Error",
+        description: "Unable to verify employee details. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   // Handle employee history dialog close
@@ -1158,7 +1190,7 @@ export default function ShiftDetailsPage() {
                       <div 
                         className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer transition-colors"
                         onClick={() => handleEmployeeNameClick(shift)}
-                        title="Click to view shift history"
+                        title="Click to view employee details"
                       >
                         {shift.employeeName}
                       </div>
