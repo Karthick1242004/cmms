@@ -47,7 +47,9 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
 
   const { user } = useAuthStore();
   const { data: departments, isLoading: isLoadingDepartments, error: departmentsError } = useDepartments();
-  const { data: locations, isLoading: isLoadingLocations, error: locationsError } = useLocations();
+  const { data: locations, isLoading: isLoadingLocations, error: locationsError } = useLocations({ 
+    fetchAll: true // Fetch all locations for dropdown
+  });
 
   // Debug log to see departments data structure
   useEffect(() => {

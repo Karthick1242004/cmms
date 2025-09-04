@@ -31,7 +31,16 @@ interface LocationsResponse {
   error?: string
 }
 
-export function useLocations() {
+interface UseLocationsOptions {
+  fetchAll?: boolean // New option to fetch all locations for dropdowns
+  limit?: number
+  page?: number
+  search?: string
+  type?: string
+  status?: string
+}
+
+export function useLocations(options: UseLocationsOptions = {}) {
   const [data, setData] = useState<LocationsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -42,8 +51,26 @@ export function useLocations() {
         setIsLoading(true)
         setError(null)
         
+        // Build query parameters
+        const searchParams = new URLSearchParams()
+        if (options.search) searchParams.append('search', options.search)
+        if (options.type) searchParams.append('type', options.type)
+        if (options.status) searchParams.append('status', options.status)
+        
+        // Handle pagination - for dropdowns, fetch all data
+        if (options.fetchAll) {
+          searchParams.append('limit', '1000') // Large limit to get all locations
+          searchParams.append('page', '1')
+        } else {
+          if (options.limit) searchParams.append('limit', options.limit.toString())
+          if (options.page) searchParams.append('page', options.page.toString())
+        }
+        
+        const queryString = searchParams.toString()
+        const url = `/api/locations${queryString ? `?${queryString}` : ''}`
+        
         const token = localStorage.getItem('auth-token')
-        const response = await fetch('/api/locations', {
+        const response = await fetch(url, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -66,7 +93,7 @@ export function useLocations() {
     }
 
     fetchLocations()
-  }, [])
+  }, [options.fetchAll, options.limit, options.page, options.search, options.type, options.status])
 
   return { data, isLoading, error }
 }

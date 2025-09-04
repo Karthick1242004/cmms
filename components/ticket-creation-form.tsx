@@ -87,7 +87,9 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
 
   // Fetch data from the database (now called after formData is initialized)
   const { data: departmentsData, isLoading: isLoadingDepartments, error: departmentsError } = useDepartments()
-  const { data: locationsData, isLoading: isLoadingLocations, error: locationsError } = useLocations()
+  const { data: locationsData, isLoading: isLoadingLocations, error: locationsError } = useLocations({ 
+    fetchAll: true // Fetch all locations for dropdown
+  })
   const { data: employeesData, isLoading: isLoadingEmployees, error: employeesError } = useEmployees({
     department: formData.department || undefined,
     status: 'active',

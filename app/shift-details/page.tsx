@@ -164,7 +164,9 @@ export default function ShiftDetailsPage() {
   const departments = departmentsData?.data?.departments || []
 
   // Fetch locations for location dropdown
-  const { data: locationsData } = useLocations()
+  const { data: locationsData } = useLocations({ 
+    fetchAll: true // Fetch all locations for dropdown
+  })
   const locations = locationsData?.data?.locations || []
 
   // Auto-select department for non-super_admin users

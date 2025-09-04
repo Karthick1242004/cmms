@@ -177,7 +177,7 @@ export function AssetCreationForm({ onSuccess, onCancel }: AssetCreationFormProp
         }
 
         // Fetch locations
-        const locResponse = await fetch('/api/locations')
+        const locResponse = await fetch('/api/locations?limit=1000&page=1')
         if (locResponse.ok) {
           const locData = await locResponse.json()
           if (locData.success) {

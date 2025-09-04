@@ -79,7 +79,9 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     department: selectedDepartment || undefined,
     fetchAll: true // Fetch all assets for dropdown
   })
-  const { data: locationsData, isLoading: isLoadingLocations } = useLocations()
+  const { data: locationsData, isLoading: isLoadingLocations } = useLocations({ 
+    fetchAll: true // Fetch all locations for dropdown
+  })
   const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees({
     department: selectedDepartment || undefined,
     status: 'active',

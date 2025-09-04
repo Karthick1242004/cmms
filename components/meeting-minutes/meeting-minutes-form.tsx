@@ -98,7 +98,9 @@ export function MeetingMinutesForm({
 
   // Hooks
   const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments();
-  const { data: locationsData, isLoading: isLoadingLocations } = useLocations();
+  const { data: locationsData, isLoading: isLoadingLocations } = useLocations({ 
+    fetchAll: true // Fetch all locations for dropdown
+  });
   const { createMeetingMinutes, updateMeetingMinutes, loading } = useMeetingMinutesActions();
 
   // Initialize form data
