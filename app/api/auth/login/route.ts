@@ -94,12 +94,20 @@ export async function POST(request: NextRequest) {
       missingFields: []
     }
 
-    // Generate JWT token
+    // Map accessLevel to backend role for authorization
+    const backendRole = employee.accessLevel === 'super_admin' || employee.accessLevel === 'department_admin' 
+      ? 'admin' 
+      : employee.accessLevel === 'normal_user' && employee.role.toLowerCase().includes('manager')
+        ? 'manager'
+        : 'technician';
+
+    // Generate JWT token with proper role mapping for backend authorization
     const token = jwt.sign(
       { 
         userId: employee._id,
         email: employee.email,
-        role: employee.role,
+        role: backendRole, // CRITICAL: Use mapped role for backend authorization
+        jobTitle: employee.role, // Keep original job title for display
         department: employee.department,
         accessLevel: employee.accessLevel
       },

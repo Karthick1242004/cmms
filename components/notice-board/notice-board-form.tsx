@@ -22,7 +22,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-// Form validation schema
+// Form validation schema with enhanced backend compatibility
 const noticeBoardSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
   content: z.string().min(1, 'Content is required').max(5000, 'Content must be less than 5000 characters'),
@@ -35,7 +35,7 @@ const noticeBoardSchema = z.object({
   targetDepartments: z.array(z.string()).optional(),
   targetRoles: z.array(z.string()).optional(),
   expiresAt: z.date().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string().min(1, 'Tag cannot be empty').max(50, 'Tag must be less than 50 characters')).max(10, 'Maximum 10 tags allowed').optional(),
   isPublished: z.boolean(),
 }).refine((data) => {
   // If type is 'link' or 'file', linkUrl is required
@@ -55,6 +55,29 @@ const noticeBoardSchema = z.object({
 }, {
   message: 'At least one department must be selected',
   path: ['targetDepartments'],
+}).refine((data) => {
+  // If targetAudience is 'role', targetRoles is required
+  if (data.targetAudience === 'role' && (!data.targetRoles || data.targetRoles.length === 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'At least one role must be selected',
+  path: ['targetRoles'],
+}).refine((data) => {
+  // Validate URL format for link types
+  if (data.type === 'link' && data.linkUrl) {
+    try {
+      new URL(data.linkUrl);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: 'Please enter a valid URL',
+  path: ['linkUrl'],
 });
 
 type NoticeBoardFormData = z.infer<typeof noticeBoardSchema>;
@@ -198,14 +221,43 @@ export function NoticeBoardForm() {
   };
 
   const handleAddTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
-      setNewTag('');
+    const trimmedTag = newTag.trim();
+    
+    // Enhanced validation for tags
+    if (!trimmedTag) {
+      toast.error('Tag cannot be empty');
+      return;
     }
+    
+    if (trimmedTag.length > 50) {
+      toast.error('Tag must be less than 50 characters');
+      return;
+    }
+    
+    if (tags.length >= 10) {
+      toast.error('Maximum 10 tags allowed');
+      return;
+    }
+    
+    if (tags.includes(trimmedTag)) {
+      toast.error('Tag already exists');
+      return;
+    }
+    
+    // Prevent adding error messages or JSON strings as tags
+    if (trimmedTag.includes('{') || trimmedTag.includes('}') || trimmedTag.includes('success') || trimmedTag.includes('error')) {
+      toast.error('Invalid tag format');
+      return;
+    }
+    
+    setTags([...tags, trimmedTag]);
+    setNewTag('');
+    toast.success(`Tag "${trimmedTag}" added`);
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
+    toast.success(`Tag "${tagToRemove}" removed`);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -501,16 +553,33 @@ export function NoticeBoardForm() {
 
           {/* Tags */}
           <div className="space-y-2">
-            <Label>Tags</Label>
+            <Label>Tags (Optional)</Label>
             <div className="flex gap-2">
-              <Input
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Add a tag"
-                className="flex-1"
-              />
-              <Button type="button" onClick={handleAddTag} variant="outline" size="sm">
+              <div className="flex-1 space-y-1">
+                <Input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Add a tag (max 50 characters)"
+                  className={cn(
+                    "transition-colors",
+                    newTag.length > 50 ? "border-red-500" : "",
+                    newTag.length > 40 ? "border-yellow-500" : ""
+                  )}
+                  maxLength={50}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{newTag.length}/50 characters</span>
+                  <span>{tags.length}/10 tags</span>
+                </div>
+              </div>
+              <Button 
+                type="button" 
+                onClick={handleAddTag} 
+                variant="outline" 
+                size="sm"
+                disabled={!newTag.trim() || newTag.length > 50 || tags.length >= 10}
+              >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
@@ -530,6 +599,9 @@ export function NoticeBoardForm() {
                   </Badge>
                 ))}
               </div>
+            )}
+            {errors.tags && (
+              <p className="text-sm text-red-500">{errors.tags.message}</p>
             )}
           </div>
 

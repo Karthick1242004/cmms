@@ -7,7 +7,8 @@ export interface UserContext {
   id: string
   email: string
   department: string
-  role: string
+  role: string // Authorization role (admin/manager/technician) 
+  jobTitle?: string // Display job title (Senior Technician, etc.)
   name: string
   accessLevel: 'super_admin' | 'department_admin' | 'normal_user'
 }
@@ -60,7 +61,8 @@ export async function getUserFromToken(request: NextRequest): Promise<UserContex
       id: employee._id.toString(),
       email: employee.email,
       department: employee.department,
-      role: employee.role,
+      role: decoded.role || employee.role, // Use JWT role (admin/manager/technician) for authorization
+      jobTitle: decoded.jobTitle || employee.role, // Use jobTitle for display, fallback to employee.role
       name: employee.name,
       accessLevel: employee.accessLevel || 'normal_user'
     }
