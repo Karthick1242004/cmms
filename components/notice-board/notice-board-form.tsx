@@ -190,11 +190,18 @@ export function NoticeBoardForm() {
 
   const onSubmit = async (data: NoticeBoardFormData) => {
     try {
+      // Convert Date to ISO string for API compatibility
+      const apiData = {
+        ...data,
+        expiresAt: data.expiresAt?.toISOString(),
+        tags: data.tags || []
+      };
+
       if (isEditMode && currentNotice) {
-        await updateNotice(currentNotice.id, data);
+        await updateNotice(currentNotice.id, apiData);
         toast.success('Notice updated successfully!');
       } else {
-        await createNotice(data);
+        await createNotice(apiData);
         toast.success('Notice created successfully!');
       }
       setDialogOpen(false);
