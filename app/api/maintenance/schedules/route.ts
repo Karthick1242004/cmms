@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
     if (!body.frequency || typeof body.frequency !== 'string') {
       validationIssues.push('frequency is required and must be a string');
     } else {
-      const validFrequencies = ['daily', 'weekly', 'monthly', 'quarterly', 'annually', 'custom'];
+      const validFrequencies = ['daily', 'weekly', 'monthly', 'quarterly', 'half-yearly', 'annually', 'custom'];
       if (!validFrequencies.includes(body.frequency)) {
         validationIssues.push(`frequency must be one of: ${validFrequencies.join(', ')}`);
       }

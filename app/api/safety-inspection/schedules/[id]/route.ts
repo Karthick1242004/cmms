@@ -26,6 +26,9 @@ function calculateNextDueDate(startDate: string, frequency: string, customFreque
     case 'quarterly':
       intervalDays = 90
       break
+    case 'half-yearly':
+      intervalDays = 182
+      break
     case 'annually':
       intervalDays = 365
       break

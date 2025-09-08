@@ -448,7 +448,17 @@ export const useMaintenanceStore = create<MaintenanceState>()(
 
 // Helper function to calculate next due date
 function calculateNextDueDate(frequency: string, lastCompleted: string, customDays?: number): string {
+  // Validate lastCompleted
+  if (!lastCompleted || lastCompleted.trim() === '') {
+    return ''
+  }
+  
   const date = new Date(lastCompleted)
+  
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    return ''
+  }
   
   switch (frequency) {
     case "daily":
@@ -462,6 +472,9 @@ function calculateNextDueDate(frequency: string, lastCompleted: string, customDa
       break
     case "quarterly":
       date.setMonth(date.getMonth() + 3)
+      break
+    case "half-yearly":
+      date.setMonth(date.getMonth() + 6)
       break
     case "annually":
       date.setFullYear(date.getFullYear() + 1)

@@ -26,19 +26,7 @@ export async function GET(request: NextRequest) {
     }
     
     const queryString = searchParams.toString();
-    const url = `${SERVER_API_URL}/api/employees${queryString ? `?${queryString}` : ''}`;
-
-    // Debug logging
-    console.log('Employees API Route Debug:', {
-      originalUrl: request.url,
-      forwardedUrl: url,
-      queryString,
-      userAccessLevel: user?.accessLevel,
-      userDepartment: user?.department,
-      searchParams: Object.fromEntries(searchParams.entries())
-    });
-
-    // Extract JWT token from the incoming request
+    const url = `${SERVER_API_URL}/api/employees${queryString ? `?${queryString}` : ''}`;    // Extract JWT token from the incoming request
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '') || 
                   request.cookies.get('auth-token')?.value;

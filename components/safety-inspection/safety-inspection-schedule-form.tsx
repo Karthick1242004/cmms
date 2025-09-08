@@ -38,7 +38,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   
   // State for department selection (for super admin)
   const [selectedDepartment, setSelectedDepartment] = useState(
-    isSuperAdmin ? "" : user?.department || ""
+    isSuperAdmin ? (schedule?.department || "") : user?.department || ""
   )
 
   // State for inspector dropdown
@@ -50,7 +50,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     location: string
     title: string
     description: string
-    frequency: "daily" | "weekly" | "monthly" | "quarterly" | "annually" | "custom"
+    frequency: "daily" | "weekly" | "monthly" | "quarterly" | "half-yearly" | "annually" | "custom"
     customFrequencyDays: number
     startDate: string
     nextDueDate: string
@@ -63,7 +63,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
 
   const [formData, setFormData] = useState<FormData>({
     assetId: "",
-    department: isSuperAdmin ? "" : user?.department || "",
+    department: isSuperAdmin ? (schedule?.department || "") : user?.department || "",
     location: "",
     title: "",
     description: "",
@@ -103,30 +103,55 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   // Initialize form data when editing
   useEffect(() => {
     if (schedule) {
+      // Determine department - fallback to user department if schedule doesn't have one
+      const scheduleDepartment = schedule.department || user?.department || "ASRS"
+      
       setFormData({
-        assetId: schedule.assetId,
-        department: schedule.department || "",
-        location: schedule.location,
-        title: schedule.title,
+        assetId: schedule.assetId || "",
+        department: scheduleDepartment,
+        location: schedule.location || "",
+        title: schedule.title || "",
         description: schedule.description || "",
-        frequency: schedule.frequency,
+        frequency: schedule.frequency || "monthly",
         customFrequencyDays: schedule.customFrequencyDays || 30,
-        startDate: schedule.startDate,
-        nextDueDate: schedule.nextDueDate,
-        priority: schedule.priority,
-        riskLevel: schedule.riskLevel,
-        estimatedDuration: schedule.estimatedDuration,
+        startDate: schedule.startDate || "",
+        nextDueDate: schedule.nextDueDate || "",
+        priority: schedule.priority || "medium",
+        riskLevel: schedule.riskLevel || "medium",
+        estimatedDuration: schedule.estimatedDuration || 2,
         assignedInspector: schedule.assignedInspector || "",
-        safetyStandards: schedule.safetyStandards,
+        safetyStandards: schedule.safetyStandards || [],
       })
-      setCategories(schedule.checklistCategories)
+      setCategories(schedule.checklistCategories || [])
       
       // Set selected department for super admin when editing
-      if (isSuperAdmin && schedule.department) {
-        setSelectedDepartment(schedule.department)
+      if (isSuperAdmin) {
+        setSelectedDepartment(scheduleDepartment)
       }
     }
-  }, [schedule, isSuperAdmin])
+  }, [schedule, isSuperAdmin, user?.department])
+
+  // Sync selectedDepartment with formData.department when departments are loaded
+  useEffect(() => {
+    if (schedule && isSuperAdmin && departmentsData?.data?.departments) {
+      // Determine the department (with fallback)
+      const scheduleDepartment = schedule.department || user?.department || "ASRS"
+      
+      // Check if the schedule department exists in the departments list
+      const departmentExists = departmentsData.data.departments.some(dept => dept.name === scheduleDepartment)
+      if (departmentExists && selectedDepartment !== scheduleDepartment) {
+        setSelectedDepartment(scheduleDepartment)
+      }
+    }
+  }, [schedule, isSuperAdmin, departmentsData?.data?.departments, selectedDepartment, user?.department])
+
+  // Force re-render when assets data is loaded to update asset display
+  useEffect(() => {
+    if (schedule && assetsData?.data?.assets && formData.assetId) {
+      // Trigger a re-render by updating formData (this will cause getSelectedAssetName to be called again)
+      setFormData(prev => ({ ...prev }))
+    }
+  }, [assetsData?.data?.assets, schedule, formData.assetId])
 
   // Handle department change (for super admin)
   const handleDepartmentChange = (department: string) => {
@@ -169,10 +194,29 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   }
 
   const getSelectedAssetName = () => {
-    const selectedAsset = assetsData?.data?.assets?.find(asset => asset.id === formData.assetId)
+    if (!formData.assetId) return ""
+    
+    // First try to find in the current filtered assets
+    let selectedAsset = assetsData?.data?.assets?.find(asset => asset.id === formData.assetId)
+    
+    // If not found, try to find by assetName (for cases where assetId might be different)
+    if (!selectedAsset && schedule?.assetName) {
+      selectedAsset = assetsData?.data?.assets?.find(asset => 
+        asset.name === schedule.assetName || 
+        asset.assetTag === schedule.assetTag ||
+        asset.id === schedule.assetId
+      )
+    }
+    
     if (selectedAsset) {
       return `${selectedAsset.name} ${selectedAsset.assetTag ? `(${selectedAsset.assetTag})` : ''} - ${selectedAsset.location}`
     }
+    
+    // Fallback to schedule data if available
+    if (schedule?.assetName) {
+      return `${schedule.assetName} ${schedule.assetTag ? `(${schedule.assetTag})` : ''} - ${schedule.location}`
+    }
+    
     return ""
   }
 
@@ -241,12 +285,24 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   }
 
   const calculateNextDueDate = (frequency: string, startDate: string, customDays?: number) => {
+    // Validate startDate
+    if (!startDate || startDate.trim() === '') {
+      return ''
+    }
+    
     const date = new Date(startDate)
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return ''
+    }
+    
     switch (frequency) {
       case "daily": date.setDate(date.getDate() + 1); break
       case "weekly": date.setDate(date.getDate() + 7); break
       case "monthly": date.setMonth(date.getMonth() + 1); break
       case "quarterly": date.setMonth(date.getMonth() + 3); break
+      case "half-yearly": date.setMonth(date.getMonth() + 6); break
       case "annually": date.setFullYear(date.getFullYear() + 1); break
       case "custom": date.setDate(date.getDate() + (customDays || 30)); break
     }
@@ -283,17 +339,72 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validate required fields
+    // Enhanced validation for all required fields
     if (!formData.assetId) {
       alert('Please select an asset')
       return
     }
-    if (!formData.title) {
+    if (!formData.title.trim()) {
       alert('Please enter an inspection title')
       return
+    }
+    if (!formData.startDate) {
+      alert('Please select a start date')
+      return
+    }
+    if (!formData.frequency) {
+      alert('Please select a frequency')
+      return
+    }
+    if (formData.frequency === 'custom' && (!formData.customFrequencyDays || formData.customFrequencyDays <= 0)) {
+      alert('Please enter a valid custom frequency in days')
+      return
+    }
+    if (!formData.priority) {
+      alert('Please select a priority level')
+      return
+    }
+    if (!formData.riskLevel) {
+      alert('Please select a risk level')
+      return
+    }
+    if (!formData.estimatedDuration || formData.estimatedDuration <= 0) {
+      alert('Please enter a valid estimated duration in hours')
+      return
+    }
+    
+    // Validate department (for super admin)
+    if (isSuperAdmin && !selectedDepartment && !formData.department) {
+      alert('Please select a department')
+      return
+    }
+
+    // Validate safety checklist categories
+    if (categories.length === 0) {
+      alert("Please add at least one safety checklist category.")
+      return
+    }
+
+    // Validate that all categories have names and at least one checklist item
+    for (const category of categories) {
+      if (!category.categoryName.trim()) {
+        alert("Please provide names for all safety checklist categories.")
+        return
+      }
+      if (category.checklistItems.length === 0) {
+        alert(`Please add at least one checklist item for category "${category.categoryName}".`)
+        return
+      }
+      // Validate checklist items
+      for (const item of category.checklistItems) {
+        if (!item.description.trim()) {
+          alert(`Please provide descriptions for all checklist items in category "${category.categoryName}".`)
+          return
+        }
+      }
     }
     
     // Get selected asset details for additional fields
@@ -301,63 +412,53 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     
     const scheduleData = {
       ...formData,
-      // Convert empty estimatedDuration to default value
-      estimatedDuration: formData.estimatedDuration === '' ? 2 : formData.estimatedDuration,
+      department: selectedDepartment || formData.department,
+      // Convert empty estimatedDuration to actual number
+      estimatedDuration: typeof formData.estimatedDuration === 'string' ? parseFloat(formData.estimatedDuration) : formData.estimatedDuration,
       // Include asset details for backward compatibility
-      assetName: selectedAsset?.name || "",
-      assetTag: selectedAsset?.assetTag || "",
-      assetType: selectedAsset?.type || "Equipment", // Provide default
+      assetName: selectedAsset?.name || schedule?.assetName || "",
+      assetTag: selectedAsset?.assetTag || schedule?.assetTag || "",
+      assetType: selectedAsset?.type || schedule?.assetType || "Equipment",
       status: "active" as const,
-      createdBy: user?.email || user?.name || "admin",
-      checklistCategories: categories.length > 0 ? categories : [
-        // Default checklist category if none provided
-        {
-          id: `cat_default_${Date.now()}`,
-          categoryName: "General Safety",
-          description: "Basic safety inspection items",
-          required: true,
-          weight: 100,
-          checklistItems: [
-            {
-              id: `item_default_${Date.now()}`,
-              description: "Visual inspection for safety hazards",
-              isRequired: true,
-              riskLevel: "medium" as const,
-              status: "pending" as const,
-            }
-          ]
-        }
-      ],
+      createdBy: user?.email || user?.name || "System",
+      createdAt: schedule?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      checklistCategories: categories,
     }
 
-    if (schedule) {
-      updateSchedule(schedule.id, scheduleData)
-    } else {
-      addSchedule(scheduleData)
+    try {
+      if (schedule) {
+        await updateSchedule(schedule.id, scheduleData)
+      } else {
+        await addSchedule(scheduleData)
+      }
+      
+      setScheduleDialogOpen(false)
+      
+      // Reset form
+      setFormData({
+        assetId: "",
+        department: isSuperAdmin ? "" : user?.department || "",
+        location: "",
+        title: "",
+        description: "",
+        frequency: "monthly",
+        customFrequencyDays: 30,
+        startDate: new Date().toISOString().split('T')[0],
+        nextDueDate: "",
+        priority: "medium",
+        riskLevel: "medium",
+        estimatedDuration: '',
+        assignedInspector: "",
+        safetyStandards: [],
+      })
+      setCategories([])
+      setSelectedDepartment(isSuperAdmin ? "" : user?.department || "")
+      setShowInspectorDropdown(false)
+    } catch (error) {
+      console.error('Failed to save schedule:', error)
+      alert('Failed to save schedule. Please try again.')
     }
-    
-    setScheduleDialogOpen(false)
-    
-    // Reset form
-    setFormData({
-      assetId: "",
-      department: isSuperAdmin ? "" : user?.department || "",
-      location: "",
-      title: "",
-      description: "",
-      frequency: "monthly",
-      customFrequencyDays: 30,
-      startDate: new Date().toISOString().split('T')[0],
-      nextDueDate: "",
-      priority: "medium",
-      riskLevel: "medium",
-      estimatedDuration: '',
-      assignedInspector: "",
-      safetyStandards: [],
-    })
-    setCategories([])
-    setSelectedDepartment(isSuperAdmin ? "" : user?.department || "")
-    setShowInspectorDropdown(false)
   }
 
   return (
@@ -383,9 +484,12 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                 <div className="grid grid-cols-2 gap-4">
                   {/* Department Selection (Super Admin Only) */}
                   {isSuperAdmin && (
-                    <div className="space-y-2">
-                      <Label htmlFor="department">Department</Label>
-                      <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
+                      <div className="space-y-2">
+                        <Label htmlFor="department">Department</Label>
+                        <Select 
+                          value={selectedDepartment || formData.department} 
+                          onValueChange={handleDepartmentChange}
+                        >
                         <SelectTrigger>
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
@@ -493,6 +597,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                         <SelectItem value="weekly">Weekly</SelectItem>
                         <SelectItem value="monthly">Monthly</SelectItem>
                         <SelectItem value="quarterly">Quarterly</SelectItem>
+                        <SelectItem value="half-yearly">Half-Yearly</SelectItem>
                         <SelectItem value="annually">Annually</SelectItem>
                         <SelectItem value="custom">Custom</SelectItem>
                       </SelectContent>

@@ -45,11 +45,13 @@ import { EmployeeAIAnalysisDialog } from "@/components/employees/employee-ai-ana
 import { TrialBanner } from "@/components/trial-banner"
 import { sampleEmployeeAnalytics } from "@/data/employees-sample"
 import { toast } from "sonner"
+import { useAuthStore } from "@/stores/auth-store"
 
 export default function EmployeeDetailPage() {
   const params = useParams()  
   const router = useRouter()
   const employeeId = params.id as string
+  const { user } = useAuthStore()
 
   const [employee, setEmployee] = useState<EmployeeDetail | null>(null)
   const [performanceData, setPerformanceData] = useState<PerformanceRecord | null>(null)
@@ -60,9 +62,32 @@ export default function EmployeeDetailPage() {
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false)
 
+  // Check access permissions
   useEffect(() => {
-    fetchEmployeeDetails()
-  }, [employeeId])
+    if (user?.accessLevel === 'normal_user') {
+      toast.error("You don't have access to that page", {
+        description: "Only administrators can view individual employee details",
+        duration: 4000,
+        style: {
+          backgroundColor: '#dc2626',
+          color: 'white',
+          border: '1px solid #b91c1c'
+        }
+      })
+      // Redirect back to employees list after showing error
+      setTimeout(() => {
+        router.push('/employees')
+      }, 2000)
+      return
+    }
+  }, [user, router])
+
+  useEffect(() => {
+    // Only fetch data if user has permission
+    if (user?.accessLevel !== 'normal_user') {
+      fetchEmployeeDetails()
+    }
+  }, [employeeId, user])
 
   const fetchEmployeeDetails = async () => {
     try {
@@ -225,6 +250,25 @@ export default function EmployeeDetailPage() {
       <PageLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </PageLayout>
+    )
+  }
+
+  // Show access denied message for normal users
+  if (user?.accessLevel === 'normal_user') {
+    return (
+      <PageLayout>
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
+            <p className="text-muted-foreground mt-2">You don't have permission to view individual employee details.</p>
+            <p className="text-sm text-muted-foreground mt-1">Only administrators can access this page.</p>
+          </div>
+          <Button onClick={() => router.push('/employees')} variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Employees
+          </Button>
         </div>
       </PageLayout>
     )

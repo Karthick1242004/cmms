@@ -49,7 +49,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     location: string
     title: "preventive" | "normal" | "routine"
     description: string
-    frequency: "daily" | "weekly" | "monthly" | "quarterly" | "annually" | "custom"
+    frequency: "daily" | "weekly" | "monthly" | "quarterly" | "half-yearly" | "annually" | "custom"
     customFrequencyDays: number
     startDate: string
     nextDueDate: string
@@ -242,12 +242,24 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   }
 
   const calculateNextDueDate = (frequency: string, startDate: string, customDays?: number) => {
+    // Validate startDate
+    if (!startDate || startDate.trim() === '') {
+      return ''
+    }
+    
     const date = new Date(startDate)
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return ''
+    }
+    
     switch (frequency) {
       case "daily": date.setDate(date.getDate() + 1); break
       case "weekly": date.setDate(date.getDate() + 7); break
       case "monthly": date.setMonth(date.getMonth() + 1); break
       case "quarterly": date.setMonth(date.getMonth() + 3); break
+      case "half-yearly": date.setMonth(date.getMonth() + 6); break
       case "annually": date.setFullYear(date.getFullYear() + 1); break
       case "custom": date.setDate(date.getDate() + (customDays || 30)); break
     }
@@ -512,6 +524,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                   <SelectItem value="weekly">Weekly</SelectItem>
                   <SelectItem value="monthly">Monthly</SelectItem>
                   <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="half-yearly">Half-Yearly</SelectItem>
                   <SelectItem value="annually">Annually</SelectItem>
                   <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>

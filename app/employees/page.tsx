@@ -474,6 +474,26 @@ export default function EmployeesPage() {
     console.log('Dialog should be open now:', true)
   }
 
+  // Handle employee detail navigation with access control
+  const handleEmployeeDetailNavigation = (employee: Employee) => {
+    // Check if user has permission to view employee details
+    if (user?.accessLevel === 'normal_user') {
+      toast.error("You don't have access to that page", {
+        description: "Only administrators can view individual employee details",
+        duration: 4000,
+        style: {
+          backgroundColor: '#dc2626',
+          color: 'white',
+          border: '1px solid #b91c1c'
+        }
+      })
+      return
+    }
+    
+    // Allow navigation for super_admin and department_admin
+    router.push(`/employees/${employee.id}`)
+  }
+
   const handleDialogClose = () => {
     setIsDialogOpen(false)
     resetForm()
@@ -984,8 +1004,17 @@ export default function EmployeesPage() {
                       </Avatar>
                       <div>
                         <div 
-                          className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer"
-                          onClick={() => router.push(`/employees/${employee.id}`)}
+                          className={`font-medium cursor-pointer transition-colors ${
+                            user?.accessLevel === 'normal_user' 
+                              ? 'text-gray-500 hover:text-gray-700 cursor-not-allowed' 
+                              : 'text-blue-600 hover:text-blue-800'
+                          }`}
+                          onClick={() => handleEmployeeDetailNavigation(employee)}
+                          title={
+                            user?.accessLevel === 'normal_user' 
+                              ? "You don't have permission to view employee details" 
+                              : "Click to view employee details"
+                          }
                         >
                           {employee.name}
                         </div>
@@ -1020,7 +1049,11 @@ export default function EmployeesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => router.push(`/employees/${employee.id}`)}>
+                        <DropdownMenuItem 
+                          onClick={() => handleEmployeeDetailNavigation(employee)}
+                          className={user?.accessLevel === 'normal_user' ? 'opacity-50 cursor-not-allowed' : ''}
+                          disabled={user?.accessLevel === 'normal_user'}
+                        >
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>

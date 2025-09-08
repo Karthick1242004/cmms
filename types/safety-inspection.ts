@@ -9,7 +9,7 @@ export interface SafetyInspectionSchedule {
   department: string // Department responsible for this safety inspection
   title: string
   description?: string
-  frequency: "daily" | "weekly" | "monthly" | "quarterly" | "annually" | "custom"
+  frequency: "daily" | "weekly" | "monthly" | "quarterly" | "half-yearly" | "annually" | "custom"
   customFrequencyDays?: number
   startDate: string
   nextDueDate: string
