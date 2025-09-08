@@ -16,7 +16,7 @@ const StockTransactionSchema = new mongoose.Schema({
     type: String, 
     required: [true, 'Transaction type is required'],
     enum: {
-      values: ['receipt', 'issue', 'transfer_in', 'transfer_out', 'adjustment', 'scrap'],
+      values: ['receipt', 'issue', 'transfer', 'adjustment', 'scrap'],
       message: 'Invalid transaction type'
     }
   },
@@ -41,6 +41,59 @@ const StockTransactionSchema = new mongoose.Schema({
     minlength: [10, 'Description must be at least 10 characters'],
     maxlength: [500, 'Description cannot exceed 500 characters']
   },
+  
+  // Enhanced procurement tracking for 'receipt' type
+  procurementType: {
+    type: String,
+    enum: ['purchase', 'donation', 'return', 'initial_stock']
+  },
+  procurementReason: { type: String, maxlength: [200, 'Procurement reason cannot exceed 200 characters'] },
+  receivedBy: { type: String, maxlength: [100, 'Received by cannot exceed 100 characters'] },
+  receivedByName: { type: String, maxlength: [100, 'Received by name cannot exceed 100 characters'] },
+  qualityChecked: { type: Boolean, default: false },
+  qualityCheckedBy: { type: String, maxlength: [100, 'Quality checked by cannot exceed 100 characters'] },
+  qualityNotes: { type: String, maxlength: [500, 'Quality notes cannot exceed 500 characters'] },
+  
+  // Enhanced asset maintenance tracking for 'issue' type
+  maintenanceType: {
+    type: String,
+    enum: ['preventive', 'corrective', 'emergency', 'upgrade']
+  },
+  maintenanceReason: { type: String, maxlength: [200, 'Maintenance reason cannot exceed 200 characters'] },
+  assetConditionBefore: {
+    type: String,
+    enum: ['good', 'fair', 'poor', 'critical']
+  },
+  assetConditionAfter: {
+    type: String,
+    enum: ['good', 'fair', 'poor', 'critical']
+  },
+  replacementType: {
+    type: String,
+    enum: ['scheduled', 'breakdown', 'upgrade', 'recall']
+  },
+  technician: { type: String, maxlength: [100, 'Technician cannot exceed 100 characters'] },
+  technicianName: { type: String, maxlength: [100, 'Technician name cannot exceed 100 characters'] },
+  workOrderPriority: {
+    type: String,
+    enum: ['low', 'normal', 'high', 'critical']
+  },
+  
+  // Enhanced transfer tracking for 'transfer' type
+  transferReason: {
+    type: String,
+    enum: ['rebalancing', 'project_need', 'emergency', 'reorganization']
+  },
+  transferType: {
+    type: String,
+    enum: ['permanent', 'temporary', 'loan']
+  },
+  expectedReturnDate: { type: Date },
+  transferApprovedBy: { type: String, maxlength: [100, 'Transfer approved by cannot exceed 100 characters'] },
+  transferApprovedByName: { type: String, maxlength: [100, 'Transfer approved by name cannot exceed 100 characters'] },
+  sourceDepartment: { type: String, maxlength: [100, 'Source department cannot exceed 100 characters'] },
+  destinationDepartment: { type: String, maxlength: [100, 'Destination department cannot exceed 100 characters'] },
+  transferNotes: { type: String, maxlength: [500, 'Transfer notes cannot exceed 500 characters'] },
   
   // New vendor and procurement fields
   materialCode: {

@@ -13,11 +13,40 @@ export interface StockTransactionItem {
 export interface StockTransaction {
   id: string;
   transactionNumber: string;
-  transactionType: 'receipt' | 'issue' | 'transfer_in' | 'transfer_out' | 'adjustment' | 'scrap';
+  transactionType: 'receipt' | 'issue' | 'transfer' | 'adjustment' | 'scrap';
   transactionTypeDisplay?: string;
   transactionDate: string | Date;
   referenceNumber?: string;
   description: string;
+  
+  // Enhanced procurement tracking for 'receipt' type
+  procurementType?: 'purchase' | 'donation' | 'return' | 'initial_stock';
+  procurementReason?: string;
+  receivedBy?: string;
+  receivedByName?: string;
+  qualityChecked?: boolean;
+  qualityCheckedBy?: string;
+  qualityNotes?: string;
+  
+  // Enhanced asset maintenance tracking for 'issue' type  
+  maintenanceType?: 'preventive' | 'corrective' | 'emergency' | 'upgrade';
+  maintenanceReason?: string;
+  assetConditionBefore?: 'good' | 'fair' | 'poor' | 'critical';
+  assetConditionAfter?: 'good' | 'fair' | 'poor' | 'critical';
+  replacementType?: 'scheduled' | 'breakdown' | 'upgrade' | 'recall';
+  technician?: string;
+  technicianName?: string;
+  workOrderPriority?: 'low' | 'normal' | 'high' | 'critical';
+  
+  // Enhanced transfer tracking for 'transfer' type
+  transferReason?: 'rebalancing' | 'project_need' | 'emergency' | 'reorganization';
+  transferType?: 'permanent' | 'temporary' | 'loan';
+  expectedReturnDate?: string | Date;
+  transferApprovedBy?: string;
+  transferApprovedByName?: string;
+  sourceDepartment?: string;
+  destinationDepartment?: string;
+  transferNotes?: string;
   
   // New vendor and procurement fields
   materialCode?: string; // Material Code (MC)
@@ -79,7 +108,36 @@ export interface StockTransaction {
 }
 
 export interface StockTransactionFormData {
-  transactionType: StockTransaction['transactionType'];
+  transactionType: StockTransaction['transactionType']
+  
+  // Enhanced procurement fields for 'receipt' type
+  procurementType?: StockTransaction['procurementType'];
+  procurementReason?: string;
+  receivedBy?: string;
+  receivedByName?: string;
+  qualityChecked?: boolean;
+  qualityCheckedBy?: string;
+  qualityNotes?: string;
+  
+  // Enhanced asset maintenance fields for 'issue' type
+  maintenanceType?: StockTransaction['maintenanceType'];
+  maintenanceReason?: string;
+  assetConditionBefore?: StockTransaction['assetConditionBefore'];
+  assetConditionAfter?: StockTransaction['assetConditionAfter'];
+  replacementType?: StockTransaction['replacementType'];
+  technician?: string;
+  technicianName?: string;
+  workOrderPriority?: StockTransaction['workOrderPriority'];
+  
+  // Enhanced transfer fields for 'transfer' type  
+  transferReason?: StockTransaction['transferReason'];
+  transferType?: StockTransaction['transferType'];
+  expectedReturnDate?: string;
+  transferApprovedBy?: string;
+  transferApprovedByName?: string;
+  sourceDepartment?: string;
+  destinationDepartment?: string;
+  transferNotes?: string;
   transactionDate: string;
   referenceNumber?: string;
   description: string;

@@ -9,13 +9,23 @@ import type { StockTransaction, StockTransactionItem } from '@/types/stock-trans
 export interface InventoryUpdateRequest {
   partId: string;
   quantityChange: number;
-  transactionType: 'receipt' | 'issue' | 'transfer_in' | 'transfer_out' | 'adjustment' | 'scrap';
+  transactionType: 'receipt' | 'issue' | 'transfer' | 'adjustment' | 'scrap';
   transactionId: string;
   transactionNumber: string;
   reason: string;
   location?: string;
   notes?: string;
   cost?: number;
+  
+  // Enhanced tracking for different transaction types
+  assetId?: string;
+  assetName?: string;
+  maintenanceType?: string;
+  technician?: string;
+  sourceDepartment?: string;
+  destinationDepartment?: string;
+  procurementType?: string;
+  qualityChecked?: boolean;
 }
 
 export interface InventoryUpdateResult {
@@ -38,42 +48,454 @@ export interface InventoryBatchUpdateResult {
 }
 
 /**
- * Calculate quantity change based on transaction type and user perspective
+ * Calculate quantity change based on enhanced transaction type logic
+ * - Receipt: Procurement operations (new parts bought for company)
+ * - Issue: Asset maintenance operations (parts used for specific assets)
+ * - Transfer: Department-to-department transfers (cascading with locations)
  */
 export function calculateQuantityChange(
   transactionType: string,
   quantity: number,
   userDepartment?: string,
   sourceLocation?: string,
-  destinationLocation?: string
+  destinationLocation?: string,
+  sourceDepartment?: string,
+  destinationDepartment?: string
 ): number {
   switch (transactionType) {
     case 'receipt':
-      // Receiving inventory - always positive
+      // Procurement: New parts bought for the company
+      // Always increases inventory for the receiving department
       return Math.abs(quantity);
       
     case 'issue':
-      // Issuing inventory out - always negative
+      // Asset Maintenance: Parts used for specific asset maintenance/repair
+      // Always decreases inventory from the department managing the asset
       return -Math.abs(quantity);
       
-    case 'transfer_in':
-      // Transfer coming in - positive for receiving department
-      return Math.abs(quantity);
-      
-    case 'transfer_out':
-      // Transfer going out - negative for sending department  
-      return -Math.abs(quantity);
+    case 'transfer':
+      // Department-to-Department Transfer: 
+      // Determine if this is incoming or outgoing for the current department
+      if (userDepartment === sourceDepartment) {
+        // Outgoing transfer - decrease inventory
+        return -Math.abs(quantity);
+      } else if (userDepartment === destinationDepartment) {
+        // Incoming transfer - increase inventory
+        return Math.abs(quantity);
+      } else {
+        // Department not involved in transfer
+        return 0;
+      }
       
     case 'adjustment':
-      // Can be positive or negative based on actual adjustment
+      // Manual inventory adjustments - can be positive or negative
       return quantity;
       
     case 'scrap':
-      // Scrapping inventory - always negative
+      // Parts scrapped/disposed - always negative
       return -Math.abs(quantity);
       
     default:
       throw new Error(`Unknown transaction type: ${transactionType}`);
+  }
+}
+
+/**
+ * Enhanced inventory update processing with department-location cascading
+ * Handles the new transaction types with proper business logic
+ */
+export async function processEnhancedInventoryUpdates(
+  transaction: StockTransaction,
+  authToken: string,
+  baseUrl = ''
+): Promise<InventoryBatchUpdateResult> {
+  const results: InventoryUpdateResult[] = [];
+  const failedUpdates: InventoryUpdateResult[] = [];
+  
+  try {
+    // Validate transaction status
+    if (!['approved', 'completed'].includes(transaction.status)) {
+      throw new Error(`Cannot process inventory for transaction with status: ${transaction.status}`);
+    }
+
+    // Enhanced validation based on transaction type
+    await validateTransactionForProcessing(transaction);
+
+    // Handle transfers separately due to dual-department processing
+    if (transaction.transactionType === 'transfer') {
+      return await processDepartmentTransfer(transaction, authToken, baseUrl);
+    }
+
+    // Process each item with enhanced logic for non-transfer transactions
+    for (const item of transaction.items) {
+      try {
+        const updateRequest = await buildEnhancedUpdateRequest(transaction, item, authToken, baseUrl);
+        
+        if (updateRequest) {
+          const result = await executeInventoryUpdate(updateRequest, authToken, baseUrl);
+          results.push(result);
+          
+          if (!result.success) {
+            failedUpdates.push(result);
+          }
+        }
+      } catch (itemError) {
+        const result: InventoryUpdateResult = {
+          success: false,
+          partId: item.partId,
+          partNumber: item.partNumber,
+          previousQuantity: 0,
+          newQuantity: 0,
+          message: 'Update failed',
+          error: itemError instanceof Error ? itemError.message : 'Unknown error'
+        };
+        results.push(result);
+        failedUpdates.push(result);
+      }
+    }
+
+    const totalUpdated = results.filter(r => r.success).length;
+    const totalFailed = failedUpdates.length;
+
+    return {
+      success: totalFailed === 0,
+      results,
+      totalUpdated,
+      totalFailed,
+      failedUpdates,
+      message: `Processed ${totalUpdated} successful, ${totalFailed} failed inventory updates`
+    };
+
+  } catch (error) {
+    console.error('[ENHANCED INVENTORY] Error processing inventory updates:', error);
+    return {
+      success: false,
+      results: [],
+      totalUpdated: 0,
+      totalFailed: transaction.items.length,
+      failedUpdates: [],
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+/**
+ * Validate transaction for processing based on type-specific requirements
+ */
+async function validateTransactionForProcessing(transaction: StockTransaction): Promise<void> {
+  switch (transaction.transactionType) {
+    case 'receipt':
+      // Procurement validation
+      if (!transaction.supplier && !transaction.vendorName) {
+        throw new Error('Procurement transactions require supplier or vendor information');
+      }
+      if (!transaction.destinationLocation && !transaction.department) {
+        throw new Error('Procurement transactions require destination location or department');
+      }
+      break;
+      
+    case 'issue':
+      // Asset maintenance validation
+      if (!transaction.assetId && !transaction.assetName) {
+        throw new Error('Asset maintenance transactions require asset information');
+      }
+      if (!transaction.technician && !transaction.recipient) {
+        throw new Error('Asset maintenance transactions require technician or recipient information');
+      }
+      break;
+      
+    case 'transfer':
+      // Department transfer validation
+      if (!transaction.sourceDepartment || !transaction.destinationDepartment) {
+        throw new Error('Transfer transactions require source and destination departments');
+      }
+      if (transaction.sourceDepartment === transaction.destinationDepartment) {
+        throw new Error('Transfer source and destination departments must be different');
+      }
+      break;
+  }
+}
+
+/**
+ * Build enhanced update request with type-specific information
+ */
+/**
+ * Process department transfers with cascading location logic
+ */
+export async function processDepartmentTransfer(
+  transaction: StockTransaction,
+  authToken: string,
+  baseUrl = ''
+): Promise<InventoryBatchUpdateResult> {
+  const results: InventoryUpdateResult[] = [];
+  const failedUpdates: InventoryUpdateResult[] = [];
+  
+  try {
+    if (!transaction.sourceDepartment || !transaction.destinationDepartment) {
+      throw new Error('Transfer requires both source and destination departments');
+    }
+
+    // Get department-location mapping
+    const departmentLocations = await getDepartmentLocationMapping(authToken, baseUrl);
+    
+    for (const item of transaction.items) {
+      try {
+        // Process outgoing from source department
+        const outgoingResult = await processTransferLeg(
+          transaction,
+          item,
+          'outgoing',
+          transaction.sourceDepartment,
+          departmentLocations,
+          authToken,
+          baseUrl
+        );
+        results.push(outgoingResult);
+        
+        if (!outgoingResult.success) {
+          failedUpdates.push(outgoingResult);
+          continue; // Skip incoming if outgoing failed
+        }
+
+        // Process incoming to destination department
+        const incomingResult = await processTransferLeg(
+          transaction,
+          item,
+          'incoming',
+          transaction.destinationDepartment,
+          departmentLocations,
+          authToken,
+          baseUrl
+        );
+        results.push(incomingResult);
+        
+        if (!incomingResult.success) {
+          failedUpdates.push(incomingResult);
+        }
+        
+      } catch (itemError) {
+        const errorResult: InventoryUpdateResult = {
+          success: false,
+          partId: item.partId,
+          partNumber: item.partNumber,
+          previousQuantity: 0,
+          newQuantity: 0,
+          message: 'Transfer failed',
+          error: itemError instanceof Error ? itemError.message : 'Unknown error'
+        };
+        results.push(errorResult);
+        failedUpdates.push(errorResult);
+      }
+    }
+
+    const totalUpdated = results.filter(r => r.success).length;
+    const totalFailed = failedUpdates.length;
+
+    return {
+      success: totalFailed === 0,
+      results,
+      totalUpdated,
+      totalFailed,
+      failedUpdates,
+      message: `Transfer processed: ${totalUpdated} successful, ${totalFailed} failed operations`
+    };
+
+  } catch (error) {
+    console.error('[DEPARTMENT TRANSFER] Error processing transfer:', error);
+    return {
+      success: false,
+      results: [],
+      totalUpdated: 0,
+      totalFailed: transaction.items.length * 2, // 2 operations per item (out + in)
+      failedUpdates: [],
+      message: error instanceof Error ? error.message : 'Transfer processing failed'
+    };
+  }
+}
+
+/**
+ * Process one leg of a department transfer
+ */
+async function processTransferLeg(
+  transaction: StockTransaction,
+  item: StockTransactionItem,
+  direction: 'outgoing' | 'incoming',
+  departmentCode: string,
+  departmentLocations: Record<string, string[]>,
+  authToken: string,
+  baseUrl: string
+): Promise<InventoryUpdateResult> {
+  const quantityChange = direction === 'outgoing' ? -Math.abs(item.quantity) : Math.abs(item.quantity);
+  const locations = departmentLocations[departmentCode] || [];
+  const primaryLocation = locations[0] || departmentCode;
+
+  const updateRequest: InventoryUpdateRequest = {
+    partId: item.partId,
+    quantityChange,
+    transactionType: 'transfer',
+    transactionId: transaction.id,
+    transactionNumber: transaction.transactionNumber,
+    reason: `DEPT TRANSFER (${direction.toUpperCase()}): ${transaction.description}`,
+    location: primaryLocation,
+    notes: `${item.notes || ''} | ${direction} ${departmentCode}`.trim(),
+    cost: direction === 'incoming' ? item.totalCost : undefined,
+    sourceDepartment: transaction.sourceDepartment,
+    destinationDepartment: transaction.destinationDepartment
+  };
+
+  return await executeInventoryUpdate(updateRequest, authToken, baseUrl);
+}
+
+/**
+ * Get department-location mapping from the system
+ */
+async function getDepartmentLocationMapping(
+  authToken: string,
+  baseUrl: string
+): Promise<Record<string, string[]>> {
+  try {
+    const locationsUrl = baseUrl ? `${baseUrl}/api/locations` : '/api/locations';
+    
+    const response = await fetch(locationsUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.warn('Failed to fetch locations, using department codes as locations');
+      return {};
+    }
+
+    const data = await response.json();
+    const locations = data.data?.locations || [];
+    
+    // Group locations by department
+    const mapping: Record<string, string[]> = {};
+    locations.forEach((location: any) => {
+      const dept = location.department;
+      if (!mapping[dept]) {
+        mapping[dept] = [];
+      }
+      mapping[dept].push(location.name);
+    });
+
+    return mapping;
+  } catch (error) {
+    console.warn('Error fetching department-location mapping:', error);
+    return {};
+  }
+}
+
+async function buildEnhancedUpdateRequest(
+  transaction: StockTransaction,
+  item: StockTransactionItem,
+  authToken: string,
+  baseUrl: string
+): Promise<InventoryUpdateRequest | null> {
+  // For transfers, use the dedicated transfer processing function
+  if (transaction.transactionType === 'transfer') {
+    return null; // Handled by processDepartmentTransfer
+  }
+
+  const quantityChange = calculateQuantityChange(
+    transaction.transactionType,
+    item.quantity,
+    transaction.department,
+    transaction.sourceLocation,
+    transaction.destinationLocation,
+    transaction.sourceDepartment,
+    transaction.destinationDepartment
+  );
+
+  return {
+    partId: item.partId,
+    quantityChange,
+    transactionType: transaction.transactionType as any,
+    transactionId: transaction.id,
+    transactionNumber: transaction.transactionNumber,
+    reason: buildEnhancedReason(transaction),
+    location: transaction.destinationLocation || transaction.sourceLocation,
+    notes: item.notes || transaction.notes,
+    cost: item.totalCost,
+    assetId: transaction.assetId,
+    assetName: transaction.assetName,
+    maintenanceType: transaction.maintenanceType,
+    technician: transaction.technician,
+    sourceDepartment: transaction.sourceDepartment,
+    destinationDepartment: transaction.destinationDepartment,
+    procurementType: transaction.procurementType,
+    qualityChecked: transaction.qualityChecked
+  };
+}
+
+/**
+ * Build enhanced reason string based on transaction type
+ */
+function buildEnhancedReason(transaction: StockTransaction): string {
+  switch (transaction.transactionType) {
+    case 'receipt':
+      const procurementInfo = transaction.procurementType ? ` (${transaction.procurementType})` : '';
+      const vendor = transaction.vendorName || transaction.supplier || 'Unknown Vendor';
+      return `PROCUREMENT${procurementInfo}: ${transaction.description} from ${vendor}`;
+      
+    case 'issue':
+      const maintenanceInfo = transaction.maintenanceType ? ` (${transaction.maintenanceType})` : '';
+      const asset = transaction.assetName || `Asset ${transaction.assetId}` || 'Unknown Asset';
+      return `ASSET MAINTENANCE${maintenanceInfo}: ${transaction.description} for ${asset}`;
+      
+    case 'transfer':
+      const transferInfo = transaction.transferType ? ` (${transaction.transferType})` : '';
+      return `DEPARTMENT TRANSFER${transferInfo}: ${transaction.description}`;
+      
+    default:
+      return `${transaction.transactionType.toUpperCase()}: ${transaction.description}`;
+  }
+}
+
+/**
+ * Execute inventory update with enhanced error handling
+ */
+async function executeInventoryUpdate(
+  updateRequest: InventoryUpdateRequest,
+  authToken: string,
+  baseUrl: string
+): Promise<InventoryUpdateResult> {
+  const inventoryUrl = baseUrl 
+    ? `${baseUrl}/api/parts/${updateRequest.partId}/inventory` 
+    : `/api/parts/${updateRequest.partId}/inventory`;
+    
+  const response = await fetch(inventoryUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+    },
+    body: JSON.stringify(updateRequest),
+  });
+
+  const data = await response.json();
+
+  if (data.success) {
+    return {
+      success: true,
+      partId: updateRequest.partId,
+      partNumber: data.data.partNumber || 'Unknown',
+      previousQuantity: data.data.quantity - updateRequest.quantityChange,
+      newQuantity: data.data.quantity,
+      message: data.message || 'Inventory updated successfully'
+    };
+  } else {
+    return {
+      success: false,
+      partId: updateRequest.partId,
+      partNumber: 'Unknown',
+      previousQuantity: 0,
+      newQuantity: 0,
+      message: 'Update failed',
+      error: data.message || 'Unknown error'
+    };
   }
 }
 

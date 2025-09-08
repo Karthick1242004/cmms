@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
-import { processInventoryUpdates, reverseInventoryUpdates, validateInventoryAvailability } from '@/lib/inventory-service';
+import { processInventoryUpdates, reverseInventoryUpdates, validateInventoryAvailability, processEnhancedInventoryUpdates } from '@/lib/inventory-service';
 import type { StockTransaction } from '@/types/stock-transaction';
 
 // StockTransaction Schema (matching the types)
@@ -11,7 +11,7 @@ const StockTransactionSchema = new mongoose.Schema({
   transactionType: { 
     type: String, 
     required: true,
-    enum: ['receipt', 'issue', 'transfer_in', 'transfer_out', 'adjustment', 'scrap']
+    enum: ['receipt', 'issue', 'transfer', 'adjustment', 'scrap']
   },
   transactionDate: { type: Date, required: true },
   referenceNumber: { type: String },
@@ -349,7 +349,8 @@ export async function PUT(
         updatedAt: updatedTransaction.updatedAt
       };
 
-      inventoryUpdateResult = await processInventoryUpdates(
+      // Use enhanced inventory processing for better transaction type handling
+      inventoryUpdateResult = await processEnhancedInventoryUpdates(
         transactionForUpdate,
         token,
         baseUrl

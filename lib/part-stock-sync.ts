@@ -36,6 +36,11 @@ export interface PartSyncResult {
 
 export interface StockTransactionSyncRequest {
   transactionType: 'receipt';
+  procurementType?: 'purchase' | 'donation' | 'return' | 'initial_stock';
+  procurementReason?: string;
+  receivedBy?: string;
+  receivedByName?: string;
+  qualityChecked?: boolean;
   referenceNumber?: string;
   description: string;
   materialCode?: string;
@@ -93,6 +98,11 @@ export async function createStockReceiptForNewPart(
     // Prepare stock transaction request
     const stockTransactionRequest: StockTransactionSyncRequest = {
       transactionType: 'receipt',
+      procurementType: 'initial_stock',
+      procurementReason: 'Initial inventory setup for new part creation',
+      receivedBy: partData.createdBy,
+      receivedByName: partData.createdByName,
+      qualityChecked: true,
       referenceNumber: `PART-INIT-${partData.partNumber}`,
       description: `Initial inventory receipt for part ${partData.partNumber} - ${partData.partName}`,
       materialCode: partData.materialCode,
