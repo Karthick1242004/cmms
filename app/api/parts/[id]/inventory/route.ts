@@ -35,6 +35,11 @@ const PartSchema = new mongoose.Schema({
   lastPurchaseDate: Date,
   lastPurchasePrice: Number,
   
+  // Vendor and procurement information
+  purchaseOrderNumber: String,
+  vendorName: String,
+  vendorContact: String,
+  
   location: String,
   alternativeLocations: [String],
   

@@ -577,6 +577,44 @@ function PartFormStandalone({
         </div>
       </div>
 
+      {/* Vendor and Procurement Information */}
+      <div className="space-y-4">
+        <div className="border-t pt-4">
+          <h4 className="text-sm font-medium text-gray-900 mb-3">Vendor & Procurement Information</h4>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="purchaseOrderNumber">Purchase Order Number</Label>
+            <Input
+              id="purchaseOrderNumber"
+              value={formData.purchaseOrderNumber || ""}
+              onChange={(e) => onInputChange('purchaseOrderNumber', e.target.value)}
+              placeholder="e.g., PO-2024-001"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vendorName">Vendor Name</Label>
+            <Input
+              id="vendorName"
+              value={formData.vendorName || ""}
+              onChange={(e) => onInputChange('vendorName', e.target.value)}
+              placeholder="Enter vendor name"
+            />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="vendorContact">Vendor Contact</Label>
+          <Input
+            id="vendorContact"
+            value={formData.vendorContact || ""}
+            onChange={(e) => onInputChange('vendorContact', e.target.value)}
+            placeholder="Enter vendor contact information"
+          />
+        </div>
+      </div>
+
       <div className="flex items-center gap-4">
         <div className="flex items-center space-x-2">
           <input
@@ -652,6 +690,10 @@ export default function PartsPage() {
     minStockLevel: 0,
     unitPrice: 0,
     supplier: "",
+    // New vendor and procurement fields
+    purchaseOrderNumber: "",
+    vendorName: "",
+    vendorContact: "",
     location: "",
     totalValue: 0,
     totalConsumed: 0,
@@ -825,6 +867,9 @@ export default function PartsPage() {
       part.sku.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       part.materialCode.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       part.supplier.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      (part.vendorName && part.vendorName.toLowerCase().includes(debouncedSearchTerm.toLowerCase())) ||
+      (part.purchaseOrderNumber && part.purchaseOrderNumber.toLowerCase().includes(debouncedSearchTerm.toLowerCase())) ||
+      (part.vendorContact && part.vendorContact.toLowerCase().includes(debouncedSearchTerm.toLowerCase())) ||
       (part.location && part.location.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
 
     const matchesDepartment = departmentFilter === "all" || part.department === departmentFilter
@@ -978,6 +1023,10 @@ export default function PartsPage() {
         minStockLevel: Number(formData.minStockLevel) || 0,
         unitPrice: Number(formData.unitPrice) || 0,
         supplier: formData.supplier,
+        // New vendor and procurement fields
+        purchaseOrderNumber: formData.purchaseOrderNumber || '',
+        vendorName: formData.vendorName || '',
+        vendorContact: formData.vendorContact || '',
         location: formData.location,
         isStockItem: formData.isStockItem ?? true,
         isCritical: formData.isCritical ?? false
@@ -1069,6 +1118,10 @@ export default function PartsPage() {
           minStockLevel: 0,
           unitPrice: 0,
           supplier: "",
+          // New vendor and procurement fields
+          purchaseOrderNumber: "",
+          vendorName: "",
+          vendorContact: "",
           location: "",
           totalValue: 0,
           totalConsumed: 0,
@@ -1429,29 +1482,34 @@ export default function PartsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs font-medium py-2">Part Details</TableHead>
-                    <TableHead className="text-xs font-medium py-2">SKU / Material Code</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Category</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Location</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Linked Assets</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Stock Status</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Quantity</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Unit Price</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Total Value</TableHead>
-                    <TableHead className="text-xs font-medium py-2">Supplier</TableHead>
-                    {isAdmin && <TableHead className="text-xs font-medium py-2">Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
+            <div className="overflow-auto max-w-full max-h-[600px] border rounded-lg">
+              <div className="min-w-[1400px]">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                    <TableRow>
+                      <TableHead className="text-xs font-medium py-2 min-w-[140px] sticky left-0 bg-background z-20 border-r">Part Details</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">SKU</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[120px]">Material Code</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Category</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Location</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[120px]">Linked Assets</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Stock Status</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Quantity</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[90px]">Unit Price</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Total Value</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[120px]">Supplier</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Purchase Order</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[120px]">Vendor Name</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[150px]">Vendor Contact</TableHead>
+                      {isAdmin && <TableHead className="text-xs font-medium py-2 min-w-[100px] sticky right-0 bg-background z-20 border-l">Actions</TableHead>}
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {filteredParts.map((part) => {
                     const stockStatus = getStockStatus(part)
                     return (
                       <TableRow key={part.id} className="hover:bg-muted/50">
-                        <TableCell className="py-2">
+                        <TableCell className="py-2 sticky left-0 bg-background z-10 border-r">
                           <div className="text-xs">
                             <div className="font-medium">{part.name}</div>
                             <div className="text-muted-foreground">{part.partNumber}</div>
@@ -1459,14 +1517,14 @@ export default function PartsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="py-2">
-                          <div className="space-y-1">
-                            <Badge variant="outline" className="text-xs font-mono">
-                              {part.sku}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs font-mono">
-                              {part.materialCode}
-                            </Badge>
-                          </div>
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {part.sku}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {part.materialCode}
+                          </Badge>
                         </TableCell>
                         <TableCell className="py-2">
                           <Badge variant="secondary" className="text-xs">
@@ -1525,8 +1583,37 @@ export default function PartsPage() {
                         <TableCell className="py-2">
                           <div className="text-xs">{part.supplier}</div>
                         </TableCell>
+                        <TableCell className="py-2">
+                          <div className="text-xs">
+                            {part.purchaseOrderNumber ? (
+                              <Badge variant="outline" className="text-xs font-mono">
+                                {part.purchaseOrderNumber}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground italic">-</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="text-xs">
+                            {part.vendorName ? (
+                              <span className="font-medium">{part.vendorName}</span>
+                            ) : (
+                              <span className="text-muted-foreground italic">-</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="text-xs">
+                            {part.vendorContact ? (
+                              <span className="text-muted-foreground">{part.vendorContact}</span>
+                            ) : (
+                              <span className="text-muted-foreground italic">-</span>
+                            )}
+                          </div>
+                        </TableCell>
                         {isAdmin && (
-                          <TableCell className="py-2">
+                          <TableCell className="py-2 sticky right-0 bg-background z-10 border-l">
                             <div className="flex gap-1">
                               <Button
                                 variant="ghost"
@@ -1562,7 +1649,8 @@ export default function PartsPage() {
                     )
                   })}
                 </TableBody>
-              </Table>
+                </Table>
+              </div>
               {filteredParts.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No parts found matching your criteria

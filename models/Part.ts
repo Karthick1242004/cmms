@@ -30,6 +30,11 @@ export interface IPart extends Document {
   lastPurchaseDate?: Date;
   lastPurchasePrice?: number;
   
+  // Vendor and procurement information
+  purchaseOrderNumber?: string;
+  vendorName?: string;
+  vendorContact?: string;
+  
   location?: string;
   alternativeLocations?: string[];
   
@@ -78,6 +83,11 @@ const PartSchema = new Schema<IPart>({
   leadTime: { type: Number, min: 0 },
   lastPurchaseDate: { type: Date },
   lastPurchasePrice: { type: Number, min: 0 },
+  
+  // Vendor and procurement information
+  purchaseOrderNumber: { type: String, trim: true },
+  vendorName: { type: String, trim: true },
+  vendorContact: { type: String, trim: true },
   
   location: { type: String, trim: true },
   alternativeLocations: [{ type: String, trim: true }],

@@ -67,6 +67,10 @@ export async function GET(
       totalValue: part.totalValue,
       supplier: part.supplier,
       supplierCode: part.supplierCode,
+      // New vendor and procurement fields
+      purchaseOrderNumber: part.purchaseOrderNumber || '',
+      vendorName: part.vendorName || '',
+      vendorContact: part.vendorContact || '',
       location: part.location || '',
       alternativeLocations: part.alternativeLocations || [],
       totalConsumed: part.totalConsumed,
@@ -184,9 +188,9 @@ export async function PUT(
     const allowedFields = [
       'partNumber', 'name', 'sku', 'materialCode', 'description', 'category', 
       'department', 'linkedAssets', 'quantity', 'minStockLevel', 'unitPrice',
-      'supplier', 'supplierCode', 'location', 'alternativeLocations', 
-      'totalConsumed', 'averageMonthlyUsage', 'status', 'isStockItem', 
-      'isCritical', 'departmentsServed'
+      'supplier', 'supplierCode', 'purchaseOrderNumber', 'vendorName', 'vendorContact',
+      'location', 'alternativeLocations', 'totalConsumed', 'averageMonthlyUsage', 
+      'status', 'isStockItem', 'isCritical', 'departmentsServed'
     ];
 
     allowedFields.forEach(field => {
@@ -226,6 +230,10 @@ export async function PUT(
       totalValue: updatedPart.totalValue,
       supplier: updatedPart.supplier,
       supplierCode: updatedPart.supplierCode,
+      // New vendor and procurement fields
+      purchaseOrderNumber: updatedPart.purchaseOrderNumber || '',
+      vendorName: updatedPart.vendorName || '',
+      vendorContact: updatedPart.vendorContact || '',
       location: updatedPart.location || '',
       alternativeLocations: updatedPart.alternativeLocations || [],
       totalConsumed: updatedPart.totalConsumed,

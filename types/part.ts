@@ -32,6 +32,11 @@ export interface Part {
   lastPurchaseDate?: string
   lastPurchasePrice?: number
   
+  // Vendor and procurement information
+  purchaseOrderNumber?: string // Purchase Order Number (PO)
+  vendorName?: string // Vendor Name
+  vendorContact?: string // Vendor Contact information
+  
   // Location & Storage
   location: string
   alternativeLocations?: string[]

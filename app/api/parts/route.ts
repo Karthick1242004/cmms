@@ -50,7 +50,11 @@ export async function GET(request: NextRequest) {
         { sku: { $regex: search, $options: 'i' } },
         { materialCode: { $regex: search, $options: 'i' } },
         { supplier: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } }
+        { location: { $regex: search, $options: 'i' } },
+        // Include new vendor fields in search
+        { vendorName: { $regex: search, $options: 'i' } },
+        { purchaseOrderNumber: { $regex: search, $options: 'i' } },
+        { vendorContact: { $regex: search, $options: 'i' } }
       ];
     }
 
@@ -84,6 +88,10 @@ export async function GET(request: NextRequest) {
       totalValue: part.totalValue,
       supplier: part.supplier,
       supplierCode: part.supplierCode,
+      // New vendor and procurement fields
+      purchaseOrderNumber: part.purchaseOrderNumber || '',
+      vendorName: part.vendorName || '',
+      vendorContact: part.vendorContact || '',
       location: part.location || '',
       alternativeLocations: part.alternativeLocations || [],
       totalConsumed: part.totalConsumed,
@@ -186,6 +194,10 @@ export async function POST(request: NextRequest) {
       unitPrice: Number(body.unitPrice) || 0,
       supplier: body.supplier,
       supplierCode: body.supplierCode || '',
+      // New vendor and procurement fields
+      purchaseOrderNumber: body.purchaseOrderNumber || '',
+      vendorName: body.vendorName || '',
+      vendorContact: body.vendorContact || '',
       location: body.location || '',
       alternativeLocations: body.alternativeLocations || [],
       totalConsumed: Number(body.totalConsumed) || 0,
@@ -217,6 +229,10 @@ export async function POST(request: NextRequest) {
       totalValue: savedPart.totalValue,
       supplier: savedPart.supplier,
       supplierCode: savedPart.supplierCode,
+      // New vendor and procurement fields
+      purchaseOrderNumber: savedPart.purchaseOrderNumber,
+      vendorName: savedPart.vendorName,
+      vendorContact: savedPart.vendorContact,
       location: savedPart.location,
       alternativeLocations: savedPart.alternativeLocations,
       totalConsumed: savedPart.totalConsumed,
