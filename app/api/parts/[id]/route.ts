@@ -3,6 +3,11 @@ import { getUserContext } from '@/lib/auth-helpers';
 import connectDB from '@/lib/mongodb';
 import Part from '@/models/Part';
 import { ObjectId } from 'mongodb';
+import { 
+  createStockReceiptForNewPart, 
+  shouldCreateStockTransaction, 
+  extractPartSyncData 
+} from '@/lib/part-stock-sync';
 
 export async function GET(
   request: NextRequest,
@@ -199,6 +204,9 @@ export async function PUT(
       }
     });
 
+    // Store original quantity for stock sync comparison
+    const originalQuantity = existingPart.quantity || 0;
+
     // Update the part
     const updatedPart = await Part.findByIdAndUpdate(
       id,
@@ -247,10 +255,79 @@ export async function PUT(
       updatedAt: updatedPart.updatedAt
     };
 
+    let stockSyncMessage = '';
+    
+    // Check if quantity changed and create adjustment transaction if needed
+    const quantityChanged = (updatedPart.quantity || 0) !== originalQuantity;
+    const quantityDifference = (updatedPart.quantity || 0) - originalQuantity;
+    
+    if (quantityChanged && quantityDifference !== 0 && updatedPart.isStockItem) {
+      try {
+        // Get authorization token from request headers
+        const authHeader = request.headers.get('authorization');
+        const token = authHeader?.replace('Bearer ', '') || '';
+        
+        if (token) {
+          // Extract sync data for stock transaction creation
+          const partSyncData = extractPartSyncData(responseData, user.id, user.name || 'System');
+          
+          if (partSyncData) {
+            console.log('[PART UPDATE API] Creating stock adjustment transaction for quantity change:', {
+              partNumber: responseData.partNumber,
+              originalQuantity,
+              newQuantity: updatedPart.quantity,
+              difference: quantityDifference
+            });
+
+            // Get the base URL for API calls
+            const protocol = request.headers.get('x-forwarded-proto') || 'http';
+            const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+            const baseUrl = `${protocol}://${host}`;
+
+            // For quantity adjustments, we'll create a receipt transaction with the difference
+            // The inventory service will handle the actual quantity calculation
+            const adjustmentSyncData = {
+              ...partSyncData,
+              quantity: Math.abs(quantityDifference), // Always positive for the transaction
+              description: `Quantity adjustment for part ${partSyncData.partNumber}: ${quantityDifference > 0 ? 'increase' : 'decrease'} of ${Math.abs(quantityDifference)} units`
+            };
+
+            // Create stock adjustment transaction
+            const stockSyncResult = await createStockReceiptForNewPart(
+              adjustmentSyncData,
+              token,
+              baseUrl
+            );
+
+            if (stockSyncResult.success) {
+              stockSyncMessage = ` Stock adjustment transaction created: ${stockSyncResult.stockTransactionNumber}`;
+              console.log('[PART UPDATE API] Stock adjustment transaction created successfully:', stockSyncResult.stockTransactionNumber);
+            } else {
+              console.warn('[PART UPDATE API] Failed to create stock adjustment transaction:', stockSyncResult.message);
+              stockSyncMessage = ` Note: Stock adjustment transaction creation failed - ${stockSyncResult.message}`;
+            }
+          } else {
+            console.warn('[PART UPDATE API] Could not extract sync data for stock adjustment');
+          }
+        } else {
+          console.warn('[PART UPDATE API] No authorization token available for stock sync');
+        }
+      } catch (syncError) {
+        console.error('[PART UPDATE API] Error during stock sync:', syncError);
+        stockSyncMessage = ' Note: Stock adjustment sync encountered an error';
+      }
+    } else if (quantityChanged) {
+      console.log('[PART UPDATE API] Quantity changed but no stock transaction needed:', {
+        partNumber: responseData.partNumber,
+        isStockItem: updatedPart.isStockItem,
+        quantityDifference
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: responseData,
-      message: 'Part updated successfully'
+      message: `Part updated successfully${stockSyncMessage}`
     }, { status: 200 });
 
   } catch (error: any) {

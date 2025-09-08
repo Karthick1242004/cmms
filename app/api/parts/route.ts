@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import connectDB from '@/lib/mongodb';
 import Part from '@/models/Part';
+import { 
+  createStockReceiptForNewPart, 
+  shouldCreateStockTransaction, 
+  extractPartSyncData 
+} from '@/lib/part-stock-sync';
 
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
@@ -246,10 +251,67 @@ export async function POST(request: NextRequest) {
       updatedAt: savedPart.updatedAt
     };
 
+    let stockSyncMessage = '';
+    
+    // Auto-create stock receipt transaction if part has initial inventory
+    if (shouldCreateStockTransaction(responseData)) {
+      try {
+        // Get authorization token from request headers
+        const authHeader = request.headers.get('authorization');
+        const token = authHeader?.replace('Bearer ', '') || '';
+        
+        if (token) {
+          // Extract sync data for stock transaction creation
+          const partSyncData = extractPartSyncData(responseData, user.id, user.name || 'System');
+          
+          if (partSyncData) {
+            console.log('[PART API] Creating stock receipt transaction for new part:', {
+              partNumber: responseData.partNumber,
+              quantity: responseData.quantity,
+              department: responseData.department
+            });
+
+            // Get the base URL for API calls
+            const protocol = request.headers.get('x-forwarded-proto') || 'http';
+            const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+            const baseUrl = `${protocol}://${host}`;
+
+            // Create stock receipt transaction
+            const stockSyncResult = await createStockReceiptForNewPart(
+              partSyncData,
+              token,
+              baseUrl
+            );
+
+            if (stockSyncResult.success) {
+              stockSyncMessage = ` Stock receipt transaction created: ${stockSyncResult.stockTransactionNumber}`;
+              console.log('[PART API] Stock receipt transaction created successfully:', stockSyncResult.stockTransactionNumber);
+            } else {
+              console.warn('[PART API] Failed to create stock receipt transaction:', stockSyncResult.message);
+              stockSyncMessage = ` Note: Stock transaction creation failed - ${stockSyncResult.message}`;
+            }
+          } else {
+            console.warn('[PART API] Could not extract sync data for stock transaction');
+          }
+        } else {
+          console.warn('[PART API] No authorization token available for stock sync');
+        }
+      } catch (syncError) {
+        console.error('[PART API] Error during stock sync:', syncError);
+        stockSyncMessage = ' Note: Stock transaction sync encountered an error';
+      }
+    } else {
+      console.log('[PART API] No stock transaction needed for part:', {
+        partNumber: responseData.partNumber,
+        quantity: responseData.quantity,
+        isStockItem: responseData.isStockItem
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: responseData,
-      message: 'Part created successfully'
+      message: `Part created successfully${stockSyncMessage}`
     }, { status: 201 });
 
   } catch (error: any) {

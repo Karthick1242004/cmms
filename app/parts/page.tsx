@@ -1067,12 +1067,12 @@ export default function PartsPage() {
         if (isEdit) {
           // Update part in the list
           setParts(prev => prev.map(p => p.id === selectedPart?.id ? savedPart : p))
-          toast.success('Part updated successfully')
+          toast.success(data.message || 'Part updated successfully')
           setIsEditDialogOpen(false)
         } else {
           // Add new part to the list
           setParts(prev => [...prev, savedPart])
-          toast.success('Part created successfully')
+          toast.success(data.message || 'Part created successfully')
           setIsCreateDialogOpen(false)
         }
 
