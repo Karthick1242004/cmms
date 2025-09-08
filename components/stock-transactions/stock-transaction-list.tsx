@@ -242,12 +242,17 @@ export function StockTransactionList({
   };
 
   const canApprove = (transaction: StockTransaction) => {
-    return (
-      user?.accessLevel === 'super_admin' ||
-      (transaction.department === user?.department && 
-       user?.role === 'manager' && 
-       transaction.status === 'pending')
-    );
+    // Only super admin and department admin can update status
+    if (user?.accessLevel === 'super_admin') {
+      return true;
+    }
+    
+    if (user?.accessLevel === 'department_admin') {
+      // Department admins can only update status for transactions from their department
+      return transaction.department === user?.department;
+    }
+    
+    return false;
   };
 
   // Loading skeleton

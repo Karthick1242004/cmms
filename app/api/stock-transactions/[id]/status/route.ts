@@ -206,14 +206,14 @@ export async function PUT(
       );
     }
 
-    // Check permissions
+    // Check permissions - Only super admin and department admin can update status
     const isAuthorized = user.accessLevel === 'super_admin' || 
-                        user.accessLevel === 'department_admin' ||
-                        (user.department === transaction.department);
+                        (user.accessLevel === 'department_admin' && 
+                         user.department === transaction.department);
 
     if (!isAuthorized) {
       return NextResponse.json(
-        { success: false, message: 'Unauthorized - Insufficient permissions' },
+        { success: false, message: 'Unauthorized - Only super administrators and department administrators can update transaction status' },
         { status: 403 }
       );
     }
