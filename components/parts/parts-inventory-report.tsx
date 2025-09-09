@@ -7,10 +7,11 @@ import type { Part } from "@/types/part"
 
 interface PartsInventoryReportProps {
   parts: Part[]
+  showVendorColumns: boolean
   onClose: () => void
 }
 
-export function PartsInventoryReport({ parts, onClose }: PartsInventoryReportProps) {
+export function PartsInventoryReport({ parts, showVendorColumns, onClose }: PartsInventoryReportProps) {
   const handleExportReport = () => {
     // Generate the report HTML
     const reportHTML = generateReportHTML()
@@ -457,9 +458,12 @@ export function PartsInventoryReport({ parts, onClose }: PartsInventoryReportPro
                 <th>Current Stock</th>
                 <th>Min Level</th>
                 <th>Unit Price</th>
-                <th>Total Value</th>
+                ${showVendorColumns ? '<th>Total Value</th>' : ''}
                 <th>Status</th>
-                <th>Supplier</th>
+                ${showVendorColumns ? '<th>Supplier</th>' : ''}
+                ${showVendorColumns ? '<th>Purchase Order</th>' : ''}
+                ${showVendorColumns ? '<th>Vendor Name</th>' : ''}
+                ${showVendorColumns ? '<th>Vendor Contact</th>' : ''}
                 <th>Location</th>
               </tr>
             </thead>
@@ -487,15 +491,20 @@ export function PartsInventoryReport({ parts, onClose }: PartsInventoryReportPro
                     </td>
                     <td class="text-center">${part.minStockLevel}</td>
                     <td class="text-right">$${part.unitPrice.toFixed(2)}</td>
+                    ${showVendorColumns ? `
                     <td class="text-right financial-highlight">
                       $${(part.quantity * part.unitPrice).toFixed(2)}
                     </td>
+                    ` : ''}
                     <td>
                       <span class="px-2 py-1 rounded text-xs font-medium ${stockStatus.bgColor} ${stockStatus.color}">
                         ${stockStatus.status}
                       </span>
                     </td>
-                    <td>${part.supplier}</td>
+                    ${showVendorColumns ? `<td>${part.supplier}</td>` : ''}
+                    ${showVendorColumns ? `<td>${part.purchaseOrderNumber || 'N/A'}</td>` : ''}
+                    ${showVendorColumns ? `<td>${part.vendorName || 'N/A'}</td>` : ''}
+                    ${showVendorColumns ? `<td>${part.vendorContact || 'N/A'}</td>` : ''}
                     <td>${part.location || 'N/A'}</td>
                   </tr>
                 `

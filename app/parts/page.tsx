@@ -684,6 +684,7 @@ export default function PartsPage() {
   const [newlyAddedCategories, setNewlyAddedCategories] = useState<string[]>([])
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [showVendorColumns, setShowVendorColumns] = useState(false)
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   const { user } = useAuthStore()
@@ -1524,6 +1525,18 @@ export default function PartsPage() {
                   Clear Filters
                 </Button>
               </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Vendor Columns</label>
+                <Button 
+                  variant={showVendorColumns ? "default" : "outline"}
+                  size="sm" 
+                  className="w-full h-8 text-xs"
+                  onClick={() => setShowVendorColumns(!showVendorColumns)}
+                >
+                  {showVendorColumns ? "Hide Vendor" : "Show Vendor"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1555,11 +1568,11 @@ export default function PartsPage() {
                       <TableHead className="text-xs font-medium py-2 min-w-[80px]">Stock Status</TableHead>
                       <TableHead className="text-xs font-medium py-2 min-w-[60px]">Quantity</TableHead>
                       {/* <TableHead className="text-xs font-medium py-2 min-w-[90px]">Unit Price</TableHead> */}
-                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Total Value</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Supplier</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Purchase Order</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Vendor Name</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[130px]">Vendor Contact</TableHead>
+                      {showVendorColumns && <TableHead className="text-xs font-medium py-2 min-w-[80px]">Total Value</TableHead>}
+                      {showVendorColumns && <TableHead className="text-xs font-medium py-2 min-w-[100px]">Supplier</TableHead>}
+                      {showVendorColumns && <TableHead className="text-xs font-medium py-2 min-w-[80px]">Purchase Order</TableHead>}
+                      {showVendorColumns && <TableHead className="text-xs font-medium py-2 min-w-[100px]">Vendor Name</TableHead>}
+                      {showVendorColumns && <TableHead className="text-xs font-medium py-2 min-w-[130px]">Vendor Contact</TableHead>}
                       {isAdmin && <TableHead className="text-xs font-medium py-2 min-w-[100px] sticky right-0 bg-background z-20 border-l">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -1647,41 +1660,51 @@ export default function PartsPage() {
                         {/* <TableCell className="py-2">
                           <div className="text-xs font-medium">${part.unitPrice.toFixed(2)}</div>
                         </TableCell> */}
-                        <TableCell className="py-2">
-                          <div className="text-xs font-medium">${part.totalValue ? part.totalValue.toFixed(2) : (part.quantity * part.unitPrice).toFixed(2)}</div>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="text-xs">{part.supplier}</div>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="text-xs">
-                            {part.purchaseOrderNumber ? (
-                              <Badge variant="outline" className="text-xs font-mono">
-                                {part.purchaseOrderNumber}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground italic">-</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="text-xs">
-                            {part.vendorName ? (
-                              <span className="font-medium">{part.vendorName}</span>
-                            ) : (
-                              <span className="text-muted-foreground italic">-</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="text-xs">
-                            {part.vendorContact ? (
-                              <span className="text-muted-foreground">{part.vendorContact}</span>
-                            ) : (
-                              <span className="text-muted-foreground italic">-</span>
-                            )}
-                          </div>
-                        </TableCell>
+                        {showVendorColumns && (
+                          <TableCell className="py-2">
+                            <div className="text-xs font-medium">${part.totalValue ? part.totalValue.toFixed(2) : (part.quantity * part.unitPrice).toFixed(2)}</div>
+                          </TableCell>
+                        )}
+                        {showVendorColumns && (
+                          <TableCell className="py-2">
+                            <div className="text-xs">{part.supplier}</div>
+                          </TableCell>
+                        )}
+                        {showVendorColumns && (
+                          <TableCell className="py-2">
+                            <div className="text-xs">
+                              {part.purchaseOrderNumber ? (
+                                <Badge variant="outline" className="text-xs font-mono">
+                                  {part.purchaseOrderNumber}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground italic">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
+                        {showVendorColumns && (
+                          <TableCell className="py-2">
+                            <div className="text-xs">
+                              {part.vendorName ? (
+                                <span className="font-medium">{part.vendorName}</span>
+                              ) : (
+                                <span className="text-muted-foreground italic">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
+                        {showVendorColumns && (
+                          <TableCell className="py-2">
+                            <div className="text-xs">
+                              {part.vendorContact ? (
+                                <span className="text-muted-foreground">{part.vendorContact}</span>
+                              ) : (
+                                <span className="text-muted-foreground italic">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
                         {isAdmin && (
                           <TableCell className="py-2 sticky right-0 bg-background z-10 border-l">
                             <DropdownMenu>
@@ -1784,6 +1807,7 @@ export default function PartsPage() {
       {isReportOpen && (
         <PartsInventoryReport 
           parts={parts}
+          showVendorColumns={showVendorColumns}
           onClose={() => setIsReportOpen(false)}
         />
       )}
