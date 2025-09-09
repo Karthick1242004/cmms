@@ -34,6 +34,7 @@ import {
   Upload,
   Printer,
   ArrowLeft,
+  Bot,
 } from "lucide-react"
 import type { AssetDetail } from "@/types/asset"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
@@ -41,6 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { assetsApi } from "@/lib/assets-api"
 import { AssetIndividualReport } from "@/components/assets/asset-individual-report"
 import { ActivityLogTable } from '@/components/activity-log/activity-log-table'
+import { AssetAIAnalysisDialog } from '@/components/assets/asset-ai-analysis-dialog'
 
 interface DetailItemProps {
   label: string
@@ -70,6 +72,7 @@ export default function AssetDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isReportOpen, setIsReportOpen] = useState(false)
+  const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false)
 
   useEffect(() => {
     const fetchAsset = async () => {
@@ -218,6 +221,12 @@ export default function AssetDetailPage() {
               <p className="text-muted-foreground">Viewing details for asset: {asset.assetName}</p>
             </div>
             <div className="flex space-x-2 flex-wrap gap-2">
+              <Button 
+                onClick={() => setIsAIAnalysisOpen(true)}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                <Bot className="mr-2 h-4 w-4" /> AI Analysis
+              </Button>
               <Button 
                 onClick={() => setIsReportOpen(true)}
                 variant="outline"
@@ -671,6 +680,15 @@ export default function AssetDetailPage() {
         <AssetIndividualReport 
           asset={asset}
           onClose={() => setIsReportOpen(false)}
+        />
+      )}
+
+      {/* Asset AI Analysis Dialog */}
+      {isAIAnalysisOpen && asset && (
+        <AssetAIAnalysisDialog 
+          asset={asset}
+          isOpen={isAIAnalysisOpen}
+          onClose={() => setIsAIAnalysisOpen(false)}
         />
       )}
     </PageLayout>
