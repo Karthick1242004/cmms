@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw, Timer, BarChart3 } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
-import { formatDowntime, getDowntimeBadgeClasses, calculateDowntime } from '@/lib/downtime-utils';
+import { formatDowntime, getDowntimeBadgeClasses, calculateDowntime, getDowntimeTypeBadgeClasses, getDowntimeTypeLabel } from '@/lib/downtime-utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useDepartments } from '@/hooks/use-departments';
 import { LoadingSpinner } from '@/components/loading-spinner';
@@ -450,14 +450,21 @@ export default function DailyLogActivitiesPage() {
                         <TableCell className="px-2 py-2">
                           <div className="flex items-center space-x-1">
                             <Timer className="h-3 w-3 text-muted-foreground" />
-                            <div>
+                            <div className="flex flex-col space-y-1">
                               {(() => {
                                 // Priority 1: Show stored downtime if available
                                 if (activity.downtime !== null && activity.downtime !== undefined) {
                                   return (
-                                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${getDowntimeBadgeClasses(activity.downtime)}`}>
-                                      {formatDowntime(activity.downtime)}
-                                    </div>
+                                    <>
+                                      <div className={`text-xs font-medium px-2 py-1 rounded-full ${getDowntimeBadgeClasses(activity.downtime)}`}>
+                                        {formatDowntime(activity.downtime)}
+                                      </div>
+                                      {activity.downtimeType && (
+                                        <div className={`text-xs px-2 py-1 rounded-full ${getDowntimeTypeBadgeClasses(activity.downtimeType)}`}>
+                                          {getDowntimeTypeLabel(activity.downtimeType)}
+                                        </div>
+                                      )}
+                                    </>
                                   );
                                 }
                                 
@@ -466,9 +473,16 @@ export default function DailyLogActivitiesPage() {
                                   const calculatedDowntime = calculateDowntime(activity.startTime, activity.endTime);
                                   if (calculatedDowntime !== null) {
                                     return (
-                                      <div className={`text-xs font-medium px-2 py-1 rounded-full ${getDowntimeBadgeClasses(calculatedDowntime)}`}>
-                                        {formatDowntime(calculatedDowntime)}
-                                      </div>
+                                      <>
+                                        <div className={`text-xs font-medium px-2 py-1 rounded-full ${getDowntimeBadgeClasses(calculatedDowntime)}`}>
+                                          {formatDowntime(calculatedDowntime)}
+                                        </div>
+                                        {activity.downtimeType && (
+                                          <div className={`text-xs px-2 py-1 rounded-full ${getDowntimeTypeBadgeClasses(activity.downtimeType)}`}>
+                                            {getDowntimeTypeLabel(activity.downtimeType)}
+                                          </div>
+                                        )}
+                                      </>
                                     );
                                   }
                                 }
@@ -515,9 +529,9 @@ export default function DailyLogActivitiesPage() {
                           </div>
                         </TableCell>
                         <TableCell className="px-2 py-2">
-                          <div className="flex items-center space-x-1">
+                          <div className="flex items-center text-center space-x-1">
                             <User className="h-3 w-3 text-muted-foreground" />
-                            <div className="flex flex-col">
+                            <div className="flex flex-col text-center">
                               {Array.isArray(activity.attendedByName) ? (
                                 <div className="space-y-1">
                                   <span className={`text-xs ${canAccessActivity(activity) ? "font-medium text-green-700" : ""}`}>
@@ -534,12 +548,12 @@ export default function DailyLogActivitiesPage() {
                                 </span>
                               )}
                               {activity.assignedTo && activity.assignedTo === user?.id && (
-                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 mt-1 px-1 py-0">
+                                <Badge variant="secondary" className="text-xs text-center bg-green-100 text-green-800 mt-1 px-1 py-0">
                                   Assigned to you
                                 </Badge>
                               )}
                               {activity.assignedTo && activity.assignedTo !== user?.id && canAccessActivity(activity) && (
-                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 mt-1 px-1 py-0">
+                                <Badge variant="secondary" className="text-xs text-center bg-blue-100 text-blue-800 mt-1 px-1 py-0">
                                   You can access
                                 </Badge>
                               )}
@@ -560,7 +574,7 @@ export default function DailyLogActivitiesPage() {
                               {activity.status.replace('_', ' ')} <RefreshCw className="h-2 w-2" />
                             </Badge>
                             {activity.adminVerified && (
-                              <div  className="text-xs">
+                              <div  className="text-xs text-center">
                                 Verified by {activity.adminVerifiedByName || activity.verifiedByName || 'Admin'}
                               </div>
                             )}

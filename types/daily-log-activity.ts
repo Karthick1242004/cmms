@@ -15,6 +15,7 @@ export interface DailyLogActivity {
   startTime: string; // HH:MM format - Activity start time
   endTime?: string; // HH:MM format - Activity end time (optional)
   downtime?: number; // Calculated downtime in minutes
+  downtimeType?: 'planned' | 'unplanned'; // Type of downtime - planned or unplanned
   area: string;
   departmentId: string;
   departmentName: string;
@@ -58,6 +59,7 @@ export interface DailyLogActivityFormData {
   time: string; // Legacy field for backward compatibility
   startTime: string; // HH:MM format - Activity start time
   endTime?: string; // HH:MM format - Activity end time (optional)
+  downtimeType?: 'planned' | 'unplanned'; // Type of downtime - planned or unplanned
   area: string;
   departmentId: string;
   departmentName: string;

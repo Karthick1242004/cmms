@@ -1,6 +1,6 @@
 import React from 'react'
 import type { DailyLogActivity } from "@/types/daily-log-activity"
-import { formatDowntime, getDowntimeBadgeClasses } from '@/lib/downtime-utils'
+import { formatDowntime, getDowntimeBadgeClasses, getDowntimeTypeBadgeClasses, getDowntimeTypeLabel } from '@/lib/downtime-utils'
 import { format } from 'date-fns'
 
 interface GenerateIndividualReportProps {
@@ -38,6 +38,12 @@ export function generateIndividualReport({ activity }: GenerateIndividualReportP
     const getDowntimeBadge = (minutes: number) => {
       const colorClass = getDowntimeBadgeClasses(minutes)
       return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}">${formatDowntime(minutes)}</span>`
+    }
+
+    const getDowntimeTypeBadge = (downtimeType: 'planned' | 'unplanned' | undefined) => {
+      if (!downtimeType) return ''
+      const colorClass = getDowntimeTypeBadgeClasses(downtimeType)
+      return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}">${getDowntimeTypeLabel(downtimeType)}</span>`
     }
 
     const formatAttendees = () => {
@@ -358,7 +364,10 @@ export function generateIndividualReport({ activity }: GenerateIndividualReportP
                 </div>
                 <div class="info-item">
                   <label>Downtime</label>
-                  <div class="value">${activity.downtime !== null && activity.downtime !== undefined ? getDowntimeBadge(activity.downtime) : 'N/A'}</div>
+                  <div class="value">
+                    ${activity.downtime !== null && activity.downtime !== undefined ? getDowntimeBadge(activity.downtime) : 'N/A'}
+                    ${activity.downtimeType ? `<br/><span style="margin-top: 4px; display: inline-block;">${getDowntimeTypeBadge(activity.downtimeType)}</span>` : ''}
+                  </div>
                 </div>
               </div>
             </div>

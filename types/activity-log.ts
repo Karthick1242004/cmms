@@ -57,6 +57,9 @@ export interface ActivityLogEntry {
     complianceScore?: number
     cost?: number
     notes?: string
+    // Downtime information from daily log activities
+    downtime?: number // Downtime in minutes
+    downtimeType?: 'planned' | 'unplanned' // Type of downtime
     [key: string]: any
   }
   

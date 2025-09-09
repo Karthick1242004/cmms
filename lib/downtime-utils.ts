@@ -109,6 +109,40 @@ export function getDowntimeBadgeClasses(downtimeMinutes: number | null): string 
 }
 
 /**
+ * Get CSS classes for downtime type badge
+ * @param downtimeType - Type of downtime ('planned' | 'unplanned')
+ * @returns CSS classes string
+ */
+export function getDowntimeTypeBadgeClasses(downtimeType: 'planned' | 'unplanned' | undefined): string {
+  const baseClasses = 'inline-flex items-center rounded-full px-2 py-1 text-xs font-medium';
+  
+  switch (downtimeType) {
+    case 'planned':
+      return `${baseClasses} bg-blue-100 text-blue-800 border border-blue-200`;
+    case 'unplanned':
+      return `${baseClasses} bg-red-100 text-red-800 border border-red-200`;
+    default:
+      return `${baseClasses} bg-gray-100 text-gray-800 border border-gray-200`;
+  }
+}
+
+/**
+ * Get display label for downtime type
+ * @param downtimeType - Type of downtime ('planned' | 'unplanned')
+ * @returns Display label
+ */
+export function getDowntimeTypeLabel(downtimeType: 'planned' | 'unplanned' | undefined): string {
+  switch (downtimeType) {
+    case 'planned':
+      return 'Planned';
+    case 'unplanned':
+      return 'Unplanned';
+    default:
+      return 'Not Set';
+  }
+}
+
+/**
  * Validate time format (HH:MM)
  * @param time - Time string to validate
  * @returns True if valid format

@@ -27,7 +27,7 @@ import {
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { format } from 'date-fns';
 import type { DailyLogActivity } from '@/types/daily-log-activity';
-import { formatDowntime, getDowntimeBadgeClasses } from '@/lib/downtime-utils';
+import { formatDowntime, getDowntimeBadgeClasses, getDowntimeTypeBadgeClasses, getDowntimeTypeLabel } from '@/lib/downtime-utils';
 import { generateIndividualReport } from './daily-log-activity-individual-report';
 
 const statusColors = {
@@ -118,12 +118,22 @@ export function DailyLogActivityView({ isOpen, onClose, activity }: DailyLogActi
                           </div>
                         )}
                         {activity.downtime !== null && activity.downtime !== undefined ? (
-                          <div className="flex items-center gap-1">
-                            <Timer className="h-3 w-3" />
-                            Downtime: 
-                            <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${getDowntimeBadgeClasses(activity.downtime)}`}>
-                              {formatDowntime(activity.downtime)}
-                            </span>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-1">
+                              <Timer className="h-3 w-3" />
+                              Downtime: 
+                              <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${getDowntimeBadgeClasses(activity.downtime)}`}>
+                                {formatDowntime(activity.downtime)}
+                              </span>
+                            </div>
+                            {activity.downtimeType && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm text-muted-foreground">Type:</span>
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${getDowntimeTypeBadgeClasses(activity.downtimeType)}`}>
+                                  {getDowntimeTypeLabel(activity.downtimeType)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         ) : activity.endTime ? (
                           <div className="flex items-center gap-1 text-muted-foreground">

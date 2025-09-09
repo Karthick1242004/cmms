@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import type { ActivityModule, ActivityAction, ActivityPriority, ActivityStatus, ActivityLogEntry } from '@/types/activity-log'
+import { formatDowntime, getDowntimeTypeBadgeClasses, getDowntimeTypeLabel } from '@/lib/downtime-utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,7 +70,8 @@ const actionColors = {
   verified: 'bg-purple-100 text-purple-800',
   approved: 'bg-emerald-100 text-emerald-800',
   cancelled: 'bg-red-100 text-red-800',
-  deleted: 'bg-red-100 text-red-800'
+  deleted: 'bg-red-100 text-red-800',
+  downtime_logged: 'bg-orange-100 text-orange-800'
 }
 
 const priorityColors = {
@@ -339,6 +341,7 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                 <TableHead>Action</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Downtime</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Created By</TableHead>
                 <TableHead>Date</TableHead>
@@ -348,7 +351,7 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
             <TableBody>
               {logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-12">
+                  <TableCell colSpan={10} className="text-center py-12">
                     <div className="text-gray-500">
                       <Archive className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p className="text-lg font-medium">No activity logs found</p>
@@ -394,6 +397,23 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                         <Badge className={statusColors[log.status]}>
                           {log.status.replace('_', ' ')}
                         </Badge>
+                      </TableCell>
+                      
+                      <TableCell>
+                        {log.metadata?.downtime !== undefined && log.metadata?.downtime !== null ? (
+                          <div className="space-y-1">
+                            <div className="text-sm font-medium">
+                              {formatDowntime(log.metadata.downtime)}
+                            </div>
+                            {log.metadata.downtimeType && (
+                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getDowntimeTypeBadgeClasses(log.metadata.downtimeType)}`}>
+                                {getDowntimeTypeLabel(log.metadata.downtimeType)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
                       </TableCell>
                       
                       <TableCell>

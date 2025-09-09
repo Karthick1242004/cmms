@@ -281,6 +281,23 @@ export async function PUT(
       }
     }
 
+    // Validate downtimeType - only allow when there's actual downtime
+    if (updates.downtimeType !== undefined) {
+      const currentDowntime = updates.downtime !== undefined ? updates.downtime : existingActivity.downtime;
+      if (currentDowntime !== null && currentDowntime !== undefined) {
+        // Validate downtimeType values
+        if (updates.downtimeType === 'planned' || updates.downtimeType === 'unplanned') {
+          // Keep the valid downtimeType
+        } else {
+          // Remove invalid downtimeType
+          updates.downtimeType = null;
+        }
+      } else {
+        // No downtime, so remove downtimeType
+        updates.downtimeType = null;
+      }
+    }
+
     // Add updatedAt timestamp
     updates.updatedAt = now;
 

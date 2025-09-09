@@ -105,26 +105,94 @@ export async function GET(request: NextRequest) {
       query.isDeleted = { $ne: true }
     }
 
-    // Get total count
-    const total = await db.collection('activitylogs').countDocuments(query)
-    
-    // Get logs with pagination
+    // Get logs from activitylogs collection
     const logs = await db.collection('activitylogs')
       .find(query)
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
       .toArray()
 
+    // Get daily log activities for the same asset to include downtime data
+    let dailyLogActivities: any[] = []
+    if (filters.assetId) {
+      const dailyQuery: any = { 
+        assetId: filters.assetId,
+        $and: [
+          { downtime: { $exists: true, $ne: null } },
+          { downtimeType: { $exists: true, $ne: null } }
+        ]
+      }
+      
+      // Apply department filter for daily activities too
+      if (user.accessLevel !== 'super_admin') {
+        dailyQuery.departmentName = user.department
+      } else if (filters.department) {
+        dailyQuery.departmentName = filters.department
+      }
+      
+      // Apply date filter to daily activities
+      if (filters.dateFrom || filters.dateTo) {
+        dailyQuery.createdAt = {}
+        if (filters.dateFrom) {
+          dailyQuery.createdAt.$gte = filters.dateFrom
+        }
+        if (filters.dateTo) {
+          dailyQuery.createdAt.$lte = filters.dateTo
+        }
+      }
+
+      dailyLogActivities = await db.collection('dailylogactivities')
+        .find(dailyQuery)
+        .sort({ createdAt: -1 })
+        .toArray()
+    }
+
+    // Convert daily log activities to activity log format
+    const dailyLogActivityLogs = dailyLogActivities.map(activity => ({
+      _id: new ObjectId(),
+      assetId: activity.assetId,
+      assetName: activity.assetName,
+      module: 'daily_log_activity',
+      action: 'downtime_logged',
+      title: `Downtime Event: ${activity.natureOfProblem.substring(0, 50)}${activity.natureOfProblem.length > 50 ? '...' : ''}`,
+      description: activity.commentsOrSolution,
+      createdBy: activity.createdBy,
+      createdByName: activity.createdByName,
+      department: activity.departmentName,
+      assignedTo: activity.assignedTo,
+      assignedToName: activity.assignedToName,
+      priority: activity.priority,
+      status: activity.status === 'completed' || activity.status === 'verified' ? 'completed' : 'in_progress',
+      recordId: activity._id.toString(),
+      recordType: 'daily_log_activity',
+      metadata: {
+        downtime: activity.downtime,
+        downtimeType: activity.downtimeType,
+        duration: activity.downtime,
+        notes: `Activity from ${activity.startTime}${activity.endTime ? ` to ${activity.endTime}` : ''} - ${activity.downtimeType} downtime`,
+        area: activity.area
+      },
+      createdAt: activity.createdAt,
+      updatedAt: activity.updatedAt,
+      completedAt: activity.status === 'completed' || activity.status === 'verified' ? activity.updatedAt : undefined
+    }))
+
+    // Combine and sort all logs
+    const allLogs = [...logs, ...dailyLogActivityLogs].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+
+    // Apply pagination to combined results
+    const total = allLogs.length
+    const paginatedLogs = allLogs.slice(skip, skip + limit)
+
     // Transform logs
-    const transformedLogs = logs.map(log => ({
+    const transformedLogs = paginatedLogs.map(log => ({
       ...log,
       id: log._id.toString(),
       _id: undefined
     }))
 
-    // Calculate summary
-    const allLogs = await db.collection('activitylogs').find(query).toArray()
+    // Calculate summary from all combined logs
     const summary = {
       totalActivities: total,
       byModule: allLogs.reduce((acc: any, log: any) => {

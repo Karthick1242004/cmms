@@ -204,6 +204,15 @@ export async function POST(request: NextRequest) {
       calculatedDowntime = calculateDowntime(body.startTime, body.endTime);
     }
 
+    // Validate downtimeType - only allow when there's actual downtime
+    let downtimeType = null;
+    if (body.downtimeType && (calculatedDowntime !== null || body.downtime !== null)) {
+      // Validate downtimeType values
+      if (body.downtimeType === 'planned' || body.downtimeType === 'unplanned') {
+        downtimeType = body.downtimeType;
+      }
+    }
+
     const now = new Date();
     const timestamp = now.toISOString();
 
@@ -239,6 +248,7 @@ export async function POST(request: NextRequest) {
       startTime: body.startTime,
       endTime: body.endTime || null,
       downtime: calculatedDowntime,
+      downtimeType: downtimeType,
       area: body.area,
       departmentId: body.departmentId,
       departmentName: body.departmentName,

@@ -67,6 +67,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     time: new Date().toTimeString().slice(0, 5),
     startTime: new Date().toTimeString().slice(0, 5),
     endTime: '',
+    downtimeType: undefined,
     area: '',
     departmentId: '',
     departmentName: '',
@@ -164,6 +165,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
         time: activityToEdit.time || activityToEdit.startTime,
         startTime: activityToEdit.startTime || activityToEdit.time,
         endTime: activityToEdit.endTime || '',
+        downtimeType: activityToEdit.downtimeType || undefined,
         area: activityToEdit.area,
         departmentId: activityToEdit.departmentId,
         departmentName: activityToEdit.departmentName,
@@ -188,6 +190,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
         time: new Date().toTimeString().slice(0, 5),
         startTime: new Date().toTimeString().slice(0, 5),
         endTime: '',
+        downtimeType: undefined,
         area: '',
         departmentId: '',
         departmentName: '',
@@ -266,7 +269,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
               {
                 id: employee.id,
                 name: employee.name,
-                role: employee.role,
+                role: employee.role || 'Employee',
                 department: employee.department,
               }
             ],
@@ -306,7 +309,6 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
       
       if (formData.imageFiles && formData.imageFiles.length > 0) {
         console.log('🖼️ UPLOADING DAILY LOG ACTIVITY IMAGES');
-        toast.info('Uploading images...');
         
         for (const imageFile of formData.imageFiles) {
           try {
@@ -325,6 +327,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
         ...formData,
         time: formData.startTime, // Keep legacy field for backward compatibility
         downtime: calculatedDowntime, // Include calculated downtime
+        downtimeType: formData.downtimeType, // Include downtime type
         images: uploadedImageUrls,
         imageFiles: undefined, // Remove file objects before submission
       };
@@ -421,6 +424,31 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                   </p>
                 )}
               </div>
+
+              {/* Downtime Type Selection - Only show when there is downtime */}
+              {(formData.endTime || calculatedDowntime !== null) && (
+                <div className="space-y-2">
+                  <Label htmlFor="downtimeType">Downtime Type</Label>
+                  <Select 
+                    value={formData.downtimeType || ''} 
+                    onValueChange={(value) => setFormData(prev => ({ 
+                      ...prev, 
+                      downtimeType: value as 'planned' | 'unplanned' 
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select downtime type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="planned">Planned Downtime</SelectItem>
+                      <SelectItem value="unplanned">Unplanned Downtime</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Specify whether this downtime was planned maintenance or an unexpected issue
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="area">Area *</Label>
@@ -800,7 +828,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
               {isLoading || isUploadingImages ? (
                 <div className="flex items-center gap-2">
                   <LoadingSpinner />
-                  {isUploadingImages ? 'Uploading images...' : 'Saving...'}
+                  {isUploadingImages ? 'Uploading...' : 'Saving...'}
                 </div>
               ) : (
                 isEditMode ? 'Update Activity' : 'Create Activity'
