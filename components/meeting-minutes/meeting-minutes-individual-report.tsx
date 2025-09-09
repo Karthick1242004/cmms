@@ -280,6 +280,33 @@ export function generateIndividualMeetingMinutesReport({ meetingMinutes }: Gener
             color: #6b7280;
           }
 
+          .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            transition: all 0.2s ease;
+            z-index: 1000;
+          }
+
+          .print-button:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+          }
+
+          .print-button:active {
+            transform: translateY(0);
+          }
+
           @media print {
             body {
               background: white;
@@ -289,10 +316,17 @@ export function generateIndividualMeetingMinutesReport({ meetingMinutes }: Gener
               box-shadow: none;
               max-width: none;
             }
+
+            .print-button {
+              display: none;
+            }
           }
         </style>
       </head>
       <body>
+        <button class="print-button" onclick="window.print()">
+          🖨️ Print Report
+        </button>
         <div class="container">
           <!-- Header -->
           <div class="header">
