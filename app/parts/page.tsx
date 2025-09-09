@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History, CheckCircle, AlertCircle, Loader2, MoreHorizontal, Eye } from "lucide-react"
+import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from "@/components/ui/dropdown-menu"
@@ -24,8 +25,10 @@ import { useAuthStore } from "@/stores/auth-store"
 import { PartsInventoryReport } from "@/components/parts/parts-inventory-report"
 import { InventoryHistoryDialog } from "@/components/parts/inventory-history-dialog"
 import { PartsDetailDialog } from "@/components/parts/parts-detail-dialog"
+import { PartImageUpload } from "@/components/parts/part-image-upload"
 import { syncPartLinksToAssetBOM, syncPartDeletion } from "@/lib/asset-part-sync"
 import type { PartAssetSyncData, PartDeletionSyncData } from "@/lib/asset-part-sync"
+import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary-config"
 
 // Extracted form to prevent re-mount on every parent render (fixes input focus loss
 function PartFormStandalone({
@@ -579,6 +582,13 @@ function PartFormStandalone({
         </div>
       </div>
 
+      {/* Part Image Upload */}
+      <PartImageUpload
+        formData={formData}
+        onChange={onInputChange}
+        validationErrors={validationErrors}
+      />
+
       {/* Vendor and Procurement Information */}
       <div className="space-y-4">
         <div className="border-t pt-4">
@@ -673,6 +683,7 @@ export default function PartsPage() {
   const [availableAssets, setAvailableAssets] = useState<Array<{ id: string; name: string; department: string }>>([])
   const [newlyAddedCategories, setNewlyAddedCategories] = useState<string[]>([])
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   const { user } = useAuthStore()
@@ -705,6 +716,9 @@ export default function PartsPage() {
     status: "active",
     isStockItem: true,
     isCritical: false,
+    // Image fields
+    imageSrc: "",
+    imageFile: null,
   })
 
   // Load data from APIs
@@ -1004,14 +1018,43 @@ export default function PartsPage() {
     }
 
     setIsLoading(true)
+    setIsUploadingImage(true)
     try {
       // Get auth token for API calls
       const token = localStorage.getItem('auth-token')
       if (!token) {
         toast.error('Authentication required. Please log in again.')
         setIsLoading(false)
+        setIsUploadingImage(false)
         return
       }
+
+      // Handle image upload first if there's a new image
+      let imageUrl = formData.imageSrc || ''
+      if (formData.imageFile) {
+        console.log('🖼️ UPLOADING PART IMAGE')
+        try {
+          imageUrl = await uploadToCloudinary(formData.imageFile, 'parts/images')
+          console.log('🖼️ Part image upload result:', imageUrl)
+          toast.success('Part image uploaded successfully!')
+          
+          // If editing and there was a previous image, delete it
+          if (isEdit && selectedPart?.imageSrc && selectedPart.imageSrc !== imageUrl && !selectedPart.imageSrc.includes('placeholder')) {
+            try {
+              console.log('🗑️ Deleting old part image:', selectedPart.imageSrc)
+              await deleteFromCloudinary(selectedPart.imageSrc)
+            } catch (deleteError) {
+              console.warn('Failed to delete old image:', deleteError)
+            }
+          }
+        } catch (error) {
+          console.error('🖼️ Part image upload failed:', error)
+          toast.error('Part image upload failed')
+          imageUrl = formData.imageSrc || '' // Keep original on failure
+        }
+      }
+
+      setIsUploadingImage(false)
 
       // Prepare request data
       const requestData = {
@@ -1033,7 +1076,9 @@ export default function PartsPage() {
         vendorContact: formData.vendorContact || '',
         location: formData.location,
         isStockItem: formData.isStockItem ?? true,
-        isCritical: formData.isCritical ?? false
+        isCritical: formData.isCritical ?? false,
+        // Image field
+        imageSrc: imageUrl
       }
 
       // Debug logging
@@ -1133,6 +1178,9 @@ export default function PartsPage() {
           status: "active",
           isStockItem: true,
           isCritical: false,
+          // Image fields
+          imageSrc: "",
+          imageFile: null,
         })
         setSelectedPart(null)
         setValidationErrors({}) // Clear validation errors
@@ -1153,6 +1201,7 @@ export default function PartsPage() {
       toast.error('Network error. Please check your connection and try again.')
     } finally {
       setIsLoading(false)
+      setIsUploadingImage(false)
     }
   }
 
@@ -1496,6 +1545,7 @@ export default function PartsPage() {
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                     <TableRow>
+                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Image</TableHead>
                       <TableHead className="text-xs font-medium py-2 min-w-[120px] sticky left-0 bg-background z-20 border-r">Part Details</TableHead>
                       <TableHead className="text-xs font-medium py-2 min-w-[80px]">SKU</TableHead>
                       <TableHead className="text-xs font-medium py-2 min-w-[100px]">Material Code</TableHead>
@@ -1518,6 +1568,17 @@ export default function PartsPage() {
                     const stockStatus = getStockStatus(part)
                     return (
                       <TableRow key={part.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewDetail(part)}>
+                        <TableCell className="py-2">
+                          <div className="w-16 h-12 bg-muted rounded overflow-hidden flex items-center justify-center">
+                            <Image
+                              src={part.imageSrc || "/placeholder.svg?height=48&width=64&text=part"}
+                              alt={part.name}
+                              width={64}
+                              height={48}
+                              className="object-cover"
+                            />
+                          </div>
+                        </TableCell>
                         <TableCell className="py-2 sticky left-0 bg-background z-10 border-r">
                           <div className="text-xs">
                             <div className="font-medium">{part.name}</div>

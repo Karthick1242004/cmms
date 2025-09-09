@@ -65,6 +65,8 @@ export async function GET(
       description: part.description,
       category: part.category,
       department: part.department,
+      // Image field
+      imageSrc: part.imageSrc || '',
       linkedAssets: part.linkedAssets || [],
       quantity: part.quantity,
       minStockLevel: part.minStockLevel,
@@ -195,7 +197,7 @@ export async function PUT(
       'department', 'linkedAssets', 'quantity', 'minStockLevel', 'unitPrice',
       'supplier', 'supplierCode', 'purchaseOrderNumber', 'vendorName', 'vendorContact',
       'location', 'alternativeLocations', 'totalConsumed', 'averageMonthlyUsage', 
-      'status', 'isStockItem', 'isCritical', 'departmentsServed'
+      'status', 'isStockItem', 'isCritical', 'departmentsServed', 'imageSrc'
     ];
 
     allowedFields.forEach(field => {
@@ -231,6 +233,8 @@ export async function PUT(
       description: updatedPart.description,
       category: updatedPart.category,
       department: updatedPart.department,
+      // Image field
+      imageSrc: updatedPart.imageSrc || '',
       linkedAssets: updatedPart.linkedAssets || [],
       quantity: updatedPart.quantity,
       minStockLevel: updatedPart.minStockLevel,

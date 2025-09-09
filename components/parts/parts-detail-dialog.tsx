@@ -30,8 +30,10 @@ import {
   DollarSign,
   ShoppingCart,
   Tag,
-  Layers
+  Layers,
+  ImageIcon
 } from 'lucide-react';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import type { Part } from '@/types/part';
 import { cn } from '@/lib/utils';
@@ -118,7 +120,26 @@ export function PartsDetailDialog({
           {/* Header Info */}
           <Card>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Part Image */}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Part Image
+                    </h4>
+                    <div className="w-full h-32 bg-muted rounded-lg overflow-hidden flex items-center justify-center border">
+                      <Image
+                        src={part.imageSrc || "/placeholder.svg?height=128&width=200&text=part"}
+                        alt={part.name}
+                        width={200}
+                        height={128}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-lg font-semibold text-primary mb-2">{part.name}</h3>

@@ -447,6 +447,7 @@ export function PartsInventoryReport({ parts, onClose }: PartsInventoryReportPro
           <table>
             <thead>
               <tr>
+                <th>Image</th>
                 <th>Part Number</th>
                 <th>Name</th>
                 <th>SKU</th>
@@ -467,6 +468,12 @@ export function PartsInventoryReport({ parts, onClose }: PartsInventoryReportPro
                 const stockStatus = getStockStatus(part)
                 return `
                   <tr>
+                    <td style="text-align: center; padding: 8px;">
+                      ${part.imageSrc ? 
+                        `<img src="${part.imageSrc}" alt="${part.name}" style="width: 60px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #e2e8f0;">` :
+                        `<div style="width: 60px; height: 40px; background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 10px;">No Image</div>`
+                      }
+                    </td>
                     <td class="font-mono">${part.partNumber}</td>
                     <td class="font-medium">${part.name}</td>
                     <td class="font-mono">${part.sku}</td>

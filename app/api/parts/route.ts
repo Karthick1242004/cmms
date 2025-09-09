@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Transform parts to match frontend expectations
-    const transformedParts = parts.map(part => ({
+    const transformedParts = parts.map((part: any) => ({
       id: part._id.toString(),
       partNumber: part.partNumber,
       name: part.name,
@@ -86,6 +86,8 @@ export async function GET(request: NextRequest) {
       description: part.description,
       category: part.category,
       department: part.department,
+      // Image field
+      imageSrc: part.imageSrc || '',
       linkedAssets: part.linkedAssets || [],
       quantity: part.quantity,
       minStockLevel: part.minStockLevel,
@@ -210,7 +212,9 @@ export async function POST(request: NextRequest) {
       status: body.status || 'active',
       isStockItem: body.isStockItem !== undefined ? body.isStockItem : true,
       isCritical: body.isCritical || false,
-      departmentsServed: body.departmentsServed || [body.department]
+      departmentsServed: body.departmentsServed || [body.department],
+      // Image field
+      imageSrc: body.imageSrc || ''
     };
 
     // Create the part
@@ -227,6 +231,8 @@ export async function POST(request: NextRequest) {
       description: savedPart.description,
       category: savedPart.category,
       department: savedPart.department,
+      // Image field
+      imageSrc: savedPart.imageSrc || '',
       linkedAssets: savedPart.linkedAssets,
       quantity: savedPart.quantity,
       minStockLevel: savedPart.minStockLevel,

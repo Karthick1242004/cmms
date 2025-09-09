@@ -8,6 +8,10 @@ export interface Part {
   category: string
   department: string // Department that manages this part
   
+  // Image Information
+  imageSrc?: string // Part image URL
+  imageFile?: File | null // Image file for upload (frontend only)
+  
   // Asset references - optimized for querying
   linkedAssets: Array<{
     assetId: string

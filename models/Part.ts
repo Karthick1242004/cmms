@@ -9,6 +9,9 @@ export interface IPart extends Document {
   category: string;
   department: string;
   
+  // Image information
+  imageSrc?: string;
+  
   linkedAssets: Array<{
     assetId: string;
     assetName: string;
@@ -70,6 +73,9 @@ const PartSchema = new Schema<IPart>({
   description: { type: String, trim: true },
   category: { type: String, required: true, trim: true },
   department: { type: String, required: true, trim: true },
+  
+  // Image information
+  imageSrc: { type: String, trim: true },
   
   linkedAssets: [LinkedAssetSchema],
   
