@@ -117,8 +117,8 @@ export function BasicInfoTab({ formData, errors, touched, onChange, onBlur, depa
                       </SelectItem>
                     ))
                   : (
-                      <SelectItem value={user?.department || ''}>
-                        {user?.department}
+                      <SelectItem value={user?.department || 'none'}>
+                        {user?.department || 'No Department'}
                       </SelectItem>
                     )
                 }

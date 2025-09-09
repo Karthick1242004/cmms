@@ -413,7 +413,7 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
                     </SelectItem>
                   ) : isDepartmentLocked ? (
                     // For non-super_admin users, show only their department
-                    <SelectItem value={user?.department || ''} disabled>
+                    <SelectItem value={user?.department || 'none'} disabled>
                       {user?.department || 'Your Department'}
                     </SelectItem>
                   ) : (

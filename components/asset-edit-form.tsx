@@ -21,6 +21,23 @@ import type { Asset, AssetDetail } from "@/types/asset"
 import type { Department } from "@/types/department"
 import { syncAssetBOMToParts } from "@/lib/asset-part-sync"
 import type { AssetPartSyncData } from "@/lib/asset-part-sync"
+import { useEmployees } from "@/hooks/use-employees"
+import { Command, CommandEmpty, CommandInput, CommandItem } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Users, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { AssetImageUpload } from "@/components/asset-creation-form/asset-image-upload"
+import { PartsBOMTab } from "@/components/asset-creation-form/parts-bom-tab"
+import { validateField, validateForm, isFormValid } from "@/components/asset-creation-form/validation"
+import { ValidationSummary } from "@/components/asset-creation-form/validation-summary"
+
+interface EmployeeOption {
+  id: string
+  name: string
+  role: string
+  email: string
+  department: string
+}
 
 interface AssetFormData {
   // Basic Information
@@ -109,6 +126,9 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
   const [activeTab, setActiveTab] = useState("basic")
   const [departments, setDepartments] = useState<Department[]>([])
   const [locations, setLocations] = useState<any[]>([])
+  const [showEmployeeDropdowns, setShowEmployeeDropdowns] = useState<Record<number, boolean>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
   
   const { updateAsset } = useAssetsStore()
   const { user } = useAuthStore()
@@ -182,7 +202,80 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
     associatedCustomer: {},
   })
 
-  // Fetch departments on component mount
+  // Fetch employees based on selected department or user's department
+  const selectedDepartment = formData.department || user?.department
+  const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees({
+    department: selectedDepartment || undefined,
+    status: 'active',
+    fetchAll: true // Fetch all employees for dropdown
+  })
+
+  // Transform employees to match EmployeeOption interface
+  const employees: EmployeeOption[] = (employeesData?.data?.employees || []).map((emp: any) => ({
+    id: emp.id,
+    name: emp.name,
+    role: emp.role || 'Employee',
+    email: emp.email,
+    department: emp.department
+  }))
+
+  // Debug: Log employee loading state
+  useEffect(() => {
+    if (selectedDepartment) {
+      console.log('🔍 Employee loading state:', { 
+        selectedDepartment, 
+        employeeCount: employees.length, 
+        isLoading: isLoadingEmployees,
+        hasData: !!employeesData 
+      })
+    }
+  }, [selectedDepartment, employees.length, isLoadingEmployees, employeesData])
+
+  // Personnel management functions
+  const addPersonnel = () => {
+    const newPerson = {
+      id: `person_${Date.now()}`,
+      name: '',
+      role: '',
+      email: '',
+      phone: '',
+      assignedDate: new Date().toISOString().split('T')[0],
+      responsibilities: []
+    }
+    setFormData(prev => ({ ...prev, personnel: [...prev.personnel, newPerson] }))
+  }
+
+  const updatePersonnel = (index: number, field: string, value: any) => {
+    const updatedPersonnel = formData.personnel.map((person, i) => 
+      i === index ? { ...person, [field]: value } : person
+    )
+    setFormData(prev => ({ ...prev, personnel: updatedPersonnel }))
+  }
+
+  const removePersonnel = (index: number) => {
+    const updatedPersonnel = formData.personnel.filter((_, i) => i !== index)
+    setFormData(prev => ({ ...prev, personnel: updatedPersonnel }))
+  }
+
+  const handleEmployeeSelect = (index: number, employee: EmployeeOption) => {
+    // Update all fields at once to avoid state conflicts
+    const updatedPersonnel = formData.personnel.map((person, i) => 
+      i === index ? { 
+        ...person, 
+        name: employee.name,
+        role: employee.role,
+        email: employee.email
+      } : person
+    )
+    setFormData(prev => ({ ...prev, personnel: updatedPersonnel }))
+    setShowEmployeeDropdowns(prev => ({ ...prev, [index]: false }))
+  }
+
+  const toggleEmployeeDropdown = (index: number) => {
+    setShowEmployeeDropdowns(prev => ({ ...prev, [index]: !prev[index] }))
+  }
+
+  // Fetch departments and locations on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -191,9 +284,16 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
         if (deptResponse.success) {
           setDepartments(deptResponse.data.departments)
         }
+
+        // Fetch locations
+        const locationsResponse = await fetch('/api/locations')
+        const locationsData = await locationsResponse.json()
+        if (locationsData.success) {
+          setLocations(locationsData.data?.locations || [])
+        }
       } catch (error) {
-        console.error('Error fetching departments:', error)
-        toast.error('Failed to load departments')
+        console.error('Error fetching data:', error)
+        toast.error('Failed to load form data')
       }
     }
 
@@ -306,10 +406,32 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
   }, [asset.id])
 
   const handleInputChange = (field: keyof AssetFormData, value: any) => {
+    // Handle special "none" value for location (convert to empty string)
+    const processedValue = field === 'location' && value === 'none' ? '' : value
+    
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: processedValue
     }))
+    
+    // Clear validation error for this field when user starts typing
+    if (errors[field as string]) {
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[field as string]
+        return newErrors
+      })
+    }
+  }
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }))
+    
+    // Validate the field on blur
+    const error = validateField(field, formData[field as keyof AssetFormData])
+    if (error) {
+      setErrors(prev => ({ ...prev, [field]: error }))
+    }
   }
 
   // Helper functions for managing links
@@ -409,16 +531,17 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
   }
 
   const handleSubmit = async () => {
+    // Validate form before submission
+    const formErrors = validateForm(formData)
+    setErrors(formErrors)
+    
+    if (!isFormValid(formErrors)) {
+      toast.error('Please fix the validation errors before submitting')
+      return
+    }
+
     setIsLoading(true)
     try {
-      // Validate required fields
-      const requiredFields = ['assetName', 'category', 'department']
-      const missingFields = requiredFields.filter(field => !formData[field as keyof AssetFormData])
-      
-      if (missingFields.length > 0) {
-        toast.error(`Please fill in required fields: ${missingFields.join(', ')}`)
-        return
-      }
 
       console.log('🔄 PROCESSING IMAGE UPDATES')
       let imageUrl = formData.imageSrc
@@ -644,6 +767,10 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
         </div>
       </div>
 
+      {Object.keys(errors).length > 0 && (
+        <ValidationSummary errors={errors} />
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="basic">Basic Information</TabsTrigger>
@@ -668,8 +795,16 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                     id="assetName"
                     value={formData.assetName}
                     onChange={(e) => handleInputChange('assetName', e.target.value)}
+                    onBlur={() => handleBlur('assetName')}
                     placeholder="Enter asset name"
+                    className={`${errors.assetName && touched.assetName ? 'border-red-500 focus:border-red-500' : ''} ${touched.assetName && !errors.assetName && formData.assetName ? 'border-green-500 focus:border-green-500' : ''}`}
                   />
+                  {errors.assetName && touched.assetName && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.assetName}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="serialNo">Serial Number</Label>
@@ -727,8 +862,8 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                             </SelectItem>
                           ))
                         : (
-                            <SelectItem value={user?.department || ''}>
-                              {user?.department}
+                            <SelectItem value={user?.department || 'none'}>
+                              {user?.department || 'No Department'}
                             </SelectItem>
                           )
                       }
@@ -742,12 +877,30 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
-                    placeholder="Enter asset location"
-                  />
+                  <Select value={formData.location || 'none'} onValueChange={(value) => handleInputChange('location', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No location assigned</SelectItem>
+                      {locations
+                        .filter(location => 
+                          user?.accessLevel === 'super_admin' || 
+                          location.department === (formData.department || user?.department)
+                        )
+                        .map((location: any) => (
+                        <SelectItem key={location.id} value={location.name}>
+                          {location.name} - {location.type}
+                          {location.code && ` (${location.code})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {locations.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No locations available. Contact admin to add locations.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -881,126 +1034,16 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                 />
               </div>
 
-              {/* Image Upload Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Asset Image */}
-                <div className="space-y-3">
-                  <Label>Asset Image</Label>
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
-                    {formData.imageSrc ? (
-                      <div className="relative">
-                        <img
-                          src={formData.imageSrc}
-                          alt="Asset"
-                          className="w-full h-40 object-cover rounded-md"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2"
-                          onClick={() => removeImage('asset')}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <Camera className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <div className="mt-4">
-                          <label htmlFor="asset-image" className="cursor-pointer">
-                            <span className="mt-2 block text-sm font-medium text-muted-foreground">
-                              Click to upload asset image
-                            </span>
-                            <input
-                              id="asset-image"
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={(e) => handleImageUpload(e, 'asset')}
-                              disabled={isUploadingImage}
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    )}
-                    {!formData.imageSrc && (
-                      <div className="mt-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => document.getElementById('asset-image')?.click()}
-                          disabled={isUploadingImage}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          Choose Image
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* QR Code Image */}
-                <div className="space-y-3">
-                  <Label>QR Code Image</Label>
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
-                    {formData.qrCodeSrc ? (
-                      <div className="relative">
-                        <img
-                          src={formData.qrCodeSrc}
-                          alt="QR Code"
-                          className="w-full h-40 object-cover rounded-md"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2"
-                          onClick={() => removeImage('qr')}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <QrCode className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <div className="mt-4">
-                          <label htmlFor="qr-image" className="cursor-pointer">
-                            <span className="mt-2 block text-sm font-medium text-muted-foreground">
-                              Click to upload QR code image
-                            </span>
-                            <input
-                              id="qr-image"
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={(e) => handleImageUpload(e, 'qr')}
-                              disabled={isUploadingImage}
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    )}
-                    {!formData.qrCodeSrc && (
-                      <div className="mt-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => document.getElementById('qr-image')?.click()}
-                          disabled={isUploadingImage}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          Choose QR Image
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
+
+          <AssetImageUpload
+            formData={formData}
+            errors={errors}
+            touched={touched}
+            onChange={handleInputChange}
+            onBlur={handleBlur}
+          />
         </TabsContent>
 
         <TabsContent value="technical" className="space-y-6">
@@ -1200,111 +1243,155 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
         <TabsContent value="personnel" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Personnel</CardTitle>
-              <CardDescription>Staff assigned to this asset</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h4 className="text-sm font-medium">Assigned Personnel</h4>
-                <Button type="button" variant="outline" size="sm" onClick={() => {
-                  const newPerson = {
-                    id: `person-${Date.now()}`,
-                    name: '',
-                    role: '',
-                    email: '',
-                    phone: '',
-                    assignedDate: new Date().toISOString().split('T')[0],
-                    responsibilities: []
-                  }
-                  setFormData(prev => ({
-                    ...prev,
-                    personnel: [...prev.personnel, newPerson]
-                  }))
-                }}>
-                  <Plus className="h-4 w-4 mr-2" />
+              <CardTitle className="flex items-center justify-between">
+                Personnel Assignment
+                <Button onClick={addPersonnel} size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
                   Add Person
                 </Button>
-              </div>
-              
+              </CardTitle>
+              <CardDescription>Assign personnel responsible for this asset</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {formData.personnel.map((person: any, index: number) => (
-                <div key={person.id} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <h5 className="font-medium">Person {index + 1}</h5>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          personnel: prev.personnel.filter((_: any, i: number) => i !== index)
-                        }))
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card key={person.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline">Person {index + 1}</Badge>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removePersonnel(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Name</Label>
+                      <Label htmlFor={`name-${index}`}>Name</Label>
+                      <div className="relative">
+                        <Input
+                          id={`name-${index}`}
+                          placeholder="Person's name"
+                          value={person.name || ''}
+                          onChange={employees.length > 0 ? undefined : (e) => updatePersonnel(index, 'name', e.target.value)}
+                          className="pr-10"
+                          readOnly={employees.length > 0}
+                          style={{ cursor: employees.length > 0 ? 'pointer' : 'text' }}
+                          onClick={() => employees.length > 0 && toggleEmployeeDropdown(index)}
+                        />
+                        {employees.length > 0 && (
+                          <Popover 
+                            open={showEmployeeDropdowns[index] || false} 
+                            onOpenChange={(open) => setShowEmployeeDropdowns(prev => ({ ...prev, [index]: open }))}
+                          >
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                                type="button"
+                                onClick={() => toggleEmployeeDropdown(index)}
+                                disabled={isLoadingEmployees}
+                              >
+                                <Users className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="end">
+                              <Command className="w-full">
+                                <CommandInput placeholder="Search employees..." />
+                                <CommandEmpty>
+                                  {employees.length === 0 ? "No employees found in this department" : "No employees match your search."}
+                                </CommandEmpty>
+                                <div className="max-h-[200px] overflow-y-auto p-1">
+                                  {employees.map((employee: EmployeeOption) => (
+                                    <CommandItem
+                                      key={employee.id}
+                                      value={employee.name}
+                                      onSelect={(selectedValue) => {
+                                        // Find the employee by name to avoid closure issues
+                                        const selectedEmployee = employees.find((emp: EmployeeOption) => emp.name === selectedValue)
+                                        if (selectedEmployee) {
+                                          handleEmployeeSelect(index, selectedEmployee)
+                                        }
+                                      }}
+                                      className="py-2 cursor-pointer hover:bg-accent"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          person.name === employee.name ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span>{employee.name}</span>
+                                        <span className="text-xs text-muted-foreground">{employee.role} - {employee.email}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </div>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                        {employees.length === 0 && !isLoadingEmployees && (
+                          <div className="absolute right-1 top-1/2 transform -translate-y-1/2">
+                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      {isLoadingEmployees && (
+                        <p className="text-xs text-muted-foreground">Loading employees...</p>
+                      )}
+                      {!selectedDepartment && (
+                        <p className="text-xs text-yellow-600">Please select a department first to load employees</p>
+                      )}
+                      {selectedDepartment && !isLoadingEmployees && employees.length === 0 && (
+                        <p className="text-xs text-orange-600">No employees found in {selectedDepartment} department</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`role-${index}`}>Role</Label>
                       <Input
-                        value={person.name}
-                        onChange={(e) => {
-                          const newPersonnel = [...formData.personnel]
-                          newPersonnel[index] = { ...person, name: e.target.value }
-                          setFormData(prev => ({ ...prev, personnel: newPersonnel }))
-                        }}
-                        placeholder="Enter person name"
+                        id={`role-${index}`}
+                        placeholder="Job role"
+                        value={person.role || ''}
+                        onChange={employees.length > 0 && person.name ? undefined : (e) => updatePersonnel(index, 'role', e.target.value)}
+                        readOnly={employees.length > 0 && person.name}
                       />
                     </div>
+
                     <div className="space-y-2">
-                      <Label>Role</Label>
+                      <Label htmlFor={`email-${index}`}>Email</Label>
                       <Input
-                        value={person.role}
-                        onChange={(e) => {
-                          const newPersonnel = [...formData.personnel]
-                          newPersonnel[index] = { ...person, role: e.target.value }
-                          setFormData(prev => ({ ...prev, personnel: newPersonnel }))
-                        }}
-                        placeholder="Enter role"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input
+                        id={`email-${index}`}
                         type="email"
-                        value={person.email}
-                        onChange={(e) => {
-                          const newPersonnel = [...formData.personnel]
-                          newPersonnel[index] = { ...person, email: e.target.value }
-                          setFormData(prev => ({ ...prev, personnel: newPersonnel }))
-                        }}
-                        placeholder="Enter email"
+                        placeholder="email@company.com"
+                        value={person.email || ''}
+                        onChange={employees.length > 0 && person.name ? undefined : (e) => updatePersonnel(index, 'email', e.target.value)}
+                        readOnly={employees.length > 0 && person.name}
                       />
                     </div>
+
                     <div className="space-y-2">
-                      <Label>Phone</Label>
+                      <Label htmlFor={`phone-${index}`}>Phone</Label>
                       <Input
+                        id={`phone-${index}`}
+                        placeholder="+1-555-0123"
                         value={person.phone}
-                        onChange={(e) => {
-                          const newPersonnel = [...formData.personnel]
-                          newPersonnel[index] = { ...person, phone: e.target.value }
-                          setFormData(prev => ({ ...prev, personnel: newPersonnel }))
-                        }}
-                        placeholder="Enter phone number"
+                        onChange={(e) => updatePersonnel(index, 'phone', e.target.value)}
                       />
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
-              
               {formData.personnel.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  No personnel assigned. Click "Add Person" to assign staff to this asset.
+                  <AlertCircle className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p>No personnel assigned yet</p>
+                  <p className="text-sm">Click "Add Person" to assign someone to this asset</p>
                 </div>
               )}
             </CardContent>
@@ -1312,150 +1399,13 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
         </TabsContent>
 
         <TabsContent value="parts" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Parts Bill of Materials (BOM)</CardTitle>
-              <CardDescription>Parts and components for this asset</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h4 className="text-sm font-medium">Parts List</h4>
-                <Button type="button" variant="outline" size="sm" onClick={() => {
-                  const newPart = {
-                    id: `part-${Date.now()}`,
-                    partName: '',
-                    partNumber: '',
-                    quantity: 1,
-                    unitCost: 0,
-                    supplier: '',
-                    lastReplaced: '',
-                    nextMaintenanceDate: ''
-                  }
-                  setFormData(prev => ({
-                    ...prev,
-                    partsBOM: [...prev.partsBOM, newPart]
-                  }))
-                }}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Part
-                </Button>
-              </div>
-              
-              {formData.partsBOM.map((part: any, index: number) => (
-                <div key={part.id} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <h5 className="font-medium">Part {index + 1}</h5>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          partsBOM: prev.partsBOM.filter((_: any, i: number) => i !== index)
-                        }))
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Part Name</Label>
-                      <Input
-                        value={part.partName}
-                        onChange={(e) => {
-                          const newParts = [...formData.partsBOM]
-                          newParts[index] = { ...part, partName: e.target.value }
-                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
-                        }}
-                        placeholder="Enter part name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Part Number</Label>
-                      <Input
-                        value={part.partNumber}
-                        onChange={(e) => {
-                          const newParts = [...formData.partsBOM]
-                          newParts[index] = { ...part, partNumber: e.target.value }
-                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
-                        }}
-                        placeholder="Enter part number"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Quantity</Label>
-                      <Input
-                        type="number"
-                        value={part.quantity === 1 ? '' : part.quantity?.toString() || ''}
-                        onChange={(e) => {
-                          const value = e.target.value === '' ? 1 : parseInt(e.target.value) || 1;
-                          const newParts = [...formData.partsBOM]
-                          newParts[index] = { ...part, quantity: value }
-                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
-                        }}
-                        onBlur={(e) => {
-                          if (e.target.value === '') {
-                            const newParts = [...formData.partsBOM]
-                            newParts[index] = { ...part, quantity: 1 }
-                            setFormData(prev => ({ ...prev, partsBOM: newParts }))
-                          }
-                        }}
-                        placeholder="1"
-                        min="1"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Unit Cost ($)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={part.unitCost === 0 ? '' : part.unitCost?.toString() || ''}
-                        onChange={(e) => {
-                          const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                          const newParts = [...formData.partsBOM]
-                          newParts[index] = { ...part, unitCost: value }
-                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
-                        }}
-                        onBlur={(e) => {
-                          if (e.target.value === '') {
-                            const newParts = [...formData.partsBOM]
-                            newParts[index] = { ...part, unitCost: 0 }
-                            setFormData(prev => ({ ...prev, partsBOM: newParts }))
-                          }
-                        }}
-                        placeholder="0.00"
-                        min="0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Supplier</Label>
-                      <Input
-                        value={part.supplier}
-                        onChange={(e) => {
-                          const newParts = [...formData.partsBOM]
-                          newParts[index] = { ...part, supplier: e.target.value }
-                          setFormData(prev => ({ ...prev, partsBOM: newParts }))
-                        }}
-                        placeholder="Enter supplier"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
-              {formData.partsBOM.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  No parts added. Click "Add Part" to add components to this asset.
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <PartsBOMTab 
+            formData={formData}
+            onChange={handleInputChange}
+            errors={errors}
+            touched={touched}
+            onBlur={handleBlur}
+          />
         </TabsContent>
 
         <TabsContent value="additional" className="space-y-6">

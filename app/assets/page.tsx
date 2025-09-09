@@ -667,6 +667,11 @@ export default function AllAssetsPage() {
       {canModifyAssets && (
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="sr-only">
+              <DialogTitle>
+                Edit Asset {selectedAssetForEdit?.assetName || ''}
+              </DialogTitle>
+            </DialogHeader>
             {selectedAssetForEdit && (
               <AssetEditForm
                 asset={selectedAssetForEdit}
