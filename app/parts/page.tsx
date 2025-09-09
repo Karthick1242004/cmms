@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History, CheckCircle, AlertCircle, Loader2, MoreHorizontal, Eye } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { LoadingSpinner } from "@/components/loading-spinner"
@@ -22,6 +23,7 @@ import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { useAuthStore } from "@/stores/auth-store"
 import { PartsInventoryReport } from "@/components/parts/parts-inventory-report"
 import { InventoryHistoryDialog } from "@/components/parts/inventory-history-dialog"
+import { PartsDetailDialog } from "@/components/parts/parts-detail-dialog"
 import { syncPartLinksToAssetBOM, syncPartDeletion } from "@/lib/asset-part-sync"
 import type { PartAssetSyncData, PartDeletionSyncData } from "@/lib/asset-part-sync"
 
@@ -664,6 +666,8 @@ export default function PartsPage() {
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [isInventoryHistoryOpen, setIsInventoryHistoryOpen] = useState(false)
   const [historyPart, setHistoryPart] = useState<Part | null>(null)
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [selectedPartForDetail, setSelectedPartForDetail] = useState<Part | null>(null)
   const [departments, setDepartments] = useState<Department[]>([])
   const [locations, setLocations] = useState<Location[]>([])
   const [availableAssets, setAvailableAssets] = useState<Array<{ id: string; name: string; department: string }>>([])
@@ -1239,6 +1243,11 @@ export default function PartsPage() {
     setIsInventoryHistoryOpen(true)
   }
 
+  const handleViewDetail = (part: Part) => {
+    setSelectedPartForDetail(part)
+    setIsDetailDialogOpen(true)
+  }
+
   const getStockStatus = (part: Part) => {
     if (part.quantity <= part.minStockLevel) {
       return { 
@@ -1487,20 +1496,20 @@ export default function PartsPage() {
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                     <TableRow>
-                      <TableHead className="text-xs font-medium py-2 min-w-[140px] sticky left-0 bg-background z-20 border-r">Part Details</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">SKU</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[120px]">Material Code</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Category</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Location</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[120px]">Linked Assets</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Stock Status</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Quantity</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[90px]">Unit Price</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Total Value</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[120px]">Supplier</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Purchase Order</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[120px]">Vendor Name</TableHead>
-                      <TableHead className="text-xs font-medium py-2 min-w-[150px]">Vendor Contact</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[120px] sticky left-0 bg-background z-20 border-r">Part Details</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">SKU</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Material Code</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Category</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Location</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Linked Assets</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Stock Status</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[60px]">Quantity</TableHead>
+                      {/* <TableHead className="text-xs font-medium py-2 min-w-[90px]">Unit Price</TableHead> */}
+                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Total Value</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Supplier</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[80px]">Purchase Order</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[100px]">Vendor Name</TableHead>
+                      <TableHead className="text-xs font-medium py-2 min-w-[130px]">Vendor Contact</TableHead>
                       {isAdmin && <TableHead className="text-xs font-medium py-2 min-w-[100px] sticky right-0 bg-background z-20 border-l">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -1508,7 +1517,7 @@ export default function PartsPage() {
                   {filteredParts.map((part) => {
                     const stockStatus = getStockStatus(part)
                     return (
-                      <TableRow key={part.id} className="hover:bg-muted/50">
+                      <TableRow key={part.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewDetail(part)}>
                         <TableCell className="py-2 sticky left-0 bg-background z-10 border-r">
                           <div className="text-xs">
                             <div className="font-medium">{part.name}</div>
@@ -1574,9 +1583,9 @@ export default function PartsPage() {
                             <div className="text-muted-foreground">Min: {part.minStockLevel}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-2">
+                        {/* <TableCell className="py-2">
                           <div className="text-xs font-medium">${part.unitPrice.toFixed(2)}</div>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="py-2">
                           <div className="text-xs font-medium">${part.totalValue ? part.totalValue.toFixed(2) : (part.quantity * part.unitPrice).toFixed(2)}</div>
                         </TableCell>
@@ -1614,35 +1623,57 @@ export default function PartsPage() {
                         </TableCell>
                         {isAdmin && (
                           <TableCell className="py-2 sticky right-0 bg-background z-10 border-l">
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewHistory(part)}
-                                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
-                                title="View inventory history"
-                              >
-                                <History className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(part)}
-                                className="h-6 w-6 p-0"
-                                title="Edit part"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(part.id)}
-                                className="h-6 w-6 p-0 text-red-600 hover:text-red-800"
-                                title="Delete part"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  className="h-8 w-8 p-0"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleViewDetail(part);
+                                }}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleViewHistory(part);
+                                }}>
+                                  <History className="mr-2 h-4 w-4" />
+                                  View History
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleEdit(part);
+                                }}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Part
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDelete(part.id);
+                                  }}
+                                  className="text-red-600 focus:text-red-500 focus:bg-red-50"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Part
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         )}
                       </TableRow>
@@ -1701,6 +1732,16 @@ export default function PartsPage() {
         open={isInventoryHistoryOpen}
         onOpenChange={setIsInventoryHistoryOpen}
         part={historyPart}
+      />
+
+      {/* Parts Detail Dialog */}
+      <PartsDetailDialog
+        isOpen={isDetailDialogOpen}
+        onClose={() => setIsDetailDialogOpen(false)}
+        part={selectedPartForDetail}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onViewHistory={handleViewHistory}
       />
     </PageLayout>
   )
