@@ -13,13 +13,12 @@ const getAuthHeaders = () => {
     'Content-Type': 'application/json',
   }
   
-  // Add user identification headers for testing
-  // In a real app, these would come from JWT tokens
+  // Add JWT token for authentication
   if (typeof window !== 'undefined') {
-    const userDepartment = localStorage.getItem('userDepartment') || 'Maintenance'
-    const userName = localStorage.getItem('userName') || 'Test User'
-    headers['X-User-Department'] = userDepartment
-    headers['X-User-Name'] = userName
+    const token = localStorage.getItem('auth-token')
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
   }
   
   return headers

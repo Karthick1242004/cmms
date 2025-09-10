@@ -6,17 +6,20 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUserContext(request);
     
-    // TEMPORARY: Allow access even without authentication for testing
+    // Ensure user is authenticated
     if (!user) {
-      // unauthenticated request; use safe defaults
+      return NextResponse.json(
+        { success: false, message: 'Authentication required to add activity log' },
+        { status: 401 }
+      );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     // Validate required fields
@@ -38,13 +41,20 @@ export async function POST(
       }
     }
 
+    // Ensure we have proper user identification
+    const userName = user.name || user.email || 'Unknown User';
+    const userDepartment = user.department || 'General';
+
+
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/tickets/${id}/activity`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Department': user?.department || 'General',
-        'X-User-Name': user?.name || 'Test User',
+        'X-User-Department': userDepartment,
+        'X-User-Name': userName,
+        'X-User-Id': user.id || '',
+        'X-User-Email': user.email || '',
       },
       body: JSON.stringify(body),
     });
