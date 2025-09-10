@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -204,32 +204,50 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
 
   // Fetch employees based on selected department or user's department
   const selectedDepartment = formData.department || user?.department
-  const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees({
+  
+  // Enhanced employee fetching with better error handling
+  const { data: employeesData, isLoading: isLoadingEmployees, error: employeesError } = useEmployees({
     department: selectedDepartment || undefined,
     status: 'active',
     fetchAll: true // Fetch all employees for dropdown
   })
 
-  // Transform employees to match EmployeeOption interface
-  const employees: EmployeeOption[] = (employeesData?.data?.employees || []).map((emp: any) => ({
-    id: emp.id,
-    name: emp.name,
-    role: emp.role || 'Employee',
-    email: emp.email,
-    department: emp.department
-  }))
+  // Transform employees to match EmployeeOption interface with validation
+  const employees: EmployeeOption[] = useMemo(() => {
+    if (!employeesData?.data?.employees) return []
+    
+    return employeesData.data.employees
+      .filter((emp: any) => emp && emp.name && emp.email) // Validate required fields
+      .map((emp: any) => ({
+        id: emp.id || emp._id,
+        name: emp.name.trim(),
+        role: emp.role || 'Employee',
+        email: emp.email.toLowerCase(),
+        department: emp.department || selectedDepartment || 'Unknown'
+      }))
+  }, [employeesData, selectedDepartment])
 
-  // Debug: Log employee loading state
+  // Enhanced error handling and department validation
+  const isValidDepartment = Boolean(selectedDepartment)
+  const hasEmployeesError = Boolean(employeesError)
+  const shouldShowEmployeesNotFound = isValidDepartment && !isLoadingEmployees && employees.length === 0 && !hasEmployeesError
+
+  // Debug logging with comprehensive information
   useEffect(() => {
-    if (selectedDepartment) {
-      console.log('🔍 Employee loading state:', { 
-        selectedDepartment, 
-        employeeCount: employees.length, 
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Personnel Assignment Debug:', {
+        selectedDepartment,
+        isValidDepartment,
+        employeeCount: employees.length,
         isLoading: isLoadingEmployees,
-        hasData: !!employeesData 
+        hasError: hasEmployeesError,
+        error: employeesError,
+        hasData: !!employeesData,
+        userAccessLevel: user?.accessLevel,
+        userDepartment: user?.department
       })
     }
-  }, [selectedDepartment, employees.length, isLoadingEmployees, employeesData])
+  }, [selectedDepartment, employees.length, isLoadingEmployees, hasEmployeesError, employeesError, employeesData, user])
 
   // Personnel management functions
   const addPersonnel = () => {
@@ -258,17 +276,35 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
   }
 
   const handleEmployeeSelect = (index: number, employee: EmployeeOption) => {
+    // Validate employee data before assignment
+    if (!employee || !employee.name || !employee.email) {
+      console.error('Invalid employee data:', employee)
+      return
+    }
+
     // Update all fields at once to avoid state conflicts
     const updatedPersonnel = formData.personnel.map((person, i) => 
       i === index ? { 
         ...person, 
-        name: employee.name,
-        role: employee.role,
-        email: employee.email
+        name: employee.name.trim(),
+        role: employee.role || 'Employee',
+        email: employee.email.toLowerCase(),
+        // Set assignment date if not already set
+        assignedDate: person.assignedDate || new Date().toISOString().split('T')[0]
       } : person
     )
     setFormData(prev => ({ ...prev, personnel: updatedPersonnel }))
     setShowEmployeeDropdowns(prev => ({ ...prev, [index]: false }))
+    
+    // Log successful assignment for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Employee assigned:', { 
+        index, 
+        employee: employee.name, 
+        role: employee.role,
+        department: employee.department 
+      })
+    }
   }
 
   const toggleEmployeeDropdown = (index: number) => {
@@ -1281,7 +1317,7 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                           style={{ cursor: employees.length > 0 ? 'pointer' : 'text' }}
                           onClick={() => employees.length > 0 && toggleEmployeeDropdown(index)}
                         />
-                        {employees.length > 0 && (
+                        {(employees.length > 0 || isLoadingEmployees) && (
                           <Popover 
                             open={showEmployeeDropdowns[index] || false} 
                             onOpenChange={(open) => setShowEmployeeDropdowns(prev => ({ ...prev, [index]: open }))}
@@ -1293,16 +1329,30 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                                 className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
                                 type="button"
                                 onClick={() => toggleEmployeeDropdown(index)}
-                                disabled={isLoadingEmployees}
+                                disabled={isLoadingEmployees || !isValidDepartment}
+                                title={
+                                  !isValidDepartment 
+                                    ? "Select a department first" 
+                                    : isLoadingEmployees 
+                                      ? "Loading employees..." 
+                                      : `Search employees in ${selectedDepartment}`
+                                }
                               >
-                                <Users className="h-4 w-4" />
+                                {isLoadingEmployees ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                                ) : (
+                                  <Users className="h-4 w-4" />
+                                )}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-full p-0" align="end">
                               <Command className="w-full">
                                 <CommandInput placeholder="Search employees..." />
                                 <CommandEmpty>
-                                  {employees.length === 0 ? "No employees found in this department" : "No employees match your search."}
+                                  {employees.length === 0 
+                                    ? `No employees found in ${selectedDepartment || 'this'} department` 
+                                    : "No employees match your search."
+                                  }
                                 </CommandEmpty>
                                 <div className="max-h-[200px] overflow-y-auto p-1">
                                   {employees.map((employee: EmployeeOption) => (
@@ -1341,14 +1391,39 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                           </div>
                         )}
                       </div>
+                      {/* Enhanced status messages with better UX */}
                       {isLoadingEmployees && (
-                        <p className="text-xs text-muted-foreground">Loading employees...</p>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></div>
+                          Loading employees for {selectedDepartment || 'department'}...
+                        </div>
                       )}
-                      {!selectedDepartment && (
-                        <p className="text-xs text-yellow-600">Please select a department first to load employees</p>
+                      {!isValidDepartment && (
+                        <p className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded border">
+                          ⚠️ Please select a department in Basic Information to load employees
+                        </p>
                       )}
-                      {selectedDepartment && !isLoadingEmployees && employees.length === 0 && (
-                        <p className="text-xs text-orange-600">No employees found in {selectedDepartment} department</p>
+                      {hasEmployeesError && (
+                        <div className="text-xs text-red-600 bg-red-50 p-2 rounded border">
+                          ❌ Error loading employees: {employeesError}
+                          <button 
+                            type="button"
+                            className="ml-2 underline text-red-700 hover:text-red-800"
+                            onClick={() => window.location.reload()}
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      )}
+                      {shouldShowEmployeesNotFound && (
+                        <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded border">
+                          📝 No employees found in {selectedDepartment} department
+                          {user?.accessLevel === 'super_admin' && (
+                            <div className="mt-1 text-gray-600">
+                              As super admin, you can still assign manually or create employees in this department first.
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 

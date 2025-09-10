@@ -669,7 +669,7 @@ export default function AllAssetsPage() {
           <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
             <DialogHeader className="sr-only">
               <DialogTitle>
-                Edit Asset {selectedAssetForEdit?.assetName || ''}
+                Edit Asset {selectedAssetForEdit?.name || ''}
               </DialogTitle>
             </DialogHeader>
             {selectedAssetForEdit && (

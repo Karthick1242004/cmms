@@ -285,6 +285,9 @@ export const useAssetsStore = create<AssetsState>()(
                 condition: detail.condition || "good",
                 imageSrc: detail.imageSrc,
                 categoryName: detail.categoryName,
+                // Include personnel information
+                allocated: detail.allocated,
+                personnel: detail.personnel,
               }))
 
               // Debug log to see the transformed data

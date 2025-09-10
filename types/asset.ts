@@ -13,6 +13,15 @@ export interface Asset {
   imageSrc?: string // For list view thumbnail
   qrCodeSrc?: string // QR code image URL
   categoryName?: string // More specific category like "Heavy Machinery"
+  // Personnel information for list view
+  allocated?: string // Assigned person name
+  personnel?: Array<{
+    name: string
+    role: string
+    email: string
+    phone?: string
+    assignedDate?: string
+  }>
 }
 
 export interface AssetDetail {

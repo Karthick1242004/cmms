@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Edit, Trash2, DollarSign, Calendar, MapPinIcon, RefreshCw } from "lucide-react"
+import { Edit, Trash2, DollarSign, Calendar, MapPinIcon, RefreshCw, User } from "lucide-react"
 import { toast } from "sonner"
 import { assetsApi } from "@/lib/assets-api"
 import type { Asset } from "@/types/asset" // Using the simplified Asset type for list
@@ -134,7 +134,7 @@ export function AssetListTable({ assets, onEdit, onDelete, onStatusChange, canMo
             <TableHead>Department</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Condition</TableHead>
-            <TableHead>Purchase Info</TableHead>
+            <TableHead>Assigned Person</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -187,19 +187,9 @@ export function AssetListTable({ assets, onEdit, onDelete, onStatusChange, canMo
                 </Badge>
               </TableCell>
               <TableCell>
-                <div className="space-y-0.5">
-                  {asset.purchasePrice !== undefined && (
-                    <div className="flex items-center text-sm">
-                      <DollarSign className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
-                      {asset.purchasePrice.toLocaleString()}
-                    </div>
-                  )}
-                  {asset.purchaseDate && (
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Calendar className="mr-1 h-3 w-3" />
-                      {asset.purchaseDate}
-                    </div>
-                  )}
+                <div className="flex items-center text-sm">
+                  <User className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                  {asset.allocated || (asset.personnel && asset.personnel.length > 0 ? asset.personnel[0].name : 'Unassigned')}
                 </div>
               </TableCell>
               <TableCell className="text-right">
