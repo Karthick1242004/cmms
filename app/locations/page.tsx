@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2, MapPin, Building, Loader2, RefreshCw, Filter, X } from "lucide-react"
+import { Plus, Search, Edit, Trash2, MapPin, Building, Loader2, RefreshCw, Filter, X, FileText } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -34,6 +34,7 @@ import { useAuthStore } from "@/stores/auth-store"
 import { useDepartments } from "@/hooks/use-departments"
 import { validateLocationForm, validateField, type LocationFormData } from "@/utils/validation"
 import { useDebounce } from "@/hooks/use-debounce"
+import { LocationsOverallReport } from "@/components/locations/locations-overall-report"
 
 interface Location {
   id?: string
@@ -84,6 +85,7 @@ export default function LocationsPage() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
   const [isUpdatingAssetCounts, setIsUpdatingAssetCounts] = useState(false)
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   
   // Filter states
   const [selectedDepartment, setSelectedDepartment] = useState<string>("")
@@ -493,23 +495,33 @@ export default function LocationsPage() {
         </div>
         <div className="flex items-center gap-2">
           {isSuperAdmin && (
-            <Button 
-              variant="outline" 
-              onClick={handleUpdateAssetCounts}
-              disabled={isUpdatingAssetCounts}
-            >
-              {isUpdatingAssetCounts ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Update Asset Counts
-                </>
-              )}
-            </Button>
+            <>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsReportDialogOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Generate Report
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleUpdateAssetCounts}
+                disabled={isUpdatingAssetCounts}
+              >
+                {isUpdatingAssetCounts ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Update Asset Counts
+                  </>
+                )}
+              </Button>
+            </>
           )}
           {canEdit && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1075,6 +1087,15 @@ export default function LocationsPage() {
             </PaginationContent>
           </Pagination>
         </div>
+      )}
+
+      {/* Locations Report Dialog */}
+      {isSuperAdmin && (
+        <LocationsOverallReport
+          locations={locations}
+          isOpen={isReportDialogOpen}
+          onClose={() => setIsReportDialogOpen(false)}
+        />
       )}
     </div>
   )
