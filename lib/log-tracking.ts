@@ -116,12 +116,21 @@ export async function createLogEntryServer(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log('📝 [LogTracking] - Creating server-side log entry');
+    console.log('Log data:', { 
+      module: logData.module, 
+      entityId: logData.entityId, 
+      action: logData.action 
+    });
+    console.log('User context:', userContext);
+
     // Import at function level to avoid module loading issues
     const connectDB = (await import('@/lib/mongodb')).default;
     const LogTracking = (await import('@/models/LogTracking')).default;
     
     // Connect to database
     await connectDB();
+    console.log('🔗 [LogTracking] - Database connected');
 
     // Prepare log entry data
     const logEntryData = {
@@ -153,13 +162,15 @@ export async function createLogEntryServer(
     };
 
     // Create log entry
+    console.log('💾 [LogTracking] - Creating log entry with data:', logEntryData);
     const logEntry = new LogTracking(logEntryData);
-    await logEntry.save();
+    const savedEntry = await logEntry.save();
+    console.log('✅ [LogTracking] - Log entry saved successfully:', savedEntry._id);
 
     return { success: true };
   } catch (error) {
-    console.error('Error creating server-side log entry:', error);
-    return { success: false, error: 'Failed to create log entry' };
+    console.error('❌ [LogTracking] - Error creating server-side log entry:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to create log entry' };
   }
 }
 

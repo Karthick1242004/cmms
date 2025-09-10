@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
-import { Plus, Search, Calendar, Clock, AlertTriangle, CheckCircle, Users, TrendingUp, FileBarChart } from "lucide-react"
+import { Plus, Search, Calendar, Clock, AlertTriangle, CheckCircle, Users, TrendingUp, FileBarChart, Activity } from "lucide-react"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { MaintenanceScheduleForm } from "@/components/maintenance/maintenance-schedule-form"
@@ -17,6 +17,7 @@ import { MaintenanceScheduleTable } from "@/components/maintenance/maintenance-s
 import { MaintenanceRecordTable } from "@/components/maintenance/maintenance-record-table"
 import { MaintenanceStats } from "@/components/maintenance/maintenance-stats"
 import { MaintenanceOverallReport } from "@/components/maintenance/maintenance-overall-report"
+import { LogTrackingTab } from "@/components/common/log-tracking-tab"
 
 export default function MaintenancePage() {
   const {
@@ -190,7 +191,7 @@ export default function MaintenancePage() {
 
       <PageContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="schedules" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Schedules ({filteredSchedules.length})
@@ -198,6 +199,10 @@ export default function MaintenancePage() {
             <TabsTrigger value="records" className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
               Records ({filteredRecords.length})
+            </TabsTrigger>
+            <TabsTrigger value="activity-log" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Activity Log
             </TabsTrigger>
           </TabsList>
 
@@ -214,6 +219,13 @@ export default function MaintenancePage() {
               records={filteredRecords}
               isLoading={isLoading}
               isAdmin={isAdmin}
+            />
+          </TabsContent>
+
+          <TabsContent value="activity-log" className="space-y-4">
+            <LogTrackingTab 
+              module="maintenance"
+              className="mt-4"
             />
           </TabsContent>
         </Tabs>

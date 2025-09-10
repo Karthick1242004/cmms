@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { activityLogApi } from '@/lib/activity-log-api';
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking';
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Get user context for authentication (with fallback for testing)
     const user = await getUserContext(request);
@@ -51,10 +52,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     // Get user context for authentication (with fallback for testing)
@@ -94,33 +95,48 @@ export async function PUT(
 
     const data = await response.json();
 
-    // Create asset activity log for maintenance schedule update
-    if (data.success && body.assetId && data.data) {
+    // Create log tracking entry for maintenance schedule update
+    if (data.success && data.data && user?.id) {
       try {
-        await AssetActivityLogService.createMaintenanceLog({
-          assetId: body.assetId,
-          assetName: body.assetName,
-          activityType: 'maintenance_updated',
-          createdBy: user?.id || 'system',
-          createdByName: user?.name || 'System',
-          department: body.department || user?.department || 'General',
-          departmentId: body.departmentId || '',
-          context: {
-            scheduleId: id,
-            technician: body.assignedTechnician,
-            technicianId: body.assignedTechnicianId || '',
-            maintenanceType: body.maintenanceType || 'General Maintenance',
-            description: body.description || '',
-            priority: body.priority || 'medium',
-            frequency: body.frequency || 'monthly',
-            estimatedDuration: body.estimatedDuration || 0,
-            dueDate: body.nextDueDate || body.startDate
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                         request.headers.get('x-real-ip') || 
+                         'unknown';
+        const userAgent = request.headers.get('user-agent') || 'unknown';
+
+        await createLogEntryServer(
+          {
+            module: 'maintenance',
+            entityId: id,
+            entityName: `${body.title} - ${body.assetName || 'Asset'}`,
+            action: 'update',
+            actionDescription: getActionDescription('update', `${body.title} maintenance schedule`, 'maintenance'),
+            metadata: {
+              scheduleId: data.data.id,
+              assetId: body.assetId,
+              assetName: body.assetName,
+              frequency: body.frequency,
+              priority: body.priority,
+              nextDueDate: data.data.nextDueDate,
+              assignedTechnician: body.assignedTechnician
+            }
           },
-          request
-        });
-      } catch (error) {
-        console.error('Failed to create asset activity log for maintenance schedule update:', error);
-        // Don't fail the main operation if activity log creation fails
+          {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            department: user.department,
+            accessLevel: user.accessLevel
+          },
+          {
+            ipAddress,
+            userAgent
+          }
+        );
+
+        console.log('✅ Successfully created log tracking entry for maintenance schedule update');
+      } catch (logError) {
+        console.error('Failed to create log tracking entry for maintenance schedule update:', logError);
+        // Don't fail the entire operation if logging fails
       }
     }
 

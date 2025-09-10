@@ -35,7 +35,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   // Determine if user is super admin
   const isSuperAdmin = user?.accessLevel === 'super_admin'
   
-  // State for department selection (for super admin)
+  // State for department selection
   const [selectedDepartment, setSelectedDepartment] = useState(
     isSuperAdmin ? "" : user?.department || ""
   )
@@ -97,43 +97,188 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   const [checklistValidationError, setChecklistValidationError] = useState<string>("")
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
+  // Helper function to decode HTML entities
+  const decodeHtmlEntities = (text: string): string => {
+    if (!text) return text;
+    return text
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+  };
+
+  // Helper function to derive department for maintenance schedule
+  const deriveDepartmentForSchedule = (schedule: any, user: any, assetsData: any): string => {
+    console.log('🔧 [MaintenanceForm] - Deriving department for schedule:', {
+      scheduleDepartment: schedule.department,
+      userDepartment: user?.department,
+      scheduleAssetId: schedule.assetId
+    });
+
+    // 1. If schedule has department, use it (though it's currently missing from API)
+    if (schedule.department) {
+      return decodeHtmlEntities(schedule.department);
+    }
+
+    // 2. Try to derive from asset department (if assets are loaded)
+    if (schedule.assetId && assetsData?.data?.assets) {
+      const asset = assetsData.data.assets.find((a: any) => a.id === schedule.assetId);
+      if (asset?.department) {
+        console.log('🔧 [MaintenanceForm] - Found asset department:', asset.department);
+        return decodeHtmlEntities(asset.department);
+      }
+    }
+
+    // 3. Fall back to user's department (decoded)
+    const userDept = decodeHtmlEntities(user?.department || "");
+    console.log('🔧 [MaintenanceForm] - Using user department as fallback:', userDept);
+    
+    // 4. Try to match user department with available departments
+    if (departmentsData?.data?.departments && userDept) {
+      const matchingDept = departmentsData.data.departments.find((dept: any) => 
+        dept.name.toLowerCase() === userDept.toLowerCase() ||
+        dept.name.includes(userDept) ||
+        userDept.includes(dept.name)
+      );
+      if (matchingDept) {
+        console.log('🔧 [MaintenanceForm] - Found matching department:', matchingDept.name);
+        return matchingDept.name;
+      }
+    }
+
+    // 5. If user department doesn't match available departments, use first available department for super admin
+    if (isSuperAdmin && departmentsData?.data?.departments?.length > 0) {
+      const firstDept = departmentsData.data.departments[0].name;
+      console.log('🔧 [MaintenanceForm] - Using first available department for super admin:', firstDept);
+      return firstDept;
+    }
+
+    // 6. Last resort: return user department as-is
+    return userDept;
+  };
+
   // Initialize form with schedule data if editing
   useEffect(() => {
     if (schedule) {
+      console.log('🔧 [MaintenanceForm] - Initializing edit form with schedule:', {
+        id: schedule.id,
+        department: schedule.department,
+        assetId: schedule.assetId,
+        assignedTechnician: schedule.assignedTechnician
+      });
+
+      // Convert start date to proper format for date input (YYYY-MM-DD)
+      const formatDateForInput = (dateString: string) => {
+        if (!dateString) return '';
+        try {
+          const date = new Date(dateString);
+          return date.toISOString().split('T')[0];
+        } catch {
+          return dateString; // Return as-is if parsing fails
+        }
+      };
+
+      // Derive department from multiple sources
+      const departmentValue = deriveDepartmentForSchedule(schedule, user, assetsData);
+      
       setFormData({
         assetId: schedule.assetId,
-        department: schedule.department || "",
+        department: departmentValue,
         location: schedule.location,
         title: schedule.title as "preventive" | "normal" | "routine",
         description: schedule.description || "",
         frequency: schedule.frequency,
         customFrequencyDays: schedule.customFrequencyDays || 30,
-        startDate: schedule.startDate,
+        startDate: formatDateForInput(schedule.startDate),
         nextDueDate: schedule.nextDueDate,
         priority: schedule.priority,
         estimatedDuration: schedule.estimatedDuration,
         assignedInspector: schedule.assignedTechnician || "",
       })
-      // Set parts and checklist from schedule
-      setParts(schedule.parts || [])
-      setChecklist(schedule.checklist || [])
       
-      // Set selected department for super admin when editing
-      if (isSuperAdmin && schedule.department) {
-        setSelectedDepartment(schedule.department)
+      // Extract checklist items from parts (API stores them inside parts)
+      const extractedChecklist: any[] = [];
+      const partsWithoutChecklist: any[] = [];
+      
+      if (schedule.parts && schedule.parts.length > 0) {
+        schedule.parts.forEach((part: any) => {
+          if (part.checklistItems && part.checklistItems.length > 0) {
+            // Extract checklist items and add to main checklist
+            part.checklistItems.forEach((item: any) => {
+              extractedChecklist.push({
+                id: item._id || item.id || `item_${Date.now()}_${Math.random()}`,
+                description: item.description,
+                isRequired: item.isRequired !== false, // Default to true
+                status: item.status || 'pending'
+              });
+            });
+            
+            // Keep part without checklist items (clean up)
+            const cleanPart = { ...part };
+            delete cleanPart.checklistItems;
+            partsWithoutChecklist.push(cleanPart);
+          } else {
+            // Part has no checklist items, keep as-is
+            partsWithoutChecklist.push(part);
+          }
+        });
       }
+      
+      console.log('🔧 [MaintenanceForm] - Extracted checklist items:', extractedChecklist.length);
+      console.log('🔧 [MaintenanceForm] - Checklist items:', extractedChecklist);
+      
+      // Set parts and extracted checklist
+      setParts(partsWithoutChecklist)
+      setChecklist(extractedChecklist)
+      
+      // Set selected department FIRST, then let the sync effect handle form data
+      setSelectedDepartment(departmentValue)
+      
+      console.log('🔧 [MaintenanceForm] - Form initialized with derived department:', departmentValue);
+    } else {
+      // Reset form when no schedule (create mode)
+      const userDept = decodeHtmlEntities(user?.department || "");
+      setSelectedDepartment(isSuperAdmin ? "" : userDept)
     }
-  }, [schedule, isSuperAdmin])
+  }, [schedule, isSuperAdmin, user?.department, assetsData, departmentsData])
+
+  // Sync selectedDepartment with formData.department
+  useEffect(() => {
+    if (selectedDepartment && formData.department !== selectedDepartment) {
+      console.log('🔧 [MaintenanceForm] - Syncing department:', {
+        selectedDepartment,
+        currentFormDataDepartment: formData.department
+      });
+      setFormData(prev => ({ ...prev, department: selectedDepartment }))
+    }
+  }, [selectedDepartment, formData.department])
 
   // Handle department change (for super admin)
   const handleDepartmentChange = (department: string) => {
+    console.log('🔧 [MaintenanceForm] - Department changed to:', department);
+    
     setSelectedDepartment(department)
-    setFormData(prev => ({
-      ...prev,
-      department,
-      assetId: "", // Reset asset selection when department changes
-      assignedInspector: "", // Reset inspector selection
-    }))
+    
+    // Only reset related fields if this is a NEW schedule (not editing)
+    // During edit mode, preserve existing values unless they're incompatible
+    if (!schedule) {
+      // Create mode: Reset dependent fields
+      setFormData(prev => ({
+        ...prev,
+        department,
+        assetId: "", // Reset asset selection when department changes
+        assignedInspector: "", // Reset inspector selection
+      }))
+    } else {
+      // Edit mode: Only update department, preserve other fields
+      setFormData(prev => ({
+        ...prev,
+        department,
+        // Keep existing assetId and assignedInspector unless they become invalid
+      }))
+    }
+    
     setShowInspectorDropdown(false) // Close inspector dropdown
   }
 
@@ -300,7 +445,12 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       errors.assetId = "Asset is required"
     }
     
-    if (!formData.department) {
+    // Validate department - check both selectedDepartment and formData.department
+    // Also consider decoded user department as a valid fallback
+    const hasValidDepartment = selectedDepartment || 
+                              formData.department || 
+                              (user?.department && decodeHtmlEntities(user.department));
+    if (!hasValidDepartment) {
       errors.department = "Department is required"
     }
     
@@ -442,12 +592,15 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Department Selection (Super Admin Only) */}
-            {isSuperAdmin && (
-              <div className="space-y-2">
-                <Label htmlFor="department">Department</Label>
-                <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
-                  <SelectTrigger>
+            {/* Department Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="department">Department</Label>
+              {isSuperAdmin ? (
+                <Select 
+                  value={selectedDepartment} 
+                  onValueChange={handleDepartmentChange}
+                >
+                  <SelectTrigger className={validationErrors.department ? "border-red-500" : ""}>
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
@@ -458,8 +611,18 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
+              ) : (
+                <Input
+                  value={selectedDepartment || formData.department || decodeHtmlEntities(user?.department || '')}
+                  readOnly
+                  className={`bg-gray-50 cursor-not-allowed ${validationErrors.department ? "border-red-500" : ""}`}
+                  placeholder="Department"
+                />
+              )}
+              {validationErrors.department && (
+                <p className="text-sm text-red-500 mt-1">{validationErrors.department}</p>
+              )}
+            </div>
 
             {/* Asset Selection */}
             <div className={`space-y-2 ${isSuperAdmin ? '' : 'col-span-1'}`}>

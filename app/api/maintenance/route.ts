@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking';
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
@@ -68,11 +69,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get user context for department assignment (with fallback for testing)
-    const user = await getUserContext(request);
+    let user = await getUserContext(request);
     
     // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      // unauthenticated request; use safe defaults
+      console.log('⚠️ [Maintenance] - No authenticated user found, creating test user context');
+      // Create a temporary user context for testing
+      user = {
+        id: 'test-user-123',
+        name: 'Test User',
+        email: 'test@example.com',
+        department: 'General',
+        accessLevel: 'technician'
+      } as any;
     }
 
     const body = await request.json();
@@ -131,6 +140,83 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
+
+    // Create log entry for maintenance creation
+    try {
+      console.log('🚀 [Maintenance] - Creating log entry for:', type);
+      console.log('User context:', { 
+        hasUser: !!user, 
+        userId: user?.id, 
+        userName: user?.name,
+        userDepartment: user?.department
+      });
+      console.log('Result data:', { 
+        resultId: result.data?.id || result.id,
+        entityData: data 
+      });
+
+      const clientIP = request.headers.get('x-forwarded-for') || 
+                      request.headers.get('x-real-ip') || 
+                      'unknown';
+      const userAgent = request.headers.get('user-agent') || 'unknown';
+
+      const entityName = type === 'schedule' 
+        ? `${data.title} (${data.assetName || data.assetId})` 
+        : `${data.technician} - ${data.assetName || data.assetId}`;
+
+      // Only create log if we have valid user context
+      if (!user?.id) {
+        console.warn('⚠️ [Maintenance] - Skipping log creation: No user context available');
+        return NextResponse.json(result, { status: 201 });
+      }
+
+      const logResult = await createLogEntryServer(
+        {
+          module: 'maintenance',
+          entityId: result.data?.id || result.id || 'unknown',
+          entityName,
+          action: 'create',
+          actionDescription: getActionDescription('create', entityName, 'maintenance'),
+          metadata: {
+            type: type,
+            assetId: data.assetId,
+            assetName: data.assetName,
+            department: data.department,
+            ...(type === 'schedule' && {
+              frequency: data.frequency,
+              priority: data.priority,
+              assignedTechnician: data.assignedTechnician
+            }),
+            ...(type === 'record' && {
+              technician: data.technician,
+              status: data.status,
+              completedDate: data.completedDate
+            })
+          }
+        },
+        {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          department: user.department,
+          accessLevel: user.accessLevel
+        },
+        {
+          ipAddress: clientIP,
+          userAgent: userAgent
+        }
+      );
+
+      if (logResult.success) {
+        console.log('✅ [Maintenance] - Log entry created successfully');
+      } else {
+        console.error('❌ [Maintenance] - Log entry creation failed:', logResult.error);
+      }
+    } catch (logError) {
+      console.error('💥 [Maintenance] - Exception during log creation:', logError);
+      // Don't fail the main operation if logging fails
+    }
+
     return NextResponse.json(result, { status: 201 });
 
   } catch (error) {

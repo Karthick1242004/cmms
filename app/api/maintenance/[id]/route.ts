@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking';
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
@@ -102,6 +103,60 @@ export async function PUT(
     }
 
     const result = await response.json();
+
+    // Create log entry for maintenance update
+    try {
+      const clientIP = request.headers.get('x-forwarded-for') || 
+                      request.headers.get('x-real-ip') || 
+                      'unknown';
+      const userAgent = request.headers.get('user-agent') || 'unknown';
+
+      const entityName = type === 'schedule' 
+        ? `${data.title || 'Schedule'} (${data.assetName || id})` 
+        : `${data.technician || 'Record'} - ${data.assetName || id}`;
+
+      await createLogEntryServer(
+        {
+          module: 'maintenance',
+          entityId: id,
+          entityName,
+          action: 'update',
+          actionDescription: getActionDescription('update', entityName, 'maintenance'),
+          metadata: {
+            type: type,
+            updatedFields: Object.keys(data),
+            assetId: data.assetId,
+            assetName: data.assetName,
+            department: data.department,
+            ...(type === 'schedule' && {
+              frequency: data.frequency,
+              priority: data.priority,
+              status: data.status
+            }),
+            ...(type === 'record' && {
+              technician: data.technician,
+              status: data.status,
+              adminVerified: data.adminVerified
+            })
+          }
+        },
+        {
+          id: user?.id || 'unknown',
+          name: user?.name || 'Unknown',
+          email: user?.email || 'unknown',
+          department: user?.department || 'Unknown',
+          accessLevel: user?.accessLevel || 'technician'
+        },
+        {
+          ipAddress: clientIP,
+          userAgent: userAgent
+        }
+      );
+    } catch (logError) {
+      console.error('Failed to create log entry for maintenance update:', logError);
+      // Don't fail the main operation if logging fails
+    }
+
     return NextResponse.json(result, { status: 200 });
 
   } catch (error) {
@@ -151,6 +206,47 @@ export async function DELETE(
     }
 
     const data = await response.json();
+
+    // Create log entry for maintenance deletion
+    try {
+      const clientIP = request.headers.get('x-forwarded-for') || 
+                      request.headers.get('x-real-ip') || 
+                      'unknown';
+      const userAgent = request.headers.get('user-agent') || 'unknown';
+
+      const entityName = type === 'schedule' 
+        ? `Schedule ${id}` 
+        : `Record ${id}`;
+
+      await createLogEntryServer(
+        {
+          module: 'maintenance',
+          entityId: id,
+          entityName,
+          action: 'delete',
+          actionDescription: getActionDescription('delete', entityName, 'maintenance'),
+          metadata: {
+            type: type,
+            reason: 'Maintenance item permanently deleted'
+          }
+        },
+        {
+          id: user?.id || 'unknown',
+          name: user?.name || 'Unknown',
+          email: user?.email || 'unknown',
+          department: user?.department || 'Unknown',
+          accessLevel: user?.accessLevel || 'technician'
+        },
+        {
+          ipAddress: clientIP,
+          userAgent: userAgent
+        }
+      );
+    } catch (logError) {
+      console.error('Failed to create log entry for maintenance deletion:', logError);
+      // Don't fail the main operation if logging fails
+    }
+
     return NextResponse.json(data, { status: 200 });
 
   } catch (error) {
@@ -200,6 +296,45 @@ export async function PATCH(
       }
 
       const data = await response.json();
+
+      // Create log entry for maintenance record verification
+      try {
+        const clientIP = request.headers.get('x-forwarded-for') || 
+                        request.headers.get('x-real-ip') || 
+                        'unknown';
+        const userAgent = request.headers.get('user-agent') || 'unknown';
+
+        await createLogEntryServer(
+          {
+            module: 'maintenance',
+            entityId: id,
+            entityName: `Record ${id}`,
+            action: 'approve',
+            actionDescription: getActionDescription('approve', `Record ${id}`, 'maintenance'),
+            metadata: {
+              type: 'record',
+              action: 'verify',
+              adminNotes: adminNotes,
+              reason: 'Admin verification completed'
+            }
+          },
+          {
+            id: user?.id || 'unknown',
+            name: user?.name || 'Unknown',
+            email: user?.email || 'unknown',
+            department: user?.department || 'Unknown',
+            accessLevel: user?.accessLevel || 'technician'
+          },
+          {
+            ipAddress: clientIP,
+            userAgent: userAgent
+          }
+        );
+      } catch (logError) {
+        console.error('Failed to create log entry for maintenance verification:', logError);
+        // Don't fail the main operation if logging fails
+      }
+
       return NextResponse.json(data, { status: 200 });
     }
 
