@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History, CheckCircle, AlertCircle, Loader2, MoreHorizontal, Eye } from "lucide-react"
+import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History, CheckCircle, AlertCircle, Loader2, MoreHorizontal, Eye, Activity } from "lucide-react"
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useDebounce } from "@/hooks/use-debounce"
 import { sampleParts } from "@/data/parts-sample"
@@ -29,6 +30,7 @@ import { PartImageUpload } from "@/components/parts/part-image-upload"
 import { syncPartLinksToAssetBOM, syncPartDeletion } from "@/lib/asset-part-sync"
 import type { PartAssetSyncData, PartDeletionSyncData } from "@/lib/asset-part-sync"
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary-config"
+import { LogTrackingTab } from "@/components/common/log-tracking-tab"
 
 // Extracted form to prevent re-mount on every parent render (fixes input focus loss
 function PartFormStandalone({
@@ -685,6 +687,7 @@ export default function PartsPage() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [showVendorColumns, setShowVendorColumns] = useState(false)
+  const [activeTab, setActiveTab] = useState("inventory")
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   const { user } = useAuthStore()
@@ -1391,8 +1394,22 @@ export default function PartsPage() {
       </PageHeader>
 
         <PageContent>
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-fit grid-cols-2 mb-6">
+            <TabsTrigger value="inventory" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Inventory Management
+            </TabsTrigger>
+            <TabsTrigger value="log-tracking" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Activity Log
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="inventory" className="mt-0">
+            {/* Summary Cards */}
+            <div className="grid gap-4 md:grid-cols-3 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Parts</CardTitle>
@@ -1774,6 +1791,15 @@ export default function PartsPage() {
             </div>
           </CardContent>
         </Card>
+            </TabsContent>
+
+            <TabsContent value="log-tracking" className="mt-0">
+              <LogTrackingTab 
+                module="parts"
+                className="mb-6"
+              />
+            </TabsContent>
+          </Tabs>
         </PageContent>
 
       {/* Edit Dialog */}

@@ -8,6 +8,7 @@ import {
   shouldCreateStockTransaction, 
   extractPartSyncData 
 } from '@/lib/part-stock-sync';
+import { createLogEntryServer, generateFieldChanges, getActionDescription } from '@/lib/log-tracking';
 
 export async function GET(
   request: NextRequest,
@@ -209,6 +210,9 @@ export async function PUT(
     // Store original quantity for stock sync comparison
     const originalQuantity = existingPart.quantity || 0;
 
+    // Store original data for change tracking
+    const originalData = existingPart.toObject();
+
     // Update the part
     const updatedPart = await Part.findByIdAndUpdate(
       id,
@@ -221,6 +225,71 @@ export async function PUT(
         { success: false, message: 'Failed to update part' },
         { status: 500 }
       );
+    }
+
+    // Create log entry for part update
+    try {
+      const fieldsChanged = generateFieldChanges(originalData, updatedPart.toObject(), {
+        partNumber: 'Part Number',
+        name: 'Name',
+        sku: 'SKU',
+        materialCode: 'Material Code',
+        description: 'Description',
+        category: 'Category',
+        department: 'Department',
+        quantity: 'Quantity',
+        minStockLevel: 'Min Stock Level',
+        unitPrice: 'Unit Price',
+        supplier: 'Supplier',
+        supplierCode: 'Supplier Code',
+        purchaseOrderNumber: 'Purchase Order',
+        vendorName: 'Vendor Name',
+        vendorContact: 'Vendor Contact',
+        location: 'Location',
+        status: 'Status',
+        isStockItem: 'Stock Item',
+        isCritical: 'Critical Item',
+        imageSrc: 'Image'
+      });
+
+      if (fieldsChanged.length > 0) {
+        const clientIP = request.headers.get('x-forwarded-for') || 
+                        request.headers.get('x-real-ip') || 
+                        'unknown';
+        const userAgent = request.headers.get('user-agent') || 'unknown';
+
+        await createLogEntryServer(
+          {
+            module: 'parts',
+            entityId: updatedPart._id.toString(),
+            entityName: updatedPart.name,
+            action: 'update',
+            actionDescription: getActionDescription('update', updatedPart.name, 'parts', fieldsChanged),
+            fieldsChanged,
+            metadata: {
+              partNumber: updatedPart.partNumber,
+              sku: updatedPart.sku,
+              category: updatedPart.category,
+              department: updatedPart.department,
+              quantityChanged: originalQuantity !== updatedPart.quantity
+            }
+          },
+          {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            department: user.department,
+            accessLevel: user.accessLevel
+          },
+          {
+            ipAddress: clientIP,
+            userAgent: userAgent
+          }
+        );
+      }
+    } catch (logError) {
+      console.error('Failed to create log entry for part update:', logError);
+      // Don't fail the main operation if logging fails
     }
 
     // Transform the response to match frontend expectations
@@ -423,6 +492,46 @@ export async function DELETE(
         { success: false, message: 'Failed to delete part' },
         { status: 500 }
       );
+    }
+
+    // Create log entry for part deletion
+    try {
+      const clientIP = request.headers.get('x-forwarded-for') || 
+                      request.headers.get('x-real-ip') || 
+                      'unknown';
+      const userAgent = request.headers.get('user-agent') || 'unknown';
+
+      await createLogEntryServer(
+        {
+          module: 'parts',
+          entityId: deletedPart._id.toString(),
+          entityName: deletedPart.name,
+          action: 'delete',
+          actionDescription: getActionDescription('delete', deletedPart.name, 'parts'),
+          metadata: {
+            partNumber: deletedPart.partNumber,
+            sku: deletedPart.sku,
+            category: deletedPart.category,
+            department: deletedPart.department,
+            deletedQuantity: deletedPart.quantity,
+            reason: 'Part permanently deleted'
+          }
+        },
+        {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          department: user.department,
+          accessLevel: user.accessLevel
+        },
+        {
+          ipAddress: clientIP,
+          userAgent: userAgent
+        }
+      );
+    } catch (logError) {
+      console.error('Failed to create log entry for part deletion:', logError);
+      // Don't fail the main operation if logging fails
     }
 
     // Log successful deletion

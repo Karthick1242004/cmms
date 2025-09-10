@@ -113,8 +113,7 @@ const PartSchema = new Schema<IPart>({
 });
 
 // Indexes for better query performance
-PartSchema.index({ partNumber: 1 });
-PartSchema.index({ sku: 1 });
+// Note: partNumber and sku already have unique indexes from schema definition
 PartSchema.index({ department: 1 });
 PartSchema.index({ category: 1 });
 PartSchema.index({ 'linkedAssets.assetId': 1 });

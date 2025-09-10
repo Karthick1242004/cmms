@@ -7,6 +7,7 @@ import {
   shouldCreateStockTransaction, 
   extractPartSyncData 
 } from '@/lib/part-stock-sync';
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking';
 
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
@@ -220,6 +221,45 @@ export async function POST(request: NextRequest) {
     // Create the part
     const newPart = new Part(partData);
     const savedPart = await newPart.save();
+
+    // Create log entry for part creation
+    try {
+      const clientIP = request.headers.get('x-forwarded-for') || 
+                      request.headers.get('x-real-ip') || 
+                      'unknown';
+      const userAgent = request.headers.get('user-agent') || 'unknown';
+
+      await createLogEntryServer(
+        {
+          module: 'parts',
+          entityId: savedPart._id.toString(),
+          entityName: savedPart.name,
+          action: 'create',
+          actionDescription: getActionDescription('create', savedPart.name, 'parts'),
+          metadata: {
+            partNumber: savedPart.partNumber,
+            sku: savedPart.sku,
+            category: savedPart.category,
+            department: savedPart.department,
+            initialQuantity: savedPart.quantity
+          }
+        },
+        {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          department: user.department,
+          accessLevel: user.accessLevel
+        },
+        {
+          ipAddress: clientIP,
+          userAgent: userAgent
+        }
+      );
+    } catch (logError) {
+      console.error('Failed to create log entry for part creation:', logError);
+      // Don't fail the main operation if logging fails
+    }
 
     // Transform the response to match frontend expectations
     const responseData = {
