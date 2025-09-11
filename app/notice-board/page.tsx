@@ -35,6 +35,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { toast } from 'sonner';
 import React from 'react';
 import { NoticeBoardForm } from '@/components/notice-board/notice-board-form';
+import { BannerManagement } from '@/components/banner/banner-management';
 
 // Priority colors
 const priorityColors = {
@@ -296,8 +297,22 @@ export default function NoticeBoardPage() {
       </PageHeader>
 
       <PageContent>
-        {/* Filters and Search */}
-        <div className="mb-6 space-y-4">
+        {/* Tabs for Notice Board and Banner Management */}
+        <Tabs defaultValue="notices" className="w-full">
+          {canManageNotices ? (
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="notices">Notice Board</TabsTrigger>
+              <TabsTrigger value="banners">Banner Management</TabsTrigger>
+            </TabsList>
+          ) : (
+            <TabsList className="grid w-full grid-cols-1">
+              <TabsTrigger value="notices">Notice Board</TabsTrigger>
+            </TabsList>
+          )}
+          
+          <TabsContent value="notices" className="space-y-6">
+            {/* Filters and Search */}
+            <div className="mb-6 space-y-4">
           {/* Notice Count Info */}
           {/* {canManageNotices && (
             <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
@@ -400,28 +415,37 @@ export default function NoticeBoardPage() {
           </div>
         )}
 
-        {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-center gap-4">
-            <Button
-              variant="outline"
-              disabled={!pagination.hasPrevious}
-              onClick={() => handleFilterChange('page', pagination.currentPage - 1)}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-gray-600">
-              Page {pagination.currentPage} of {pagination.totalPages}
-            </span>
-            <Button
-              variant="outline"
-              disabled={!pagination.hasNext}
-              onClick={() => handleFilterChange('page', pagination.currentPage + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        )}
+            {/* Pagination */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-4">
+                <Button
+                  variant="outline"
+                  disabled={!pagination.hasPrevious}
+                  onClick={() => handleFilterChange('page', pagination.currentPage - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={!pagination.hasNext}
+                  onClick={() => handleFilterChange('page', pagination.currentPage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Banner Management Tab */}
+          {canManageNotices && (
+            <TabsContent value="banners" className="space-y-6">
+              <BannerManagement />
+            </TabsContent>
+          )}
+        </Tabs>
       </PageContent>
 
       {/* Notice Details Dialog */}
