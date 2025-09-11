@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking';
 
 // Stock Transaction Schema
 const StockTransactionSchema = new mongoose.Schema({
@@ -463,6 +464,36 @@ export async function POST(request: NextRequest) {
     // Create new stock transaction
     const transaction = new StockTransaction(transactionData);
     const savedTransaction = await transaction.save();
+
+    // Log the transaction creation
+    try {
+      const clientIP = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+      const userAgent = request.headers.get('user-agent') || '';
+      
+      const entityName = savedTransaction.transactionNumber || `Transaction ${savedTransaction._id.toString()}`;
+      const actionDescription = getActionDescription('create', entityName, 'stock-transactions');
+      
+      await createLogEntryServer({
+        module: 'stock-transactions',
+        entityId: savedTransaction._id.toString(),
+        entityName: entityName,
+        action: 'create',
+        actionDescription,
+        fieldsChanged: [],
+        metadata: {
+          transactionType: savedTransaction.transactionType,
+          totalAmount: savedTransaction.totalAmount,
+          itemsCount: savedTransaction.items?.length || 0,
+          status: savedTransaction.status
+        }
+      }, user, {
+        ipAddress: clientIP,
+        userAgent: userAgent
+      });
+    } catch (logError) {
+      console.error('Error logging stock transaction creation:', logError);
+      // Don't fail the main operation if logging fails
+    }
 
     // Transform response data
     const response = {

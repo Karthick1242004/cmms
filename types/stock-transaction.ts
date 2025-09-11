@@ -331,6 +331,7 @@ export interface StockTransactionState {
   fetchTransactions: () => Promise<void>;
   fetchStats: () => Promise<void>;
   createTransaction: (data: StockTransactionFormData) => Promise<void>;
+  updateTransaction: (id: string, data: StockTransactionFormData) => Promise<void>;
   updateTransactionStatus: (id: string, status: string, notes?: string) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   filterTransactions: () => void;

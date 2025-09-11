@@ -183,6 +183,38 @@ export const useStockTransactionsStore = create<StockTransactionState>()(
         }
       },
 
+      updateTransaction: async (id: string, transactionData: StockTransactionFormData) => {
+        try {
+          set((state) => {
+            state.isUpdating = true;
+          });
+
+          const response = await stockTransactionsApi.update(id, transactionData);
+          if (response.success) {
+            set((state) => {
+              const index = state.transactions.findIndex(t => t.id === id);
+              if (index !== -1) {
+                state.transactions[index] = response.data;
+              }
+              
+              // Update selected transaction if it's the same one
+              if (state.selectedTransaction?.id === id) {
+                state.selectedTransaction = response.data;
+              }
+            });
+            get().filterTransactions();
+            get().fetchStats(); // Refresh stats
+          }
+        } catch (error) {
+          console.error('Error updating stock transaction:', error);
+          throw error;
+        } finally {
+          set((state) => {
+            state.isUpdating = false;
+          });
+        }
+      },
+
       updateTransactionStatus: async (id: string, status: string, notes?: string) => {
         try {
           set((state) => {

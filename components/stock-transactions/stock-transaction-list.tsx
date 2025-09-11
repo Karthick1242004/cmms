@@ -228,14 +228,10 @@ export function StockTransactionList({
   };
 
   const canDelete = (transaction: StockTransaction) => {
-    // Only super_admin and department_admin (department lead) can delete
+    // Only super_admin can delete transactions
     if (user?.accessLevel === 'super_admin') {
-      return transaction.status === 'draft'; // Can only delete draft transactions
-    }
-    
-    if (user?.accessLevel === 'department_admin') {
-      // Department admins can only delete draft transactions from their department
-      return transaction.department === user?.department && transaction.status === 'draft';
+      // Can delete draft and pending transactions (before they affect inventory)
+      return transaction.status === 'draft' || transaction.status === 'pending';
     }
     
     return false;
@@ -553,10 +549,10 @@ export function StockTransactionList({
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   onClick={() => onDelete(transaction)}
-                                  className="text-destructive"
+                                  className="text-destructive focus:text-destructive"
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
+                                  Delete Transaction
                                 </DropdownMenuItem>
                               </>
                             )}

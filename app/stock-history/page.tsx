@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { Activity, Package } from "lucide-react";
 
 import {
   Dialog,
@@ -21,6 +22,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +45,7 @@ import { StockTransactionList } from "@/components/stock-transactions/stock-tran
 import { StockTransactionView } from "@/components/stock-transactions/stock-transaction-view";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 import { AuthGuard } from "@/components/auth-guard";
+import { LogTrackingTab } from "@/components/common/log-tracking-tab";
 
 import type { StockTransaction, StockTransactionFormData } from "@/types/stock-transaction";
 import { useStockTransactionsStore } from "@/stores/stock-transactions-store";
@@ -60,12 +68,14 @@ export default function StockHistoryPage() {
     setDeleteDialogOpen,
     setStatusUpdateDialogOpen,
     createTransaction,
+    updateTransaction,
     updateTransactionStatus,
     deleteTransaction,
   } = useStockTransactionsStore();
 
   const [transactionToDelete, setTransactionToDelete] = useState<StockTransaction | null>(null);
   const [transactionToUpdate, setTransactionToUpdate] = useState<StockTransaction | null>(null);
+  const [activeTab, setActiveTab] = useState("transactions");
   const [statusUpdateData, setStatusUpdateData] = useState({
     status: '',
     notes: '',
@@ -143,10 +153,17 @@ export default function StockHistoryPage() {
   // Form submission
   const handleFormSubmit = async (data: StockTransactionFormData) => {
     try {
-      await createTransaction(data);
+      if (selectedTransaction) {
+        // Update existing transaction
+        await updateTransaction(selectedTransaction.id, data);
+        toast.success('Stock transaction updated successfully');
+      } else {
+        // Create new transaction
+        await createTransaction(data);
+        toast.success('Stock transaction created successfully');
+      }
       setCreateDialogOpen(false);
       setSelectedTransaction(null);
-      toast.success(selectedTransaction ? 'Stock transaction updated successfully' : 'Stock transaction created successfully');
     } catch (error: any) {
       toast.error(error.message || (selectedTransaction ? 'Failed to update stock transaction' : 'Failed to create stock transaction'));
     }
@@ -225,14 +242,33 @@ export default function StockHistoryPage() {
         </PageHeader> */}
         
         <PageContent>
-          {/* Main Content */}
-          <StockTransactionList
-            onCreateNew={handleCreateNew}
-            onView={handleView}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onStatusUpdate={handleStatusUpdate}
-          />
+          {/* Main Content with Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-fit grid-cols-2 mb-6">
+              <TabsTrigger value="transactions" className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Stock Transactions
+              </TabsTrigger>
+              <TabsTrigger value="activity-log" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Activity Log
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="transactions" className="space-y-4">
+              <StockTransactionList
+                onCreateNew={handleCreateNew}
+                onView={handleView}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onStatusUpdate={handleStatusUpdate}
+              />
+            </TabsContent>
+            
+            <TabsContent value="activity-log" className="space-y-4">
+              <LogTrackingTab module="stock-transactions" className="mt-4" />
+            </TabsContent>
+          </Tabs>
 
         {/* Create/Edit Dialog */}
         <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -276,7 +312,7 @@ export default function StockHistoryPage() {
               } : undefined}
               onSubmit={handleFormSubmit}
               onCancel={handleFormCancel}
-              isLoading={isCreating}
+              isLoading={selectedTransaction ? isUpdating : isCreating}
             />
             </DialogContent>
           </Dialog>
@@ -304,10 +340,15 @@ export default function StockHistoryPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Stock Transaction</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete transaction{' '}
-                <span className="font-semibold">{transactionToDelete?.transactionNumber}</span>?
-                This action cannot be undone and will permanently remove the transaction record.
+              <AlertDialogDescription className="space-y-2">
+                <div>
+                  Are you sure you want to delete transaction{' '}
+                  <span className="font-semibold">{transactionToDelete?.transactionNumber}</span>?
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  This action cannot be undone and will permanently remove the transaction record. 
+                  Only draft and pending transactions can be deleted, and this action is restricted to super administrators.
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

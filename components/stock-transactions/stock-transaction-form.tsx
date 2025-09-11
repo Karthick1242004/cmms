@@ -1285,7 +1285,10 @@ export function StockTransactionForm({
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Creating...' : 'Create Transaction'}
+            {isLoading 
+              ? (initialData ? 'Updating...' : 'Creating...') 
+              : (initialData ? 'Update Transaction' : 'Create Transaction')
+            }
           </Button>
         </div>
       </form>

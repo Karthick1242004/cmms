@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import { createLogEntryServer, getActionDescription, generateFieldChanges } from '@/lib/log-tracking';
 
 // StockTransaction Schema (matching the types)
 const StockTransactionSchema = new mongoose.Schema({
@@ -235,25 +236,22 @@ export async function DELETE(
       );
     }
 
-    // Check delete permissions based on frontend canDelete logic
+    // Check delete permissions - Only super admin can delete transactions
     let canDelete = false;
     
     if (user.accessLevel === 'super_admin') {
-      // Super admin can only delete draft transactions
-      canDelete = transaction.status === 'draft';
-    } else if (user.accessLevel === 'department_admin') {
-      // Department admins can only delete draft transactions from their department
-      canDelete = transaction.department === user.department && transaction.status === 'draft';
+      // Super admin can delete draft and pending transactions (before they affect inventory)
+      canDelete = transaction.status === 'draft' || transaction.status === 'pending';
     }
-    // Regular users cannot delete transactions (as per frontend logic)
+    // Only super admin can delete transactions (no department admin access)
 
     if (!canDelete) {
-      let message = 'Unauthorized - Insufficient permissions to delete this transaction';
+      let message = 'Unauthorized - Only super administrators can delete transactions';
       
-      if (transaction.status !== 'draft') {
-        message = 'Cannot delete transaction - Only draft transactions can be deleted';
-      } else if (user.department !== transaction.department) {
-        message = 'Cannot delete transaction - You can only delete transactions from your department';
+      if (user.accessLevel !== 'super_admin') {
+        message = 'Unauthorized - Only super administrators can delete transactions';
+      } else if (transaction.status !== 'draft' && transaction.status !== 'pending') {
+        message = 'Cannot delete transaction - Only draft and pending transactions can be deleted';
       }
       
       return NextResponse.json(
@@ -270,15 +268,45 @@ export async function DELETE(
       );
     }
 
+    // Store transaction details before deletion for logging
+    const entityName = transaction.transactionNumber || `Transaction ${transaction._id.toString()}`;
+    const transactionDetails = {
+      transactionType: transaction.transactionType,
+      totalAmount: transaction.totalAmount,
+      itemsCount: transaction.items?.length || 0,
+      status: transaction.status
+    };
+
     // Delete the transaction
     await StockTransaction.findByIdAndDelete(id);
 
-    // Log the deletion for audit purposes
-    console.log(`Stock transaction ${transaction.transactionNumber} deleted by ${user.name} (${user.email})`);
+    // Log the transaction deletion
+    try {
+      const clientIP = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+      const userAgent = request.headers.get('user-agent') || '';
+      
+      const actionDescription = getActionDescription('delete', entityName, 'stock-transactions');
+      
+      await createLogEntryServer({
+        module: 'stock-transactions',
+        entityId: id,
+        entityName: entityName,
+        action: 'delete',
+        actionDescription,
+        fieldsChanged: [],
+        metadata: transactionDetails
+      }, user, {
+        ipAddress: clientIP,
+        userAgent: userAgent
+      });
+    } catch (logError) {
+      console.error('Error logging stock transaction deletion:', logError);
+      // Don't fail the main operation if logging fails
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Stock transaction ${transaction.transactionNumber} deleted successfully`
+      message: `Stock transaction ${entityName} deleted successfully`
     }, { status: 200 });
 
   } catch (error) {
@@ -363,12 +391,60 @@ export async function PUT(
     delete updateData.approvedByName;
     delete updateData.approvedAt;
 
+    // Store original transaction data for field change comparison
+    const originalData = transaction.toObject();
+
     // Update the transaction
     const updatedTransaction = await StockTransaction.findByIdAndUpdate(
       id,
       updateData,
       { new: true, runValidators: true }
     );
+
+    // Log the transaction update
+    try {
+      const clientIP = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+      const userAgent = request.headers.get('user-agent') || '';
+      
+      const entityName = updatedTransaction.transactionNumber || `Transaction ${updatedTransaction._id.toString()}`;
+      const actionDescription = getActionDescription('update', entityName, 'stock-transactions');
+      
+      // Generate field changes
+      const fieldsChanged = generateFieldChanges(originalData, updatedTransaction.toObject(), {
+        'transactionType': 'Transaction Type',
+        'transactionDate': 'Transaction Date',
+        'description': 'Description',
+        'sourceLocation': 'Source Location',
+        'destinationLocation': 'Destination Location',
+        'supplier': 'Supplier',
+        'recipient': 'Recipient',
+        'totalAmount': 'Total Amount',
+        'status': 'Status',
+        'notes': 'Notes',
+        'internalNotes': 'Internal Notes'
+      });
+      
+      await createLogEntryServer({
+        module: 'stock-transactions',
+        entityId: updatedTransaction._id.toString(),
+        entityName: entityName,
+        action: 'update',
+        actionDescription,
+        fieldsChanged,
+        metadata: {
+          transactionType: updatedTransaction.transactionType,
+          totalAmount: updatedTransaction.totalAmount,
+          itemsCount: updatedTransaction.items?.length || 0,
+          status: updatedTransaction.status
+        }
+      }, user, {
+        ipAddress: clientIP,
+        userAgent: userAgent
+      });
+    } catch (logError) {
+      console.error('Error logging stock transaction update:', logError);
+      // Don't fail the main operation if logging fails
+    }
 
     // Format response
     const response = {

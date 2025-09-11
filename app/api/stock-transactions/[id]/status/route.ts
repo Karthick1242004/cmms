@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
 import { processInventoryUpdates, reverseInventoryUpdates, validateInventoryAvailability, processEnhancedInventoryUpdates } from '@/lib/inventory-service';
 import type { StockTransaction } from '@/types/stock-transaction';
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking';
 
 // StockTransaction Schema (matching the types)
 const StockTransactionSchema = new mongoose.Schema({
@@ -309,6 +310,43 @@ export async function PUT(
       updateData,
       { new: true, runValidators: true }
     );
+
+    // Log the status change
+    try {
+      const clientIP = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+      const userAgent = request.headers.get('user-agent') || '';
+      
+      const entityName = updatedTransaction.transactionNumber || `Transaction ${updatedTransaction._id.toString()}`;
+      const actionDescription = `Changed status from "${oldStatus}" to "${status}"`;
+      
+      await createLogEntryServer({
+        module: 'stock-transactions',
+        entityId: updatedTransaction._id.toString(),
+        entityName: entityName,
+        action: 'status_change',
+        actionDescription,
+        fieldsChanged: [{
+          field: 'status',
+          oldValue: oldStatus,
+          newValue: status,
+          fieldDisplayName: 'Status'
+        }],
+        metadata: {
+          transactionType: updatedTransaction.transactionType,
+          totalAmount: updatedTransaction.totalAmount,
+          itemsCount: updatedTransaction.items?.length || 0,
+          previousStatus: oldStatus,
+          newStatus: status,
+          statusNotes: notes || undefined
+        }
+      }, user, {
+        ipAddress: clientIP,
+        userAgent: userAgent
+      });
+    } catch (logError) {
+      console.error('Error logging stock transaction status change:', logError);
+      // Don't fail the main operation if logging fails
+    }
 
     // Process inventory updates when transaction is approved or completed
     let inventoryUpdateResult = null;

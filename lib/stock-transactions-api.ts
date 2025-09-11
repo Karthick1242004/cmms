@@ -43,6 +43,11 @@ export const stockTransactionsApi = {
     return apiClient.post<StockTransactionResponse>('/stock-transactions', transactionData);
   },
 
+  // Update stock transaction
+  update: async (id: string, transactionData: CreateStockTransactionRequest): Promise<StockTransactionResponse> => {
+    return apiClient.put<StockTransactionResponse>(`/stock-transactions/${id}`, transactionData);
+  },
+
   // Update transaction status
   updateStatus: async (id: string, statusData: UpdateTransactionStatusRequest): Promise<StockTransactionResponse> => {
     return apiClient.put<StockTransactionResponse>(`/stock-transactions/${id}/status`, statusData);
