@@ -3,6 +3,7 @@ import { getUserContext } from '@/lib/auth-helpers'
 import { activityLogApi } from '@/lib/activity-log-api'
 import { sampleSafetyInspectionRecords } from '@/data/safety-inspection-sample'
 import type { SafetyInspectionRecord } from '@/types/safety-inspection'
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking'
 
 // In-memory storage for demo purposes (replace with database in production)
 let records = [...sampleSafetyInspectionRecords]
@@ -12,10 +13,10 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/safety-inspection/records/${id}`, {
@@ -47,10 +48,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     const user = await getUserContext(request);
@@ -108,8 +109,31 @@ export async function PUT(
         });
         
         console.log('✅ [Safety Inspection] - Update activity log created');
+
+        // Create unified activity log entry for record update
+        await createLogEntryServer({
+          module: 'safety-inspection',
+          entityId: id,
+          entityName: `Safety Inspection Record - ${body.assetName}`,
+          action: 'update',
+          actionDescription: getActionDescription('update', `Safety Inspection Record - ${body.assetName}`, 'safety-inspection'),
+          fieldsChanged: [], // Field changes would need original data comparison
+          metadata: {
+            type: 'record',
+            assetId: body.assetId,
+            assetName: body.assetName,
+            department: body.department,
+            inspector: body.inspector,
+            status: body.status,
+            complianceStatus: body.complianceStatus,
+            overallComplianceScore: body.overallComplianceScore
+          }
+        }, user, {
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || ''
+        });
       } catch (error) {
-        console.error('❌ [Safety Inspection] - Failed to create update activity log:', error);
+        console.error('❌ [Safety Inspection] - Failed to create activity logs:', error);
       }
     }
 
@@ -126,10 +150,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/safety-inspection/records/${id}`, {

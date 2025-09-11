@@ -3,6 +3,7 @@ import { sampleSafetyInspectionSchedules } from '@/data/safety-inspection-sample
 import type { SafetyInspectionSchedule } from '@/types/safety-inspection'
 import { getUserContext } from '@/lib/auth-helpers'
 import { activityLogApi } from '@/lib/activity-log-api'
+import { createLogEntryServer, getActionDescription, generateFieldChanges } from '@/lib/log-tracking'
 
 // In-memory storage for demo purposes (replace with database in production)
 let schedules = [...sampleSafetyInspectionSchedules]
@@ -51,10 +52,10 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/safety-inspection/schedules/${id}`, {
@@ -86,10 +87,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const user = await getUserContext(request);
 
@@ -112,30 +113,32 @@ export async function PUT(
 
     const data = await response.json();
 
-    // Create asset activity log for schedule update
+    // Create unified activity log entry for schedule update
     if (data.success && body.assetId && user) {
       try {
-        await AssetActivityLogService.createSafetyInspectionLog({
-          assetId: body.assetId,
-          assetName: body.assetName,
-          activityType: 'safety_inspection_updated',
-          createdBy: user.id,
-          createdByName: user.name,
-          department: body.department || user.department,
-          departmentId: body.departmentId || '',
-          context: {
-            scheduleId: id,
-            inspector: body.assignedInspector,
-            inspectorId: body.assignedInspectorId || '',
-            inspectionType: body.title,
+        await createLogEntryServer({
+          module: 'safety-inspection',
+          entityId: id,
+          entityName: body.title || 'Safety Inspection Schedule',
+          action: 'update',
+          actionDescription: getActionDescription('update', body.title || 'Safety Inspection Schedule', 'safety-inspection'),
+          fieldsChanged: [], // Field changes would need original data comparison
+          metadata: {
+            type: 'schedule',
+            assetId: body.assetId,
+            assetName: body.assetName,
+            department: body.department,
             frequency: body.frequency,
-            dueDate: body.nextDueDate || body.startDate,
-            priority: body.priority || 'medium'
-          },
-          request
+            priority: body.priority || 'medium',
+            riskLevel: body.riskLevel,
+            assignedInspector: body.assignedInspector
+          }
+        }, user, {
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || ''
         });
       } catch (error) {
-        console.error('Failed to create asset activity log for safety inspection schedule update:', error);
+        console.error('Failed to create activity log for safety inspection schedule update:', error);
         // Don't fail the main operation if activity log creation fails
       }
     }
@@ -153,10 +156,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const user = await getUserContext(request);
     
     console.log('DELETE request for safety inspection schedule ID:', id);
@@ -219,30 +222,31 @@ export async function DELETE(
 
       const data = await response.json();
 
-      // Create asset activity log for schedule deletion
+      // Create unified activity log entry for schedule deletion
       if (data.success && scheduleData && user) {
         try {
-          await AssetActivityLogService.createSafetyInspectionLog({
-            assetId: scheduleData.assetId,
-            assetName: scheduleData.assetName,
-            activityType: 'safety_inspection_deleted',
-            createdBy: user.id,
-            createdByName: user.name,
-            department: scheduleData.department || user.department,
-            departmentId: scheduleData.departmentId || '',
-            context: {
-              scheduleId: id,
-              inspector: scheduleData.assignedInspector,
-              inspectorId: scheduleData.assignedInspectorId || '',
-              inspectionType: scheduleData.title,
+          await createLogEntryServer({
+            module: 'safety-inspection',
+            entityId: id,
+            entityName: scheduleData.title || 'Safety Inspection Schedule',
+            action: 'delete',
+            actionDescription: getActionDescription('delete', scheduleData.title || 'Safety Inspection Schedule', 'safety-inspection'),
+            fieldsChanged: [],
+            metadata: {
+              type: 'schedule',
+              assetId: scheduleData.assetId,
+              assetName: scheduleData.assetName,
+              department: scheduleData.department,
               frequency: scheduleData.frequency,
-              dueDate: scheduleData.nextDueDate || scheduleData.startDate,
-              priority: scheduleData.priority || 'medium'
-            },
-            request
+              priority: scheduleData.priority || 'medium',
+              assignedInspector: scheduleData.assignedInspector
+            }
+          }, user, {
+            ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+            userAgent: request.headers.get('user-agent') || ''
           });
         } catch (error) {
-          console.error('Failed to create asset activity log for safety inspection schedule deletion:', error);
+          console.error('Failed to create activity log for safety inspection schedule deletion:', error);
           // Don't fail the main operation if activity log creation fails
         }
       }

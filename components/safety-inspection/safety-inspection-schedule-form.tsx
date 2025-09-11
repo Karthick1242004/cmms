@@ -100,9 +100,28 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
   const [assetSearchOpen, setAssetSearchOpen] = useState(false)
   const [assetSearchTerm, setAssetSearchTerm] = useState("")
 
+  // Helper function to format date for input (YYYY-MM-DD)
+  const formatDateForInput = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    } catch {
+      return dateString; // Return as-is if parsing fails
+    }
+  };
+
   // Initialize form data when editing
   useEffect(() => {
     if (schedule) {
+      console.log('🛡️ [SafetyInspectionForm] - Initializing edit form with schedule:', {
+        id: schedule.id,
+        department: schedule.department,
+        assetId: schedule.assetId,
+        assignedInspector: schedule.assignedInspector,
+        startDate: schedule.startDate
+      });
+
       // Determine department - fallback to user department if schedule doesn't have one
       const scheduleDepartment = schedule.department || user?.department || "ASRS"
       
@@ -114,7 +133,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
         description: schedule.description || "",
         frequency: schedule.frequency || "monthly",
         customFrequencyDays: schedule.customFrequencyDays || 30,
-        startDate: schedule.startDate || "",
+        startDate: formatDateForInput(schedule.startDate),
         nextDueDate: schedule.nextDueDate || "",
         priority: schedule.priority || "medium",
         riskLevel: schedule.riskLevel || "medium",
@@ -145,6 +164,13 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
     }
   }, [schedule, isSuperAdmin, departmentsData?.data?.departments, selectedDepartment, user?.department])
 
+  // Sync formData.department with selectedDepartment when not editing (for consistency)
+  useEffect(() => {
+    if (!schedule && selectedDepartment && selectedDepartment !== formData.department) {
+      setFormData(prev => ({ ...prev, department: selectedDepartment }))
+    }
+  }, [selectedDepartment, formData.department, schedule])
+
   // Force re-render when assets data is loaded to update asset display
   useEffect(() => {
     if (schedule && assetsData?.data?.assets && formData.assetId) {
@@ -155,13 +181,27 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
 
   // Handle department change (for super admin)
   const handleDepartmentChange = (department: string) => {
+    console.log('🛡️ [SafetyInspectionForm] - Department changed to:', department);
+    
     setSelectedDepartment(department)
-    setFormData(prev => ({
-      ...prev,
-      department,
-      assetId: "", // Reset asset selection when department changes
-      assignedInspector: "", // Reset inspector selection
-    }))
+    
+    // Only reset related fields if this is a NEW schedule (not editing)
+    // During edit mode, preserve existing values unless they're incompatible
+    if (!schedule) {
+      // Create mode: Reset dependent fields
+      setFormData(prev => ({
+        ...prev,
+        department,
+        assetId: "", // Reset asset selection when department changes
+        assignedInspector: "", // Reset inspector selection
+      }))
+    } else {
+      // Edit mode: Only update department, preserve other values
+      setFormData(prev => ({
+        ...prev,
+        department,
+      }))
+    }
   }
 
   // Handle asset change
@@ -482,14 +522,14 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Department Selection (Super Admin Only) */}
-                  {isSuperAdmin && (
-                      <div className="space-y-2">
-                        <Label htmlFor="department">Department</Label>
-                        <Select 
-                          value={selectedDepartment || formData.department} 
-                          onValueChange={handleDepartmentChange}
-                        >
+                  {/* Department Selection */}
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
+                    {isSuperAdmin ? (
+                      <Select 
+                        value={selectedDepartment} 
+                        onValueChange={handleDepartmentChange}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
@@ -501,11 +541,18 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                  )}
+                    ) : (
+                      <Input
+                        value={selectedDepartment || formData.department || user?.department || ''}
+                        readOnly
+                        className="bg-gray-50 cursor-not-allowed"
+                        placeholder="Department"
+                      />
+                    )}
+                  </div>
 
                   {/* Asset Selection */}
-                  <div className={`space-y-2 ${isSuperAdmin ? '' : 'col-span-2'}`}>
+                  <div className="space-y-2">
                     <Label htmlFor="asset">Asset</Label>
                     <div className="flex gap-2">
                       <Input

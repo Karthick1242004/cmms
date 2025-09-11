@@ -344,6 +344,7 @@ export const sampleSafetyInspectionRecords: SafetyInspectionRecord[] = [
     notes: "Most safety measures in place. Found oil spill that was cleaned immediately. Need to improve spill prevention protocols.",
     adminVerified: true,
     adminVerifiedBy: "safety@company.com",
+    adminVerifiedByName: "Safety Manager",
     adminVerifiedAt: "2024-01-29T08:00:00Z",
     adminNotes: "Good catch on the oil spill. Schedule additional training on spill prevention.",
     correctiveActionsRequired: true,

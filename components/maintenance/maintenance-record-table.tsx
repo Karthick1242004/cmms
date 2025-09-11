@@ -349,7 +349,7 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                       )}
                     </div>
                     {selectedRecord.adminVerifiedBy && (
-                      <div><strong>Verified By:</strong> {selectedRecord.adminVerifiedBy}</div>
+                      <div><strong>Verified By:</strong> {selectedRecord.adminVerifiedByName || selectedRecord.adminVerifiedBy || 'Unknown'}</div>
                     )}
                     {selectedRecord.adminVerifiedAt && (
                       <div><strong>Verified On:</strong> {formatDate(selectedRecord.adminVerifiedAt)}</div>

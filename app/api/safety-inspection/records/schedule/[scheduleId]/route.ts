@@ -6,9 +6,10 @@ let records = [...sampleSafetyInspectionRecords]
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { scheduleId: string } }
+  { params }: { params: Promise<{ scheduleId: string }> }
 ) {
   try {
+    const { scheduleId } = await params;
     const { searchParams } = new URL(request.url)
     
     // Extract query parameters
@@ -18,7 +19,7 @@ export async function GET(
     const sortOrder = searchParams.get('sortOrder') || 'desc'
 
     // Filter records by schedule ID
-    let filteredRecords = records.filter(record => record.scheduleId === params.scheduleId)
+    let filteredRecords = records.filter(record => record.scheduleId === scheduleId)
     
     // Apply sorting
     filteredRecords.sort((a, b) => {

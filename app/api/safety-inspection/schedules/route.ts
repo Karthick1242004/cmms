@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserContext } from '@/lib/auth-helpers'
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking'
 import { sampleSafetyInspectionSchedules } from '@/data/safety-inspection-sample'
 import type { SafetyInspectionSchedule } from '@/types/safety-inspection'
 import { activityLogApi } from '@/lib/activity-log-api'
@@ -381,25 +382,27 @@ export async function POST(request: NextRequest) {
           // Make a call to our performance API to store the assignment
           await storeSafetyInspectionPerformanceData(body, result.data, user);
 
-          // Create asset activity log for schedule creation
-          await AssetActivityLogService.createSafetyInspectionLog({
-            assetId: body.assetId,
-            assetName: body.assetName,
-            activityType: 'safety_inspection_scheduled',
-            createdBy: user?.id || 'system',
-            createdByName: user?.name || 'System',
-            department: body.department,
-            departmentId: body.departmentId || '',
-            context: {
-              scheduleId: result.data.id,
-              inspector: body.assignedInspector,
-              inspectorId: body.assignedInspectorId || '',
-              inspectionType: body.title,
+          // Create unified activity log entry
+          await createLogEntryServer({
+            module: 'safety-inspection',
+            entityId: result.data.id || result.data._id || 'unknown',
+            entityName: body.title || 'Safety Inspection Schedule',
+            action: 'create',
+            actionDescription: getActionDescription('create', body.title || 'Safety Inspection Schedule', 'safety-inspection'),
+            fieldsChanged: [],
+            metadata: {
+              type: 'schedule',
+              assetId: body.assetId,
+              assetName: body.assetName,
+              department: body.department,
               frequency: body.frequency,
-              dueDate: body.nextDueDate || body.startDate,
-              priority: body.priority || 'medium'
-            },
-            request
+              priority: body.priority || 'medium',
+              riskLevel: body.riskLevel,
+              assignedInspector: body.assignedInspector
+            }
+          }, user, {
+            ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+            userAgent: request.headers.get('user-agent') || ''
           });
         } catch (performanceError) {
           console.error('Error storing safety inspection performance data or activity log:', performanceError);

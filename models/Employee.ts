@@ -233,7 +233,7 @@ const EmployeeSchema = new Schema<IEmployee>({
 // Indexes
 EmployeeSchema.index({ department: 1, status: 1 });
 EmployeeSchema.index({ role: 1, status: 1 });
-EmployeeSchema.index({ supervisor: 1 });
+// Note: supervisor index is already created via schema field definition (index: true)
 EmployeeSchema.index({ 'shiftInfo.shiftType': 1 });
 EmployeeSchema.index({ accessLevel: 1, department: 1 });
 

@@ -378,6 +378,7 @@ export const sampleMaintenanceRecords: MaintenanceRecord[] = [
     notes: "Weekly inspection completed. Belt tension was slightly loose and has been adjusted. Motor running smoothly with normal vibration levels.",
     adminVerified: true,
     adminVerifiedBy: "admin@company.com",
+    adminVerifiedByName: "Maintenance Manager",
     adminVerifiedAt: "2024-01-23T09:00:00Z",
     adminNotes: "Good work on the belt adjustment. Continue monitoring tension weekly.",
     partsStatus: [

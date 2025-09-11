@@ -65,6 +65,7 @@ export interface MaintenanceRecord {
   images?: string[]
   adminVerified: boolean
   adminVerifiedBy?: string
+  adminVerifiedByName?: string
   adminVerifiedAt?: string
   adminNotes?: string
   nextScheduledDate?: string

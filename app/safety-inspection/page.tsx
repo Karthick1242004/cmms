@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Filter, Shield, AlertTriangle, FileText } from "lucide-react"
+import { Plus, Search, Filter, Shield, AlertTriangle, FileText, Activity } from "lucide-react"
 import { PageLayout } from "@/components/page-layout"
 import { SafetyInspectionStats } from "@/components/safety-inspection/safety-inspection-stats"
 import { SafetyInspectionScheduleForm } from "@/components/safety-inspection/safety-inspection-schedule-form"
 import { SafetyInspectionScheduleTable } from "@/components/safety-inspection/safety-inspection-schedule-table"
 import { SafetyInspectionRecordTableEnhanced } from "@/components/safety-inspection/safety-inspection-record-table-enhanced"
 import { SafetyInspectionSchedulesReport } from "@/components/safety-inspection/safety-inspection-schedules-report"
+import { LogTrackingTab } from "@/components/common/log-tracking-tab"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
 
@@ -216,6 +217,10 @@ export default function SafetyInspectionPage() {
                 <AlertTriangle className="h-4 w-4" />
                 Records ({filteredRecords.length})
               </TabsTrigger>
+              <TabsTrigger value="activity-log" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Activity Log
+              </TabsTrigger>
             </TabsList>
 
             <div className="flex items-center gap-3">
@@ -258,6 +263,10 @@ export default function SafetyInspectionPage() {
               isLoading={isLoading}
               isAdmin={isAdmin}
             />
+          </TabsContent>
+
+          <TabsContent value="activity-log" className="space-y-6">
+            <LogTrackingTab module="safety-inspection" className="mt-4" />
           </TabsContent>
         </Tabs>
 

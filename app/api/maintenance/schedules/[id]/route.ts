@@ -205,35 +205,7 @@ export async function DELETE(
 
     const data = await response.json();
 
-    // Create asset activity log for maintenance schedule deletion
-    if (data.success && scheduleData && user) {
-      try {
-        await AssetActivityLogService.createMaintenanceLog({
-          assetId: scheduleData.assetId,
-          assetName: scheduleData.assetName,
-          activityType: 'maintenance_deleted',
-          createdBy: user.id,
-          createdByName: user.name,
-          department: scheduleData.department || user.department,
-          departmentId: scheduleData.departmentId || '',
-          context: {
-            scheduleId: id,
-            technician: scheduleData.assignedTechnician,
-            technicianId: scheduleData.assignedTechnicianId || '',
-            maintenanceType: scheduleData.maintenanceType || 'General Maintenance',
-            description: scheduleData.description || '',
-            priority: scheduleData.priority || 'medium',
-            frequency: scheduleData.frequency || 'monthly',
-            estimatedDuration: scheduleData.estimatedDuration || 0,
-            dueDate: scheduleData.nextDueDate || scheduleData.startDate
-          },
-          request
-        });
-      } catch (error) {
-        console.error('Failed to create asset activity log for maintenance schedule deletion:', error);
-        // Don't fail the main operation if activity log creation fails
-      }
-    }
+    // Note: Activity logging is handled by the unified log tracking system
 
     return NextResponse.json(data, { status: 200 });
   } catch (error) {

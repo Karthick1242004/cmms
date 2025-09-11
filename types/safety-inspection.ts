@@ -67,6 +67,7 @@ export interface SafetyInspectionRecord {
   images?: string[]
   adminVerified: boolean
   adminVerifiedBy?: string
+  adminVerifiedByName?: string
   adminVerifiedAt?: string
   adminNotes?: string
   correctiveActionsRequired: boolean

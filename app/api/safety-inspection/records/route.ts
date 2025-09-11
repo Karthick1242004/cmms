@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserContext } from '@/lib/auth-helpers'
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking'
 import { sampleSafetyInspectionRecords } from '@/data/safety-inspection-sample'
 
 import type { SafetyInspectionRecord } from '@/types/safety-inspection'
@@ -341,6 +342,30 @@ export async function POST(request: NextRequest) {
         } else {
           console.error('❌ [Safety Inspection] - Activity log creation failed:', await activityLogResponse.text());
         }
+
+        // Create unified activity log entry for record creation
+        await createLogEntryServer({
+          module: 'safety-inspection',
+          entityId: result.data.id || result.data._id || 'unknown',
+          entityName: `Safety Inspection Record - ${body.assetName}`,
+          action: 'create',
+          actionDescription: getActionDescription('create', `Safety Inspection Record - ${body.assetName}`, 'safety-inspection'),
+          fieldsChanged: [],
+          metadata: {
+            type: 'record',
+            scheduleId: body.scheduleId,
+            assetId: body.assetId,
+            assetName: body.assetName,
+            department: body.department,
+            inspector: body.inspector,
+            status: body.status,
+            complianceStatus: body.complianceStatus,
+            overallComplianceScore: body.overallComplianceScore
+          }
+        }, user, {
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || ''
+        });
       } catch (performanceError) {
         console.error('❌ [Safety Inspection] - Error creating activity log:', performanceError);
         // Don't fail the main request if activity logging fails
