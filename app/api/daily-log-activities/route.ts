@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
+import { createLogEntryServer, getActionDescription } from '@/lib/log-tracking';
 
 
 export async function GET(request: NextRequest) {
@@ -329,8 +330,34 @@ export async function POST(request: NextRequest) {
         } else {
           console.error('❌ [Daily Activity] - Activity log creation failed:', await activityLogResponse.text());
         }
+
+        // Create unified activity log entry
+        await createLogEntryServer({
+          module: 'daily-log-activities',
+          entityId: createdActivity._id.toString(),
+          entityName: `Daily Activity - ${body.assetName}`,
+          action: 'create',
+          actionDescription: getActionDescription('create', `Daily Activity - ${body.assetName}`, 'daily-log-activities'),
+          fieldsChanged: [],
+          metadata: {
+            assetId: body.assetId,
+            assetName: body.assetName,
+            area: body.area,
+            departmentName: body.departmentName,
+            natureOfProblem: body.natureOfProblem,
+            status: body.status || 'open',
+            priority: body.priority || 'medium',
+            attendedByName: body.attendedByName,
+            assignedToName: body.assignedToName,
+            downtime: calculatedDowntime,
+            downtimeType: downtimeType
+          }
+        }, user, {
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || ''
+        });
       } catch (error) {
-        console.error('Failed to create asset activity log:', error);
+        console.error('Failed to create activity logs:', error);
         // Don't fail the main operation if activity log creation fails
       }
     }

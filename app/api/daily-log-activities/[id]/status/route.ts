@@ -8,10 +8,10 @@ const VALID_STATUSES = ['open', 'in-progress', 'completed', 'pending_verificatio
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Get user context for authentication
     const user = await getUserContext(request);

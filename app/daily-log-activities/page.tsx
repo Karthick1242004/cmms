@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw, Timer, BarChart3 } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw, Timer, BarChart3, Activity } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { formatDowntime, getDowntimeBadgeClasses, calculateDowntime, getDowntimeTypeBadgeClasses, getDowntimeTypeLabel } from '@/lib/downtime-utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -23,6 +23,7 @@ import { ActivityHistoryDialog } from '@/components/daily-log-activity/activity-
 import { DailyLogActivityRecordsTable } from '@/components/daily-log-activity/daily-log-activity-records-table';
 import { DailyActivityStatusDialog } from '@/components/daily-log-activity/daily-activity-status-dialog';
 import { DailyLogActivitiesOverallReport } from '@/components/daily-log-activity/daily-log-activities-overall-report';
+import { LogTrackingTab } from '@/components/common/log-tracking-tab';
 import { format } from 'date-fns';
 
 const statusColors = {
@@ -359,7 +360,7 @@ export default function DailyLogActivitiesPage() {
         </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="activities" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Activities ({activities.length})
@@ -367,6 +368,10 @@ export default function DailyLogActivitiesPage() {
             <TabsTrigger value="records" className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
               Records ({getRecordsActivities().length})
+            </TabsTrigger>
+            <TabsTrigger value="activity-log" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Activity Log
             </TabsTrigger>
           </TabsList>
 
@@ -681,6 +686,10 @@ export default function DailyLogActivitiesPage() {
               isLoading={isLoading}
               isAdmin={isAdmin}
             />
+          </TabsContent>
+
+          <TabsContent value="activity-log" className="space-y-4">
+            <LogTrackingTab module="daily-log-activities" className="mt-4" />
           </TabsContent>
         </Tabs>
       </div>

@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { createLogEntryServer, getActionDescription, generateFieldChanges } from '@/lib/log-tracking';
 import { activityLogApi } from '@/lib/activity-log-api';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const user = await getUserContext(request);
     
     if (!user) {
@@ -57,10 +58,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const user = await getUserContext(request);
     const updates = await request.json();
 
@@ -393,6 +394,57 @@ export async function PUT(
       }
     }
 
+    // Create unified activity log entry for all updates
+    if (result) {
+      try {
+        // Generate field changes for the update
+        const fieldMappings = {
+          status: 'Status',
+          priority: 'Priority',
+          assignedTo: 'Assigned To',
+          assignedToName: 'Assigned To Name',
+          attendedBy: 'Attended By',
+          attendedByName: 'Attended By Name',
+          natureOfProblem: 'Nature of Problem',
+          commentsOrSolution: 'Comments or Solution',
+          startTime: 'Start Time',
+          endTime: 'End Time',
+          area: 'Area',
+          adminVerified: 'Admin Verified',
+          adminNotes: 'Admin Notes'
+        };
+
+        const fieldsChanged = generateFieldChanges(existingActivity, result, fieldMappings);
+
+        await createLogEntryServer({
+          module: 'daily-log-activities',
+          entityId: id,
+          entityName: `Daily Activity - ${result.assetName}`,
+          action: 'update',
+          actionDescription: getActionDescription('update', `Daily Activity - ${result.assetName}`, 'daily-log-activities'),
+          fieldsChanged,
+          metadata: {
+            assetId: result.assetId,
+            assetName: result.assetName,
+            area: result.area,
+            departmentName: result.departmentName,
+            natureOfProblem: result.natureOfProblem,
+            status: result.status,
+            priority: result.priority,
+            attendedByName: result.attendedByName,
+            assignedToName: result.assignedToName,
+            hasStatusChange: updates.status && updates.status !== existingActivity.status
+          }
+        }, user, {
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || ''
+        });
+      } catch (error) {
+        console.error('Failed to create unified activity log for daily activity update:', error);
+        // Don't fail the main operation if activity log creation fails
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Daily log activity updated successfully',
@@ -413,10 +465,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const user = await getUserContext(request);
 
     if (!user) {
@@ -452,6 +504,35 @@ export async function DELETE(
         { success: false, message: 'You can only delete activities you created' },
         { status: 403 }
       );
+    }
+
+    // Create unified activity log entry for deletion before actually deleting
+    try {
+      await createLogEntryServer({
+        module: 'daily-log-activities',
+        entityId: id,
+        entityName: `Daily Activity - ${existingActivity.assetName}`,
+        action: 'delete',
+        actionDescription: getActionDescription('delete', `Daily Activity - ${existingActivity.assetName}`, 'daily-log-activities'),
+        fieldsChanged: [],
+        metadata: {
+          assetId: existingActivity.assetId,
+          assetName: existingActivity.assetName,
+          area: existingActivity.area,
+          departmentName: existingActivity.departmentName,
+          natureOfProblem: existingActivity.natureOfProblem,
+          status: existingActivity.status,
+          priority: existingActivity.priority,
+          attendedByName: existingActivity.attendedByName,
+          assignedToName: existingActivity.assignedToName
+        }
+      }, user, {
+        ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        userAgent: request.headers.get('user-agent') || ''
+      });
+    } catch (error) {
+      console.error('Failed to create unified activity log for daily activity deletion:', error);
+      // Don't fail the main operation if activity log creation fails
     }
 
     await db.collection('dailylogactivities').deleteOne({ _id: new ObjectId(id) });
