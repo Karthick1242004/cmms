@@ -5,21 +5,32 @@ import { usePathname } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Badge } from "@/components/ui/badge"
-import { Bell, ChevronDown } from "lucide-react"
+import { Bell, ChevronDown, LogOut } from "lucide-react"
 import { SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
 import { useNavigation } from "@/hooks/use-navigation"
 import { getIcon } from "@/utils/icons"
-import { memo } from "react"
+import { memo, useEffect, useState } from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAuthStore } from "@/stores/auth-store"
+import { useNotificationStore } from "@/stores/notification-store"
 import { TrialStatusIndicator } from "@/components/trial-banner"
 import type { NavigationItem, NavigationState } from "@/types/navigation"
 import Logo from '@/public/vonelogo.png'
 import Image from "next/image"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 // Helper function to truncate text
 const truncateText = (text: string, maxLength: number) => {
@@ -31,15 +42,62 @@ const truncateText = (text: string, maxLength: number) => {
 
 export const AppSidebar = memo(function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { navigate, isRouteLoading, loadingRoute, isLoading } = useNavigation()
   const { getFullNavigation } = useNavigationStore()
-  const { user } = useAuthStore()
+  const { user, logout } = useAuthStore()
+  const { notifications, unreadCount, markAsRead, loadCriticalNotifications } = useNotificationStore()
 
   // Get navigation including custom features
   const navigation = getFullNavigation()
 
   const handleNavigation = (href: string) => {
     navigate(href)
+  }
+
+  // Load notifications on component mount if user is authenticated
+  useEffect(() => {
+    if (user) {
+      loadCriticalNotifications()
+      
+      // Set up periodic refresh of notifications (every 5 minutes)
+      const interval = setInterval(() => {
+        loadCriticalNotifications()
+      }, 5 * 60 * 1000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [user, loadCriticalNotifications])
+
+  const handleLogout = () => {
+    logout()
+    router.push("/login")
+  }
+
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "destructive"
+      case "manager":
+        return "default"
+      case "technician":
+        return "secondary"
+      default:
+        return "outline"
+    }
+  }
+
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.read) {
+      markAsRead(notification.id)
+    }
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl)
+    }
+  }
+
+  const handleViewAllNotifications = () => {
+    router.push("/notifications")
   }
 
   return (
@@ -249,21 +307,111 @@ export const AppSidebar = memo(function AppSidebar() {
         <SidebarFooter className="p-4 border-t bg-card/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-                <AvatarImage src={user?.avatar || "/placeholder.svg?height=32&width=32"} alt={user?.name || "User"} />
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  {user?.name?.split(" ").map(n => n[0]).join("").toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-primary/10 p-0">
+                    <Avatar className="h-8 w-8 ring-2 ring-primary/20 transition-transform hover:scale-110">
+                      <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {user?.name
+                          ?.split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium leading-none">{user?.name}</p>
+                        <Badge variant={getRoleBadgeVariant(user?.role || "")} className="text-xs">
+                          {user?.role}
+                        </Badge>
+                      </div>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email} {user?.department}</p>
+                      <p className="text-xs leading-none text-muted-foreground"></p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile">Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings">Settings</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <div>
                 <p className="text-sm font-medium">{user?.name || "User"}</p>
                 <p className="text-xs text-muted-foreground capitalize">{user?.role || "Guest"}</p>
               </div>
             </div>
             <div className="flex items-center space-x-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10">
-                <Bell className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative h-8 w-8 hover:bg-primary/10">
+                    <Bell className="h-4 w-4" />
+                    {unreadCount > 0 && (
+                      <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-primary text-primary-foreground text-xs animate-pulse">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80" align="end">
+                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-muted-foreground">
+                        <p className="text-sm">No notifications</p>
+                      </div>
+                    ) : (
+                      notifications.slice(0, 5).map((notification, index) => (
+                        <DropdownMenuItem 
+                          key={`${notification.id}-${index}`} 
+                          className="cursor-pointer p-3 focus:bg-accent"
+                          onClick={() => handleNotificationClick(notification)}
+                        >
+                          <div className="flex flex-col space-y-1 w-full">
+                            <div className="flex items-center justify-between">
+                              <p className={cn(
+                                "text-sm font-medium",
+                                !notification.read && "font-semibold text-primary"
+                              )}>
+                                {notification.title}
+                              </p>
+                              {!notification.read && (
+                                <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {notification.message}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {notification.timestamp.toLocaleString()}
+                            </p>
+                          </div>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="cursor-pointer justify-center text-primary"
+                    onClick={handleViewAllNotifications}
+                  >
+                    View all notifications
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <ModeToggle />
             </div>
           </div>

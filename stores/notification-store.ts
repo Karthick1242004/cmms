@@ -105,16 +105,17 @@ export const useNotificationStore = create<NotificationState>()(
                 state.notifications = []
 
                 // Convert API alerts to notifications
-                response.alerts.forEach((alert: CriticalAlert) => {
-                  // Use the relatedId from API which now contains the stable ID
-                  const notificationId = alert.relatedId
+                response.alerts.forEach((alert: CriticalAlert, index: number) => {
+                  // Create a unique ID by combining relatedId with type and index to ensure uniqueness
+                  // while maintaining consistency across loads
+                  const notificationId = `${alert.relatedId}-${alert.type}-${index}`
                   const newNotification: Notification = {
                     id: notificationId,
                     type: alert.type,
                     title: alert.title,
                     message: alert.message,
                     timestamp: new Date(alert.timestamp),
-                    read: userReadNotifications.has(notificationId), // Use user-specific read state
+                    read: userReadNotifications.has(alert.relatedId), // Use original relatedId for read state check
                     actionUrl: alert.actionUrl,
                     actionLabel: alert.actionLabel,
                   }

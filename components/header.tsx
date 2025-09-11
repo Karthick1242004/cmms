@@ -122,9 +122,9 @@ export function Header() {
                     <p className="text-sm">No notifications</p>
                   </div>
                 ) : (
-                  notifications.slice(0, 5).map((notification) => (
+                  notifications.slice(0, 5).map((notification, index) => (
                     <DropdownMenuItem 
-                      key={notification.id} 
+                      key={`${notification.id}-${index}`} 
                       className="cursor-pointer p-3 focus:bg-accent"
                       onClick={() => handleNotificationClick(notification)}
                     >

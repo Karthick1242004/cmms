@@ -132,7 +132,7 @@ export default function NotificationsPage() {
                 ) : (
                   <div className="space-y-4">
                     {filteredNotifications.map((notification, index) => (
-                      <div key={notification.id}>
+                      <div key={`${notification.id}-${index}`}>
                         <div
                           className={cn(
                             "p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md",

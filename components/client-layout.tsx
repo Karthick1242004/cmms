@@ -4,7 +4,6 @@ import type React from "react"
 import { usePathname } from "next/navigation"
 import { Suspense } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
-import { Header } from "@/components/header"
 import { LoginNotificationsPopup } from "@/components/login-notifications-popup"
 import { ProfileCompletionBanner } from "@/components/profile-completion-banner"
 import { TrialBanner } from "@/components/trial-banner"
@@ -16,6 +15,7 @@ import {
   SidebarProvider,
   Sidebar,
   SidebarInset,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 
 interface ClientLayoutProps {
@@ -48,18 +48,18 @@ export function ClientLayout({ children }: ClientLayoutProps) {
 
           {/* Main Content */}
           <SidebarInset>
-            {/* Fixed Header */}
-            <div className="flex-shrink-0 p-2 pb-0">
-              <Header />
-            </div>
-
             {/* Scrollable Content Area */}
-            <div className="flex-1 p-2 pt-0">
+            <div className="flex-1 p-2">
               <div className="h-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-lg border shadow-sm overflow-hidden">
                 <Suspense fallback={<LoadingSpinner />}>
                   <div className="h-full overflow-y-auto custom-scrollbar">
                     <div className="space-y-4">
-                      <ProfileCompletionBanner className="mx-6 mt-6" />
+                      {/* Sidebar Toggle Button */}
+                      <div className="flex items-center justify-between px-6 pt-6">
+                        <SidebarTrigger className="h-8 w-8" />
+                        <div className="flex-1" />
+                      </div>
+                      <ProfileCompletionBanner className="mx-6" />
                       <TrialBanner className="mx-6" variant="banner" />
                       <div className="px-6 pb-6">{children}</div>
                     </div>
