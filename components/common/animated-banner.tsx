@@ -63,8 +63,8 @@ export default function AnimatedBanner() {
   const tripleItems = [...activeBanners, ...activeBanners, ...activeBanners]
 
   return (
-    <div className="bg-blue-900 text-white overflow-hidden rounded-md relative border-b  w-full flex-shrink-0">
-      <div className="relative h-12 flex items-center py-2 border-gray-500 px-2">
+    <div className="dark:bg-background/95 bg-background/95 overflow-hidden rounded-md relative border-b w-full flex-shrink-0">
+      <div className="relative h-14 flex items-center py-3 border-gray-500 px-4">
         {/* Animated banner content */}
         <motion.div
           className="flex items-center whitespace-nowrap will-change-transform"
@@ -75,7 +75,7 @@ export default function AnimatedBanner() {
             x: {
               repeat: Infinity,
               repeatType: "loop",
-              duration: Math.max(50, activeBanners.length * 12), // Even slower for wider content
+              duration: Math.max(60, activeBanners.length * 15), // Even slower for better readability
               ease: "linear",
             },
           }}
@@ -87,27 +87,27 @@ export default function AnimatedBanner() {
           {tripleItems.map((banner: BannerMessage, index: number) => (
             <motion.div
               key={`banner-${index}`}
-              className="flex items-center justify-center text-sm font-medium tracking-wide px-20 py-1 hover:bg-white/10 transition-colors duration-300 cursor-pointer flex-shrink-0"
+              className="flex items-center justify-center text-sm font-medium tracking-wide px-32 py-2 hover:bg-white/10 transition-colors duration-300 cursor-pointer flex-shrink-0"
               style={{ 
                 width: `${100 / tripleItems.length}%`, 
-                minWidth: activeBanners.length === 1 ? "100%" : "600px"
+                minWidth: activeBanners.length === 1 ? "100%" : "800px" // Much wider minimum width
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-6">
                 {/* Priority indicator */}
                 {banner.priority > 5 && (
-                  <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse flex-shrink-0 mr-2" />
+                  <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse flex-shrink-0 mr-3" />
                 )}
                 
-                {/* Banner text */}
-                <span className="text-white font-medium tracking-normal leading-relaxed whitespace-nowrap">
+                {/* Banner text with proper contrast for both modes */}
+                <span className="dark:text-white text-black font-medium tracking-normal leading-relaxed whitespace-nowrap drop-shadow-sm">
                   {banner.text}
                 </span>
                 
-                {/* Separator dot with more spacing */}
-                <div className="mx-12 w-2 h-2 bg-white/50 rounded-full hidden sm:block flex-shrink-0" />
+                {/* Separator dot with much more spacing */}
+                <div className="mx-16 w-2.5 h-2.5 bg-white/60 rounded-full hidden sm:block flex-shrink-0" />
               </div>
             </motion.div>
           ))}
