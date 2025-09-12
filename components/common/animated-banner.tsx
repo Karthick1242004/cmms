@@ -75,7 +75,7 @@ export default function AnimatedBanner() {
             x: {
               repeat: Infinity,
               repeatType: "loop",
-              duration: Math.max(40, activeBanners.length * 10), // Slower speed for better readability
+              duration: Math.max(50, activeBanners.length * 12), // Even slower for wider content
               ease: "linear",
             },
           }}
@@ -87,27 +87,27 @@ export default function AnimatedBanner() {
           {tripleItems.map((banner: BannerMessage, index: number) => (
             <motion.div
               key={`banner-${index}`}
-              className="flex items-center justify-center text-sm font-medium tracking-wide px-12 py-1 hover:bg-white/10 transition-colors duration-300 cursor-pointer flex-shrink-0"
+              className="flex items-center justify-center text-sm font-medium tracking-wide px-20 py-1 hover:bg-white/10 transition-colors duration-300 cursor-pointer flex-shrink-0"
               style={{ 
                 width: `${100 / tripleItems.length}%`, 
-                minWidth: activeBanners.length === 1 ? "100%" : "400px"
+                minWidth: activeBanners.length === 1 ? "100%" : "600px"
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-4">
                 {/* Priority indicator */}
                 {banner.priority > 5 && (
-                  <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse flex-shrink-0" />
+                  <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse flex-shrink-0 mr-2" />
                 )}
                 
                 {/* Banner text */}
-                <span className="text-white font-medium tracking-normal leading-relaxed">
+                <span className="text-white font-medium tracking-normal leading-relaxed whitespace-nowrap">
                   {banner.text}
                 </span>
                 
-                {/* Separator dot */}
-                <div className="ml-8 w-1.5 h-1.5 bg-white/40 rounded-full hidden sm:block flex-shrink-0" />
+                {/* Separator dot with more spacing */}
+                <div className="mx-12 w-2 h-2 bg-white/50 rounded-full hidden sm:block flex-shrink-0" />
               </div>
             </motion.div>
           ))}

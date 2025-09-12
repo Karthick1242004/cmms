@@ -12,9 +12,9 @@ import {
 import { cn } from "@/lib/utils"
 
 // Trial configuration - easily update these dates for different trial periods
-// Updated to 14 days from August 30, 2025, 8:03 PM IST
+// Updated to 21 days from August 30, 2025, 8:03 PM IST
 const TRIAL_START_DATE = '2025-08-30T14:33:00.000Z' // August 30, 2025, 8:03 PM IST (UTC+5:30)
-const TRIAL_END_DATE = '2025-09-13T23:59:59.999Z'   // September 13, 2025, 11:59 PM UTC (14 days later)
+const TRIAL_END_DATE = '2025-09-20T23:59:59.999Z'   // September 20, 2025, 11:59 PM UTC (21 days later)
 
 interface TrialBannerProps {
   className?: string
@@ -31,7 +31,7 @@ export function TrialBanner({ className, variant = 'banner' }: TrialBannerProps)
   })
 
   useEffect(() => {
-    // Trial period: August 30, 2025 to September 13, 2025 (14 days)
+    // Trial period: August 30, 2025 to September 20, 2025 (21 days)
     const trialEndDate = new Date(TRIAL_END_DATE)
     
     const updateTimer = () => {
@@ -102,7 +102,7 @@ export function TrialBanner({ className, variant = 'banner' }: TrialBannerProps)
                   </Badge>
                 </div>
                 <p className="text-sm text-orange-800">
-                  Your FMMS 360 trial expires on <strong>September 13, 2025</strong> ({timeLeft.days} days remaining). 
+                  Your FMMS 360 trial expires on <strong>September 20, 2025</strong> ({timeLeft.days} days remaining). 
                   Upgrade now to keep all features active.
                 </p>
                 <div className="flex gap-2">
@@ -193,7 +193,7 @@ export function TrialStatusIndicator() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0 })
 
   useEffect(() => {
-    // Trial period: August 30, 2025 to September 13, 2025 (14 days)
+    // Trial period: August 30, 2025 to September 20, 2025 (21 days)
     const trialEndDate = new Date(TRIAL_END_DATE)
     
     const updateTimer = () => {
