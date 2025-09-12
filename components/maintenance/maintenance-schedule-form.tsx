@@ -42,6 +42,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
 
   // State for inspector dropdown
   const [showInspectorDropdown, setShowInspectorDropdown] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(false)
 
   type FormData = {
     assetId: string
@@ -148,10 +149,10 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     }
 
     // 5. If user department doesn't match available departments, use first available department for super admin
-    if (isSuperAdmin && departmentsData?.data?.departments?.length > 0) {
-      const firstDept = departmentsData.data.departments[0].name;
+    if (isSuperAdmin && departmentsData?.data?.departments && departmentsData.data.departments.length > 0) {
+      const firstDept = departmentsData.data.departments[0]?.name;
       console.log('🔧 [MaintenanceForm] - Using first available department for super admin:', firstDept);
-      return firstDept;
+      return firstDept || userDept;
     }
 
     // 6. Last resort: return user department as-is
@@ -167,6 +168,8 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         assetId: schedule.assetId,
         assignedTechnician: schedule.assignedTechnician
       });
+
+      setIsInitializing(true);
 
       // Convert start date to proper format for date input (YYYY-MM-DD)
       const formatDateForInput = (dateString: string) => {
@@ -236,23 +239,27 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       setSelectedDepartment(departmentValue)
       
       console.log('🔧 [MaintenanceForm] - Form initialized with derived department:', departmentValue);
+      
+      setIsInitializing(false);
     } else {
-      // Reset form when no schedule (create mode)
-      const userDept = decodeHtmlEntities(user?.department || "");
-      setSelectedDepartment(isSuperAdmin ? "" : userDept)
+      // Reset form when no schedule (create mode)  
+      if (!isInitializing) {
+        const userDept = decodeHtmlEntities(user?.department || "");
+        setSelectedDepartment(isSuperAdmin ? "" : userDept)
+      }
     }
-  }, [schedule, isSuperAdmin, user?.department, assetsData, departmentsData])
+  }, [schedule, isSuperAdmin, user?.department])
 
-  // Sync selectedDepartment with formData.department
+  // Sync selectedDepartment with formData.department (prevent infinite loop)
   useEffect(() => {
-    if (selectedDepartment && formData.department !== selectedDepartment) {
+    if (!isInitializing && selectedDepartment && formData.department !== selectedDepartment) {
       console.log('🔧 [MaintenanceForm] - Syncing department:', {
         selectedDepartment,
         currentFormDataDepartment: formData.department
       });
       setFormData(prev => ({ ...prev, department: selectedDepartment }))
     }
-  }, [selectedDepartment, formData.department])
+  }, [selectedDepartment, isInitializing])
 
   // Handle department change (for super admin)
   const handleDepartmentChange = (department: string) => {
