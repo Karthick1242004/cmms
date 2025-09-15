@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw, Timer, BarChart3, Activity, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { formatDowntime, getDowntimeBadgeClasses, calculateDowntime, getDowntimeTypeBadgeClasses, getDowntimeTypeLabel } from '@/lib/downtime-utils';
@@ -84,6 +85,7 @@ export default function DailyLogActivitiesPage() {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [activityToUpdateStatus, setActivityToUpdateStatus] = useState<any>(null);
   const [isOverallReportOpen, setIsOverallReportOpen] = useState(false);
+  const [showDepartmentColumns, setShowDepartmentColumns] = useState(false);
 
   useEffect(() => {
     fetchActivities();
@@ -489,14 +491,29 @@ export default function DailyLogActivitiesPage() {
               </div>
             </div>
             
-            {/* Show current department for non-super-admin users */}
-            {user?.accessLevel !== 'super_admin' && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-800">
-                  <strong>Department:</strong> {user?.department} (showing activities from your department only)
-                </p>
+            {/* Department Toggle and Current Department Info */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Department Columns</label>
+                <Button 
+                  variant={showDepartmentColumns ? "default" : "outline"}
+                  size="sm" 
+                  className="h-8 text-xs ml-2"
+                  onClick={() => setShowDepartmentColumns(!showDepartmentColumns)}
+                >
+                  {showDepartmentColumns ? "Hide Department" : "Show Department"}
+                </Button>
               </div>
-            )}
+              
+              {/* Show current department for non-super-admin users */}
+              {user?.accessLevel !== 'super_admin' && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    <strong>Department:</strong> {user?.department} (showing activities from your department only)
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -562,10 +579,11 @@ export default function DailyLogActivitiesPage() {
                       <TableHead className="text-xs px-2 py-2">Area</TableHead>
                       <TableHead className="text-xs px-2 py-2">Asset</TableHead>
                       <TableHead className="text-xs px-2 py-2">Problem</TableHead>
+                      <TableHead className="text-xs px-2 py-2">Solution</TableHead>
                       <TableHead className="text-xs px-2 py-2">Attended By</TableHead>
                       <TableHead className="text-xs px-2 py-2">Status</TableHead>
                       <TableHead className="text-xs px-2 py-2">Priority</TableHead>
-                      <TableHead className="text-xs px-2 py-2">Department</TableHead>
+                      {showDepartmentColumns && <TableHead className="text-xs px-2 py-2">Department</TableHead>}
                       <TableHead className="text-xs px-2 py-2">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -667,12 +685,42 @@ export default function DailyLogActivitiesPage() {
                           </div>
                         </TableCell>
                         <TableCell className="px-2 py-2">
-                          <div className="max-w-xs">
-                            <div className="truncate text-xs font-medium">{activity.natureOfProblem.slice(0, 15)}...</div>
-                            <div className="text-xs text-muted-foreground truncate">
-                              {activity.commentsOrSolution.slice(0, 15)}...
-                            </div>
-                          </div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="max-w-xs">
+                                  <div className="truncate text-xs font-medium cursor-help">
+                                    {activity.natureOfProblem.length > 20 
+                                      ? `${activity.natureOfProblem.slice(0, 20)}...` 
+                                      : activity.natureOfProblem
+                                    }
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs">{activity.natureOfProblem}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
+                        <TableCell className="px-2 py-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="max-w-xs">
+                                  <div className="truncate text-xs text-muted-foreground cursor-help">
+                                    {activity.commentsOrSolution.length > 20 
+                                      ? `${activity.commentsOrSolution.slice(0, 20)}...` 
+                                      : activity.commentsOrSolution
+                                    }
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs">{activity.commentsOrSolution}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                         <TableCell className="px-2 py-2">
                           <div className="flex items-center text-center space-x-1">
@@ -739,9 +787,11 @@ export default function DailyLogActivitiesPage() {
                             </Badge>
                           </div>
                         </TableCell>
-                        <TableCell className="px-2 py-2">
-                          <span className="text-xs">{activity.departmentName}</span>
-                        </TableCell>
+                        {showDepartmentColumns && (
+                          <TableCell className="px-2 py-2">
+                            <span className="text-xs">{activity.departmentName}</span>
+                          </TableCell>
+                        )}
                         <TableCell className="px-2 py-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1011,6 +1061,7 @@ export default function DailyLogActivitiesPage() {
       <DailyLogActivitiesOverallReport
         isOpen={isOverallReportOpen}
         onClose={() => setIsOverallReportOpen(false)}
+        showDepartmentColumns={showDepartmentColumns}
       />
     </PageLayout>
   );

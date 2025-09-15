@@ -32,9 +32,10 @@ import { toast } from "sonner"
 interface DailyLogActivitiesOverallReportProps {
   isOpen: boolean
   onClose: () => void
+  showDepartmentColumns?: boolean
 }
 
-export function DailyLogActivitiesOverallReport({ isOpen, onClose }: DailyLogActivitiesOverallReportProps) {
+export function DailyLogActivitiesOverallReport({ isOpen, onClose, showDepartmentColumns = false }: DailyLogActivitiesOverallReportProps) {
   const [activeTab, setActiveTab] = useState("summary")
   const [isGeneratingReport, setIsGeneratingReport] = useState(false)
   const [allActivities, setAllActivities] = useState<DailyLogActivity[]>([])
@@ -551,10 +552,12 @@ export function DailyLogActivitiesOverallReport({ isOpen, onClose }: DailyLogAct
                 <th>Area</th>
                 <th>Asset</th>
                 <th>Problem</th>
+                <th>Solution</th>
                 <th>Status</th>
                 <th>Priority</th>
                 <th>Downtime</th>
                 <th>Attended By</th>
+                ${showDepartmentColumns ? '<th>Department</th>' : ''}
               </tr>
             </thead>
             <tbody>
@@ -564,10 +567,12 @@ export function DailyLogActivitiesOverallReport({ isOpen, onClose }: DailyLogAct
                   <td>${activity.area}</td>
                   <td>${activity.assetName}</td>
                   <td>${activity.natureOfProblem.length > 50 ? activity.natureOfProblem.substring(0, 50) + '...' : activity.natureOfProblem}</td>
+                  <td>${activity.commentsOrSolution.length > 50 ? activity.commentsOrSolution.substring(0, 50) + '...' : activity.commentsOrSolution}</td>
                   <td><span class="status-badge status-${activity.status.replace('-', '-')}">${activity.status.replace('_', ' ')}</span></td>
                   <td><span class="status-badge priority-${activity.priority}">${activity.priority}</span></td>
                   <td>${activity.downtime !== null && activity.downtime !== undefined ? formatDowntime(activity.downtime) : 'N/A'}</td>
                   <td>${Array.isArray(activity.attendedByName) ? activity.attendedByName.join(', ') : activity.attendedByName}</td>
+                  ${showDepartmentColumns ? `<td>${activity.departmentName}</td>` : ''}
                 </tr>
               `).join('')}
             </tbody>
@@ -585,9 +590,10 @@ export function DailyLogActivitiesOverallReport({ isOpen, onClose }: DailyLogAct
                 <th>Area</th>
                 <th>Asset</th>
                 <th>Problem</th>
+                <th>Solution</th>
                 <th>Status</th>
                 <th>Priority</th>
-                <th>Department</th>
+                ${showDepartmentColumns ? '<th>Department</th>' : ''}
                 <th>Downtime</th>
                 <th>Attended By</th>
               </tr>
@@ -599,9 +605,10 @@ export function DailyLogActivitiesOverallReport({ isOpen, onClose }: DailyLogAct
                   <td>${activity.area}</td>
                   <td>${activity.assetName}</td>
                   <td>${activity.natureOfProblem.length > 40 ? activity.natureOfProblem.substring(0, 40) + '...' : activity.natureOfProblem}</td>
+                  <td>${activity.commentsOrSolution.length > 40 ? activity.commentsOrSolution.substring(0, 40) + '...' : activity.commentsOrSolution}</td>
                   <td><span class="status-badge status-${activity.status.replace('-', '-')}">${activity.status.replace('_', ' ')}</span></td>
                   <td><span class="status-badge priority-${activity.priority}">${activity.priority}</span></td>
-                  <td>${activity.departmentName}</td>
+                  ${showDepartmentColumns ? `<td>${activity.departmentName}</td>` : ''}
                   <td>${activity.downtime !== null && activity.downtime !== undefined ? formatDowntime(activity.downtime) : 'N/A'}</td>
                   <td>${Array.isArray(activity.attendedByName) ? activity.attendedByName.join(', ') : activity.attendedByName}</td>
                 </tr>
