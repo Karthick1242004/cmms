@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,22 +20,51 @@ import {
   Download,
   User,
   MapPin,
-  Timer
+  Timer,
+  Loader2
 } from "lucide-react"
 import type { DailyLogActivity } from "@/types/daily-log-activity"
 import { formatDowntime, getDowntimeBadgeClasses } from '@/lib/downtime-utils'
 import { format } from 'date-fns'
+import { useDailyLogActivitiesStore } from "@/stores/daily-log-activities-store"
+import { toast } from "sonner"
 
 interface DailyLogActivitiesOverallReportProps {
-  activities: DailyLogActivity[]
   isOpen: boolean
   onClose: () => void
 }
 
-export function DailyLogActivitiesOverallReport({ activities, isOpen, onClose }: DailyLogActivitiesOverallReportProps) {
+export function DailyLogActivitiesOverallReport({ isOpen, onClose }: DailyLogActivitiesOverallReportProps) {
   const [activeTab, setActiveTab] = useState("summary")
   const [isGeneratingReport, setIsGeneratingReport] = useState(false)
+  const [allActivities, setAllActivities] = useState<DailyLogActivity[]>([])
+  const [isLoadingAllActivities, setIsLoadingAllActivities] = useState(false)
   const reportRef = useRef<HTMLDivElement>(null)
+  
+  const { fetchAllActivitiesForReport } = useDailyLogActivitiesStore()
+
+  // Fetch all activities when dialog opens
+  useEffect(() => {
+    if (isOpen && allActivities.length === 0) {
+      fetchAllActivitiesForReports()
+    }
+  }, [isOpen])
+
+  const fetchAllActivitiesForReports = async () => {
+    setIsLoadingAllActivities(true)
+    try {
+      const activities = await fetchAllActivitiesForReport()
+      setAllActivities(activities)
+    } catch (error) {
+      console.error('Failed to fetch all activities for report:', error)
+      toast.error('Failed to load all activities for report')
+    } finally {
+      setIsLoadingAllActivities(false)
+    }
+  }
+
+  // Use allActivities instead of passed activities prop
+  const activities = allActivities
 
   // Calculate summary statistics
   const totalActivities = activities.length
@@ -614,24 +643,39 @@ export function DailyLogActivitiesOverallReport({ activities, isOpen, onClose }:
         </DialogHeader>
 
         <div className="flex flex-col h-full">
-          <div className="flex gap-2 mb-4">
-            <Button
-              onClick={handlePrint}
-              disabled={isGeneratingReport}
-              className="flex items-center gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Generate Report
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleDownloadReport}
-              disabled={isGeneratingReport}
-              className="flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              {isGeneratingReport ? "Generating..." : "Download Report"}
-            </Button>
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex gap-2">
+              <Button
+                onClick={handlePrint}
+                disabled={isGeneratingReport || isLoadingAllActivities}
+                className="flex items-center gap-2"
+              >
+                <Printer className="h-4 w-4" />
+                Generate Report
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDownloadReport}
+                disabled={isGeneratingReport || isLoadingAllActivities}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                {isGeneratingReport ? "Generating..." : "Download Report"}
+              </Button>
+            </div>
+            
+            {isLoadingAllActivities && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading all activities...
+              </div>
+            )}
+            
+            {!isLoadingAllActivities && activities.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                Report includes {activities.length} total activities
+              </div>
+            )}
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
@@ -643,7 +687,25 @@ export function DailyLogActivitiesOverallReport({ activities, isOpen, onClose }:
             </TabsList>
 
             <ScrollArea className="flex-1">
-              <TabsContent value="summary" className="space-y-4">
+              {isLoadingAllActivities ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                    <p className="text-muted-foreground">Loading all activities for comprehensive report...</p>
+                    <p className="text-sm text-muted-foreground mt-2">This may take a moment if you have many activities.</p>
+                  </div>
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <h3 className="text-lg font-semibold mb-2">No Activities Found</h3>
+                    <p className="text-muted-foreground">No activities match the current filters.</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <TabsContent value="summary" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -842,6 +904,8 @@ export function DailyLogActivitiesOverallReport({ activities, isOpen, onClose }:
                   </CardContent>
                 </Card>
               </TabsContent>
+                </>
+              )}
             </ScrollArea>
           </Tabs>
         </div>

@@ -1009,7 +1009,6 @@ export default function DailyLogActivitiesPage() {
       
       {/* Overall Report */}
       <DailyLogActivitiesOverallReport
-        activities={activities}
         isOpen={isOverallReportOpen}
         onClose={() => setIsOverallReportOpen(false)}
       />

@@ -425,6 +425,35 @@ export const useDailyLogActivitiesStore = create<DailyLogActivitiesState>()(
         }
       },
 
+      // Fetch all activities for reports (bypasses pagination)
+      fetchAllActivitiesForReport: async (filters) => {
+        try {
+          const state = get();
+          const apiFilters = {
+            search: state.searchTerm,
+            status: state.statusFilter as any,
+            priority: state.priorityFilter,
+            department: state.departmentFilter,
+            startDate: state.dateRange.startDate || undefined,
+            endDate: state.dateRange.endDate || undefined,
+            page: 1,
+            limit: 10000, // Large limit to get all records
+            ...filters
+          };
+          
+          const response = await dailyLogActivitiesApi.getAll(apiFilters);
+
+          if (response.success && response.data) {
+            return response.data.activities;
+          } else {
+            throw new Error(response.error || 'Failed to fetch all activities');
+          }
+        } catch (error) {
+          console.error('Error fetching all activities for report:', error);
+          throw error;
+        }
+      },
+
       // Statistics
       fetchStats: async (filters) => {
         try {

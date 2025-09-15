@@ -223,6 +223,7 @@ export interface DailyLogActivitiesState {
   
   // CRUD actions
   fetchActivities: (filters?: DailyLogActivityFilters) => Promise<void>;
+  fetchAllActivitiesForReport: (filters?: DailyLogActivityFilters) => Promise<DailyLogActivity[]>;
   fetchActivityById: (id: string) => Promise<void>;
   createActivity: (data: DailyLogActivityFormData) => Promise<boolean>;
   updateActivity: (id: string, data: Partial<DailyLogActivityFormData>) => Promise<boolean>;
