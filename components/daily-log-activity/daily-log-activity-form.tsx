@@ -285,8 +285,9 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     // Validation
     if (!formData.area || !formData.departmentId || !formData.assetId || 
         !formData.natureOfProblem || !formData.commentsOrSolution || 
-        !formData.startTime || formData.attendedBy.length === 0) {
-      toast.error('Please fill in all required fields including start time and at least one attendee');
+        !formData.startTime || !formData.endTime || !formData.downtimeType || 
+        formData.attendedBy.length === 0) {
+      toast.error('Please fill in all required fields including start time, end time, downtime type, and at least one attendee');
       return;
     }
 
@@ -406,7 +407,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="endTime">End Time</Label>
+                <Label htmlFor="endTime">End Time *</Label>
                 <div className="relative">
                   <Clock className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -415,7 +416,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                     value={formData.endTime}
                     onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
                     className="pl-8"
-                    placeholder="Optional"
+                    required
                   />
                 </div>
                 {calculatedDowntime !== null && (
@@ -425,16 +426,16 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                 )}
               </div>
 
-              {/* Downtime Type Selection - Only show when there is downtime */}
-              {(formData.endTime || calculatedDowntime !== null) && (
-                <div className="space-y-2">
-                  <Label htmlFor="downtimeType">Downtime Type</Label>
+              {/* Downtime Type Selection - Always required */}
+              <div className="space-y-2">
+                <Label htmlFor="downtimeType">Downtime Type *</Label>
                   <Select 
                     value={formData.downtimeType || ''} 
                     onValueChange={(value) => setFormData(prev => ({ 
                       ...prev, 
                       downtimeType: value as 'planned' | 'unplanned' 
                     }))}
+                    required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select downtime type" />
@@ -448,7 +449,6 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                     Specify whether this downtime was planned maintenance or an unexpected issue
                   </p>
                 </div>
-              )}
 
               <div className="space-y-2">
                 <Label htmlFor="area">Area *</Label>
