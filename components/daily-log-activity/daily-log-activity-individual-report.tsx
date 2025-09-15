@@ -79,409 +79,354 @@ export function generateIndividualReport({ activity }: GenerateIndividualReportP
             padding: 0;
             box-sizing: border-box;
           }
+          
           body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            background: #f8fafc;
+            background: #fff;
             padding: 20px;
-          }
-          .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
           }
+          
           .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
             text-align: center;
-          }
-          .header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-          }
-          .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-          }
-          .content {
-            padding: 30px;
-          }
-          .section {
             margin-bottom: 30px;
             padding-bottom: 20px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 3px solid #3b82f6;
           }
-          .section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
+          
+          .header h1 {
+            font-size: 28px;
+            color: #1e40af;
+            margin-bottom: 8px;
+            text-transform: uppercase;
           }
-          .section h2 {
-            font-size: 1.5rem;
+          
+          .header .subtitle {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 4px;
+          }
+          
+          .header .date {
+            font-size: 12px;
+            color: #9ca3af;
+          }
+          
+          .section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+          }
+          
+          .section-title {
+            font-size: 18px;
             font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            color: #1e40af;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+            text-transform: uppercase;
           }
-          .section h3 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #334155;
-            margin-bottom: 10px;
-          }
+          
           .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
           }
-          .info-item {
+          
+          .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+          }
+          
+          .info-card {
             background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
             padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #3b82f6;
           }
-          .info-item label {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #64748b;
-            display: block;
-            margin-bottom: 5px;
-          }
-          .info-item .value {
-            font-size: 1rem;
+          
+          .info-label {
+            font-size: 12px;
             font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+          }
+          
+          .info-value {
+            font-size: 14px;
+            font-weight: 500;
             color: #1e293b;
           }
-          .badge {
+          
+          .status-badge {
             display: inline-flex;
             align-items: center;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            border: 1px solid;
-          }
-          .problem-solution {
-            background: #fef3c7;
-            border: 1px solid #f59e0b;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 15px 0;
-          }
-          .problem-solution h4 {
-            color: #92400e;
-            margin-bottom: 10px;
-            font-weight: 600;
-          }
-          .problem-solution p {
-            color: #78350f;
-            line-height: 1.6;
-          }
-          .verification-info {
-            background: #dcfce7;
-            border: 1px solid #22c55e;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 15px 0;
-          }
-          .verification-info h4 {
-            color: #166534;
-            margin-bottom: 10px;
-            font-weight: 600;
-          }
-          .verification-info p {
-            color: #15803d;
-            line-height: 1.6;
-          }
-          .images-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-          }
-          .image-item {
-            text-align: center;
-          }
-          .image-item img {
-            max-width: 100%;
-            height: auto;
+            gap: 6px;
+            padding: 6px 12px;
             border-radius: 6px;
-            border: 1px solid #e2e8f0;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
-          .image-item p {
-            margin-top: 8px;
-            font-size: 0.875rem;
-            color: #64748b;
-          }
-          .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-          }
-          .stat-item {
-            text-align: center;
-            padding: 15px;
+          
+          .priority-critical { background: #fee2e2; color: #dc2626; }
+          .priority-high { background: #fed7aa; color: #ea580c; }
+          .priority-medium { background: #fef3c7; color: #d97706; }
+          .priority-low { background: #dcfce7; color: #16a34a; }
+          
+          .status-open { background: #fee2e2; color: #dc2626; }
+          .status-in-progress { background: #dbeafe; color: #2563eb; }
+          .status-pending { background: #fef3c7; color: #d97706; }
+          .status-resolved { background: #dcfce7; color: #16a34a; }
+          .status-completed { background: #dcfce7; color: #16a34a; }
+          .status-verified { background: #dcfce7; color: #16a34a; }
+          .status-pending_verification { background: #fed7aa; color: #ea580c; }
+          
+          .content-box {
             background: #f8fafc;
-            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 60px;
           }
-          .stat-item .number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #3b82f6;
-            display: block;
+          
+          .content-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
           }
-          .stat-item .label {
-            font-size: 0.875rem;
-            color: #64748b;
-            margin-top: 5px;
+          
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
           }
-          .footer {
+          
+          th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          
+          th {
             background: #f1f5f9;
-            padding: 20px;
-            text-align: center;
-            color: #64748b;
-            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
+          
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 12px;
+          }
+          
+          .icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            vertical-align: middle;
+          }
+          
           @media print {
-            body {
-              background: white;
-              padding: 0;
-            }
-            .container {
-              box-shadow: none;
-              border-radius: 0;
-            }
-            .header {
-              background: #3b82f6 !important;
-              -webkit-print-color-adjust: exact;
-              color-adjust: exact;
-            }
-            .print-controls {
-              display: none !important;
-            }
+            body { padding: 0; }
+            .section { page-break-inside: avoid; }
           }
         </style>
       </head>
       <body>
-        <div class="print-controls" style="
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          z-index: 1000;
-          display: flex;
-          gap: 10px;
-        ">
-          <button style="
-            background: #3b82f6;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transition: all 0.2s ease;
-            user-select: none;
-            border: 2px solid #1d4ed8;
-            font-size: 14px;
-          " 
-          onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.2)'"
-          onmouseout="this.style.background='#3b82f6'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
-          onclick="window.print()"
-          title="Click to print or save as PDF"
-          >
-            🖨️ Print Report
-          </button>
-          
-          <button style="
-            background: #6b7280;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: all 0.2s ease;
-            user-select: none;
-            border: 1px solid #4b5563;
-          " 
-          onmouseover="this.style.background='#4b5563'; this.style.boxShadow='0 4px 16px rgba(0,0,0,0.15)'"
-          onmouseout="this.style.background='#6b7280'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'"
-          onclick="window.close()"
-          title="Close this report window"
-          >
-            ❌ Close
-          </button>
+        <div class="header">
+          <h1>Daily Log Activity Report</h1>
+          <div class="subtitle">Activity ID: ${activity._id}</div>
+          <div class="date">Generated on ${new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}</div>
         </div>
-        <div class="container">
-          <!-- Header -->
-          <div class="header">
-            <h1>Daily Log Activity Report</h1>
-            <p>Comprehensive activity details and analysis</p>
+
+        <!-- Activity Information Section -->
+        <div class="section">
+          <h2 class="section-title">📋 Activity Information</h2>
+          <div class="grid">
+            <div class="info-card">
+              <div class="info-label">Activity ID</div>
+              <div class="info-value">${activity._id}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Asset</div>
+              <div class="info-value">${activity.assetName}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Area</div>
+              <div class="info-value">${activity.area || 'N/A'}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Date</div>
+              <div class="info-value">${format(new Date(activity.date), 'EEEE, MMMM d, yyyy')}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Time</div>
+              <div class="info-value">${activity.startTime} - ${activity.endTime}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Status</div>
+              <div class="info-value">
+                <span class="status-badge status-${activity.status}">${activity.status.replace('_', ' ')}</span>
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Priority</div>
+              <div class="info-value">
+                <span class="status-badge priority-${activity.priority}">${activity.priority}</span>
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Department</div>
+              <div class="info-value">${activity.departmentName}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Downtime</div>
+              <div class="info-value">${activity.downtime ? formatDowntime(activity.downtime) : 'N/A'}</div>
+            </div>
+            ${activity.downtimeType ? `
+            <div class="info-card">
+              <div class="info-label">Downtime Type</div>
+              <div class="info-value">${getDowntimeTypeLabel(activity.downtimeType)}</div>
+            </div>
+            ` : ''}
           </div>
+        </div>
 
-          <div class="content">
-            <!-- Activity Overview -->
-            <div class="section">
-              <h2>📋 Activity Overview</h2>
-              <div class="grid">
-                <div class="info-item">
-                  <label>Asset</label>
-                  <div class="value">${activity.assetName}</div>
-                </div>
-                <div class="info-item">
-                  <label>Area</label>
-                  <div class="value">${activity.area}</div>
-                </div>
-                <div class="info-item">
-                  <label>Date</label>
-                  <div class="value">${format(new Date(activity.date), 'EEEE, MMMM dd, yyyy')}</div>
-                </div>
-                <div class="info-item">
-                  <label>Time</label>
-                  <div class="value">${activity.startTime || activity.time}${activity.endTime ? ` - ${activity.endTime}` : ''}</div>
-                </div>
-                <div class="info-item">
-                  <label>Status</label>
-                  <div class="value">${getStatusBadge(activity.status)}</div>
-                </div>
-                <div class="info-item">
-                  <label>Priority</label>
-                  <div class="value">${getPriorityBadge(activity.priority)}</div>
-                </div>
-                <div class="info-item">
-                  <label>Department</label>
-                  <div class="value">${activity.departmentName}</div>
-                </div>
-                <div class="info-item">
-                  <label>Downtime</label>
-                  <div class="value">
-                    ${activity.downtime !== null && activity.downtime !== undefined ? getDowntimeBadge(activity.downtime) : 'N/A'}
-                    ${activity.downtimeType ? `<br/><span style="margin-top: 4px; display: inline-block;">${getDowntimeTypeBadge(activity.downtimeType)}</span>` : ''}
-                  </div>
-                </div>
-              </div>
+        <!-- Problem & Solution Section -->
+        <div class="section">
+          <h2 class="section-title">🔧 Problem & Solution</h2>
+          <div class="grid">
+            <div class="content-box">
+              <div class="info-label">Nature of Problem</div>
+              <div class="content-text">${activity.natureOfProblem || 'N/A'}</div>
             </div>
-
-            <!-- Problem & Solution -->
-            <div class="section">
-              <h2>🔧 Problem & Solution</h2>
-              <div class="problem-solution">
-                <h4>Nature of Problem</h4>
-                <p>${activity.natureOfProblem}</p>
-              </div>
-              <div class="problem-solution">
-                <h4>Comments & Solution</h4>
-                <p>${activity.commentsOrSolution}</p>
-              </div>
-            </div>
-
-            <!-- Personnel & Verification -->
-            <div class="section">
-              <h2>👥 Personnel & Verification</h2>
-              <div class="grid">
-                <div class="info-item">
-                  <label>Created By</label>
-                  <div class="value">${activity.createdByName}</div>
-                </div>
-                <div class="info-item">
-                  <label>Attended By</label>
-                  <div class="value">${formatAttendees()}</div>
-                </div>
-                ${activity.adminVerifiedByName ? `
-                <div class="info-item">
-                  <label>Verified By</label>
-                  <div class="value">${activity.adminVerifiedByName}</div>
-                </div>
-                ` : ''}
-                ${activity.adminVerifiedAt ? `
-                <div class="info-item">
-                  <label>Verification Date</label>
-                  <div class="value">${format(new Date(activity.adminVerifiedAt), 'MMM dd, yyyy • h:mm a')}</div>
-                </div>
-                ` : ''}
-              </div>
-              ${activity.adminNotes ? `
-              <div class="verification-info">
-                <h4>Admin Verification Notes</h4>
-                <p>${activity.adminNotes}</p>
-              </div>
-              ` : ''}
-            </div>
-
-            <!-- Activity Images -->
-            <div class="section">
-              <h2>📸 Activity Images</h2>
-              <div class="images-grid">
-                ${formatImages()}
-              </div>
-            </div>
-
-            <!-- Statistics -->
-            <div class="section">
-              <h2>📊 Activity Statistics</h2>
-              <div class="stats-grid">
-                <div class="stat-item">
-                  <span class="number">${activity.downtime !== null && activity.downtime !== undefined ? Math.floor(activity.downtime / 60) : 0}</span>
-                  <span class="label">Hours of Downtime</span>
-                </div>
-                <div class="stat-item">
-                  <span class="number">${activity.downtime !== null && activity.downtime !== undefined ? activity.downtime % 60 : 0}</span>
-                  <span class="label">Minutes of Downtime</span>
-                </div>
-                <div class="stat-item">
-                  <span class="number">${Array.isArray(activity.attendedByName) ? activity.attendedByName.length : 1}</span>
-                  <span class="label">Personnel Involved</span>
-                </div>
-                <div class="stat-item">
-                  <span class="number">${activity.images ? activity.images.length : 0}</span>
-                  <span class="label">Images Attached</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Activity History -->
-            <div class="section">
-              <h2>📝 Activity History</h2>
-              <div class="grid">
-                <div class="info-item">
-                  <label>Created At</label>
-                  <div class="value">${format(new Date(activity.createdAt), 'MMM dd, yyyy • h:mm a')}</div>
-                </div>
-                <div class="info-item">
-                  <label>Last Updated</label>
-                  <div class="value">${format(new Date(activity.updatedAt), 'MMM dd, yyyy • h:mm a')}</div>
-                </div>
-                <div class="info-item">
-                  <label>Activity ID</label>
-                  <div class="value">${activity._id}</div>
-                </div>
-              </div>
+            <div class="content-box">
+              <div class="info-label">Comments & Solution</div>
+              <div class="content-text">${activity.commentsOrSolution || 'N/A'}</div>
             </div>
           </div>
+        </div>
 
-          <!-- Footer -->
-          <div class="footer">
-            <p>Report generated on ${format(new Date(), 'MMMM dd, yyyy • h:mm a')}</p>
-            <p>Daily Log Activity Management System</p>
+        <!-- Personnel & Verification Section -->
+        <div class="section">
+          <h2 class="section-title">👥 Personnel & Verification</h2>
+          <div class="grid">
+            <div class="info-card">
+              <div class="info-label">Created By</div>
+              <div class="info-value">${activity.createdByName || 'N/A'}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Attended By</div>
+              <div class="info-value">${formatAttendees()}</div>
+            </div>
+            ${activity.adminVerifiedByName ? `
+            <div class="info-card">
+              <div class="info-label">Verified By</div>
+              <div class="info-value">${activity.adminVerifiedByName}</div>
+            </div>
+            ` : ''}
+            ${activity.adminVerifiedAt ? `
+            <div class="info-card">
+              <div class="info-label">Verified At</div>
+              <div class="info-value">${format(new Date(activity.adminVerifiedAt), 'MMM d, yyyy • h:mm a')}</div>
+            </div>
+            ` : ''}
           </div>
+        </div>
+
+        <!-- Activity Images Section -->
+        <div class="section">
+          <h2 class="section-title">📷 Activity Images</h2>
+          <div class="content-box">
+            ${formatImages()}
+          </div>
+        </div>
+
+        <!-- Activity Statistics Section -->
+        <div class="section">
+          <h2 class="section-title">📊 Activity Statistics</h2>
+          <div class="grid-4">
+            <div class="info-card">
+              <div class="info-label">Hours of Downtime</div>
+              <div class="info-value">${activity.downtime ? Math.floor(activity.downtime / 60) : 0}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Minutes of Downtime</div>
+              <div class="info-value">${activity.downtime ? activity.downtime % 60 : 0}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Personnel Involved</div>
+              <div class="info-value">${Array.isArray(activity.attendedByName) ? activity.attendedByName.length : 1}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Images Attached</div>
+              <div class="info-value">${activity.images ? activity.images.length : 0}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity History Section -->
+        <div class="section">
+          <h2 class="section-title">📝 Activity History</h2>
+          <div class="grid">
+            <div class="info-card">
+              <div class="info-label">Created At</div>
+              <div class="info-value">${format(new Date(activity.createdAt), 'MMM d, yyyy • h:mm a')}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Last Updated</div>
+              <div class="info-value">${format(new Date(activity.updatedAt), 'MMM d, yyyy • h:mm a')}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Activity ID</div>
+              <div class="info-value">${activity._id}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Report generated on ${new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}</p>
+          <p style="margin-top: 4px;">Daily Log Activity Management System</p>
         </div>
       </body>
-      </html>
+    </html>
     `
   }
 
   // Generate and open the report
   const reportHTML = generateReportHTML()
+  
+  // Open in new window
   const newWindow = window.open('about:blank', '_blank')
   if (newWindow) {
     newWindow.document.write(reportHTML)
