@@ -65,6 +65,13 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
     averageInspectionTime: 0,
     complianceRate: 0,
   },
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    hasNext: false,
+    hasPrev: false,
+  },
 
   // Actions
   setSchedules: (schedules) => {
@@ -213,35 +220,41 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
 
   setSearchTerm: (term) => {
     set({ searchTerm: term })
+    set(state => ({ pagination: { ...state.pagination, currentPage: 1 } }))
     get().filterSchedules()
     get().filterRecords()
   },
 
   setStatusFilter: (status) => {
     set({ statusFilter: status })
+    set(state => ({ pagination: { ...state.pagination, currentPage: 1 } }))
     get().filterSchedules()
     get().filterRecords()
   },
 
   setPriorityFilter: (priority) => {
     set({ priorityFilter: priority })
+    set(state => ({ pagination: { ...state.pagination, currentPage: 1 } }))
     get().filterSchedules()
     get().filterRecords()
   },
 
   setRiskLevelFilter: (riskLevel) => {
     set({ riskLevelFilter: riskLevel })
+    set(state => ({ pagination: { ...state.pagination, currentPage: 1 } }))
     get().filterSchedules()
     get().filterRecords()
   },
 
   setFrequencyFilter: (frequency) => {
     set({ frequencyFilter: frequency })
+    set(state => ({ pagination: { ...state.pagination, currentPage: 1 } }))
     get().filterSchedules()
   },
 
   setComplianceFilter: (compliance) => {
     set({ complianceFilter: compliance })
+    set(state => ({ pagination: { ...state.pagination, currentPage: 1 } }))
     get().filterRecords()
   },
 
@@ -254,6 +267,10 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
   setSelectedSchedule: (schedule) => set({ selectedSchedule: schedule }),
 
   setSelectedRecord: (record) => set({ selectedRecord: record }),
+
+  setCurrentPage: (page) => set(state => ({
+    pagination: { ...state.pagination, currentPage: page }
+  })),
 
   filterSchedules: () => {
     const { schedules, searchTerm, statusFilter, priorityFilter, riskLevelFilter, frequencyFilter } = get()
@@ -332,12 +349,22 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
     set({ filteredRecords: filtered })
   },
 
-  fetchSchedules: async () => {
+  fetchSchedules: async (filters) => {
     set({ isLoading: true })
     try {
-      // Note: Department filtering is now handled by the API based on user authentication
-      // No need to pass department explicitly as it's extracted from the user session/token
-      const response = await safetyInspectionSchedulesApi.getAll()
+      const state = get();
+      const apiFilters = {
+        search: state.searchTerm,
+        status: state.statusFilter,
+        priority: state.priorityFilter,
+        riskLevel: state.riskLevelFilter,
+        frequency: state.frequencyFilter,
+        page: state.pagination.currentPage,
+        limit: 50,
+        ...filters
+      };
+      
+      const response = await safetyInspectionSchedulesApi.getAll(apiFilters)
       
       // Map MongoDB _id field to id field for frontend compatibility
       const schedulesWithValidIds = response.data.schedules.map((schedule) => {
@@ -348,7 +375,11 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
         return schedule;
       })
       
-      set({ schedules: schedulesWithValidIds, isLoading: false })
+      set({ 
+        schedules: schedulesWithValidIds, 
+        pagination: response.data.pagination,
+        isLoading: false 
+      })
       get().filterSchedules()
       get().calculateStats()
     } catch (error) {
@@ -361,6 +392,41 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
       set({ schedules: sampleDataWithObjectIds, isLoading: false })
       get().filterSchedules()
       get().calculateStats()
+    }
+  },
+
+  // Fetch all schedules for reports (bypasses pagination)
+  fetchAllSchedulesForReport: async (filters) => {
+    try {
+      const state = get();
+      const apiFilters = {
+        search: state.searchTerm,
+        status: state.statusFilter,
+        priority: state.priorityFilter,
+        riskLevel: state.riskLevelFilter,
+        frequency: state.frequencyFilter,
+        page: 1,
+        limit: 10000, // Large limit to get all records
+        ...filters
+      };
+      
+      const response = await safetyInspectionSchedulesApi.getAll(apiFilters);
+      
+      if (response.success && response.data) {
+        // Map MongoDB _id field to id field for frontend compatibility
+        const schedulesWithValidIds = response.data.schedules.map((schedule) => {
+          if (schedule._id && !schedule.id) {
+            schedule.id = schedule._id;
+          }
+          return schedule;
+        });
+        return schedulesWithValidIds;
+      } else {
+        throw new Error(response.error || 'Failed to fetch all schedules');
+      }
+    } catch (error) {
+      console.error('Error fetching all schedules for report:', error);
+      throw error;
     }
   },
 

@@ -124,6 +124,14 @@ export interface SafetyInspectionStats {
   complianceRate: number // percentage
 }
 
+export interface SafetyInspectionPagination {
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  hasNext: boolean
+  hasPrev: boolean
+}
+
 export interface SafetyInspectionState {
   schedules: SafetyInspectionSchedule[]
   records: SafetyInspectionRecord[]
@@ -141,6 +149,7 @@ export interface SafetyInspectionState {
   selectedSchedule: SafetyInspectionSchedule | null
   selectedRecord: SafetyInspectionRecord | null
   stats: SafetyInspectionStats
+  pagination: SafetyInspectionPagination
 
   // Actions
   setSchedules: (schedules: SafetyInspectionSchedule[]) => void
@@ -162,9 +171,11 @@ export interface SafetyInspectionState {
   setRecordDialogOpen: (open: boolean) => void
   setSelectedSchedule: (schedule: SafetyInspectionSchedule | null) => void
   setSelectedRecord: (record: SafetyInspectionRecord | null) => void
+  setCurrentPage: (page: number) => void
   filterSchedules: () => void
   filterRecords: () => void
-  fetchSchedules: () => Promise<void>
+  fetchSchedules: (filters?: any) => Promise<void>
+  fetchAllSchedulesForReport: (filters?: any) => Promise<SafetyInspectionSchedule[]>
   fetchRecords: () => Promise<void>
   fetchStats: () => Promise<void>
   calculateStats: () => void

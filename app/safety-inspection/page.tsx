@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Filter, Shield, AlertTriangle, FileText, Activity } from "lucide-react"
+import { Plus, Search, Filter, Shield, AlertTriangle, FileText, Activity, ChevronLeft, ChevronRight } from "lucide-react"
 import { PageLayout } from "@/components/page-layout"
 import { SafetyInspectionStats } from "@/components/safety-inspection/safety-inspection-stats"
 import { SafetyInspectionScheduleForm } from "@/components/safety-inspection/safety-inspection-schedule-form"
@@ -31,13 +31,16 @@ export default function SafetyInspectionPage() {
     complianceFilter,
     isLoading,
     stats,
+    pagination,
     setSearchTerm,
     setStatusFilter,
     setPriorityFilter,
     setRiskLevelFilter,
     setFrequencyFilter,
     setComplianceFilter,
+    setCurrentPage,
     setScheduleDialogOpen,
+    fetchSchedules,
     initialize,
   } = useSafetyInspectionStore()
 
@@ -57,6 +60,56 @@ export default function SafetyInspectionPage() {
     setFrequencyFilter("all")
     setComplianceFilter("all")
   }
+
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    fetchSchedules({ page: newPage });
+  };
+
+  const handlePreviousPage = () => {
+    if (pagination.hasPrev) {
+      handlePageChange(pagination.currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (pagination.hasNext) {
+      handlePageChange(pagination.currentPage + 1);
+    }
+  };
+
+  // Updated filter handlers to trigger API calls
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setTimeout(() => {
+      fetchSchedules({ page: 1 });
+    }, 300);
+  };
+
+  const handleStatusFilter = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+    fetchSchedules({ page: 1 });
+  };
+
+  const handlePriorityFilter = (value: string) => {
+    setPriorityFilter(value);
+    setCurrentPage(1);
+    fetchSchedules({ page: 1 });
+  };
+
+  const handleRiskLevelFilter = (value: string) => {
+    setRiskLevelFilter(value);
+    setCurrentPage(1);
+    fetchSchedules({ page: 1 });
+  };
+
+  const handleFrequencyFilter = (value: string) => {
+    setFrequencyFilter(value);
+    setCurrentPage(1);
+    fetchSchedules({ page: 1 });
+  };
 
   const getScheduleStatusOptions = () => {
     return ["active", "overdue", "completed", "inactive"]
@@ -101,7 +154,7 @@ export default function SafetyInspectionPage() {
                   <Input
                     placeholder="Search inspections..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => handleSearch(e.target.value)}
                     className="pl-8"
                   />
                 </div>
@@ -109,7 +162,7 @@ export default function SafetyInspectionPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Status</label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select value={statusFilter} onValueChange={handleStatusFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
@@ -126,7 +179,7 @@ export default function SafetyInspectionPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Priority</label>
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <Select value={priorityFilter} onValueChange={handlePriorityFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="All priorities" />
                   </SelectTrigger>
@@ -145,7 +198,7 @@ export default function SafetyInspectionPage() {
                   {activeTab === "schedules" ? "Risk Level" : "Compliance"}
                 </label>
                 {activeTab === "schedules" ? (
-                  <Select value={riskLevelFilter} onValueChange={setRiskLevelFilter}>
+                  <Select value={riskLevelFilter} onValueChange={handleRiskLevelFilter}>
                     <SelectTrigger>
                       <SelectValue placeholder="All risk levels" />
                     </SelectTrigger>
@@ -179,7 +232,7 @@ export default function SafetyInspectionPage() {
               <div className="mt-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Frequency</label>
-                  <Select value={frequencyFilter} onValueChange={setFrequencyFilter}>
+                  <Select value={frequencyFilter} onValueChange={handleFrequencyFilter}>
                     <SelectTrigger className="w-[200px]">
                       <SelectValue placeholder="All frequencies" />
                     </SelectTrigger>
@@ -254,6 +307,55 @@ export default function SafetyInspectionPage() {
               isLoading={isLoading}
               isAdmin={isAdmin}
             />
+            
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && filteredSchedules.length > 0 && (
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {((pagination.currentPage - 1) * 50) + 1} to {Math.min(pagination.currentPage * 50, pagination.totalCount)} of {pagination.totalCount} schedules
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreviousPage}
+                    disabled={!pagination.hasPrev}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      const pageNum = Math.max(1, Math.min(pagination.totalPages - 4, pagination.currentPage - 2)) + i;
+                      if (pageNum > pagination.totalPages) return null;
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={pageNum === pagination.currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNextPage}
+                    disabled={!pagination.hasNext}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="records" className="space-y-6">
@@ -273,7 +375,6 @@ export default function SafetyInspectionPage() {
         {/* Safety Inspection Schedules Report */}
         {isReportOpen && (
           <SafetyInspectionSchedulesReport 
-            schedules={filteredSchedules}
             onClose={() => setIsReportOpen(false)}
           />
         )}

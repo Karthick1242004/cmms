@@ -1,16 +1,39 @@
 "use client"
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
-import { Download, FileText, Shield } from 'lucide-react'
+import { Download, FileText, Shield, Loader2 } from 'lucide-react'
 import type { SafetyInspectionSchedule } from "@/types/safety-inspection"
+import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
+import { toast } from "sonner"
 
 interface SafetyInspectionSchedulesReportProps {
-  schedules: SafetyInspectionSchedule[]
   onClose: () => void
 }
 
-export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyInspectionSchedulesReportProps) {
+export function SafetyInspectionSchedulesReport({ onClose }: SafetyInspectionSchedulesReportProps) {
+  const [allSchedules, setAllSchedules] = useState<SafetyInspectionSchedule[]>([])
+  const [isLoadingAllSchedules, setIsLoadingAllSchedules] = useState(false)
+  
+  const { fetchAllSchedulesForReport } = useSafetyInspectionStore()
+
+  // Fetch all schedules when component opens
+  useEffect(() => {
+    const loadAllSchedules = async () => {
+      setIsLoadingAllSchedules(true)
+      try {
+        const schedules = await fetchAllSchedulesForReport()
+        setAllSchedules(schedules)
+      } catch (error) {
+        console.error('Error loading all schedules for report:', error)
+        toast.error('Failed to load all schedules for report')
+      } finally {
+        setIsLoadingAllSchedules(false)
+      }
+    }
+
+    loadAllSchedules()
+  }, [fetchAllSchedulesForReport])
   const handleExportReport = () => {
     // Generate the report HTML
     const reportHTML = generateReportHTML()
@@ -28,14 +51,14 @@ export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyIn
     const currentTime = new Date().toLocaleTimeString()
     
     // Calculate summary statistics
-    const totalSchedules = schedules.length
-    const activeSchedules = schedules.filter(s => s.status === 'active')
-    const overdueSchedules = schedules.filter(s => s.status === 'overdue')
-    const completedSchedules = schedules.filter(s => s.status === 'completed')
-    const inactiveSchedules = schedules.filter(s => s.status === 'inactive')
+    const totalSchedules = allSchedules.length
+    const activeSchedules = allSchedules.filter(s => s.status === 'active')
+    const overdueSchedules = allSchedules.filter(s => s.status === 'overdue')
+    const completedSchedules = allSchedules.filter(s => s.status === 'completed')
+    const inactiveSchedules = allSchedules.filter(s => s.status === 'inactive')
     
     // Group by priority
-    const priorityGroups = schedules.reduce((acc, schedule) => {
+    const priorityGroups = allSchedules.reduce((acc, schedule) => {
       const priority = schedule.priority || 'medium'
       if (!acc[priority]) {
         acc[priority] = { count: 0, schedules: [] }
@@ -46,7 +69,7 @@ export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyIn
     }, {} as Record<string, any>)
     
     // Group by risk level
-    const riskLevelGroups = schedules.reduce((acc, schedule) => {
+    const riskLevelGroups = allSchedules.reduce((acc, schedule) => {
       const risk = schedule.riskLevel || 'medium'
       if (!acc[risk]) {
         acc[risk] = { count: 0, schedules: [] }
@@ -57,7 +80,7 @@ export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyIn
     }, {} as Record<string, any>)
     
     // Group by department
-    const departmentGroups = schedules.reduce((acc, schedule) => {
+    const departmentGroups = allSchedules.reduce((acc, schedule) => {
       const dept = schedule.department || 'Unknown'
       if (!acc[dept]) {
         acc[dept] = { count: 0, active: 0, overdue: 0, completed: 0 }
@@ -79,16 +102,16 @@ export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyIn
     })).sort((a, b) => b.totalSchedules - a.totalSchedules)
     
     // Critical schedules (high priority or high risk)
-    const criticalSchedules = schedules.filter(s => 
+    const criticalSchedules = allSchedules.filter(s => 
       s.priority === 'high' || s.priority === 'critical' || 
       s.riskLevel === 'high' || s.riskLevel === 'critical'
     ).slice(0, 10)
     
     // Overdue schedules
-    const overdueItems = schedules.filter(s => s.status === 'overdue').slice(0, 15)
+    const overdueItems = allSchedules.filter(s => s.status === 'overdue').slice(0, 15)
     
     // Frequency analysis
-    const frequencyGroups = schedules.reduce((acc, schedule) => {
+    const frequencyGroups = allSchedules.reduce((acc, schedule) => {
       const freq = schedule.frequency || 'monthly'
       if (!acc[freq]) {
         acc[freq] = 0
@@ -602,7 +625,7 @@ export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyIn
         
         <div class="section">
           <h2 class="section-title">
-            📋 Complete Schedule Registry (${schedules.length} Schedules)
+            📋 Complete Schedule Registry (${allSchedules.length} Schedules)
           </h2>
           <table>
             <thead>
@@ -621,7 +644,7 @@ export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyIn
               </tr>
             </thead>
             <tbody>
-              ${schedules.map(schedule => `
+              ${allSchedules.map(schedule => `
                 <tr>
                   <td class="font-medium">${schedule.title}</td>
                   <td class="text-sm">${schedule.assetName}</td>
@@ -647,7 +670,7 @@ export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyIn
         <div class="report-footer">
           <p>Report generated on ${currentDate} at ${currentTime}</p>
           <p style="margin-top: 4px;">
-            This report contains ${schedules.length} safety inspection schedules across ${Object.keys(departmentGroups).length} departments
+            This report contains ${allSchedules.length} safety inspection schedules across ${Object.keys(departmentGroups).length} departments
           </p>
           <p style="margin-top: 4px;">
             Compliance Overview: ${activeSchedules.length} active • ${overdueSchedules.length} overdue • ${completedSchedules.length} completed • ${criticalSchedules.length} critical risk
@@ -669,7 +692,7 @@ export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyIn
             Safety Inspection Schedules Report
           </h3>
           <p className="text-sm text-gray-600 mb-6">
-            Generate a comprehensive safety compliance report for <strong>{schedules.length} schedules</strong> that opens in a new window with print functionality.
+            Generate a comprehensive safety compliance report for <strong>{allSchedules.length} schedules</strong> that opens in a new window with print functionality.
           </p>
           
           <div className="mb-4 p-3 bg-blue-50 rounded-lg text-left">
@@ -687,10 +710,20 @@ export function SafetyInspectionSchedulesReport({ schedules, onClose }: SafetyIn
           <div className="flex flex-col sm:flex-row gap-3">
             <Button 
               onClick={handleExportReport}
+              disabled={isLoadingAllSchedules}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Generate Report
+              {isLoadingAllSchedules ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Loading All Schedules...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Generate Report
+                </>
+              )}
             </Button>
             <Button 
               onClick={onClose}
