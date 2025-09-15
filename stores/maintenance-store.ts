@@ -265,6 +265,7 @@ export const useMaintenanceStore = create<MaintenanceState>()(
             let filtered = state.schedules.filter(
               (schedule) =>
                 schedule.title.toLowerCase().includes(term) ||
+                schedule.description?.toLowerCase().includes(term) ||
                 schedule.assetName.toLowerCase().includes(term) ||
                 schedule.assetTag?.toLowerCase().includes(term) ||
                 schedule.location.toLowerCase().includes(term) ||
