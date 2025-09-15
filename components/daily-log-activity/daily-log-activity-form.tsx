@@ -686,9 +686,9 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                   <Label htmlFor="status">Status</Label>
                   <Select 
                     value={formData.status} 
-                                        onValueChange={(value) => setFormData(prev => ({
+                    onValueChange={(value) => setFormData(prev => ({
                       ...prev,
-                      status: value as 'open' | 'in-progress' | 'completed' | 'pending_verification' | 'verified'
+                      status: value as 'open' | 'in-progress' | 'completed' | 'verified'
                     }))}
                   >
                     <SelectTrigger>
@@ -697,8 +697,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
                     <SelectContent>
                       <SelectItem value="open">Open</SelectItem>
                       <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
-                      <SelectItem value="verified">Verified</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

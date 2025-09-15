@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
 // Valid daily activity status values
-const VALID_STATUSES = ['open', 'in-progress', 'completed', 'pending_verification', 'verified', 'resolved'] as const;
+const VALID_STATUSES = ['open', 'in-progress', 'completed', 'verified'] as const;
 
 export async function PATCH(
   request: NextRequest,
@@ -84,15 +84,6 @@ export async function PATCH(
       newValue: status
     };
 
-    // If status is being changed to 'completed', set it to 'pending_verification' instead
-    // so admins can verify it (only for normal users)
-    let finalStatus = status;
-    if (status === 'completed' && user.accessLevel === 'normal_user') {
-      finalStatus = 'pending_verification';
-      historyEntry.newValue = 'pending_verification';
-      historyEntry.details = `Status changed from ${existingActivity.status} to pending_verification (awaiting admin verification)`;
-    }
-
     // Only allow 'verified' status for super_admin and department_admin
     if (status === 'verified' && user.accessLevel === 'normal_user') {
       return NextResponse.json(
@@ -100,6 +91,16 @@ export async function PATCH(
         { status: 403 }
       );
     }
+
+    // Only allow 'verified' status if current status is 'completed'
+    if (status === 'verified' && existingActivity.status !== 'completed') {
+      return NextResponse.json(
+        { success: false, message: 'Activities can only be verified when they are completed' },
+        { status: 400 }
+      );
+    }
+
+    let finalStatus = status;
 
     // Auto-set end time when activity is completed or verified (if not already set)
     const currentTime = new Date().toTimeString().slice(0, 5); // HH:MM format
@@ -156,7 +157,7 @@ export async function PATCH(
         console.log('🚀 [Daily Activity Status] - Creating activity log for status change:', finalStatus);
         
         // Define completion states
-        const completionStates = ['completed', 'pending_verification', 'verified', 'resolved'];
+        const completionStates = ['completed', 'verified'];
         const isCompleted = completionStates.includes(finalStatus);
         
         // Define action mapping
@@ -168,13 +169,9 @@ export async function PATCH(
           action = 'verified';
           title = 'Daily Activity Verified';
           activityLogStatus = 'completed';
-        } else if (finalStatus === 'resolved' || finalStatus === 'completed') {
+        } else if (finalStatus === 'completed') {
           action = 'completed';
           title = 'Daily Activity Completed';
-          activityLogStatus = 'completed';
-        } else if (finalStatus === 'pending_verification') {
-          action = 'completed';
-          title = 'Daily Activity Completed (Pending Verification)';
           activityLogStatus = 'completed';
         }
 

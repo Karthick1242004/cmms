@@ -24,13 +24,16 @@ interface DailyActivityStatusDialogProps {
   userRole?: string;
 }
 
-const statusOptions = [
+// Base status options for normal users
+const baseStatusOptions = [
   { value: 'open', label: 'Open', description: 'Activity is newly created and not started' },
   { value: 'in-progress', label: 'In Progress', description: 'Activity is currently being worked on' },
   { value: 'completed', label: 'Completed', description: 'Activity work is finished' },
-  { value: 'pending_verification', label: 'Pending Verification', description: 'Activity completed and awaiting verification' },
+];
+
+// Admin-only status option
+const adminStatusOptions = [
   { value: 'verified', label: 'Verified', description: 'Activity has been verified by admin' },
-  { value: 'resolved', label: 'Resolved', description: 'Activity is fully resolved' },
 ];
 
 const getStatusColor = (status: string) => {
@@ -38,9 +41,7 @@ const getStatusColor = (status: string) => {
     case 'open': return 'bg-red-100 text-red-800 border-red-200';
     case 'in-progress': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
-    case 'pending_verification': return 'bg-orange-100 text-orange-800 border-orange-200';
     case 'verified': return 'bg-green-100 text-green-800 border-green-200';
-    case 'resolved': return 'bg-green-100 text-green-800 border-green-200';
     default: return 'bg-gray-100 text-gray-800 border-gray-200';
   }
 };
@@ -85,8 +86,22 @@ export function DailyActivityStatusDialog({
 
   if (!activity) return null;
 
-  const currentStatusOption = statusOptions.find(option => option.value === activity.status);
-  const selectedStatusOption = statusOptions.find(option => option.value === selectedStatus);
+  // Determine available status options based on user role and current activity status
+  const getAvailableStatusOptions = () => {
+    const isAdmin = userRole === 'super_admin' || userRole === 'department_admin';
+    let availableOptions = [...baseStatusOptions];
+
+    // Only show 'verified' option to admins and only if current status is 'completed'
+    if (isAdmin && activity.status === 'completed') {
+      availableOptions.push(...adminStatusOptions);
+    }
+
+    return availableOptions;
+  };
+
+  const availableStatusOptions = getAvailableStatusOptions();
+  const currentStatusOption = [...baseStatusOptions, ...adminStatusOptions].find(option => option.value === activity.status);
+  const selectedStatusOption = availableStatusOptions.find(option => option.value === selectedStatus);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -136,22 +151,14 @@ export function DailyActivityStatusDialog({
                 <SelectValue placeholder="Select new status" />
               </SelectTrigger>
               <SelectContent>
-                {statusOptions
-                  .filter(option => {
-                    // Only show 'verified' option to super_admin and department_admin
-                    if (option.value === 'verified') {
-                      return userRole === 'super_admin' || userRole === 'department_admin';
-                    }
-                    return true;
-                  })
-                  .map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{option.label}</span>
-                        <span className="text-xs text-muted-foreground">{option.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                {availableStatusOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{option.label}</span>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {selectedStatusOption && (
