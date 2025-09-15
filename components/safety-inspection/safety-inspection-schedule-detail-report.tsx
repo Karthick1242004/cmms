@@ -80,7 +80,7 @@ export function SafetyInspectionScheduleDetailReport({ schedule, onClose }: Safe
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Safety Inspection Schedule Detail - ${schedule.title}</title>
+        <title>Safety Inspection Schedule Report - ${schedule.title}</title>
         <style>
           * {
             margin: 0;
@@ -89,594 +89,384 @@ export function SafetyInspectionScheduleDetailReport({ schedule, onClose }: Safe
           }
           
           body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            background: white;
+            background: #fff;
             padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
           }
           
-          .report-header {
+          .header {
             text-align: center;
-            border-bottom: 3px solid #2563eb;
-            padding-bottom: 20px;
             margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #3b82f6;
           }
           
-          .report-title {
+          .header h1 {
             font-size: 28px;
-            font-weight: bold;
             color: #1e40af;
             margin-bottom: 8px;
+            text-transform: uppercase;
           }
           
-          .schedule-name {
-            font-size: 20px;
-            color: #374151;
-            margin-bottom: 8px;
-          }
-          
-          .asset-info {
-            font-size: 16px;
-            color: #6b7280;
-            margin-bottom: 8px;
-          }
-          
-          .generated-info {
+          .header .subtitle {
             font-size: 14px;
             color: #6b7280;
+            margin-bottom: 4px;
+          }
+          
+          .header .date {
+            font-size: 12px;
+            color: #9ca3af;
           }
           
           .section {
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             page-break-inside: avoid;
           }
           
           .section-title {
-            font-size: 20px;
-            font-weight: bold;
-            color: #1e40af;
-            border-bottom: 2px solid #dbeafe;
-            padding-bottom: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          }
-          
-          .overview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
-          }
-          
-          .overview-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 16px;
-            text-align: center;
-          }
-          
-          .overview-card h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #475569;
-            margin-bottom: 8px;
-          }
-          
-          .overview-card .value {
             font-size: 18px;
-            font-weight: bold;
+            font-weight: 600;
             color: #1e40af;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+            text-transform: uppercase;
           }
           
-          .info-grid {
+          .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
           }
           
-          .info-section {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 16px;
-          }
-          
-          .info-section h4 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 12px;
-            border-bottom: 1px solid #d1d5db;
-            padding-bottom: 4px;
+          .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
           }
           
           .info-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
             margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
           }
           
           .info-label {
-            font-size: 14px;
-            font-weight: 500;
-            color: #6b7280;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
           }
           
           .info-value {
             font-size: 14px;
             font-weight: 600;
-            color: #374151;
+            color: #1e293b;
           }
           
-          .status-active { color: #059669; }
-          .status-overdue { color: #dc2626; }
-          .status-completed { color: #6b7280; }
-          .status-inactive { color: #9ca3af; }
+          .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
           
-          .priority-low { color: #059669; }
-          .priority-medium { color: #2563eb; }
-          .priority-high { color: #d97706; }
-          .priority-critical { color: #dc2626; font-weight: bold; }
+          .priority-critical { background: #fee2e2; color: #dc2626; }
+          .priority-high { background: #fed7aa; color: #ea580c; }
+          .priority-medium { background: #fef3c7; color: #d97706; }
+          .priority-low { background: #dcfce7; color: #16a34a; }
           
-          .risk-low { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-          .risk-medium { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-          .risk-high { background: #fed7aa; color: #c2410c; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-          .risk-critical { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+          .status-active { background: #dcfce7; color: #16a34a; }
+          .status-inactive { background: #f1f5f9; color: #64748b; }
+          .status-completed { background: #dcfce7; color: #16a34a; }
+          .status-overdue { background: #fee2e2; color: #dc2626; }
           
-          .due-overdue { color: #dc2626; font-weight: bold; }
-          .due-soon { color: #d97706; font-weight: bold; }
-          .due-normal { color: #059669; }
+          .risk-critical { background: #fee2e2; color: #dc2626; }
+          .risk-high { background: #fed7aa; color: #ea580c; }
+          .risk-medium { background: #fef3c7; color: #d97706; }
+          .risk-low { background: #dcfce7; color: #16a34a; }
           
-          .checklist-category {
-            border: 1px solid #e5e7eb;
+          .content-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
             border-radius: 8px;
-            margin-bottom: 16px;
-            overflow: hidden;
+            padding: 15px;
+            min-height: 60px;
           }
           
-          .category-header {
-            background: #f3f4f6;
-            padding: 12px 16px;
+          .content-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+          }
+          
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          
+          th, td {
+            padding: 12px;
+            text-align: left;
             border-bottom: 1px solid #e5e7eb;
           }
           
-          .category-title {
-            font-size: 16px;
+          th {
+            background: #f1f5f9;
             font-weight: 600;
             color: #374151;
-            margin-bottom: 4px;
-          }
-          
-          .category-meta {
-            display: flex;
-            gap: 12px;
             font-size: 12px;
-            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
           
-          .checklist-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid #f3f4f6;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-          
-          .checklist-item:last-child {
-            border-bottom: none;
-          }
-          
-          .item-content {
-            flex: 1;
-          }
-          
-          .item-description {
-            font-size: 14px;
-            font-weight: 500;
-            color: #374151;
-            margin-bottom: 2px;
-          }
-          
-          .item-standard {
-            font-size: 12px;
-            color: #6b7280;
-          }
-          
-          .item-meta {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          }
-          
-          .required-badge {
-            background: #dc2626;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-          }
-          
-          .optional-badge {
-            background: #6b7280;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-          }
-          
-          .standards-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-top: 8px;
-          }
-          
-          .standard-badge {
-            background: #eff6ff;
-            color: #1e40af;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 500;
-            border: 1px solid #dbeafe;
-          }
-          
-          .report-footer {
+          .footer {
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
+            border-top: 2px solid #e5e7eb;
             text-align: center;
             color: #6b7280;
             font-size: 12px;
           }
           
-          .print-controls {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-            z-index: 1000;
-          }
-          
-          .print-btn, .close-btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-          }
-          
-          .print-btn {
-            background: #2563eb;
-            color: white;
-          }
-          
-          .print-btn:hover {
-            background: #1d4ed8;
-          }
-          
-          .close-btn {
-            background: #6b7280;
-            color: white;
-          }
-          
-          .close-btn:hover {
-            background: #4b5563;
+          .icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            vertical-align: middle;
           }
           
           @media print {
-            .print-controls {
-              display: none;
-            }
-            
-            body {
-              padding: 0;
-            }
-            
-            .section {
-              page-break-inside: avoid;
-            }
+            body { padding: 0; }
+            .section { page-break-inside: avoid; }
           }
         </style>
       </head>
       <body>
-        <div class="print-controls">
-          <button class="print-btn" onclick="window.print()">
-            🖨️ Print Report
-          </button>
-          <button class="close-btn" onclick="window.close()">
-            ❌ Close
-          </button>
+        <div class="header">
+          <h1>Safety Inspection Schedule Report</h1>
+          <div class="subtitle">Schedule ID: ${schedule.id}</div>
+          <div class="date">Generated on ${new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}</div>
         </div>
-        
-        <div class="report-header">
-          <h1 class="report-title">Safety Inspection Schedule Detail</h1>
-          <h2 class="schedule-name">${schedule.title}</h2>
-          <p class="asset-info">${schedule.assetName} • ${schedule.location} • ${schedule.department}</p>
-          <p class="generated-info">Generated on ${currentDate} at ${currentTime}</p>
-        </div>
-        
+
+        <!-- Schedule Information Section -->
         <div class="section">
-          <h2 class="section-title">
-            📊 Schedule Overview
-          </h2>
-          <div class="overview-grid">
-            <div class="overview-card">
-              <h3>Status</h3>
-              <div class="value status-${schedule.status}">${schedule.status.charAt(0).toUpperCase() + schedule.status.slice(1)}</div>
+          <h2 class="section-title">📋 SCHEDULE INFORMATION</h2>
+          <div class="grid">
+            <div class="info-item">
+              <div class="info-label">SCHEDULE ID</div>
+              <div class="info-value">${schedule.id}</div>
             </div>
-            <div class="overview-card">
-              <h3>Priority</h3>
-              <div class="value priority-${schedule.priority}">${schedule.priority.charAt(0).toUpperCase() + schedule.priority.slice(1)}</div>
+            <div class="info-item">
+              <div class="info-label">TITLE</div>
+              <div class="info-value">${schedule.title}</div>
             </div>
-            <div class="overview-card">
-              <h3>Risk Level</h3>
-              <div class="value">
-                <span class="risk-${schedule.riskLevel}">${schedule.riskLevel.charAt(0).toUpperCase() + schedule.riskLevel.slice(1)}</span>
-              </div>
+            <div class="info-item">
+              <div class="info-label">ASSET</div>
+              <div class="info-value">${schedule.assetName}</div>
             </div>
-            <div class="overview-card">
-              <h3>Next Due</h3>
-              <div class="value ${daysUntilDue < 0 ? 'due-overdue' : daysUntilDue <= 3 ? 'due-soon' : 'due-normal'}">
-                ${formatDate(schedule.nextDueDate)}
-              </div>
+            <div class="info-item">
+              <div class="info-label">LOCATION</div>
+              <div class="info-value">${schedule.location}</div>
             </div>
-            <div class="overview-card">
-              <h3>Frequency</h3>
-              <div class="value">${schedule.frequency === "custom" ? `Every ${schedule.customFrequencyDays} days` : schedule.frequency.charAt(0).toUpperCase() + schedule.frequency.slice(1)}</div>
+            <div class="info-item">
+              <div class="info-label">DEPARTMENT</div>
+              <div class="info-value">${schedule.department}</div>
             </div>
-            <div class="overview-card">
-              <h3>Estimated Duration</h3>
-              <div class="value">${schedule.estimatedDuration}h</div>
-            </div>
-          </div>
-          
-          <div class="info-grid">
-            <div class="info-section">
-              <h4>Asset Information</h4>
-              <div class="info-item">
-                <span class="info-label">Asset Name:</span>
-                <span class="info-value">${schedule.assetName}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Asset Type:</span>
-                <span class="info-value">${schedule.assetType}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Asset Tag:</span>
-                <span class="info-value">${schedule.assetTag || 'N/A'}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Location:</span>
-                <span class="info-value">${schedule.location}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Department:</span>
-                <span class="info-value">${schedule.department}</span>
+            <div class="info-item">
+              <div class="info-label">STATUS</div>
+              <div class="info-value">
+                <span class="status-badge status-${schedule.status}">${schedule.status.toUpperCase()}</span>
               </div>
             </div>
-            
-            <div class="info-section">
-              <h4>Schedule Details</h4>
-              <div class="info-item">
-                <span class="info-label">Start Date:</span>
-                <span class="info-value">${formatDate(schedule.startDate)}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Last Completed:</span>
-                <span class="info-value">${schedule.lastCompletedDate ? formatDate(schedule.lastCompletedDate) : 'Never'}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Assigned Inspector:</span>
-                <span class="info-value">${schedule.assignedInspector || 'Unassigned'}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Created:</span>
-                <span class="info-value">${formatDateTime(schedule.createdAt)}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Updated:</span>
-                <span class="info-value">${formatDateTime(schedule.updatedAt)}</span>
+            <div class="info-item">
+              <div class="info-label">PRIORITY</div>
+              <div class="info-value">
+                <span class="status-badge priority-${schedule.priority}">${schedule.priority.toUpperCase()}</span>
               </div>
             </div>
-          </div>
-          
-          ${daysUntilDue !== null ? `
-          <div style="margin-top: 16px; padding: 12px; border-radius: 8px; background: ${daysUntilDue < 0 ? '#fef2f2' : daysUntilDue <= 3 ? '#fffbeb' : '#f0fdf4'};">
-            <strong style="color: ${daysUntilDue < 0 ? '#dc2626' : daysUntilDue <= 3 ? '#d97706' : '#059669'};">
-              ${daysUntilDue < 0 
-                ? `⚠️ OVERDUE by ${Math.abs(daysUntilDue)} days - Immediate attention required`
-                : daysUntilDue === 0 
-                ? '🚨 DUE TODAY - Schedule inspection immediately'
-                : daysUntilDue <= 3
-                ? `⏰ Due in ${daysUntilDue} days - Prepare for upcoming inspection`
-                : `✅ ${daysUntilDue} days remaining until next inspection`
-              }
-            </strong>
-          </div>
-          ` : ''}
-        </div>
-        
-        ${schedule.description ? `
-        <div class="section">
-          <h2 class="section-title">
-            📝 Description
-          </h2>
-          <div style="background: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb;">
-            <p style="white-space: pre-wrap; line-height: 1.6;">${schedule.description}</p>
+            <div class="info-item">
+              <div class="info-label">RISK LEVEL</div>
+              <div class="info-value">
+                <span class="status-badge risk-${schedule.riskLevel}">${schedule.riskLevel.toUpperCase()}</span>
+              </div>
+            </div>
           </div>
         </div>
-        ` : ''}
-        
+
+        <!-- Schedule Details Section -->
         <div class="section">
-          <h2 class="section-title">
-            🛡️ Safety Standards
-          </h2>
-          ${schedule.safetyStandards.length > 0 ? `
-            <div class="standards-list">
-              ${schedule.safetyStandards.map(standard => `
-                <span class="standard-badge">${standard}</span>
-              `).join('')}
+          <h2 class="section-title">📅 SCHEDULE DETAILS</h2>
+          <div class="grid">
+            <div class="info-item">
+              <div class="info-label">FREQUENCY</div>
+              <div class="info-value">${schedule.frequency}</div>
             </div>
-          ` : `
-            <p style="color: #6b7280; font-style: italic;">No safety standards specified</p>
-          `}
+            <div class="info-item">
+              <div class="info-label">START DATE</div>
+              <div class="info-value">${formatDate(schedule.startDate)}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">NEXT DUE DATE</div>
+              <div class="info-value">${formatDate(schedule.nextDueDate)}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">DAYS UNTIL DUE</div>
+              <div class="info-value">${daysUntilDue} days</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">ESTIMATED DURATION</div>
+              <div class="info-value">${schedule.estimatedDuration} hours</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">ASSIGNED INSPECTOR</div>
+              <div class="info-value">${schedule.assignedInspector || 'Not assigned'}</div>
+            </div>
+            ${schedule.lastCompletedDate ? `
+            <div class="info-item">
+              <div class="info-label">LAST COMPLETED</div>
+              <div class="info-value">${formatDate(schedule.lastCompletedDate)}</div>
+            </div>
+            ` : ''}
+          </div>
         </div>
-        
+
+        <!-- Description Section -->
         <div class="section">
-          <h2 class="section-title">
-            📋 Checklist Overview
-          </h2>
-          <div class="overview-grid">
-            <div class="overview-card">
-              <h3>Total Categories</h3>
-              <div class="value">${totalCategories}</div>
+          <h2 class="section-title">📝 SUBJECT & DETAILS</h2>
+          <div class="content-box">
+            <div class="content-text">${schedule.description || 'No description provided'}</div>
+          </div>
+        </div>
+
+        <!-- Safety Standards Section -->
+        <div class="section">
+          <h2 class="section-title">🛡️ SAFETY STANDARDS</h2>
+          <div class="content-box">
+            <div class="content-text">${schedule.safetyStandards.join(', ')}</div>
+          </div>
+        </div>
+
+        <!-- Checklist Statistics Section -->
+        <div class="section">
+          <h2 class="section-title">📊 CHECKLIST STATISTICS</h2>
+          <div class="grid-4">
+            <div class="info-item">
+              <div class="info-label">TOTAL CATEGORIES</div>
+              <div class="info-value">${totalCategories}</div>
             </div>
-            <div class="overview-card">
-              <h3>Required Categories</h3>
-              <div class="value">${requiredCategories}</div>
+            <div class="info-item">
+              <div class="info-label">REQUIRED CATEGORIES</div>
+              <div class="info-value">${requiredCategories}</div>
             </div>
-            <div class="overview-card">
-              <h3>Total Items</h3>
-              <div class="value">${totalItems}</div>
+            <div class="info-item">
+              <div class="info-label">TOTAL ITEMS</div>
+              <div class="info-value">${totalItems}</div>
             </div>
-            <div class="overview-card">
-              <h3>Required Items</h3>
-              <div class="value">${requiredItems}</div>
+            <div class="info-item">
+              <div class="info-label">REQUIRED ITEMS</div>
+              <div class="info-value">${requiredItems}</div>
             </div>
           </div>
-          
-          ${Object.keys(riskDistribution).length > 0 ? `
-          <div style="margin-top: 20px;">
-            <h4 style="margin-bottom: 12px; font-size: 16px; font-weight: 600;">Risk Distribution</h4>
-            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-              ${Object.entries(riskDistribution).map(([risk, count]) => `
-                <div style="text-align: center;">
-                  <div class="risk-${risk}" style="display: block; margin-bottom: 4px;">${risk.toUpperCase()}</div>
-                  <div style="font-weight: 600; color: #374151;">${count} items</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          ` : ''}
         </div>
-        
+
+        <!-- Risk Analysis Section -->
         <div class="section">
-          <h2 class="section-title">
-            🔧 Detailed Checklist Categories
-          </h2>
-          ${schedule.checklistCategories.length === 0 ? `
-            <div style="text-center; padding: 40px; color: #6b7280;">
-              <p>No checklist categories defined for this inspection schedule.</p>
+          <h2 class="section-title">⚠️ RISK ANALYSIS</h2>
+          <div class="grid-4">
+            ${Object.entries(riskDistribution).map(([risk, count]) => `
+            <div class="info-item">
+              <div class="info-label">${risk.charAt(0).toUpperCase() + risk.slice(1)} RISK</div>
+              <div class="info-value">${count} items</div>
             </div>
-          ` : `
-            ${schedule.checklistCategories.map((category, categoryIndex) => `
-              <div class="checklist-category">
-                <div class="category-header">
-                  <div class="category-title">${category.categoryName}</div>
-                  <div class="category-meta">
-                    <span>${category.required ? '🔴 Required' : '⚪ Optional'}</span>
-                    <span>Weight: ${category.weight}%</span>
-                    <span>Items: ${category.checklistItems.length}</span>
-                  </div>
-                  ${category.description ? `
-                    <div style="margin-top: 8px; font-size: 14px; color: #6b7280;">
-                      ${category.description}
-                    </div>
-                  ` : ''}
-                </div>
-                ${category.checklistItems.map((item, itemIndex) => `
-                  <div class="checklist-item">
-                    <div class="item-content">
-                      <div class="item-description">${item.description}</div>
-                      ${item.safetyStandard ? `
-                        <div class="item-standard">Standard: ${item.safetyStandard}</div>
-                      ` : ''}
-                      ${item.notes ? `
-                        <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
-                          Note: ${item.notes}
-                        </div>
-                      ` : ''}
-                    </div>
-                    <div class="item-meta">
-                      ${item.isRequired ? '<span class="required-badge">REQUIRED</span>' : '<span class="optional-badge">OPTIONAL</span>'}
-                      <span class="risk-${item.riskLevel}">${item.riskLevel.toUpperCase()}</span>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
             `).join('')}
-          `}
+          </div>
         </div>
-        
-        <div class="report-footer">
-          <p>Safety Inspection Schedule Detail Report generated on ${currentDate} at ${currentTime}</p>
-          <p style="margin-top: 4px;">
-            Schedule: ${schedule.title} | Asset: ${schedule.assetName} | Department: ${schedule.department}
-          </p>
-          <p style="margin-top: 4px;">
-            Total checklist items: ${totalItems} (${requiredItems} required) across ${totalCategories} categories
-          </p>
+
+        <!-- Checklist Categories Section -->
+        <div class="section">
+          <h2 class="section-title">📋 CHECKLIST CATEGORIES</h2>
+          ${schedule.checklistCategories.map(category => `
+          <div class="content-box" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h4 style="font-size: 16px; font-weight: 600; color: #374151; margin: 0;">${category.categoryName}</h4>
+              <div style="display: flex; gap: 8px; font-size: 12px; color: #6b7280;">
+                <span>Weight: ${category.weight}%</span>
+                <span>${category.required ? 'Required' : 'Optional'}</span>
+              </div>
+            </div>
+            ${category.description ? `<p style="color: #6b7280; margin-bottom: 10px; font-size: 14px;">${category.description}</p>` : ''}
+            <div style="font-size: 12px; color: #6b7280;">
+              ${category.checklistItems.length} items (${category.checklistItems.filter(item => item.isRequired).length} required)
+            </div>
+          </div>
+          `).join('')}
+        </div>
+
+        <!-- Schedule History Section -->
+        <div class="section">
+          <h2 class="section-title">📝 SCHEDULE HISTORY</h2>
+          <div class="grid">
+            <div class="info-item">
+              <div class="info-label">CREATED AT</div>
+              <div class="info-value">${formatDateTime(schedule.createdAt)}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">LAST UPDATED</div>
+              <div class="info-value">${formatDateTime(schedule.updatedAt)}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">CREATED BY</div>
+              <div class="info-value">${schedule.createdBy}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Report generated on ${new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}</p>
+          <p style="margin-top: 4px;">Safety Inspection Management System</p>
         </div>
       </body>
-      </html>
+    </html>
     `
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 mb-4">
-            <Shield className="h-6 w-6 text-blue-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Schedule Detail Report
-          </h3>
-          <p className="text-sm text-gray-600 mb-6">
-            Generate a comprehensive detail report for <strong>{schedule.title}</strong> that opens in a new window with print functionality.
-          </p>
-          
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg text-left">
-            <h4 className="font-medium text-blue-900 mb-2">Report includes:</h4>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>• Complete schedule overview and status</li>
-              <li>• Asset and location information</li>
-              <li>• Safety standards and compliance details</li>
-              <li>• Detailed checklist categories and items</li>
-              <li>• Risk analysis and priority breakdown</li>
-              <li>• Due date analysis and alerts</li>
-            </ul>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button 
-              onClick={handleExportReport}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Generate Report
-            </Button>
-            <Button 
-              onClick={onClose}
-              variant="outline"
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  // Generate and open the report
+  const reportHTML = generateReportHTML()
+  
+  // Open in new window
+  const newWindow = window.open('about:blank', '_blank')
+  if (newWindow) {
+    newWindow.document.write(reportHTML)
+    newWindow.document.close()
+  }
 }
