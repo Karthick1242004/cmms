@@ -219,6 +219,7 @@ export interface DailyLogActivitiesState {
   setDateRange: (range: { startDate: string; endDate: string }) => void;
   setFilters: (filters: DailyLogActivityFilters) => void;
   resetFilters: () => void;
+  setCurrentPage: (page: number) => void;
   
   // CRUD actions
   fetchActivities: (filters?: DailyLogActivityFilters) => Promise<void>;

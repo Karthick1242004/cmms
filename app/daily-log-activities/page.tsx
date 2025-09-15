@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw, Timer, BarChart3, Activity } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, User, MapPin, AlertTriangle, Eye, Edit, Trash2, MoreHorizontal, CheckCircle, Clock, CheckCircle2, RefreshCw, Timer, BarChart3, Activity, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { formatDowntime, getDowntimeBadgeClasses, calculateDowntime, getDowntimeTypeBadgeClasses, getDowntimeTypeLabel } from '@/lib/downtime-utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -53,13 +53,17 @@ export default function DailyLogActivitiesPage() {
     statusFilter,
     priorityFilter,
     departmentFilter,
+    dateRange,
     selectedActivity,
     isViewDialogOpen,
+    pagination,
     fetchActivities,
     setSearchTerm,
     setStatusFilter,
     setPriorityFilter,
     setDepartmentFilter,
+    setDateRange,
+    setCurrentPage,
     setDialogOpen,
     setSelectedActivity,
     setViewDialogOpen,
@@ -102,8 +106,9 @@ export default function DailyLogActivitiesPage() {
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page when searching
     setTimeout(() => {
-      fetchActivities();
+      fetchActivities({ page: 1 });
     }, 300);
   };
 
@@ -125,17 +130,48 @@ export default function DailyLogActivitiesPage() {
 
   const handleStatusFilter = (value: string) => {
     setStatusFilter(value === 'all' ? '' : value);
-    fetchActivities();
+    setCurrentPage(1); // Reset to first page when filtering
+    fetchActivities({ page: 1 });
   };
 
   const handlePriorityFilter = (value: string) => {
     setPriorityFilter(value === 'all' ? '' : value);
-    fetchActivities();
+    setCurrentPage(1); // Reset to first page when filtering
+    fetchActivities({ page: 1 });
   };
 
   const handleDepartmentFilter = (value: string) => {
     setDepartmentFilter(value === 'all' ? '' : value);
-    fetchActivities();
+    setCurrentPage(1); // Reset to first page when filtering
+    fetchActivities({ page: 1 });
+  };
+
+  const handleDateRangeFilter = (startDate: string, endDate: string) => {
+    setDateRange({ startDate, endDate });
+    setCurrentPage(1); // Reset to first page when filtering
+    fetchActivities({ 
+      page: 1,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined
+    });
+  };
+
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    fetchActivities({ page: newPage });
+  };
+
+  const handlePreviousPage = () => {
+    if (pagination.hasPrev) {
+      handlePageChange(pagination.currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (pagination.hasNext) {
+      handlePageChange(pagination.currentPage + 1);
+    }
   };
 
   const handleViewActivity = (activity: any) => {
@@ -276,10 +312,11 @@ export default function DailyLogActivitiesPage() {
           <CardHeader>
             <CardTitle className="text-lg">Filters</CardTitle>
             <CardDescription>
-              Filter activities by status, priority, or search terms
+              Filter activities by status, priority, date range, or search terms
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* First row - Basic filters */}
             <div className={`grid grid-cols-1 gap-4 ${user?.accessLevel === 'super_admin' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Search</label>
@@ -346,6 +383,110 @@ export default function DailyLogActivitiesPage() {
                   </Select>
                 </div>
               )}
+            </div>
+
+            {/* Second row - Date range filter */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Date Range
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Input
+                      type="date"
+                      placeholder="Start date"
+                      value={dateRange.startDate}
+                      onChange={(e) => handleDateRangeFilter(e.target.value, dateRange.endDate)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      type="date"
+                      placeholder="End date"
+                      value={dateRange.endDate}
+                      onChange={(e) => handleDateRangeFilter(dateRange.startDate, e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+                {/* Quick date range presets */}
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      handleDateRangeFilter(today, today);
+                    }}
+                    className="text-xs h-6 px-2"
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      const yesterday = new Date(today);
+                      yesterday.setDate(yesterday.getDate() - 1);
+                      handleDateRangeFilter(yesterday.toISOString().split('T')[0], yesterday.toISOString().split('T')[0]);
+                    }}
+                    className="text-xs h-6 px-2"
+                  >
+                    Yesterday
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      const weekAgo = new Date(today);
+                      weekAgo.setDate(weekAgo.getDate() - 7);
+                      handleDateRangeFilter(weekAgo.toISOString().split('T')[0], today.toISOString().split('T')[0]);
+                    }}
+                    className="text-xs h-6 px-2"
+                  >
+                    Last 7 Days
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      const monthAgo = new Date(today);
+                      monthAgo.setDate(monthAgo.getDate() - 30);
+                      handleDateRangeFilter(monthAgo.toISOString().split('T')[0], today.toISOString().split('T')[0]);
+                    }}
+                    className="text-xs h-6 px-2"
+                  >
+                    Last 30 Days
+                  </Button>
+                  {(dateRange.startDate || dateRange.endDate) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDateRangeFilter('', '')}
+                      className="text-xs h-6 px-2 text-red-600 hover:text-red-700"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                
+                {(dateRange.startDate || dateRange.endDate) && (
+                  <div className="text-xs text-muted-foreground">
+                    Active filter: {dateRange.startDate && dateRange.endDate 
+                      ? `${dateRange.startDate} to ${dateRange.endDate}`
+                      : dateRange.startDate 
+                      ? `From ${dateRange.startDate}`
+                      : `Until ${dateRange.endDate}`
+                    }
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* Show current department for non-super-admin users */}
@@ -678,6 +819,70 @@ export default function DailyLogActivitiesPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination Controls */}
+        {!isLoading && !error && activities.length > 0 && pagination.totalPages > 1 && (
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {((pagination.currentPage - 1) * 50) + 1} to {Math.min(pagination.currentPage * 50, pagination.totalCount)} of {pagination.totalCount} activities
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreviousPage}
+                    disabled={!pagination.hasPrev}
+                    className="flex items-center gap-1"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {/* Show page numbers */}
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (pagination.totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (pagination.currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                        pageNum = pagination.totalPages - 4 + i;
+                      } else {
+                        pageNum = pagination.currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={pagination.currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNextPage}
+                    disabled={!pagination.hasNext}
+                    className="flex items-center gap-1"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
           </TabsContent>
 
           <TabsContent value="records" className="space-y-4">

@@ -143,6 +143,12 @@ export const useDailyLogActivitiesStore = create<DailyLogActivitiesState>()(
           state.priorityFilter = '';
           state.departmentFilter = '';
           state.dateRange = { startDate: '', endDate: '' };
+          state.pagination.currentPage = 1; // Reset to first page
+        }),
+
+      setCurrentPage: (page) =>
+        set((state) => {
+          state.pagination.currentPage = page;
         }),
 
       // CRUD actions
@@ -159,6 +165,10 @@ export const useDailyLogActivitiesStore = create<DailyLogActivitiesState>()(
             status: state.statusFilter as any,
             priority: state.priorityFilter,
             department: state.departmentFilter,
+            startDate: state.dateRange.startDate || undefined,
+            endDate: state.dateRange.endDate || undefined,
+            page: state.pagination.currentPage, // Include current page
+            limit: 50, // Set page size
             ...filters
           };
           const response = await dailyLogActivitiesApi.getAll(apiFilters);

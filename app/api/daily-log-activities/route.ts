@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
     const department = searchParams.get('department');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') === 'asc' ? 1 : -1;
 
@@ -93,6 +95,20 @@ export async function GET(request: NextRequest) {
 
     if (priority && priority !== 'all') {
       filter.priority = priority;
+    }
+
+    // Apply date range filter
+    if (startDate || endDate) {
+      filter.date = {};
+      if (startDate) {
+        filter.date.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        // Add one day to endDate to include the entire end date
+        const endDateObj = new Date(endDate);
+        endDateObj.setDate(endDateObj.getDate() + 1);
+        filter.date.$lt = endDateObj;
+      }
     }
 
     // Calculate pagination
