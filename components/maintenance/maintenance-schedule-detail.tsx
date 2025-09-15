@@ -105,10 +105,7 @@ export function MaintenanceScheduleDetail({
     return new Date(dueDateString) < new Date()
   }
 
-  const handleStartMaintenance = () => {
-    // This would be implemented to start a maintenance record
-    console.log("Start maintenance for schedule:", schedule.id)
-  }
+  const handleStartMaintenance = () => {}
 
   const handlePrint = () => {
     // Generate the report HTML

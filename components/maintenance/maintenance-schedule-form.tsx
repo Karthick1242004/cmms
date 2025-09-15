@@ -111,11 +111,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
 
   // Helper function to derive department for maintenance schedule
   const deriveDepartmentForSchedule = (schedule: any, user: any, assetsData: any): string => {
-    console.log('🔧 [MaintenanceForm] - Deriving department for schedule:', {
-      scheduleDepartment: schedule.department,
-      userDepartment: user?.department,
-      scheduleAssetId: schedule.assetId
-    });
+    
 
     // 1. If schedule has department, use it (though it's currently missing from API)
     if (schedule.department) {
@@ -126,14 +122,14 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     if (schedule.assetId && assetsData?.data?.assets) {
       const asset = assetsData.data.assets.find((a: any) => a.id === schedule.assetId);
       if (asset?.department) {
-        console.log('🔧 [MaintenanceForm] - Found asset department:', asset.department);
+        
         return decodeHtmlEntities(asset.department);
       }
     }
 
     // 3. Fall back to user's department (decoded)
     const userDept = decodeHtmlEntities(user?.department || "");
-    console.log('🔧 [MaintenanceForm] - Using user department as fallback:', userDept);
+    
     
     // 4. Try to match user department with available departments
     if (departmentsData?.data?.departments && userDept) {
@@ -143,7 +139,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         userDept.includes(dept.name)
       );
       if (matchingDept) {
-        console.log('🔧 [MaintenanceForm] - Found matching department:', matchingDept.name);
+        
         return matchingDept.name;
       }
     }
@@ -151,7 +147,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     // 5. If user department doesn't match available departments, use first available department for super admin
     if (isSuperAdmin && departmentsData?.data?.departments && departmentsData.data.departments.length > 0) {
       const firstDept = departmentsData.data.departments[0]?.name;
-      console.log('🔧 [MaintenanceForm] - Using first available department for super admin:', firstDept);
+      
       return firstDept || userDept;
     }
 
@@ -162,12 +158,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   // Initialize form with schedule data if editing
   useEffect(() => {
     if (schedule) {
-      console.log('🔧 [MaintenanceForm] - Initializing edit form with schedule:', {
-        id: schedule.id,
-        department: schedule.department,
-        assetId: schedule.assetId,
-        assignedTechnician: schedule.assignedTechnician
-      });
+      
 
       setIsInitializing(true);
 
@@ -228,8 +219,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         });
       }
       
-      console.log('🔧 [MaintenanceForm] - Extracted checklist items:', extractedChecklist.length);
-      console.log('🔧 [MaintenanceForm] - Checklist items:', extractedChecklist);
+      
       
       // Set parts and extracted checklist
       setParts(partsWithoutChecklist)
@@ -238,7 +228,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       // Set selected department FIRST, then let the sync effect handle form data
       setSelectedDepartment(departmentValue)
       
-      console.log('🔧 [MaintenanceForm] - Form initialized with derived department:', departmentValue);
+      
       
       setIsInitializing(false);
     } else {
@@ -253,17 +243,14 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   // Sync selectedDepartment with formData.department (prevent infinite loop)
   useEffect(() => {
     if (!isInitializing && selectedDepartment && formData.department !== selectedDepartment) {
-      console.log('🔧 [MaintenanceForm] - Syncing department:', {
-        selectedDepartment,
-        currentFormDataDepartment: formData.department
-      });
+      
       setFormData(prev => ({ ...prev, department: selectedDepartment }))
     }
   }, [selectedDepartment, isInitializing])
 
   // Handle department change (for super admin)
   const handleDepartmentChange = (department: string) => {
-    console.log('🔧 [MaintenanceForm] - Department changed to:', department);
+    
     
     setSelectedDepartment(department)
     
@@ -319,18 +306,18 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
           // Set available asset parts for selection
           if (assetData.partsBOM && Array.isArray(assetData.partsBOM) && assetData.partsBOM.length > 0) {
             setSelectedAssetParts(assetData.partsBOM)
-            console.log('Parts found:', assetData.partsBOM.length)
+            
           } else {
             // No parts available for this asset
             setSelectedAssetParts([])
-            console.log('No parts available for this asset')
+            
           }
         } else {
-          console.error('Failed to fetch asset details:', response.status)
+          
           setSelectedAssetParts([])
         }
       } catch (error) {
-        console.error('Failed to fetch asset details:', error)
+        
         setSelectedAssetParts([])
       }
     } else {
@@ -535,13 +522,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     }
 
     // Debug: Log what we're sending to API
-    console.log('📤 Frontend - Maintenance Schedule Data:', {
-      title: scheduleData.title,
-      assetId: scheduleData.assetId,
-      partsCount: parts.length,
-      checklistCount: checklist.length,
-      checklist: checklist
-    })
+    
 
 
 

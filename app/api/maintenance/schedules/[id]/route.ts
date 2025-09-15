@@ -40,6 +40,39 @@ export async function GET(
     }
 
     const data = await response.json();
+    
+    // CRITICAL FIX: Transform response back to new frontend structure
+    // Extract checklist from parts and return as separate field (same as in general schedules endpoint)
+    if (data.success && data.data && data.data.parts) {
+      let extractedChecklist: any[] = [];
+      
+      // Extract checklist items from all parts
+      data.data.parts.forEach((part: any) => {
+        if (part.checklistItems && part.checklistItems.length > 0) {
+          extractedChecklist = extractedChecklist.concat(part.checklistItems);
+        }
+      });
+
+      // Add the extracted checklist as a separate field
+      if (extractedChecklist.length > 0) {
+        data.data.checklist = extractedChecklist;
+        console.log('🔄 [Individual Schedule] Extracted checklist from parts back to separate field:', extractedChecklist.length, 'items');
+      } else {
+        // Ensure checklist field exists even if empty
+        data.data.checklist = [];
+      }
+
+      // Optional: Clean up parts by removing checklistItems if they were general maintenance
+      data.data.parts = data.data.parts.filter((part: any) => {
+        // Keep all parts, but clean up if it's the general maintenance part we created
+        if (part.partName === 'General Maintenance' && part.partSku === 'GENERAL') {
+          // This was our synthetic part, we can remove it or keep it based on requirements
+          console.log('🧹 [Individual Schedule] Found synthetic general maintenance part, keeping it for now');
+        }
+        return true; // Keep all parts for now
+      });
+    }
+    
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error('Error fetching maintenance schedule:', error);
@@ -74,6 +107,50 @@ export async function PUT(
       );
     }
 
+    // --- Checklist backward-compat transform (same as create) ---
+    // Ensure parts array exists
+    if (!body.parts || !Array.isArray(body.parts)) {
+      body.parts = [];
+    }
+
+    // Normalize incoming checklist (frontend sends separate field)
+    let generalChecklist: any[] = [];
+    if (body.checklist && Array.isArray(body.checklist) && body.checklist.length > 0) {
+      generalChecklist = body.checklist.map((item: any, index: number) => ({
+        ...item,
+        id: item.id || `check_${Date.now()}_${index}`,
+        description: item.description || '',
+        isRequired: item.isRequired !== false,
+        status: item.status || 'pending',
+      }));
+    }
+
+    // If we have checklist items, place them into parts[0].checklistItems as backend expects
+    if (generalChecklist.length > 0) {
+      if (body.parts.length > 0) {
+        body.parts[0].checklistItems = generalChecklist;
+      } else {
+        body.parts = [
+          {
+            id: `general_part_${Date.now()}`,
+            assetPartId: `general_asset_part_${Date.now()}`,
+            partId: `GENERAL_PART_${Date.now()}`,
+            partName: 'General Maintenance',
+            partSku: 'GENERAL',
+            estimatedTime: 30,
+            requiresReplacement: false,
+            instructions: 'General maintenance tasks',
+            checklistItems: generalChecklist,
+          },
+        ];
+      }
+    }
+
+    // Remove separate checklist field; backend does not expect it
+    if (body.checklist) {
+      delete body.checklist;
+    }
+
     // Forward request to backend server
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/schedules/${id}`, {
       method: 'PUT',
@@ -94,6 +171,19 @@ export async function PUT(
     }
 
     const data = await response.json();
+
+    // Transform response back to new frontend structure (extract checklist from parts)
+    if (data.success && data.data && data.data.parts) {
+      let extractedChecklist: any[] = [];
+
+      data.data.parts.forEach((part: any) => {
+        if (part.checklistItems && part.checklistItems.length > 0) {
+          extractedChecklist = extractedChecklist.concat(part.checklistItems);
+        }
+      });
+
+      data.data.checklist = extractedChecklist;
+    }
 
     // Create log tracking entry for maintenance schedule update
     if (data.success && data.data && user?.id) {

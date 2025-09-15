@@ -16,6 +16,7 @@ import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { useToast } from "@/hooks/use-toast"
 import type { MaintenanceSchedule, MaintenanceRecord, MaintenancePartRecord, MaintenanceChecklistRecord } from "@/types/maintenance"
+import { maintenanceApi } from "@/lib/maintenance-api"
 
 interface MaintenanceRecordFormProps {
   trigger: React.ReactNode
@@ -87,10 +88,38 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
 
   const [partsStatus, setPartsStatus] = useState<MaintenancePartRecord[]>([])
   const [generalChecklist, setGeneralChecklist] = useState<MaintenanceChecklistRecord[]>([])
+  const [currentSchedule, setCurrentSchedule] = useState<MaintenanceSchedule>(schedule)
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false)
+
+  // Function to fetch the latest schedule data
+  const fetchLatestSchedule = async () => {
+    if (!schedule.id) return;
+    
+    setIsLoadingSchedule(true);
+    try {
+      const response = await maintenanceApi.schedules.getById(schedule.id);
+      
+      if (response.success && response.data) {
+        setCurrentSchedule(response.data);
+      }
+    } catch (error) {
+      // Fall back to the original schedule if fetch fails
+      setCurrentSchedule(schedule);
+    } finally {
+      setIsLoadingSchedule(false);
+    }
+  };
+
+  // Fetch latest schedule when dialog opens
+  useEffect(() => {
+    if (isRecordDialogOpen && canStartMaintenance()) {
+      fetchLatestSchedule();
+    }
+  }, [isRecordDialogOpen]);
 
   useEffect(() => {
     // Initialize parts status from schedule
-    const initialPartsStatus: MaintenancePartRecord[] = schedule.parts.map(part => {
+    const initialPartsStatus: MaintenancePartRecord[] = currentSchedule.parts.map(part => {
       return {
         partId: part.partId || part.id, // Fallback to part.id if partId is missing
         partName: part.partName,
@@ -104,7 +133,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
     setPartsStatus(initialPartsStatus)
 
     // Initialize general maintenance checklist
-    const initialGeneralChecklist: MaintenanceChecklistRecord[] = schedule.checklist?.map((item, index) => {
+    const initialGeneralChecklist: MaintenanceChecklistRecord[] = currentSchedule.checklist?.map((item, index) => {
       const itemId = item.id || `general_item_${index}_${Date.now()}`
       return {
         itemId,
@@ -116,7 +145,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
     }) || []
     
     setGeneralChecklist(initialGeneralChecklist)
-  }, [schedule])
+  }, [currentSchedule])
 
   const updatePartStatus = (partIndex: number, updates: Partial<MaintenancePartRecord>) => {
     const updatedParts = [...partsStatus]
@@ -191,10 +220,10 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
     }
 
     const recordData: Omit<MaintenanceRecord, "id" | "createdAt" | "updatedAt"> = {
-      scheduleId: schedule.id,
-      assetId: schedule.assetId,
-      assetName: schedule.assetName,
-      department: schedule.department || user?.department || "General", // Ensure department is always set
+      scheduleId: currentSchedule.id,
+      assetId: currentSchedule.assetId,
+      assetName: currentSchedule.assetName,
+      department: currentSchedule.department || user?.department || "General", // Ensure department is always set
       completedDate: formData.completedDate,
       startTime: formData.startTime,
       endTime: formData.endTime,
@@ -213,13 +242,10 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
     
     // Additional validation before submission
     if (!recordData.department) {
-      console.error('Department is missing, using fallback')
       recordData.department = "General"
     }
     
-    if (actualDuration < 0) {
-      console.error('Negative duration detected, this should not happen')
-    }
+    if (actualDuration < 0) {}
     
     addRecord(recordData)
     setRecordDialogOpen(false)
@@ -266,11 +292,19 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
         <DialogHeader>
           <DialogTitle>Record Maintenance Completion</DialogTitle>
           <DialogDescription>
-            Complete the maintenance checklist for {schedule.assetName} - {schedule.title}
+            Complete the maintenance checklist for {currentSchedule.assetName} - {currentSchedule.title}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {isLoadingSchedule ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center space-x-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              <span className="text-sm text-muted-foreground">Loading latest maintenance data...</span>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -570,6 +604,7 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
     </>
