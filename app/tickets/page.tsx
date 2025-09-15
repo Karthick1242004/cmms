@@ -661,6 +661,14 @@ export default function TicketsPage() {
           tickets={tickets}
           isOpen={isOverallReportOpen}
           onClose={() => setIsOverallReportOpen(false)}
+          filters={{
+            search: searchTerm || undefined,
+            status: statusFilter !== 'all' ? statusFilter : undefined,
+            priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+            department: departmentFilter !== 'all' ? departmentFilter : undefined,
+            reportType: reportTypeFilter !== 'all' ? reportTypeFilter : undefined,
+            isOpenTicket: showOpenTickets || undefined,
+          }}
         />
       </PageContent>
     </PageLayout>

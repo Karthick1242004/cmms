@@ -1,27 +1,57 @@
-import React from 'react'
+"use client"
+import React, { useEffect, useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Download, X, BarChart3, FileText, AlertTriangle, CheckCircle, Clock, User, Building, Calendar } from 'lucide-react'
 import type { Ticket } from "@/types/ticket"
 import { format } from 'date-fns'
+import type { TicketFilters } from "@/types/ticket"
+import { ticketsApi } from "@/lib/tickets-api"
 
 interface TicketsOverallReportProps {
   tickets: Ticket[]
   isOpen: boolean
   onClose: () => void
+  filters?: TicketFilters
 }
 
-export function TicketsOverallReport({ tickets, isOpen, onClose }: TicketsOverallReportProps) {
+export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: TicketsOverallReportProps) {
+  const [allTickets, setAllTickets] = useState<Ticket[]>(tickets)
+  const [isLoadingAll, setIsLoadingAll] = useState(false)
+
+  useEffect(() => {
+    setAllTickets(tickets)
+  }, [tickets])
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      if (!isOpen) return
+      setIsLoadingAll(true)
+      try {
+        const response = await ticketsApi.getTickets({
+          ...(filters || {}),
+          limit: 10000,
+          page: 1,
+        } as any)
+        if (response.success && (response as any).data?.tickets) {
+          setAllTickets((response as any).data.tickets)
+        }
+      } finally {
+        setIsLoadingAll(false)
+      }
+    }
+    fetchAll()
+  }, [isOpen, JSON.stringify(filters)])
   const generateReportHTML = () => {
     const currentDate = new Date()
     
     // Calculate statistics
-    const totalTickets = tickets.length
-    const openTickets = tickets.filter(t => t.status === 'open').length
-    const inProgressTickets = tickets.filter(t => t.status === 'in-progress').length
-    const completedTickets = tickets.filter(t => t.status === 'completed').length
-    const verifiedTickets = tickets.filter(t => t.status === 'verified').length
-    const cancelledTickets = tickets.filter(t => t.status === 'cancelled').length
+    const totalTickets = allTickets.length
+    const openTickets = allTickets.filter(t => t.status === 'open').length
+    const inProgressTickets = allTickets.filter(t => t.status === 'in-progress').length
+    const completedTickets = allTickets.filter(t => t.status === 'completed').length
+    const verifiedTickets = allTickets.filter(t => t.status === 'verified').length
+    const cancelledTickets = allTickets.filter(t => t.status === 'cancelled').length
     
     const criticalTickets = tickets.filter(t => t.priority === 'critical').length
     const highTickets = tickets.filter(t => t.priority === 'high').length
@@ -29,7 +59,7 @@ export function TicketsOverallReport({ tickets, isOpen, onClose }: TicketsOveral
     const lowTickets = tickets.filter(t => t.priority === 'low').length
     
     // Department analysis
-    const departmentStats = tickets.reduce((acc, ticket) => {
+    const departmentStats = allTickets.reduce((acc, ticket) => {
       acc[ticket.department] = (acc[ticket.department] || 0) + 1
       return acc
     }, {} as Record<string, number>)
@@ -52,12 +82,12 @@ export function TicketsOverallReport({ tickets, isOpen, onClose }: TicketsOveral
     }
     
     // Recent tickets (last 10)
-    const recentTickets = tickets
+    const recentTickets = allTickets
       .sort((a, b) => new Date(b.loggedDateTime).getTime() - new Date(a.loggedDateTime).getTime())
       .slice(0, 10)
     
     // Report type analysis
-    const reportTypeStats = tickets.reduce((acc, ticket) => {
+    const reportTypeStats = allTickets.reduce((acc, ticket) => {
       Object.entries(ticket.reportType).forEach(([type, isActive]) => {
         if (isActive) {
           acc[type] = (acc[type] || 0) + 1
@@ -67,7 +97,7 @@ export function TicketsOverallReport({ tickets, isOpen, onClose }: TicketsOveral
     }, {} as Record<string, number>)
     
     // Average resolution time (for completed tickets)
-    const completedTicketsWithTime = tickets.filter(t => 
+    const completedTicketsWithTime = allTickets.filter(t => 
       t.status === 'completed' && t.ticketCloseDate && t.loggedDateTime
     )
     
@@ -119,83 +149,86 @@ export function TicketsOverallReport({ tickets, isOpen, onClose }: TicketsOveral
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background: #f8fafc;
+            color: #111827;
+            background: #fff;
             padding: 20px;
           }
           .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
+            background: #fff;
             border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
             overflow: hidden;
           }
           .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+            background: #fff;
+            color: #1f2937;
+            padding: 24px 28px;
+            border-bottom: 3px solid #3b82f6;
           }
           .header h1 {
-            font-size: 2.5rem;
+            font-size: 28px;
             font-weight: 700;
-            margin-bottom: 10px;
+            color: #1e40af;
+            text-transform: uppercase;
+            margin-bottom: 6px;
           }
           .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
+            font-size: 14px;
+            color: #6b7280;
           }
           .content {
-            padding: 30px;
+            padding: 24px 28px;
           }
           .section {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
           }
           .section:last-child {
             border-bottom: none;
             margin-bottom: 0;
           }
           .section h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 6px;
           }
           .section h3 {
-            font-size: 1.2rem;
+            font-size: 14px;
             font-weight: 600;
-            color: #334155;
+            color: #374151;
             margin-bottom: 10px;
+            text-transform: uppercase;
           }
           .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
           }
           .stat-item {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 8px;
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
             text-align: center;
-            border-left: 4px solid #3b82f6;
+            border: 1px solid #e5e7eb;
           }
           .stat-item .number {
-            font-size: 2.5rem;
+            font-size: 22px;
             font-weight: 700;
             color: #3b82f6;
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
           }
           .stat-item .label {
-            font-size: 0.875rem;
-            color: #64748b;
+            font-size: 11px;
+            color: #6b7280;
             font-weight: 500;
           }
           .analysis-grid {
@@ -205,37 +238,38 @@ export function TicketsOverallReport({ tickets, isOpen, onClose }: TicketsOveral
             margin-bottom: 20px;
           }
           .analysis-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: #fff;
+            border: 1px solid #e5e7eb;
             border-radius: 8px;
-            padding: 20px;
+            padding: 16px;
           }
           .analysis-card h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 6px;
+            text-transform: uppercase;
           }
           .analysis-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 8px 0;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f3f4f6;
           }
           .analysis-item:last-child {
             border-bottom: none;
           }
           .analysis-label {
-            font-size: 0.875rem;
-            color: #64748b;
+            font-size: 12px;
+            color: #6b7280;
           }
           .analysis-value {
-            font-size: 0.875rem;
+            font-size: 12px;
             font-weight: 600;
-            color: #1e293b;
+            color: #111827;
           }
           .tickets-table {
             width: 100%;
@@ -246,36 +280,36 @@ export function TicketsOverallReport({ tickets, isOpen, onClose }: TicketsOveral
           .tickets-table td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e5e7eb;
           }
           .tickets-table th {
-            background: #f8fafc;
+            background: #f9fafb;
             font-weight: 600;
             color: #374151;
-            font-size: 0.875rem;
+            font-size: 12px;
           }
           .tickets-table td {
-            font-size: 0.875rem;
-            color: #374151;
+            font-size: 12px;
+            color: #111827;
           }
           .tickets-table tr:hover {
-            background: #f8fafc;
+            background: #f9fafb;
           }
           .badge {
             display: inline-flex;
             align-items: center;
             padding: 0.25rem 0.75rem;
             border-radius: 9999px;
-            font-size: 0.75rem;
+            font-size: 11px;
             font-weight: 500;
             border: 1px solid;
           }
           .footer {
-            background: #f1f5f9;
-            padding: 20px;
+            background: #f9fafb;
+            padding: 16px 20px;
             text-align: center;
-            color: #64748b;
-            font-size: 0.875rem;
+            color: #6b7280;
+            font-size: 12px;
           }
           @media print {
             body {
@@ -283,13 +317,7 @@ export function TicketsOverallReport({ tickets, isOpen, onClose }: TicketsOveral
               padding: 0;
             }
             .container {
-              box-shadow: none;
               border-radius: 0;
-            }
-            .header {
-              background: #3b82f6 !important;
-              -webkit-print-color-adjust: exact;
-              color-adjust: exact;
             }
             .print-controls {
               display: none !important;
@@ -511,7 +539,7 @@ export function TicketsOverallReport({ tickets, isOpen, onClose }: TicketsOveral
                   </tr>
                 </thead>
                 <tbody>
-                  ${tickets.map(ticket => `
+                  ${allTickets.map(ticket => `
                     <tr>
                       <td><strong>${ticket.ticketId}</strong></td>
                       <td>${ticket.subject}</td>
