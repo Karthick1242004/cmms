@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Plus, X, Upload, Save, AlertCircle, Edit, Camera, QrCode, Scan } from "lucide-react"
+import { Plus, X, Upload, Save, AlertCircle, Edit, Camera, QrCode, Scan, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { useAssetsStore } from "@/stores/assets-store"
 import { useAuthStore } from "@/stores/auth-store"
@@ -30,6 +30,7 @@ import { AssetImageUpload } from "@/components/asset-creation-form/asset-image-u
 import { PartsBOMTab } from "@/components/asset-creation-form/parts-bom-tab"
 import { validateField, validateForm, isFormValid } from "@/components/asset-creation-form/validation"
 import { ValidationSummary } from "@/components/asset-creation-form/validation-summary"
+import { DuplicationDialog } from "@/components/common/duplication-dialog"
 
 interface EmployeeOption {
   id: string
@@ -129,9 +130,23 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
   const [showEmployeeDropdowns, setShowEmployeeDropdowns] = useState<Record<number, boolean>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [isDuplicationDialogOpen, setIsDuplicationDialogOpen] = useState(false)
   
   const { updateAsset } = useAssetsStore()
   const { user } = useAuthStore()
+  
+  // Handle successful duplication
+  const handleDuplicationSuccess = (newAssetData: any) => {
+    console.log('✅ [Asset Edit] - Asset duplicated successfully:', newAssetData);
+    
+    // Show success message
+    toast.success(`Asset "${newAssetData.newAsset?.assetName || 'Unknown'}" created successfully!`);
+    
+    // Call the onSuccess callback to refresh the assets list
+    if (onSuccess) {
+      onSuccess();
+    }
+  };
   
   // Check permissions - only super admin and department admin can edit assets
   const canEditAsset = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
@@ -786,6 +801,15 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
         <div className="flex gap-2">
           <Button variant="outline" onClick={onCancel}>
             Cancel
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsDuplicationDialogOpen(true)}
+            disabled={isLoading}
+            className="text-blue-600 border-blue-600 hover:bg-blue-50"
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            Duplicate Asset
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
             {isLoading ? (
@@ -1717,6 +1741,22 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Duplication Dialog */}
+      <DuplicationDialog
+        isOpen={isDuplicationDialogOpen}
+        onClose={() => setIsDuplicationDialogOpen(false)}
+        onSuccess={handleDuplicationSuccess}
+        originalItem={{
+          id: asset.id,
+          name: formData.assetName || asset.assetName || 'Unknown Asset'
+        }}
+        moduleType="assets"
+        title="Duplicate Asset"
+        description={`Create a copy of "${formData.assetName || asset.assetName}" with a new name. All asset data will be copied except unique identifiers.`}
+        nameLabel="Asset Name"
+        nameField="assetName"
+      />
     </div>
   )
 }
