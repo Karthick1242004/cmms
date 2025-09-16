@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
     const { db } = await connectToDatabase();
     const events: CalendarEvent[] = [];
 
-    console.log('🗓️ [Calendar Events] - Fetching events for:', startDate, 'to', endDate);
 
     // Date range filter
     const dateFilter = {
@@ -46,7 +45,6 @@ export async function GET(request: NextRequest) {
 
     try {
       // Use Promise.all for parallel data fetching to improve performance
-      console.log('🔍 [Calendar Events] - Fetching all event types in parallel...');
       
       const [
         dailyActivities,
@@ -115,14 +113,6 @@ export async function GET(request: NextRequest) {
           .toArray()
       ]);
 
-      console.log('✅ [Calendar Events] - Parallel fetch completed:', {
-        dailyActivities: dailyActivities.length,
-        maintenanceSchedules: maintenanceSchedules.length,
-        safetyInspections: safetyInspections.length,
-        tickets: tickets.length,
-        shifts: shifts.length,
-        holidays: holidays.length
-      });
 
       // Process Daily Log Activities
       dailyActivities.forEach((activity: any) => {
@@ -224,7 +214,6 @@ export async function GET(request: NextRequest) {
       });
 
       // Process Shift Details (Work Schedules)
-      console.log('🔍 [Calendar Events] - Processing', shifts.length, 'shift schedules');
 
       // Generate shift events for the date range in batches for better performance
       const shiftEvents: any[] = [];
@@ -239,7 +228,6 @@ export async function GET(request: NextRequest) {
       });
       
       events.push(...shiftEvents);
-      console.log('✅ [Calendar Events] - Generated', shiftEvents.length, 'shift events');
 
       // Process Holidays
       holidays.forEach((holiday: any) => {
@@ -260,7 +248,6 @@ export async function GET(request: NextRequest) {
         });
       });
 
-      console.log('✅ [Calendar Events] - Total events loaded:', events.length);
 
       return NextResponse.json({
         success: true,

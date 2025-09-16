@@ -27,12 +27,43 @@ export async function GET(request: NextRequest) {
     // Build filter
     const filter: any = {};
 
-    // Employee filter
+    // Access level based filtering
     if (employeeId) {
-      filter.employeeId = employeeId;
-    } else if (user.accessLevel !== 'super_admin') {
-      // Non-admin users can only see overtime from their department
-      filter.department = user.department;
+      // When a specific employee is requested, apply access controls
+      if (user.accessLevel === 'super_admin') {
+        // Super admin can see any employee's overtime
+        filter.employeeId = employeeId;
+      } else if (user.accessLevel === 'department_admin') {
+        // Department admin can only see overtime from their department
+        filter.employeeId = employeeId;
+        filter.department = user.department;
+      } else {
+        // Normal users can only see their own overtime
+        if (employeeId === user.employeeId || employeeId === user.id || employeeId === user.email) {
+          filter.employeeId = employeeId;
+        } else {
+          return NextResponse.json(
+            { success: false, message: 'Access denied: You can only view your own overtime records' },
+            { status: 403 }
+          );
+        }
+      }
+    } else {
+      // When no specific employee is requested
+      if (user.accessLevel === 'super_admin') {
+        // Super admin can see all overtime (no additional filter)
+      } else if (user.accessLevel === 'department_admin') {
+        // Department admin can see all overtime from their department
+        filter.department = user.department;
+      } else {
+        // Normal users can only see their own overtime
+        filter.$or = [
+          { employeeId: user.employeeId },
+          { employeeId: user.id },
+          { employeeEmail: user.email },
+          { employeeName: user.name }
+        ].filter(condition => Object.values(condition)[0]); // Remove null/undefined values
+      }
     }
 
     // Date range filter
@@ -95,6 +126,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Access control: Check if user can create overtime for this employee
+    if (user.accessLevel === 'user') {
+      // Normal users can only create overtime for themselves
+      const isOwnOvertime = employeeId === user.employeeId || 
+                           employeeId === user.id || 
+                           employeeId === user.email ||
+                           employeeName === user.name;
+      
+      if (!isOwnOvertime) {
+        return NextResponse.json(
+          { success: false, message: 'Access denied: You can only create overtime requests for yourself' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Validate time format and calculate hours
     const startDateTime = new Date(`${date}T${startTime}:00`);
     const endDateTime = new Date(`${date}T${endTime}:00`);
@@ -145,15 +192,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Access control check
-    if (user.accessLevel !== 'super_admin' && 
-        user.accessLevel !== 'department_admin' && 
-        employee.department !== user.department) {
-      return NextResponse.json(
-        { success: false, message: 'Access denied' },
-        { status: 403 }
-      );
+    // Additional access control for department admin
+    if (user.accessLevel === 'department_admin') {
+      // Department admin can create overtime for employees in their department
+      if (employee.department !== user.department) {
+        return NextResponse.json(
+          { success: false, message: 'Access denied: You can only create overtime for employees in your department' },
+          { status: 403 }
+        );
+      }
     }
+    // Super admin can create overtime for anyone (no additional checks needed)
 
     // Create overtime record
     const overtimeData: OvertimeRecord = {

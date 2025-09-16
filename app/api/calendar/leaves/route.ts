@@ -27,36 +27,80 @@ export async function GET(request: NextRequest) {
     // Build filter
     const filter: any = {};
 
-    // Employee filter
+    // Access level based filtering
     if (employeeId) {
-      filter.employeeId = employeeId;
-    } else if (user.accessLevel !== 'super_admin') {
-      // Non-admin users can only see leaves from their department
-      filter.department = user.department;
+      // When a specific employee is requested, apply access controls
+      if (user.accessLevel === 'super_admin') {
+        // Super admin can see any employee's leaves
+        filter.employeeId = employeeId;
+      } else if (user.accessLevel === 'department_admin') {
+        // Department admin can only see leaves from their department
+        filter.employeeId = employeeId;
+        filter.department = user.department;
+      } else {
+        // Normal users can only see their own leaves
+        if (employeeId === user.employeeId || employeeId === user.id || employeeId === user.email) {
+          filter.employeeId = employeeId;
+        } else {
+          return NextResponse.json(
+            { success: false, message: 'Access denied: You can only view your own leave records' },
+            { status: 403 }
+          );
+        }
+      }
+    } else {
+      // When no specific employee is requested
+      if (user.accessLevel === 'super_admin') {
+        // Super admin can see all leaves (no additional filter)
+      } else if (user.accessLevel === 'department_admin') {
+        // Department admin can see all leaves from their department
+        filter.department = user.department;
+      } else {
+        // Normal users can only see their own leaves
+        filter.$or = [
+          { employeeId: user.employeeId },
+          { employeeId: user.id },
+          { employeeEmail: user.email },
+          { employeeName: user.name }
+        ].filter(condition => Object.values(condition)[0]); // Remove null/undefined values
+      }
     }
 
-    // Date range filter
+    // Date range filter (combine with existing $or if present)
     if (startDate && endDate) {
-      filter.$or = [
-        {
-          startDate: {
-            $gte: startDate,
-            $lte: endDate
+      const dateRangeFilter = {
+        $or: [
+          {
+            startDate: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          },
+          {
+            endDate: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          },
+          {
+            $and: [
+              { startDate: { $lte: startDate } },
+              { endDate: { $gte: endDate } }
+            ]
           }
-        },
-        {
-          endDate: {
-            $gte: startDate,
-            $lte: endDate
-          }
-        },
-        {
-          $and: [
-            { startDate: { $lte: startDate } },
-            { endDate: { $gte: endDate } }
-          ]
-        }
-      ];
+        ]
+      };
+
+      // If we already have an $or for employee filtering, combine them with $and
+      if (filter.$or) {
+        filter.$and = [
+          { $or: filter.$or },
+          dateRangeFilter
+        ];
+        delete filter.$or;
+      } else {
+        Object.assign(filter, dateRangeFilter);
+      }
     }
 
     const leaves = await db.collection('employeeleaves')
@@ -110,6 +154,48 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Access control: Check if user can create leave for this employee
+    if (user.accessLevel === 'user') {
+      // Normal users can only create leaves for themselves
+      const isOwnLeave = employeeId === user.employeeId || 
+                        employeeId === user.id || 
+                        employeeId === user.email ||
+                        employeeName === user.name;
+      
+      if (!isOwnLeave) {
+        return NextResponse.json(
+          { success: false, message: 'Access denied: You can only create leave requests for yourself' },
+          { status: 403 }
+        );
+      }
+    } else if (user.accessLevel === 'department_admin') {
+      // Department admin can create leaves for employees in their department
+      // We'll validate this by checking the employee's department from the employee record
+      const employeeRecord = await db.collection('employees').findOne({
+        $or: [
+          { _id: employeeId },
+          { id: employeeId },
+          { email: employeeId },
+          { name: employeeName }
+        ]
+      });
+
+      if (!employeeRecord) {
+        return NextResponse.json(
+          { success: false, message: 'Employee not found' },
+          { status: 404 }
+        );
+      }
+
+      if (employeeRecord.department !== user.department) {
+        return NextResponse.json(
+          { success: false, message: 'Access denied: You can only create leaves for employees in your department' },
+          { status: 403 }
+        );
+      }
+    }
+    // Super admin can create leaves for anyone (no additional checks needed)
 
     // Validate date range
     const start = new Date(startDate);

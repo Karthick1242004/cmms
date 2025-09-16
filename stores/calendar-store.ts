@@ -8,6 +8,7 @@ import type {
   OvertimeRecord, 
   CalendarFilter 
 } from '@/types/calendar';
+import { generateCalendarReport } from '@/components/calendar/calendar-report-generator';
 
 const defaultFilters: CalendarFilter = {
   showLeaves: true,
@@ -47,7 +48,6 @@ export const useCalendarStore = create<CalendarState>()(
         
         // Prevent duplicate requests for the same date range
         if (currentState.isLoading) {
-          console.log('🔄 [Calendar] - Already loading, skipping duplicate request');
           return;
         }
 
@@ -56,7 +56,6 @@ export const useCalendarStore = create<CalendarState>()(
             lastFetchedRange.startDate === startDate && 
             lastFetchedRange.endDate === endDate &&
             currentState.events.length > 0) {
-          console.log('🔄 [Calendar] - Using cached data for range:', startDate, 'to', endDate);
           return;
         }
         set((state) => {
@@ -70,7 +69,6 @@ export const useCalendarStore = create<CalendarState>()(
             throw new Error('Authentication required');
           }
 
-          console.log('🗓️ [Calendar] - Fetching events for range:', startDate, 'to', endDate);
 
           // Fetch events from calendar events API
           const response = await fetch(`/api/calendar/events?startDate=${startDate}&endDate=${endDate}`, {
@@ -95,7 +93,6 @@ export const useCalendarStore = create<CalendarState>()(
             // Update cache
             lastFetchedRange = { startDate, endDate };
             
-            console.log('✅ [Calendar] - Events loaded:', data.data?.length || 0, 'events');
           } else {
             throw new Error(data.message || 'Failed to fetch events');
           }
@@ -137,7 +134,6 @@ export const useCalendarStore = create<CalendarState>()(
             set((state) => {
               state.leaves = data.data || [];
             });
-            console.log('✅ [Calendar] - Leaves loaded:', data.data?.length || 0, 'leaves');
           }
         } catch (error) {
           console.error('❌ [Calendar] - Error fetching leaves:', error);
@@ -173,7 +169,6 @@ export const useCalendarStore = create<CalendarState>()(
             set((state) => {
               state.overtimes = data.data || [];
             });
-            console.log('✅ [Calendar] - Overtime records loaded:', data.data?.length || 0, 'records');
           }
         } catch (error) {
           console.error('❌ [Calendar] - Error fetching overtime records:', error);
@@ -207,7 +202,6 @@ export const useCalendarStore = create<CalendarState>()(
             set((state) => {
               state.leaves.push(data.data);
             });
-            console.log('✅ [Calendar] - Leave added successfully');
             return true;
           }
           return false;
@@ -244,7 +238,6 @@ export const useCalendarStore = create<CalendarState>()(
             set((state) => {
               state.overtimes.push(data.data);
             });
-            console.log('✅ [Calendar] - Overtime added successfully');
             return true;
           }
           return false;
@@ -293,36 +286,41 @@ export const useCalendarStore = create<CalendarState>()(
             throw new Error('Authentication required');
           }
 
+
           const response = await fetch(`/api/calendar/reports?startDate=${startDate}&endDate=${endDate}`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+              reportType: 'summary' // Default report type
+            }),
           });
 
           if (!response.ok) {
-            throw new Error('Failed to generate report');
+            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+            throw new Error(errorData.message || `HTTP ${response.status}: Failed to generate report`);
           }
 
           const data = await response.json();
           
           if (data.success) {
-            // Handle report generation success
-            console.log('✅ [Calendar] - Report generated successfully');
             
-            // Create and download the report
-            const blob = new Blob([JSON.stringify(data.data, null, 2)], { 
-              type: 'application/json' 
+            // Get current events from store for additional context
+            const currentState = get();
+            
+            // Prepare report data in the expected format
+            // Note: API returns { data: reportData } where reportData already has the correct structure
+            const reportData = data.data;
+            
+            
+            // Generate and open HTML report in new tab
+            generateCalendarReport({ 
+              reportData, 
+              events: currentState.events 
             });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `calendar-report-${startDate}-to-${endDate}.json`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            
           }
         } catch (error) {
           console.error('❌ [Calendar] - Error generating report:', error);
@@ -331,6 +329,69 @@ export const useCalendarStore = create<CalendarState>()(
           });
         }
       },
+
+      // Generate filtered reports with module selection
+      generateFilteredReport: async (startDate: string, endDate: string, filters: any) => {
+        try {
+          const token = localStorage.getItem('auth-token');
+          if (!token) {
+            throw new Error('Authentication required');
+          }
+
+
+          const response = await fetch(`/api/calendar/reports`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              startDate,
+              endDate,
+              moduleFilters: filters.modules,
+              includeAllData: filters.includeAllData
+            })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('❌ [Calendar] - API Error:', {
+              status: response.status,
+              statusText: response.statusText,
+              errorData
+            });
+            throw new Error(errorData.message || `HTTP ${response.status}: Failed to generate report`);
+          }
+
+          const data = await response.json();
+          
+          if (data.success) {
+            
+            // Get current events from store for additional context
+            const currentState = get();
+            
+            // Prepare report data in the expected format
+            // Note: API returns { data: reportData } where reportData already has the correct structure
+            const reportData = data.data;
+            
+            
+            // Generate and open HTML report in new tab
+            generateCalendarReport({ 
+              reportData, 
+              events: currentState.events 
+            });
+            
+          } else {
+            throw new Error(data.message || 'Failed to generate filtered report');
+          }
+        } catch (error) {
+          console.error('❌ [Calendar] - Error generating filtered report:', error);
+          set((state) => {
+            state.error = error instanceof Error ? error.message : 'Failed to generate filtered report';
+          });
+          throw error;
+        }
+      }
     })),
     {
       name: 'calendar-store',

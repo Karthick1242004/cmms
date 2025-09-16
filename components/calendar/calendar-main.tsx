@@ -26,6 +26,7 @@ import { AddLeaveDialog } from './add-leave-dialog';
 import { AddOvertimeDialog } from './add-overtime-dialog';
 import { CalendarSkeleton } from './calendar-skeleton';
 import { LoadingSpinner } from '@/components/loading-spinner';
+import { CalendarReportFilterDialog, ReportFilterOptions } from './calendar-report-filter-dialog';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +36,8 @@ export function CalendarMain() {
   const [showFilters, setShowFilters] = useState(false);
   const [showAddLeave, setShowAddLeave] = useState(false);
   const [showAddOvertime, setShowAddOvertime] = useState(false);
+  const [showReportFilter, setShowReportFilter] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const {
     events,
@@ -47,7 +50,8 @@ export function CalendarMain() {
     setSelectedEvent,
     setViewType,
     setSelectedDate,
-    generateReport
+    generateReport,
+    generateFilteredReport
   } = useCalendarStore();
 
   // Fetch events when component mounts - using ref to avoid dependencies
@@ -181,14 +185,27 @@ export function CalendarMain() {
   }, [viewType, events]); // Re-sync when events change
 
   const handleGenerateReport = useCallback(async () => {
-    const calendar = calendarRef.current?.getApi();
-    if (calendar) {
-      const view = calendar.view;
-      const startDate = view.activeStart.toISOString().split('T')[0];
-      const endDate = view.activeEnd.toISOString().split('T')[0];
-      await generateReport(startDate, endDate);
+    setShowReportFilter(true);
+  }, []);
+
+  const handleGenerateFilteredReport = useCallback(async (filters: ReportFilterOptions) => {
+    setIsGeneratingReport(true);
+    setShowReportFilter(false);
+    
+    try {
+      const calendar = calendarRef.current?.getApi();
+      if (calendar) {
+        const view = calendar.view;
+        const startDate = view.activeStart.toISOString().split('T')[0];
+        const endDate = view.activeEnd.toISOString().split('T')[0];
+        await generateFilteredReport(startDate, endDate, filters);
+      }
+    } catch (error) {
+      console.error('Failed to generate filtered report:', error);
+    } finally {
+      setIsGeneratingReport(false);
     }
-  }, [generateReport]);
+  }, [generateFilteredReport]);
 
   const goToToday = useCallback(() => {
     const calendar = calendarRef.current?.getApi();
@@ -433,6 +450,14 @@ export function CalendarMain() {
       <AddOvertimeDialog
         isOpen={showAddOvertime}
         onClose={() => setShowAddOvertime(false)}
+      />
+
+      {/* Report Filter Dialog */}
+      <CalendarReportFilterDialog
+        isOpen={showReportFilter}
+        onClose={() => setShowReportFilter(false)}
+        onGenerate={handleGenerateFilteredReport}
+        isGenerating={isGeneratingReport}
       />
     </div>
   );

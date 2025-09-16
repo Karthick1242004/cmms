@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { employeesApi } from '@/lib/employees-api';
 import { LoadingSpinner } from '@/components/loading-spinner';
 import { toast } from 'sonner';
 import type { OvertimeRecord } from '@/types/calendar';
+import { useAuthStore } from '@/stores/auth-store';
 
 interface AddOvertimeDialogProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface AddOvertimeDialogProps {
 
 export function AddOvertimeDialog({ isOpen, onClose }: AddOvertimeDialogProps) {
   const { addOvertime } = useCalendarStore();
+  const { user } = useAuthStore();
   
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -40,6 +42,25 @@ export function AddOvertimeDialog({ isOpen, onClose }: AddOvertimeDialogProps) {
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Access level checks
+  const isSuperAdmin = user?.accessLevel === 'super_admin';
+  const isDepartmentAdmin = user?.accessLevel === 'department_admin';
+  const isNormalUser = user?.accessLevel === 'user';
+
+  // Determine if user can select other employees
+  const canSelectOtherEmployees = isSuperAdmin || isDepartmentAdmin;
+
+  // Auto-populate employee info for normal users
+  useEffect(() => {
+    if (isNormalUser && user && !formData.employeeId) {
+      setFormData(prev => ({
+        ...prev,
+        employeeId: user.employeeId || user.id || '',
+        employeeName: user.name || ''
+      }));
+    }
+  }, [user, isNormalUser, formData.employeeId]);
+
   // Calculate hours
   const calculateHours = () => {
     if (!formData.startTime || !formData.endTime) return 0;
@@ -52,15 +73,50 @@ export function AddOvertimeDialog({ isOpen, onClose }: AddOvertimeDialogProps) {
     return Math.round(((end.getTime() - start.getTime()) / (1000 * 60 * 60)) * 100) / 100;
   };
 
-  // Load employees when dropdown opens
+  // Load employees when dropdown opens with access level logic
   const loadEmployees = async () => {
     if (employees.length > 0) return;
     
     setIsLoadingEmployees(true);
     try {
-      const response = await employeesApi.getEmployees({ limit: 100 });
-      if (response.success && response.data) {
-        setEmployees(response.data);
+      const params: any = { limit: 1000 }; // Get all employees for dropdown
+      
+      // Apply department filtering based on access level
+      if (isDepartmentAdmin && user?.department) {
+        // Department admin can only see employees from their department
+        params.department = user.department;
+      } else if (isNormalUser) {
+        // Normal users should only see themselves
+        if (user?.employeeId) {
+          setEmployees([{
+            id: user.employeeId,
+            name: user.name,
+            role: user.role || 'Employee',
+            department: user.department,
+            email: user.email
+          }]);
+          setIsLoadingEmployees(false);
+          return;
+        } else {
+          params.department = user?.department;
+        }
+      }
+      // Super admin gets all employees (no additional filters)
+
+      const response = await employeesApi.getAll(params);
+      if (response.success && response.data?.employees) {
+        let filteredEmployees = response.data.employees;
+        
+        // Additional client-side filtering for normal users
+        if (isNormalUser && user) {
+          filteredEmployees = filteredEmployees.filter(emp => 
+            emp.email === user.email || 
+            emp.name === user.name ||
+            emp.id === user.id
+          );
+        }
+        
+        setEmployees(filteredEmployees);
       }
     } catch (error) {
       console.error('Error loading employees:', error);
@@ -156,22 +212,23 @@ export function AddOvertimeDialog({ isOpen, onClose }: AddOvertimeDialogProps) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Employee Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="employee">Employee *</Label>
-            <Popover open={showEmployeeDropdown} onOpenChange={setShowEmployeeDropdown}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={showEmployeeDropdown}
-                  className="w-full justify-between"
-                  onClick={loadEmployees}
-                >
-                  {formData.employeeName || 'Select employee...'}
-                  <Users className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
+          {/* Employee Selection - conditional based on access level */}
+          {canSelectOtherEmployees ? (
+            <div className="space-y-2">
+              <Label htmlFor="employee">Employee *</Label>
+              <Popover open={showEmployeeDropdown} onOpenChange={setShowEmployeeDropdown}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={showEmployeeDropdown}
+                    className="w-full justify-between"
+                    onClick={loadEmployees}
+                  >
+                    {formData.employeeName || 'Select employee...'}
+                    <Users className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
               <PopoverContent className="w-full p-0" align="start">
                 <Command>
                   <CommandInput placeholder="Search employees..." />
@@ -208,7 +265,24 @@ export function AddOvertimeDialog({ isOpen, onClose }: AddOvertimeDialogProps) {
                 </Command>
               </PopoverContent>
             </Popover>
-          </div>
+            </div>
+          ) : (
+            // Normal users - auto-populate with their own info
+            <div className="space-y-2">
+              <Label htmlFor="employee">Employee</Label>
+              <div className="p-3 bg-muted/50 rounded-md border">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{user?.name || 'Current User'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {user?.role || 'Employee'} - {user?.department}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Date */}
           <div className="space-y-2">

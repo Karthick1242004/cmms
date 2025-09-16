@@ -11,6 +11,7 @@ import { X, Filter, RotateCcw } from 'lucide-react';
 import { useCalendarStore } from '@/stores/calendar-store';
 import { useDepartments } from '@/hooks/use-departments';
 import { useAuthStore } from '@/stores/auth-store';
+import { employeesApi } from '@/lib/employees-api';
 
 interface CalendarFiltersProps {
   onClose: () => void;
@@ -22,6 +23,66 @@ export function CalendarFilters({ onClose }: CalendarFiltersProps) {
   const { filters, updateFilters } = useCalendarStore();
 
   const [localFilters, setLocalFilters] = useState(filters);
+  const [employees, setEmployees] = useState<Array<{ label: string; value: string }>>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+
+  // Access level checks
+  const isSuperAdmin = user?.accessLevel === 'super_admin';
+  const isDepartmentAdmin = user?.accessLevel === 'department_admin';
+  const isNormalUser = user?.accessLevel === 'user';
+
+  // Load employees based on access level
+  useEffect(() => {
+    const loadEmployees = async () => {
+      setIsLoadingEmployees(true);
+      try {
+        const params: any = { limit: 1000 };
+        
+        // Apply department filtering based on access level
+        if (isDepartmentAdmin && user?.department) {
+          params.department = user.department;
+        } else if (isNormalUser) {
+          // Normal users should only see themselves
+          if (user) {
+            setEmployees([{
+              label: user.name || 'Current User',
+              value: user.employeeId || user.id || user.email || user.name || ''
+            }]);
+            setIsLoadingEmployees(false);
+            return;
+          }
+        }
+        // Super admin gets all employees
+
+        const response = await employeesApi.getAll(params);
+        if (response.success && response.data?.employees) {
+          let filteredEmployees = response.data.employees;
+          
+          // Additional client-side filtering for normal users
+          if (isNormalUser && user) {
+            filteredEmployees = filteredEmployees.filter(emp => 
+              emp.email === user.email || 
+              emp.name === user.name ||
+              emp.id === user.id
+            );
+          }
+          
+          const employeeOptions = filteredEmployees.map(emp => ({
+            label: `${emp.name} (${emp.department})`,
+            value: emp.id || emp.email || emp.name
+          }));
+          
+          setEmployees(employeeOptions);
+        }
+      } catch (error) {
+        console.error('Error loading employees for filter:', error);
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    };
+
+    loadEmployees();
+  }, [user, isSuperAdmin, isDepartmentAdmin, isNormalUser]);
 
   // Department options
   const departmentOptions = departments?.data?.departments?.map(dept => ({
@@ -166,6 +227,28 @@ export function CalendarFilters({ onClose }: CalendarFiltersProps) {
               onChange={(values) => handleMultiSelectChange('departments', values)}
               placeholder="All departments"
               className="w-full"
+            />
+          </div>
+        )}
+
+        {/* Employee Filter - conditional based on access level */}
+        {(isSuperAdmin || isDepartmentAdmin) && employees.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Employees
+              {isLoadingEmployees && " (Loading...)"}
+            </Label>
+            <MultiSelect
+              options={employees}
+              value={localFilters.employees}
+              onChange={(values) => handleMultiSelectChange('employees', values)}
+              placeholder={
+                isSuperAdmin ? "All employees" :
+                isDepartmentAdmin ? "Department employees" :
+                "Your activities"
+              }
+              className="w-full"
+              disabled={isLoadingEmployees}
             />
           </div>
         )}

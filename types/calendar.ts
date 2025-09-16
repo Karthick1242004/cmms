@@ -92,12 +92,25 @@ export interface CalendarState {
   generateReport: (startDate: string, endDate: string) => Promise<void>;
 }
 
+export interface ReportModuleFilters {
+  dailyActivities: boolean;
+  maintenance: boolean;
+  safetyInspections: boolean;
+  tickets: boolean;
+  shifts: boolean;
+  leaves: boolean;
+  overtime: boolean;
+  events: boolean;
+}
+
 export interface CalendarReport {
   reportType: 'employee' | 'department' | 'summary';
   employeeId?: string;
   department?: string;
   startDate: string;
   endDate: string;
+  moduleFilters?: ReportModuleFilters;
+  includeAllData?: boolean;
   data: {
     totalWorkDays: number;
     totalLeaves: number;
@@ -116,6 +129,9 @@ export interface CalendarReport {
       leaves: EmployeeLeave[];
       overtimes: OvertimeRecord[];
       activities: CalendarEvent[];
+      maintenance?: any[];
+      safetyInspections?: any[];
+      tickets?: any[];
     };
   };
 }
