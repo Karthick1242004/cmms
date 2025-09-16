@@ -36,6 +36,7 @@ export function CalendarMain() {
   const [showAddOvertime, setShowAddOvertime] = useState(false);
   const [showReportFilter, setShowReportFilter] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [calendarTitle, setCalendarTitle] = useState('Calendar');
 
   const {
     events,
@@ -132,6 +133,14 @@ export function CalendarMain() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleDatesSet = useCallback((dateInfo: any) => {
+    // Update calendar title with formatted date
+    const currentDate = dateInfo.start;
+    const formattedTitle = currentDate.toLocaleDateString('en-US', { 
+      month: 'long', 
+      year: 'numeric' 
+    });
+    setCalendarTitle(formattedTitle);
+
     // Clear any existing timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -146,7 +155,6 @@ export function CalendarMain() {
   }, []);
 
   const handleViewChange = useCallback((view: 'month' | 'week' | 'day' | 'list') => {
-    console.log('🔄 [Calendar] - View changing to:', view);
     setViewType(view);
     const calendar = calendarRef.current?.getApi();
     if (calendar) {
@@ -157,7 +165,14 @@ export function CalendarMain() {
         list: 'listWeek'
       };
       calendar.changeView(viewMap[view]);
-      console.log('✅ [Calendar] - View changed to:', viewMap[view]);
+      
+      // Update title with formatted date
+      const currentDate = calendar.view.currentStart;
+      const formattedTitle = currentDate.toLocaleDateString('en-US', { 
+        month: 'long', 
+        year: 'numeric' 
+      });
+      setCalendarTitle(formattedTitle);
     }
   }, [setViewType]);
 
@@ -176,7 +191,6 @@ export function CalendarMain() {
       const expectedView = viewMap[viewType];
       
       if (currentView !== expectedView) {
-        console.log('🔄 [Calendar] - Syncing view:', currentView, '->', expectedView);
         calendar.changeView(expectedView);
       }
     }
@@ -294,6 +308,11 @@ export function CalendarMain() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="text-lg font-semibold text-foreground">
+                {calendarTitle}
+              </div>
+            </div>
 
             <div className="flex items-center gap-1">
               {(['month', 'week', 'day'] as const).map((view) => (
@@ -301,10 +320,7 @@ export function CalendarMain() {
                   key={view}
                   variant={viewType === view ? "default" : "outline"}
                   size="sm"
-                  onClick={() => {
-                    console.log('🖱️ [Calendar] - Button clicked for view:', view);
-                    handleViewChange(view);
-                  }}
+                  onClick={() => handleViewChange(view)}
                   className={cn(
                     'capitalize transition-all',
                     viewType === view && 'bg-primary text-primary-foreground shadow-sm'
@@ -365,7 +381,6 @@ export function CalendarMain() {
                 eventClassNames="cursor-pointer hover:opacity-80 transition-opacity"
                 dayCellClassNames="hover:bg-accent/50 transition-colors"
                 viewDidMount={(info) => {
-                  console.log('📅 [Calendar] - View mounted:', info.view.type);
                   // Update store if view changed from outside
                   const storeViewMap: { [key: string]: 'month' | 'week' | 'day' | 'list' } = {
                     'dayGridMonth': 'month',
@@ -375,7 +390,6 @@ export function CalendarMain() {
                   };
                   const storeView = storeViewMap[info.view.type];
                   if (storeView && storeView !== viewType) {
-                    console.log('🔄 [Calendar] - Updating store view to:', storeView);
                     setViewType(storeView);
                   }
                 }}

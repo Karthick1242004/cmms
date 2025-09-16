@@ -73,7 +73,6 @@ export function generateCalendarReport({ reportData, events = [] }: GenerateCale
       events: true
     };
 
-    console.log('📊 [Calendar Report] - Processing data:', { safeData, originalData: data, filters, includeAllData });
 
     const getEventTypeColor = (type: string) => {
       const colors = {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import type { EmployeeLeave } from '@/types/calendar';
+import { ObjectId } from 'mongodb';
 
 /**
  * GET /api/calendar/leaves
@@ -130,7 +131,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/calendar/leaves
- * Create a new leave request
+ * Create a new leave request with comprehensive validation
  */
 export async function POST(request: NextRequest) {
   try {
@@ -143,21 +144,60 @@ export async function POST(request: NextRequest) {
     }
 
     const { db } = await connectToDatabase();
-    const body = await request.json();
+    
+    // Parse and validate request body
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid JSON payload' },
+        { status: 400 }
+      );
+    }
 
     // Validate required fields
     const { employeeId, employeeName, leaveType, startDate, endDate, reason } = body;
 
     if (!employeeId || !employeeName || !leaveType || !startDate || !endDate) {
       return NextResponse.json(
-        { success: false, message: 'Missing required fields' },
+        { success: false, message: 'Missing required fields: employeeId, employeeName, leaveType, startDate, endDate' },
+        { status: 400 }
+      );
+    }
+
+    // Validate leave type
+    const validLeaveTypes = ['sick', 'vacation', 'personal', 'emergency', 'annual', 'maternity', 'paternity', 'bereavement', 'medical'];
+    if (!validLeaveTypes.includes(leaveType)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid leave type' },
+        { status: 400 }
+      );
+    }
+
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid date format' },
+        { status: 400 }
+      );
+    }
+
+    if (start > end) {
+      return NextResponse.json(
+        { success: false, message: 'Start date must be before or equal to end date' },
         { status: 400 }
       );
     }
 
     // Access control: Check if user can create leave for this employee
     if (user.accessLevel === 'user') {
-      // Normal users can only create leaves for themselves
+      // Normal users can only create leave for themselves
       const isOwnLeave = employeeId === user.employeeId || 
                         employeeId === user.id || 
                         employeeId === user.email ||
@@ -169,89 +209,23 @@ export async function POST(request: NextRequest) {
           { status: 403 }
         );
       }
-    } else if (user.accessLevel === 'department_admin') {
-      // Department admin can create leaves for employees in their department
-      // We'll validate this by checking the employee's department from the employee record
-      const employeeRecord = await db.collection('employees').findOne({
-        $or: [
-          { _id: employeeId },
-          { id: employeeId },
-          { email: employeeId },
-          { name: employeeName }
-        ]
-      });
-
-      if (!employeeRecord) {
-        return NextResponse.json(
-          { success: false, message: 'Employee not found' },
-          { status: 404 }
-        );
-      }
-
-      if (employeeRecord.department !== user.department) {
-        return NextResponse.json(
-          { success: false, message: 'Access denied: You can only create leaves for employees in your department' },
-          { status: 403 }
-        );
-      }
     }
-    // Super admin can create leaves for anyone (no additional checks needed)
 
-    // Validate date range
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    if (start > end) {
+    // Get employee details for department validation
+    let employeeObjectId;
+    try {
+      employeeObjectId = new ObjectId(employeeId);
+    } catch (error) {
       return NextResponse.json(
-        { success: false, message: 'Start date cannot be after end date' },
+        { success: false, message: 'Invalid employee ID format' },
         { status: 400 }
       );
     }
 
-    if (start < new Date()) {
-      return NextResponse.json(
-        { success: false, message: 'Cannot apply for past dates' },
-        { status: 400 }
-      );
-    }
+    const employee = await db.collection('employees').findOne({ 
+      _id: employeeObjectId 
+    });
 
-    // Check for overlapping leaves
-    const overlappingLeaves = await db.collection('employeeleaves')
-      .find({
-        employeeId,
-        status: { $ne: 'rejected' },
-        $or: [
-          {
-            startDate: {
-              $gte: startDate,
-              $lte: endDate
-            }
-          },
-          {
-            endDate: {
-              $gte: startDate,
-              $lte: endDate
-            }
-          },
-          {
-            $and: [
-              { startDate: { $lte: startDate } },
-              { endDate: { $gte: endDate } }
-            ]
-          }
-        ]
-      })
-      .toArray();
-
-    if (overlappingLeaves.length > 0) {
-      return NextResponse.json(
-        { success: false, message: 'Leave request overlaps with existing leave' },
-        { status: 409 }
-      );
-    }
-
-    // Get employee department
-    const employee = await db.collection('employees').findOne({ _id: employeeId });
     if (!employee) {
       return NextResponse.json(
         { success: false, message: 'Employee not found' },
@@ -259,25 +233,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Additional access control for department admin
+    if (user.accessLevel === 'department_admin') {
+      if (employee.department !== user.department) {
+        return NextResponse.json(
+          { success: false, message: 'Access denied: You can only create leave for employees in your department' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Check for overlapping leave requests
+    const existingLeave = await db.collection('employeeleaves')
+      .findOne({
+        employeeId,
+        status: { $ne: 'rejected' },
+        $or: [
+          {
+            startDate: { $lte: endDate },
+            endDate: { $gte: startDate }
+          }
+        ]
+      });
+
+    if (existingLeave) {
+      return NextResponse.json(
+        { success: false, message: 'Leave request overlaps with existing leave' },
+        { status: 409 }
+      );
+    }
+
+    // Calculate leave duration
+    const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
     // Create leave record
-    const leaveData: EmployeeLeave = {
-      id: '', // Will be set after insertion
+    const leaveData = {
       employeeId,
-      employeeName,
+      employeeName: employeeName.trim(),
       leaveType,
-      startDate,
-      endDate,
-      reason: reason || '',
-      status: 'pending',
+      startDate: startDate,
+      endDate: endDate,
+      reason: reason?.trim() || '',
+      duration,
+      status: user.accessLevel === 'super_admin' || user.accessLevel === 'department_admin' ? 'approved' : 'pending',
+      department: employee.department || user.department,
       appliedAt: new Date().toISOString(),
-      department: employee.department
+      appliedBy: user.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    // For department admins and super admins, auto-approve if applying for their own department
+    // Auto-approve if submitted by admin for their department
     if ((user.accessLevel === 'department_admin' && employee.department === user.department) ||
         user.accessLevel === 'super_admin') {
-      leaveData.status = 'approved';
       leaveData.approvedBy = user.id;
+      leaveData.approvedAt = new Date().toISOString();
     }
 
     const result = await db.collection('employeeleaves').insertOne(leaveData);
@@ -292,6 +302,27 @@ export async function POST(request: NextRequest) {
     const createdLeave = await db.collection('employeeleaves')
       .findOne({ _id: result.insertedId });
 
+    // Log successful leave creation
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'info',
+      event: 'leave_request_created',
+      user: {
+        id: user.id,
+        email: user.email,
+        accessLevel: user.accessLevel,
+        department: user.department
+      },
+      leave: {
+        id: result.insertedId.toString(),
+        employeeId,
+        leaveType,
+        duration,
+        status: leaveData.status,
+        department: leaveData.department
+      }
+    }));
+
     return NextResponse.json({
       success: true,
       data: {
@@ -302,7 +333,17 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('❌ [Calendar Leaves] - Error creating leave:', error);
+    // Structured error logging
+    console.error(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'error',
+      event: 'leave_creation_failed',
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+      }
+    }));
+    
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }

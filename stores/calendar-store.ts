@@ -202,6 +202,22 @@ export const useCalendarStore = create<CalendarState>()(
             set((state) => {
               state.leaves.push(data.data);
             });
+            
+            // Clear cache and refresh calendar events to show the new leave
+            lastFetchedRange = null;
+            
+            // Get current date range and refresh events
+            const currentState = get();
+            const today = new Date();
+            const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // Extended range for better coverage
+            
+            // Refresh events for the current visible range
+            await currentState.fetchEvents(
+              startDate.toISOString().split('T')[0],
+              endDate.toISOString().split('T')[0]
+            );
+            
             return true;
           }
           return false;
@@ -238,6 +254,22 @@ export const useCalendarStore = create<CalendarState>()(
             set((state) => {
               state.overtimes.push(data.data);
             });
+            
+            // Clear cache and refresh calendar events to show the new overtime
+            lastFetchedRange = null;
+            
+            // Get current date range and refresh events
+            const currentState = get();
+            const today = new Date();
+            const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // Extended range for better coverage
+            
+            // Refresh events for the current visible range
+            await currentState.fetchEvents(
+              startDate.toISOString().split('T')[0],
+              endDate.toISOString().split('T')[0]
+            );
+            
             return true;
           }
           return false;

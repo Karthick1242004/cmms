@@ -52,7 +52,9 @@ export async function GET(request: NextRequest) {
         safetyInspections,
         tickets,
         shifts,
-        holidays
+        holidays,
+        overtimes,
+        leaves
       ] = await Promise.all([
         // 1. Fetch Daily Log Activities with limit and sorting
         db.collection('dailylogactivities')
@@ -110,6 +112,46 @@ export async function GET(request: NextRequest) {
           })
           .sort({ date: 1 })
           .limit(100)
+          .toArray(),
+
+        // 7. Fetch Overtime Records
+        db.collection('employeeovertime')
+          .find({
+            date: {
+              $gte: startDate,
+              $lte: endDate
+            },
+            ...(user.accessLevel === 'super_admin' ? {} : { department: user.department })
+          })
+          .sort({ date: -1 })
+          .limit(500)
+          .toArray(),
+
+        // 8. Fetch Employee Leaves
+        db.collection('employeeleaves')
+          .find({
+            $or: [
+              {
+                startDate: {
+                  $gte: startDate,
+                  $lte: endDate
+                }
+              },
+              {
+                endDate: {
+                  $gte: startDate,
+                  $lte: endDate
+                }
+              },
+              {
+                startDate: { $lte: startDate },
+                endDate: { $gte: endDate }
+              }
+            ],
+            ...(user.accessLevel === 'super_admin' ? {} : { department: user.department })
+          })
+          .sort({ startDate: 1 })
+          .limit(500)
           .toArray()
       ]);
 
@@ -248,6 +290,62 @@ export async function GET(request: NextRequest) {
         });
       });
 
+      // Process Overtime Records
+      overtimes.forEach((overtime: any) => {
+        events.push({
+          id: `overtime-${overtime._id}`,
+          title: `⏰ Overtime: ${overtime.employeeName}`,
+          start: `${overtime.date}T${overtime.startTime}:00`,
+          end: `${overtime.date}T${overtime.endTime}:00`,
+          color: '#f59e0b', // Orange for overtime
+          extendedProps: {
+            type: 'overtime',
+            status: overtime.status,
+            employeeId: overtime.employeeId,
+            employeeName: overtime.employeeName,
+            department: overtime.department,
+            description: `${overtime.reason} (${overtime.hours}h)`,
+            metadata: {
+              hours: overtime.hours,
+              reason: overtime.reason,
+              overtimeType: overtime.type,
+              approvedBy: overtime.approvedBy
+            }
+          }
+        });
+      });
+
+      // Process Employee Leaves
+      leaves.forEach((leave: any) => {
+        // Calculate duration for multi-day leaves
+        const startDate = new Date(leave.startDate);
+        const endDate = new Date(leave.endDate);
+        const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        
+        events.push({
+          id: `leave-${leave._id}`,
+          title: `🏖️ ${leave.employeeName} - ${leave.leaveType}`,
+          start: leave.startDate,
+          end: leave.endDate,
+          allDay: true,
+          color: getLeaveTypeColor(leave.leaveType),
+          extendedProps: {
+            type: 'leave',
+            status: leave.status,
+            employeeId: leave.employeeId,
+            employeeName: leave.employeeName,
+            department: leave.department,
+            description: `${leave.leaveType} - ${leave.reason || 'No reason provided'}`,
+            metadata: {
+              leaveType: leave.leaveType,
+              reason: leave.reason,
+              duration: daysDiff,
+              appliedAt: leave.appliedAt,
+              approvedBy: leave.approvedBy
+            }
+          }
+        });
+      });
 
       return NextResponse.json({
         success: true,
@@ -375,4 +473,23 @@ function getPriorityColor(priority: string, type: string): string {
   return priorityColors[priority as keyof typeof priorityColors] || 
          typeColors[type as keyof typeof typeColors] || 
          '#6b7280';
+}
+
+/**
+ * Get color based on leave type
+ */
+function getLeaveTypeColor(leaveType: string): string {
+  const leaveColors = {
+    'sick': '#dc2626',      // Red
+    'vacation': '#10b981',  // Green
+    'personal': '#3b82f6',  // Blue
+    'emergency': '#f59e0b', // Orange
+    'annual': '#8b5cf6',    // Purple
+    'maternity': '#ec4899', // Pink
+    'paternity': '#06b6d4', // Cyan
+    'bereavement': '#374151', // Gray
+    'medical': '#dc2626'    // Red
+  };
+
+  return leaveColors[leaveType as keyof typeof leaveColors] || '#6b7280';
 }
