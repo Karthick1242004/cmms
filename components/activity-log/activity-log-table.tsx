@@ -18,6 +18,7 @@ import {
   User, 
   AlertTriangle, 
   CheckCircle, 
+  CheckCircle2,
   Clock, 
   Archive, 
   Trash2, 
@@ -27,6 +28,13 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 import type { ActivityModule, ActivityAction, ActivityPriority, ActivityStatus, ActivityLogEntry } from '@/types/activity-log'
 import { formatDowntime, getDowntimeTypeBadgeClasses, getDowntimeTypeLabel } from '@/lib/downtime-utils'
+import { 
+  calculateActivityDowntime, 
+  formatActivityDowntime, 
+  calculateUptimePercentage, 
+  getDateFilterPresets,
+  type DateFilter 
+} from '@/lib/activity-downtime-utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,6 +118,14 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
   const [statusFilter, setStatusFilter] = useState<ActivityStatus | 'all'>('all')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [logToDelete, setLogToDelete] = useState<ActivityLogEntry | null>(null)
+
+  // Date filter state for downtime metrics
+  const [downtimeeDateFilter, setDowntimeDateFilter] = useState<DateFilter>({})
+  const [showDowntimeFilters, setShowDowntimeFilters] = useState(false)
+
+  // Calculate downtime metrics from current logs with date filtering
+  const downtimeMetrics = calculateActivityDowntime(logs, downtimeeDateFilter)
+  const uptimePercentage = calculateUptimePercentage(downtimeMetrics.totalDowntimeMinutes, downtimeMetrics.periodDays)
 
   // Check if user can delete activity logs
   const canDeleteLog = (log: ActivityLogEntry) => {
@@ -260,6 +276,124 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
           </div>
         </Card>
       </div>
+
+      {/* Downtime Metrics Cards */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Downtime Analysis</h3>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowDowntimeFilters(!showDowntimeFilters)}
+            className="text-xs"
+          >
+            {showDowntimeFilters ? 'Hide Filters' : 'Date Filters'}
+          </Button>
+        </div>
+
+        {/* Date Filters */}
+        {showDowntimeFilters && (
+          <div className="mb-4 space-y-3">
+            {/* Quick Presets */}
+            <div className="flex flex-wrap gap-2">
+              {getDateFilterPresets().map((preset) => (
+                <Button
+                  key={preset.label}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDowntimeDateFilter(preset.value)}
+                  className="text-xs h-7"
+                >
+                  {preset.label}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDowntimeDateFilter({})}
+                className="text-xs h-7"
+              >
+                Clear Filter
+              </Button>
+            </div>
+            
+            {/* Custom Date Range */}
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="date"
+                placeholder="Start date"
+                value={downtimeeDateFilter.startDate || ''}
+                onChange={(e) => setDowntimeDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
+                className="text-sm h-8"
+              />
+              <Input
+                type="date"
+                placeholder="End date"
+                value={downtimeeDateFilter.endDate || ''}
+                onChange={(e) => setDowntimeDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
+                className="text-sm h-8"
+              />
+            </div>
+
+            {/* Filter Info */}
+            {(downtimeeDateFilter.startDate || downtimeeDateFilter.endDate) && (
+              <p className="text-xs text-muted-foreground">
+                Analyzing {downtimeMetrics.periodDays} days • {downtimeMetrics.downtimeEvents} downtime events
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="p-4 border-red-200 bg-red-50">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="text-sm font-medium text-red-700">Total Downtime</p>
+                <p className="text-2xl font-bold text-red-800">
+                  {formatActivityDowntime(downtimeMetrics.totalDowntimeMinutes)}
+                </p>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-4 border-blue-200 bg-blue-50">
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-blue-700">Planned Downtime</p>
+                <p className="text-2xl font-bold text-blue-800">
+                  {formatActivityDowntime(downtimeMetrics.plannedDowntimeMinutes)}
+                </p>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-4 border-orange-200 bg-orange-50">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <div>
+                <p className="text-sm font-medium text-orange-700">Unplanned Downtime</p>
+                <p className="text-2xl font-bold text-orange-800">
+                  {formatActivityDowntime(downtimeMetrics.unplannedDowntimeMinutes)}
+                </p>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-4 border-green-200 bg-green-50">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div>
+                <p className="text-sm font-medium text-green-700">Uptime</p>
+                <p className="text-2xl font-bold text-green-800">
+                  {uptimePercentage.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </Card>
 
       {/* Filters */}
       <Card className="p-4">

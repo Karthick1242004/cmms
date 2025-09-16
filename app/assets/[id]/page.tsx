@@ -291,6 +291,7 @@ export default function AssetDetailPage() {
               </div>
             </div>
 
+
             {/* Tabs Section */}
             <Tabs defaultValue="general" className="w-full">
               <ScrollArea className="w-full whitespace-nowrap rounded-md border-b">

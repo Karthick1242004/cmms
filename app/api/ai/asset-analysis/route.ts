@@ -3,6 +3,7 @@ import { getUserContext } from '@/lib/auth-helpers';
 import { connectToDatabase } from '@/lib/mongodb';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ObjectId } from 'mongodb';
+import { calculateActivityDowntime, formatActivityDowntime } from '@/lib/activity-downtime-utils';
 
 // Test API key functionality
 async function testApiKey(apiKey: string): Promise<boolean> {
@@ -119,6 +120,11 @@ async function aggregateAssetData(assetId: string, db: any, user: any = null) {
     .sort({ createdAt: -1 })
     .toArray();
 
+  console.log('🔍 [Data Aggregation] - Fetched data for asset:', assetId);
+  console.log('- Activity Logs:', activityLogs.length);
+  console.log('- Daily Log Activities (with downtime):', dailyLogActivities.length);
+  console.log('- Sample daily log activity with downtime:', dailyLogActivities[0]);
+
   // Get maintenance records
   const maintenanceRecords = await db.collection('maintenance')
     .find({ assetId, ...departmentFilter })
@@ -155,28 +161,58 @@ async function aggregateAssetData(assetId: string, db: any, user: any = null) {
 function calculateAssetAnalysis(data: any) {
   const { dailyLogActivities, activityLogs, maintenanceRecords, tickets, safetyInspections, linkedParts } = data;
 
-  // Calculate uptime/downtime metrics
-  const totalDowntimeMinutes = dailyLogActivities.reduce((total: number, activity: any) => {
-    return total + (activity.downtime || 0);
-  }, 0);
+  console.log('🔍 [AI Analysis] - Raw data structure:');
+  console.log('- Activity Logs count:', activityLogs?.length || 0);
+  console.log('- Daily Log Activities count:', dailyLogActivities?.length || 0);
+  console.log('- Sample activity log:', activityLogs?.[0]);
+  console.log('- Sample daily log activity:', dailyLogActivities?.[0]);
 
-  const plannedDowntimeMinutes = dailyLogActivities
-    .filter((activity: any) => activity.downtimeType === 'planned')
-    .reduce((total: number, activity: any) => total + (activity.downtime || 0), 0);
-
-  const unplannedDowntimeMinutes = dailyLogActivities
-    .filter((activity: any) => activity.downtimeType === 'unplanned')
-    .reduce((total: number, activity: any) => total + (activity.downtime || 0), 0);
-
-  // Assume 24/7 operation for the analysis period (last 30 days)
-  const analysisWindowDays = 30;
-  const totalPossibleMinutes = analysisWindowDays * 24 * 60; // 30 days in minutes
-  const uptimeMinutes = totalPossibleMinutes - totalDowntimeMinutes;
+  // Check for downtime data in activity logs
+  const activityLogsWithDowntime = activityLogs.filter((log: any) => 
+    log.metadata?.downtime !== undefined && log.metadata?.downtime !== null
+  );
   
-  const uptimePercentage = (uptimeMinutes / totalPossibleMinutes) * 100;
-  const downtimePercentage = (totalDowntimeMinutes / totalPossibleMinutes) * 100;
-  const plannedDowntimePercentage = (plannedDowntimeMinutes / totalPossibleMinutes) * 100;
-  const unplannedDowntimePercentage = (unplannedDowntimeMinutes / totalPossibleMinutes) * 100;
+  console.log('📊 [AI Analysis] - Downtime data check:');
+  console.log('- Activity logs with downtime metadata:', activityLogsWithDowntime.length);
+  
+  // Check for downtime data in daily log activities
+  const dailyLogsWithDowntime = dailyLogActivities.filter((activity: any) => 
+    activity.downtime !== undefined && activity.downtime !== null && activity.downtime > 0
+  );
+  
+  console.log('- Daily log activities with downtime:', dailyLogsWithDowntime.length);
+  console.log('- Sample downtime data from daily logs:', dailyLogsWithDowntime.slice(0, 3));
+
+  // Calculate detailed downtime metrics using the enhanced utility
+  // Try both data sources to find downtime information
+  let downtimeMetrics;
+  
+  if (activityLogsWithDowntime.length > 0) {
+    console.log('✅ [AI Analysis] - Using activity logs for downtime calculation');
+    downtimeMetrics = calculateActivityDowntime(activityLogs);
+  } else if (dailyLogsWithDowntime.length > 0) {
+    console.log('✅ [AI Analysis] - Converting daily log activities to activity log format for downtime calculation');
+    // Convert daily log activities to activity log format
+    const convertedActivityLogs = dailyLogActivities.map((activity: any) => ({
+      ...activity,
+      metadata: {
+        downtime: activity.downtime,
+        downtimeType: activity.downtimeType
+      }
+    }));
+    downtimeMetrics = calculateActivityDowntime(convertedActivityLogs);
+  } else {
+    console.log('⚠️ [AI Analysis] - No downtime data found, using empty metrics');
+    downtimeMetrics = calculateActivityDowntime([]);
+  }
+
+  console.log('📈 [AI Analysis] - Calculated downtime metrics:', {
+    totalDowntimeMinutes: downtimeMetrics.totalDowntimeMinutes,
+    plannedDowntimeMinutes: downtimeMetrics.plannedDowntimeMinutes,
+    unplannedDowntimeMinutes: downtimeMetrics.unplannedDowntimeMinutes,
+    downtimeEvents: downtimeMetrics.downtimeEvents,
+    periodDays: downtimeMetrics.periodDays
+  });
 
   // Activity statistics
   const totalActivities = activityLogs.length + dailyLogActivities.length + tickets.length + safetyInspections.length;
@@ -195,14 +231,24 @@ function calculateAssetAnalysis(data: any) {
       }, 0) / maintenanceRecords.filter((m: any) => m.completedAt).length
     : 0;
 
-  return {
+  // Calculate uptime percentage
+  const totalPossibleMinutes = downtimeMetrics.periodDays * 24 * 60;
+  const uptimeMinutes = totalPossibleMinutes - downtimeMetrics.totalDowntimeMinutes;
+  const uptimePercentage = Math.max(0, (uptimeMinutes / totalPossibleMinutes) * 100);
+
+  const finalAnalysis = {
     uptimePercentage: Math.max(0, Math.min(100, uptimePercentage)),
-    downtimePercentage: Math.max(0, Math.min(100, downtimePercentage)),
-    plannedDowntimePercentage: Math.max(0, Math.min(100, plannedDowntimePercentage)),
-    unplannedDowntimePercentage: Math.max(0, Math.min(100, unplannedDowntimePercentage)),
-    totalDowntimeMinutes,
-    plannedDowntimeMinutes,
-    unplannedDowntimeMinutes,
+    downtimePercentage: Math.max(0, Math.min(100, (downtimeMetrics.totalDowntimeMinutes / totalPossibleMinutes) * 100)),
+    plannedDowntimePercentage: Math.max(0, Math.min(100, (downtimeMetrics.plannedDowntimeMinutes / totalPossibleMinutes) * 100)),
+    unplannedDowntimePercentage: Math.max(0, Math.min(100, (downtimeMetrics.unplannedDowntimeMinutes / totalPossibleMinutes) * 100)),
+    totalDowntimeMinutes: downtimeMetrics.totalDowntimeMinutes,
+    plannedDowntimeMinutes: downtimeMetrics.plannedDowntimeMinutes,
+    unplannedDowntimeMinutes: downtimeMetrics.unplannedDowntimeMinutes,
+    downtimeEvents: downtimeMetrics.downtimeEvents,
+    averageDowntimeMinutes: downtimeMetrics.averageDowntimeMinutes,
+    downtimeByType: downtimeMetrics.downtimeByType,
+    downtimeByDate: downtimeMetrics.downtimeByDate,
+    periodDays: downtimeMetrics.periodDays,
     totalActivities,
     criticalMaintenanceCount,
     openTicketsCount,
@@ -213,6 +259,18 @@ function calculateAssetAnalysis(data: any) {
       ? (safetyInspections.filter((s: any) => s.status === 'passed').length / safetyInspections.length) * 100
       : 100
   };
+
+  console.log('🎯 [AI Analysis] - Final analysis metrics being sent to AI:');
+  console.log('- Uptime Percentage:', finalAnalysis.uptimePercentage);
+  console.log('- Downtime Percentage:', finalAnalysis.downtimePercentage);
+  console.log('- Planned Downtime Percentage:', finalAnalysis.plannedDowntimePercentage);
+  console.log('- Unplanned Downtime Percentage:', finalAnalysis.unplannedDowntimePercentage);
+  console.log('- Total Downtime Minutes:', finalAnalysis.totalDowntimeMinutes);
+  console.log('- Downtime Events:', finalAnalysis.downtimeEvents);
+  console.log('- Period Days:', finalAnalysis.periodDays);
+  console.log('- Total Possible Minutes:', totalPossibleMinutes);
+
+  return finalAnalysis;
 }
 
 export async function POST(request: NextRequest) {
@@ -294,7 +352,17 @@ export async function POST(request: NextRequest) {
     });
 
     // Prepare the optimized prompt for asset analysis
+    console.log('🤖 [AI Prompt] - Analysis data being sent to prompt generation:');
+    console.log('- Analysis uptime:', analysis.uptimePercentage);
+    console.log('- Analysis downtime:', analysis.downtimePercentage);
+    console.log('- Analysis total downtime minutes:', analysis.totalDowntimeMinutes);
+    console.log('- Analysis downtime events:', analysis.downtimeEvents);
+    console.log('- Analysis downtime by type:', analysis.downtimeByType);
+    
     const prompt = generateOptimizedAssetAnalysisPrompt(assetData, analysis);
+    
+    console.log('📝 [AI Prompt] - Generated prompt excerpt:');
+    console.log(prompt.substring(0, 500) + '...');
 
     // Generate the analysis with timeout and retry logic
     let result;
@@ -380,15 +448,24 @@ Analyze this CMMS asset's performance and provide a CONCISE analysis in TABLE FO
 **Asset:** ${asset.assetName} - ${asset.categoryName} (${asset.departmentName || 'N/A'})
 **Status:** ${asset.statusText} | **Type:** ${asset.assetType}
 
-**Performance Metrics:**
+**Performance Metrics (${analysis.periodDays || 30} days):**
 - Uptime: ${analysis.uptimePercentage.toFixed(1)}%
-- Total Downtime: ${analysis.totalDowntimeMinutes} minutes
-- Planned Downtime: ${analysis.plannedDowntimePercentage.toFixed(1)}%
-- Unplanned Downtime: ${analysis.unplannedDowntimePercentage.toFixed(1)}%
+- Total Downtime: ${formatActivityDowntime(analysis.totalDowntimeMinutes)} (${analysis.downtimeEvents || 0} events)
+- Planned Downtime: ${formatActivityDowntime(analysis.plannedDowntimeMinutes)} (${analysis.plannedDowntimePercentage.toFixed(1)}%)
+- Unplanned Downtime: ${formatActivityDowntime(analysis.unplannedDowntimeMinutes)} (${analysis.unplannedDowntimePercentage.toFixed(1)}%)
+- Average Downtime per Event: ${formatActivityDowntime(analysis.averageDowntimeMinutes || 0)}
 - Maintenance Events: ${analysis.maintenanceFrequency}
 - Open Tickets: ${analysis.openTicketsCount}
 - Linked Parts: ${analysis.linkedPartsCount}
 - Safety Score: ${analysis.safetyComplianceScore.toFixed(1)}%
+
+**Downtime Analysis:**
+${Object.entries(analysis.downtimeByType || {}).length > 0 
+  ? Object.entries(analysis.downtimeByType).map(([type, data]: [string, any]) => 
+      `- ${type}: ${formatActivityDowntime(data.minutes)} (${data.count} events)`
+    ).join('\n')
+  : '- No downtime events recorded'
+}
 
 **Recent Activity Summary:**
 - Activity Logs: ${activityLogs.length}

@@ -6,6 +6,7 @@ import { Download, Package, Activity } from 'lucide-react'
 import type { AssetDetail } from "@/types/asset"
 import type { ActivityLogEntry } from "@/types/activity-log"
 import { activityLogApi } from "@/lib/activity-log-api"
+import { calculateActivityDowntime, formatActivityDowntime, calculateUptimePercentage } from '@/lib/activity-downtime-utils'
 
 interface AssetIndividualReportProps {
   asset: AssetDetail
@@ -65,6 +66,10 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
   const generateReportHTML = () => {
     const currentDate = new Date().toLocaleDateString()
     const currentTime = new Date().toLocaleTimeString()
+    
+    // Calculate downtime metrics from activity logs
+    const downtimeMetrics = calculateActivityDowntime(activityLogs)
+    const uptimePercentage = calculateUptimePercentage(downtimeMetrics.totalDowntimeMinutes, downtimeMetrics.periodDays)
     
     return `
       <!DOCTYPE html>
@@ -322,6 +327,62 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
               <div class="value">$${(asset.costPrice || asset.purchasePrice || 0).toFixed(2)}</div>
             </div>
           </div>
+        </div>
+        
+        <div class="section">
+          <h2 class="section-title">
+            📊 Downtime Analysis (${downtimeMetrics.periodDays} days)
+          </h2>
+          <div class="overview-grid">
+            <div class="overview-card">
+              <h3>Total Downtime</h3>
+              <div class="value" style="color: #dc2626;">${formatActivityDowntime(downtimeMetrics.totalDowntimeMinutes)}</div>
+            </div>
+            <div class="overview-card">
+              <h3>Planned Downtime</h3>
+              <div class="value" style="color: #2563eb;">${formatActivityDowntime(downtimeMetrics.plannedDowntimeMinutes)}</div>
+            </div>
+            <div class="overview-card">
+              <h3>Unplanned Downtime</h3>
+              <div class="value" style="color: #ea580c;">${formatActivityDowntime(downtimeMetrics.unplannedDowntimeMinutes)}</div>
+            </div>
+            <div class="overview-card">
+              <h3>Uptime</h3>
+              <div class="value" style="color: #059669;">${uptimePercentage.toFixed(1)}%</div>
+            </div>
+            <div class="overview-card">
+              <h3>Downtime Events</h3>
+              <div class="value">${downtimeMetrics.downtimeEvents}</div>
+            </div>
+            <div class="overview-card">
+              <h3>Average Event Duration</h3>
+              <div class="value">${formatActivityDowntime(downtimeMetrics.averageDowntimeMinutes)}</div>
+            </div>
+          </div>
+          
+          ${Object.keys(downtimeMetrics.downtimeByType).length > 0 ? `
+          <h3 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; color: #374151;">Downtime by Type</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Downtime Type</th>
+                <th>Duration</th>
+                <th>Events</th>
+                <th>Average Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${Object.entries(downtimeMetrics.downtimeByType).map(([type, data]) => `
+                <tr>
+                  <td style="text-transform: capitalize;">${type}</td>
+                  <td>${formatActivityDowntime(data.minutes)}</td>
+                  <td>${data.count}</td>
+                  <td>${formatActivityDowntime(data.minutes / data.count)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ` : '<p style="color: #6b7280; font-style: italic;">No downtime events recorded in this period.</p>'}
         </div>
         
         <div class="section">
