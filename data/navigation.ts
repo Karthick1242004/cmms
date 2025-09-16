@@ -69,6 +69,11 @@ export const navigation: NavigationItem[] = [
     iconName: "BarChart3",
   },
   {
+    name: "Team Calendar",
+    href: "/calendar",
+    iconName: "CalendarDays",
+  },
+  {
     name: "Safety Inspection",
     href: "/safety-inspection",
     iconName: "Shield",
