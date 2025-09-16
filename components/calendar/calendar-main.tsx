@@ -13,8 +13,6 @@ import {
   Filter, 
   Download, 
   Plus, 
-  ChevronLeft, 
-  ChevronRight,
   Clock,
   Users,
   Settings
@@ -207,26 +205,6 @@ export function CalendarMain() {
     }
   }, [generateFilteredReport]);
 
-  const goToToday = useCallback(() => {
-    const calendar = calendarRef.current?.getApi();
-    if (calendar) {
-      calendar.today();
-    }
-  }, []);
-
-  const goToPrev = useCallback(() => {
-    const calendar = calendarRef.current?.getApi();
-    if (calendar) {
-      calendar.prev();
-    }
-  }, []);
-
-  const goToNext = useCallback(() => {
-    const calendar = calendarRef.current?.getApi();
-    if (calendar) {
-      calendar.next();
-    }
-  }, []);
 
   // Show skeleton on initial load or error
   if (isLoading && events.length === 0) {
@@ -316,31 +294,6 @@ export function CalendarMain() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToPrev}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToToday}
-              >
-                Today
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToNext}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
 
             <div className="flex items-center gap-1">
               {(['month', 'week', 'day'] as const).map((view) => (
