@@ -33,23 +33,42 @@ export function sanitizeDataForDuplication<T extends Record<string, any>>(
   originalData: T,
   config: DuplicationConfig
 ): Partial<T> {
+  console.log('🔧 [Duplication Utils] - Starting sanitization');
+  console.log('🔧 [Duplication Utils] - Original data keys:', Object.keys(originalData));
+  
   const excludeFields = [...DEFAULT_EXCLUDE_FIELDS, ...(config.excludeFields || [])];
+  console.log('🔧 [Duplication Utils] - Exclude fields:', excludeFields);
+  console.log('🔧 [Duplication Utils] - Transform fields:', Object.keys(config.transformFields || {}));
+  
   const sanitizedData: Partial<T> = {};
 
   for (const [key, value] of Object.entries(originalData)) {
     // Skip excluded fields
     if (excludeFields.includes(key)) {
+      console.log(`🔧 [Duplication Utils] - Excluding field: ${key}`);
       continue;
     }
 
     // Apply field transformations if configured
     if (config.transformFields && config.transformFields[key]) {
-      sanitizedData[key as keyof T] = config.transformFields[key](value);
+      const newValue = config.transformFields[key](value);
+      console.log(`🔧 [Duplication Utils] - Transforming field: ${key} -> ${typeof newValue === 'object' ? JSON.stringify(newValue) : newValue}`);
+      sanitizedData[key as keyof T] = newValue;
     } else {
       // Deep clone to avoid reference issues
+      console.log(`🔧 [Duplication Utils] - Preserving field: ${key} = ${typeof value === 'object' ? JSON.stringify(value) : value}`);
       sanitizedData[key as keyof T] = deepClone(value);
     }
   }
+
+  console.log('🔧 [Duplication Utils] - Final sanitized keys:', Object.keys(sanitizedData));
+  console.log('🔧 [Duplication Utils] - Critical fields in sanitized data:');
+  console.log('  - area:', sanitizedData.area);
+  console.log('  - departmentId:', sanitizedData.departmentId);
+  console.log('  - assetId:', sanitizedData.assetId);
+  console.log('  - natureOfProblem:', sanitizedData.natureOfProblem);
+  console.log('  - commentsOrSolution:', sanitizedData.commentsOrSolution);
+  console.log('  - attendedBy:', sanitizedData.attendedBy);
 
   return sanitizedData;
 }
@@ -126,6 +145,91 @@ function deepClone<T>(obj: T): T {
 }
 
 /**
+ * Daily Log Activity-specific duplication configuration
+ */
+export const DAILY_LOG_ACTIVITY_DUPLICATION_CONFIG: DuplicationConfig = {
+  nameField: 'natureOfProblem',
+  excludeFields: [
+    'activityId', // Activity IDs should be unique
+    '_id', // MongoDB ID should be unique
+    'id', // ID should be unique
+    'createdBy', // Will be set to current user
+    'createdByName', // Will be set to current user
+    'createdAt', // Will be set by system
+    'updatedAt', // Will be set by system
+    'adminVerified', // Reset verification status
+    'adminVerifiedBy', // Clear admin verification
+    'adminVerifiedByName', // Clear admin verification name
+    'adminVerifiedAt', // Clear admin verification timestamp
+    'adminNotes', // Clear admin notes
+    'verifiedBy', // Clear verification
+    'verifiedByName', // Clear verification name
+    'verificationNotes', // Clear verification notes
+    'activityHistory', // Clear activity history
+  ],
+  transformFields: {
+    // Reset status to open for new duplicated activities
+    status: () => 'open',
+    // Reset date and time to current
+    date: () => new Date(),
+    time: () => new Date().toTimeString().slice(0, 5),
+    startTime: () => new Date().toTimeString().slice(0, 5),
+    endTime: () => null, // Use null instead of empty string
+    // Reset downtime for fresh tracking
+    downtime: () => null,
+    downtimeType: () => null, // Use null instead of undefined
+    // Reset verification fields
+    adminVerified: () => false,
+    adminVerifiedBy: () => null,
+    adminVerifiedByName: () => null,
+    adminVerifiedAt: () => null,
+    adminNotes: () => null,
+    verifiedBy: () => null,
+    verifiedByName: () => null,
+    verificationNotes: () => null,
+    // Ensure activity history is empty array
+    activityHistory: () => []
+  },
+  generateSuffix: (originalName: string) => {
+    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `Copy_${timestamp}`;
+  }
+};
+
+/**
+ * Safety Inspection Schedule-specific duplication configuration
+ */
+export const SAFETY_INSPECTION_DUPLICATION_CONFIG: DuplicationConfig = {
+  nameField: 'title',
+  excludeFields: [
+    'scheduleId', // Schedule IDs should be unique
+    'nextDueDate', // Due dates should be recalculated
+    'lastCompletedDate', // Completion dates should be reset
+    'recordsCount', // Record counts should start at 0
+    'complianceScore', // Scores should be reset
+    'status' // Status should be reset to active
+  ],
+  transformFields: {
+    // Reset status to active for new duplicated schedules
+    status: () => 'active',
+    // Reset completion tracking
+    lastCompletedDate: () => '',
+    recordsCount: () => 0,
+    complianceScore: () => 0,
+    // Reset due dates - will be calculated by backend
+    nextDueDate: () => '',
+    // Update start date to today
+    startDate: () => new Date().toISOString().split('T')[0],
+    // Reset tracking fields
+    isOverdue: () => false
+  },
+  generateSuffix: (originalName: string) => {
+    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `Copy_${timestamp}`;
+  }
+};
+
+/**
  * Asset-specific duplication configuration
  */
 export const ASSET_DUPLICATION_CONFIG: DuplicationConfig = {
@@ -172,7 +276,7 @@ export const ASSET_DUPLICATION_CONFIG: DuplicationConfig = {
  */
 export async function checkNameExists(
   name: string, 
-  moduleType: 'assets' | 'maintenance' | 'employees' | 'tickets',
+  moduleType: 'assets' | 'maintenance' | 'employees' | 'tickets' | 'safety-inspection' | 'daily-log-activities',
   additionalParams?: Record<string, any>
 ): Promise<boolean> {
   try {
@@ -183,7 +287,18 @@ export async function checkNameExists(
     }
 
     // Construct API endpoint based on module type
-    const baseUrl = `/api/${moduleType}`;
+    let baseUrl;
+    switch (moduleType) {
+      case 'safety-inspection':
+        baseUrl = `/api/safety-inspection/schedules`;
+        break;
+      case 'daily-log-activities':
+        baseUrl = `/api/daily-log-activities`;
+        break;
+      default:
+        baseUrl = `/api/${moduleType}`;
+    }
+    
     const searchParam = new URLSearchParams();
     
     // Add name search parameter based on module type
@@ -200,6 +315,14 @@ export async function checkNameExists(
         break;
       case 'tickets':
         searchParam.append('title', name);
+        break;
+      case 'safety-inspection':
+        searchParam.append('title', name);
+        searchParam.append('exact', 'true');
+        break;
+      case 'daily-log-activities':
+        searchParam.append('search', name);
+        searchParam.append('exact', 'true');
         break;
     }
 
@@ -224,14 +347,14 @@ export async function checkNameExists(
 
     const data = await response.json();
     
-    // Check if any results match exactly
-    if (data.success && data.data) {
-      const items = Array.isArray(data.data) ? data.data : [data.data];
-      return items.some((item: any) => {
-        const itemName = item.assetName || item.title || item.name || '';
-        return itemName.toLowerCase().trim() === name.toLowerCase().trim();
-      });
-    }
+      // Check if any results match exactly
+      if (data.success && data.data) {
+        const items = Array.isArray(data.data) ? data.data : [data.data];
+        return items.some((item: any) => {
+          const itemName = item.assetName || item.title || item.name || item.natureOfProblem || '';
+          return itemName.toLowerCase().trim() === name.toLowerCase().trim();
+        });
+      }
 
     return false;
   } catch (error) {
@@ -245,7 +368,7 @@ export async function checkNameExists(
  */
 export async function generateUniqueName(
   originalName: string,
-  moduleType: 'assets' | 'maintenance' | 'employees' | 'tickets',
+  moduleType: 'assets' | 'maintenance' | 'employees' | 'tickets' | 'safety-inspection' | 'daily-log-activities',
   maxAttempts: number = 10
 ): Promise<string> {
   let attempt = 1;

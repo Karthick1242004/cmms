@@ -19,7 +19,7 @@ interface DuplicationDialogProps {
     name: string;
     [key: string]: any;
   };
-  moduleType: 'assets' | 'maintenance' | 'employees' | 'tickets';
+  moduleType: 'assets' | 'maintenance' | 'employees' | 'tickets' | 'safety-inspection' | 'daily-log-activities';
   title?: string;
   description?: string;
   nameLabel?: string;
@@ -151,6 +151,12 @@ export function DuplicationDialog({
         case 'tickets':
           requestBody.newTitle = newName.trim();
           break;
+        case 'safety-inspection':
+          requestBody.newTitle = newName.trim();
+          break;
+        case 'daily-log-activities':
+          requestBody.newProblemDescription = newName.trim();
+          break;
         default:
           requestBody[`new${nameField.charAt(0).toUpperCase()}${nameField.slice(1)}`] = newName.trim();
       }
@@ -167,6 +173,12 @@ export function DuplicationDialog({
       const result = await response.json();
 
       if (!response.ok || !result.success) {
+        console.error(`❌ [Duplication Dialog] - Error:`, result);
+        
+        if (result.missingFields) {
+          throw new Error(`Missing required fields: ${result.missingFields.join(', ')}`);
+        }
+        
         throw new Error(result.message || `Failed to duplicate ${moduleType.slice(0, -1)}`);
       }
 

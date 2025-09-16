@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Calendar, Clock, MapPin, User, Wrench, AlertCircle, Check } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Wrench, AlertCircle, Check, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDailyLogActivitiesStore } from '@/stores/daily-log-activities-store';
 import { useDepartments } from '@/hooks/use-departments';
@@ -29,6 +29,7 @@ import type {
   DepartmentOption, 
   AssetOption 
 } from '@/types/daily-log-activity';
+import { DuplicationDialog } from '@/components/common/duplication-dialog';
 
 interface DailyLogActivityFormProps {
   editingActivity?: any;
@@ -43,6 +44,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
     setDialogOpen,
     createActivity,
     updateActivity,
+    fetchActivities,
   } = useDailyLogActivitiesStore();
 
   const { user } = useAuthStore();
@@ -92,6 +94,7 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [calculatedDowntime, setCalculatedDowntime] = useState<number | null>(null);
+  const [isDuplicationDialogOpen, setIsDuplicationDialogOpen] = useState(false);
 
   // Calculate downtime when start or end time changes
   useEffect(() => {
@@ -352,6 +355,28 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
 
   const handleCancel = () => {
     setDialogOpen(false);
+  };
+
+  // Handle successful duplication
+  const handleDuplicationSuccess = async (newActivityData: any) => {
+    console.log('✅ [Daily Log Activity] - Activity duplicated successfully:', newActivityData);
+    
+    // Show success message using toast
+    const newProblemDescription = newActivityData.newActivity?.natureOfProblem || 'Unknown Problem';
+    toast.success(`Daily Log Activity "${newProblemDescription}" created successfully!`);
+    
+    // Close the current dialog
+    setDialogOpen(false);
+    
+    // Refresh the activities list to show the new duplicated activity
+    try {
+      console.log('🔄 [Daily Log Activity] - Refreshing activities after duplication');
+      await fetchActivities();
+      console.log('✅ [Daily Log Activity] - Activities refreshed successfully');
+    } catch (error) {
+      console.error('❌ [Daily Log Activity] - Failed to refresh activities:', error);
+      // Don't show error to user as the duplication was successful
+    }
   };
 
   return (
@@ -823,6 +848,18 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
+            {isEditMode && selectedActivity && (
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={() => setIsDuplicationDialogOpen(true)}
+                disabled={isLoading}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate Activity
+              </Button>
+            )}
             <Button type="submit" disabled={isLoading || isUploadingImages}>
               {isLoading || isUploadingImages ? (
                 <div className="flex items-center gap-2">
@@ -836,6 +873,25 @@ export function DailyLogActivityForm({ editingActivity }: DailyLogActivityFormPr
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Duplication Dialog */}
+      {isEditMode && selectedActivity && (
+        <DuplicationDialog
+          isOpen={isDuplicationDialogOpen}
+          onClose={() => setIsDuplicationDialogOpen(false)}
+          onSuccess={handleDuplicationSuccess}
+          originalItem={{
+            id: selectedActivity._id || selectedActivity.id,
+            name: selectedActivity.natureOfProblem || 'Unknown Problem'
+          }}
+          moduleType="daily-log-activities"
+          title="Duplicate Daily Log Activity"
+          description={`Create a copy of "${selectedActivity.natureOfProblem}" with a new problem description. All activity data will be copied except unique identifiers.`}
+          nameLabel="Problem Description"
+          nameField="natureOfProblem"
+          apiEndpoint={`/api/daily-log-activities/${selectedActivity._id || selectedActivity.id}/duplicate`}
+        />
+      )}
     </Dialog>
   );
 }

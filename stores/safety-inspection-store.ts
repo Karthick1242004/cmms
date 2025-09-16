@@ -395,6 +395,21 @@ export const useSafetyInspectionStore = create<SafetyInspectionState>((set, get)
     }
   },
 
+  // Refresh schedules data (useful after duplication)
+  refreshSchedules: async () => {
+    const currentFilters = {
+      page: get().pagination.currentPage,
+      search: get().searchTerm,
+      status: get().statusFilter,
+      priority: get().priorityFilter,
+      riskLevel: get().riskLevelFilter,
+      frequency: get().frequencyFilter,
+    }
+    
+    console.log('🔄 [Safety Inspection Store] - Refreshing schedules with filters:', currentFilters);
+    await get().fetchSchedules(currentFilters);
+  },
+
   // Fetch all schedules for reports (bypasses pagination)
   fetchAllSchedulesForReport: async (filters) => {
     try {

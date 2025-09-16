@@ -175,6 +175,7 @@ export interface SafetyInspectionState {
   filterSchedules: () => void
   filterRecords: () => void
   fetchSchedules: (filters?: any) => Promise<void>
+  refreshSchedules: () => Promise<void>
   fetchAllSchedulesForReport: (filters?: any) => Promise<SafetyInspectionSchedule[]>
   fetchRecords: () => Promise<void>
   fetchStats: () => Promise<void>

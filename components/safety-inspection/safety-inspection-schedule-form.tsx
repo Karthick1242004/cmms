@@ -14,8 +14,9 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Plus, Trash2, Shield, AlertTriangle, Search, Users, Check } from "lucide-react"
+import { Plus, Trash2, Shield, AlertTriangle, Search, Users, Check, Copy } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { useAssets } from "@/hooks/use-assets"
@@ -23,6 +24,7 @@ import { useLocations } from "@/hooks/use-locations"
 import { useEmployees } from "@/hooks/use-employees"
 import { useDepartments } from "@/hooks/use-departments"
 import type { SafetyInspectionSchedule, SafetyChecklistCategory, SafetyChecklistItem } from "@/types/safety-inspection"
+import { DuplicationDialog } from "@/components/common/duplication-dialog"
 
 interface SafetyInspectionScheduleFormProps {
   trigger: React.ReactNode
@@ -31,7 +33,7 @@ interface SafetyInspectionScheduleFormProps {
 
 export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspectionScheduleFormProps) {
   const { user } = useAuthStore()
-  const { addSchedule, updateSchedule, setScheduleDialogOpen, isScheduleDialogOpen } = useSafetyInspectionStore()
+  const { addSchedule, updateSchedule, setScheduleDialogOpen, isScheduleDialogOpen, refreshSchedules } = useSafetyInspectionStore()
 
   // Determine if user is super admin
   const isSuperAdmin = user?.accessLevel === 'super_admin'
@@ -95,6 +97,7 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
 
   const [categories, setCategories] = useState<SafetyChecklistCategory[]>([])
   const [availableStandards] = useState(["OSHA", "ISO45001", "NFPA", "EPA", "Company Policy", "Local Regulations"])
+  const [isDuplicationDialogOpen, setIsDuplicationDialogOpen] = useState(false)
   
   // Asset search state
   const [assetSearchOpen, setAssetSearchOpen] = useState(false)
@@ -500,6 +503,28 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
       alert('Failed to save schedule. Please try again.')
     }
   }
+
+  // Handle successful duplication
+  const handleDuplicationSuccess = async (newScheduleData: any) => {
+    console.log('✅ [Safety Inspection] - Schedule duplicated successfully:', newScheduleData);
+    
+    // Show success message using toast
+    const newScheduleName = newScheduleData.newSchedule?.title || 'Unknown Schedule';
+    toast.success(`Safety Inspection Schedule "${newScheduleName}" created successfully!`);
+    
+    // Close the current dialog
+    setScheduleDialogOpen(false);
+    
+    // Refresh the schedules list to show the new duplicated schedule
+    try {
+      console.log('🔄 [Safety Inspection] - Refreshing schedules after duplication');
+      await refreshSchedules();
+      console.log('✅ [Safety Inspection] - Schedules refreshed successfully');
+    } catch (error) {
+      console.error('❌ [Safety Inspection] - Failed to refresh schedules:', error);
+      // Don't show error to user as the duplication was successful
+    }
+  };
 
   return (
     <Dialog open={isScheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
@@ -962,6 +987,17 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
               <Button type="button" variant="outline" onClick={() => setScheduleDialogOpen(false)}>
                 Cancel
               </Button>
+              {schedule && (
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={() => setIsDuplicationDialogOpen(true)}
+                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate Schedule
+                </Button>
+              )}
               <Button type="submit">
                 {schedule ? "Update Schedule" : "Create Schedule"}
               </Button>
@@ -1034,6 +1070,25 @@ export function SafetyInspectionScheduleForm({ trigger, schedule }: SafetyInspec
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Duplication Dialog */}
+      {schedule && (
+        <DuplicationDialog
+          isOpen={isDuplicationDialogOpen}
+          onClose={() => setIsDuplicationDialogOpen(false)}
+          onSuccess={handleDuplicationSuccess}
+          originalItem={{
+            id: schedule.id,
+            name: schedule.title || 'Unknown Schedule'
+          }}
+          moduleType="safety-inspection"
+          title="Duplicate Safety Inspection Schedule"
+          description={`Create a copy of "${schedule.title}" with a new title. All schedule data including checklist will be copied except unique identifiers.`}
+          nameLabel="Schedule Title"
+          nameField="title"
+          apiEndpoint={`/api/safety-inspection/schedules/${schedule.id}/duplicate`}
+        />
+      )}
     </Dialog>
   )
 } 
