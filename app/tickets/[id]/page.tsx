@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -37,13 +37,19 @@ import { toast } from "sonner"
 import { ticketsApi } from "@/lib/tickets-api"
 import { TicketReport } from "@/components/ticket-report"
 import { useAuthStore } from "@/stores/auth-store"
+import { TicketImageUpload } from "@/components/ticket-image-upload"
+import { uploadToCloudinary } from "@/lib/cloudinary-config"
 import type { Ticket, ActivityLogEntry } from "@/types/ticket"
 
 export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const ticketId = params.id as string
   const { user } = useAuthStore()
+
+  // Check if edit mode is requested via query parameter
+  const editMode = searchParams.get('edit') === 'true'
 
   const handleImageClick = (imageUrl: string) => {
     window.open(imageUrl, '_blank');
@@ -77,6 +83,8 @@ export default function TicketDetailPage() {
     isOpenTicket: false,
     assignedDepartments: [] as string[],
     assignedUsers: [] as string[],
+    images: [] as string[], // Existing image URLs
+    imageFiles: [] as File[], // New image files to upload
   })
 
   // Fetch ticket details
@@ -101,6 +109,8 @@ export default function TicketDetailPage() {
           isOpenTicket: ticketData.isOpenTicket,
           assignedDepartments: ticketData.assignedDepartments,
           assignedUsers: ticketData.assignedUsers,
+          images: ticketData.images || [],
+          imageFiles: [],
         })
       } else {
         toast.error(response.message || "Failed to fetch ticket")
@@ -121,6 +131,13 @@ export default function TicketDetailPage() {
     }
   }, [ticketId])
 
+  // Set edit mode if requested via query parameter
+  useEffect(() => {
+    if (editMode && ticket) {
+      setIsEditing(true)
+    }
+  }, [editMode, ticket])
+
   // Handle form changes
   const handleFormChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -140,15 +157,64 @@ export default function TicketDetailPage() {
     }))
   }
 
+  // Handle image changes
+  const handleImagesChange = (newImages: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      images: newImages
+    }))
+  }
+
+  const handleImageFilesChange = (newFiles: File[]) => {
+    setFormData(prev => ({
+      ...prev,
+      imageFiles: newFiles
+    }))
+  }
+
   // Save ticket changes
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const response = await ticketsApi.updateTicket(ticketId, formData)
+      // Upload new images to Cloudinary if any
+      let uploadedImageUrls: string[] = [];
+      
+      if (formData.imageFiles && formData.imageFiles.length > 0) {
+        toast.info('Uploading images...');
+        
+        for (const imageFile of formData.imageFiles) {
+          try {
+            const imageUrl = await uploadToCloudinary(imageFile, 'tickets/images');
+            uploadedImageUrls.push(imageUrl);
+            console.log('🖼️ Ticket image uploaded:', imageUrl);
+          } catch (error) {
+            console.error('🖼️ Image upload failed:', error);
+            toast.error(`Failed to upload image: ${imageFile.name}`);
+          }
+        }
+      }
+
+      // Combine existing images with newly uploaded images
+      const finalImages = [...formData.images, ...uploadedImageUrls];
+
+      // Create update data with images
+      const updateData = {
+        ...formData,
+        images: finalImages,
+        // Remove imageFiles as they shouldn't be sent to backend
+        imageFiles: undefined
+      };
+
+      const response = await ticketsApi.updateTicket(ticketId, updateData)
       if (response.success) {
         toast.success("Ticket updated successfully")
         setIsEditing(false)
-        fetchTicket() // Refresh ticket data
+        // Clear image files since they've been uploaded
+        setFormData(prev => ({
+          ...prev,
+          imageFiles: []
+        }))
+        await fetchTicket() // Refresh ticket data
       } else {
         toast.error(response.message || "Failed to update ticket")
       }
@@ -702,6 +768,23 @@ export default function TicketDetailPage() {
 
                   <Separator />
 
+                  {/* Image Management Section - Only show in edit mode */}
+                  {isEditing && (
+                    <>
+                      <div className="space-y-3">
+                        <TicketImageUpload
+                          images={formData.images}
+                          imageFiles={formData.imageFiles}
+                          onImagesChange={handleImagesChange}
+                          onImageFilesChange={handleImageFilesChange}
+                          maxImages={5}
+                        />
+                      </div>
+
+                      <Separator />
+                    </>
+                  )}
+
                   <div className="space-y-3">
                     <Label className="text-sm font-medium flex items-center gap-2">
                       <Clock className="h-4 w-4" />
@@ -740,18 +823,18 @@ export default function TicketDetailPage() {
             </div>
 
             {/* Ticket Images */}
-            {ticket.images && ticket.images.length > 0 && (
-              <Card className="shadow-sm">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <ImageIcon className="h-5 w-5 text-primary" />
-                    Ticket Images ({ticket.images.length})
-                  </CardTitle>
-                  <CardDescription>
-                    Visual documentation and attachments for this ticket
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <ImageIcon className="h-5 w-5 text-primary" />
+                  Ticket Images ({ticket.images ? ticket.images.length : 0})
+                </CardTitle>
+                <CardDescription>
+                  Visual documentation and attachments for this ticket
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {ticket.images && ticket.images.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {ticket.images.map((imageUrl, index) => (
                       <div 
@@ -775,12 +858,18 @@ export default function TicketDetailPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-4">
-                    Click on any image to view it in full size
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No images attached to this ticket</p>
+                    {isEditing && (
+                      <p className="text-sm mt-2">You can add images using the form above</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
           </TabsContent>
 
           <TabsContent value="activity" className="space-y-6">

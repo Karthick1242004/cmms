@@ -7,6 +7,10 @@ interface GenerateIndividualTicketReportProps {
 }
 
 export function generateIndividualTicketReport({ ticket }: GenerateIndividualTicketReportProps) {
+  console.log('🎫 [Individual Report] Generating report for ticket:', ticket.ticketId);
+  console.log('🎫 [Individual Report] Complete ticket data:', ticket);
+  console.log('🖼️ [Individual Report] Ticket images specifically:', ticket.images);
+  
   const generateReportHTML = () => {
     const statusColors = {
       'open': 'bg-red-100 text-red-800 border-red-200',
@@ -42,16 +46,57 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
     }
 
     const formatImages = () => {
+      console.log('🔍 [DEBUG] Ticket images check:', {
+        hasImages: !!ticket.images,
+        imagesLength: ticket.images?.length || 0,
+        imagesArray: ticket.images,
+        ticketId: ticket.ticketId
+      });
+      
       if (!ticket.images || ticket.images.length === 0) {
-        return '<p class="text-gray-500 italic">No images attached</p>'
+        return `
+          <div class="text-center py-8 text-gray-500">
+            <div class="text-4xl mb-2">📷</div>
+            <p class="italic">No images attached to this ticket</p>
+            <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+              <strong>Debug:</strong> images = ${JSON.stringify(ticket.images)}, length = ${ticket.images?.length || 'undefined'}
+            </div>
+          </div>
+        `
       }
 
-      return ticket.images.map((imageUrl, index) => `
-        <div class="mb-4">
-          <img src="${imageUrl}" alt="Ticket Image ${index + 1}" class="max-w-full h-auto rounded-lg border" style="max-height: 300px;">
-          <p class="text-sm text-gray-600 mt-1">Image ${index + 1}</p>
+      console.log('🖼️ [DEBUG] Processing', ticket.images.length, 'images');
+      
+      return `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+          ${ticket.images.map((imageUrl, index) => {
+            console.log('🖼️ [DEBUG] Processing image', index + 1, ':', imageUrl);
+            return `
+              <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #f8fafc;">
+                <img 
+                  src="${imageUrl}" 
+                  alt="Ticket Image ${index + 1}" 
+                  style="width: 100%; height: 150px; object-fit: cover; cursor: pointer; border-bottom: 1px solid #e2e8f0;" 
+                  onclick="window.open('${imageUrl}', '_blank')"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                />
+                <div style="display: none; padding: 20px; text-align: center; color: #ef4444;">
+                  <p style="margin: 0; font-size: 12px;">❌ Failed to load image</p>
+                </div>
+                <div style="padding: 8px; text-align: center;">
+                  <p style="margin: 0; font-size: 12px; font-weight: 500; color: #374151;">Image ${index + 1}</p>
+                  <p style="margin: 2px 0 0 0; font-size: 10px; color: #6b7280;">Click to view full size</p>
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
-      `).join('')
+        <div style="margin-top: 15px; text-align: center; padding: 10px; background: #f0f9ff; border-radius: 6px;">
+          <p style="margin: 0; font-size: 12px; color: #0369a1;">
+            📸 ${ticket.images.length} image${ticket.images.length > 1 ? 's' : ''} attached to this ticket
+          </p>
+        </div>
+      `
     }
 
     const formatActivityHistory = () => {
@@ -224,9 +269,9 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
           }
           .images-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
           }
           .image-item {
             text-align: center;
@@ -236,11 +281,35 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
             height: auto;
             border-radius: 6px;
             border: 1px solid #e2e8f0;
+            transition: transform 0.2s ease;
+          }
+          .image-item img:hover {
+            transform: scale(1.02);
           }
           .image-item p {
             margin-top: 8px;
             font-size: 0.875rem;
             color: #64748b;
+          }
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+          }
+          .aspect-video {
+            aspect-ratio: 16 / 9;
+          }
+          .transition-shadow {
+            transition: box-shadow 0.2s ease;
+          }
+          .transition-transform {
+            transition: transform 0.2s ease;
+          }
+          .hover\\:shadow-md:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          }
+          .hover\\:scale-105:hover {
+            transform: scale(1.05);
           }
           .stats-grid {
             display: grid;

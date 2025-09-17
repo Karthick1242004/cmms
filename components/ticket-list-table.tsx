@@ -21,7 +21,8 @@ import {
   Building,
   Calendar,
   FileText,
-  Shield
+  Shield,
+  Edit
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Ticket } from "@/types/ticket"
@@ -29,6 +30,7 @@ import type { Ticket } from "@/types/ticket"
 interface TicketListTableProps {
   tickets: Ticket[]
   onView?: (ticket: Ticket) => void
+  onEdit?: (ticket: Ticket) => void
   onDelete?: (ticket: Ticket) => void
   onStatusChange?: (ticketId: string, status: string) => void
   onApproveStatus?: (ticketId: string, action: 'approve' | 'reject') => void
@@ -43,6 +45,7 @@ interface TicketListTableProps {
 export function TicketListTable({ 
   tickets, 
   onView, 
+  onEdit,
   onDelete, 
   onStatusChange, 
   onApproveStatus,
@@ -362,6 +365,12 @@ export function TicketListTable({
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
+                        {canModify && (
+                          <DropdownMenuItem onClick={() => onEdit?.(ticket)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit Ticket
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => onGenerateReport?.(ticket)}>
                           <FileDown className="mr-2 h-4 w-4" />
                           Generate Report

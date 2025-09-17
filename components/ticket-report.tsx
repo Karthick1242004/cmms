@@ -602,6 +602,40 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
           </div>
         </div>
 
+        <!-- Ticket Images -->
+        ${ticket.images && ticket.images.length > 0 ? `
+        <div class="section">
+          <h2 class="section-title">📸 Ticket Images</h2>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            ${ticket.images.map((imageUrl, index) => `
+              <div class="info-card" style="text-align: center; padding: 10px;">
+                <img 
+                  src="${imageUrl}" 
+                  alt="Ticket Image ${index + 1}" 
+                  style="max-width: 100%; height: auto; border-radius: 6px; border: 1px solid #e2e8f0; max-height: 200px; cursor: pointer;" 
+                  onclick="window.open('${imageUrl}', '_blank')"
+                />
+                <p style="margin-top: 8px; font-size: 12px; color: #64748b; font-weight: 500;">Image ${index + 1}</p>
+                <p style="font-size: 10px; color: #9ca3af;">Click to view full size</p>
+              </div>
+            `).join('')}
+          </div>
+          <div style="text-align: center; margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 6px;">
+            <p style="font-size: 12px; color: #64748b; margin: 0;">
+              📸 ${ticket.images.length} image${ticket.images.length > 1 ? 's' : ''} attached to this ticket
+            </p>
+          </div>
+        </div>
+        ` : `
+        <div class="section">
+          <h2 class="section-title">📸 Ticket Images</h2>
+          <div class="content-box" style="text-align: center; padding: 30px;">
+            <div style="font-size: 48px; margin-bottom: 10px; color: #d1d5db;">📷</div>
+            <p style="color: #6b7280; font-style: italic; margin: 0;">No images attached to this ticket</p>
+          </div>
+        </div>
+        `}
+
         ${ticket.activityLog && ticket.activityLog.length > 0 ? `
         <div class="section">
           <h2 class="section-title">📊 Activity Log</h2>

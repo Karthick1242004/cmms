@@ -208,6 +208,10 @@ export async function PUT(
     if (body.isOpenTicket !== undefined) ticket.isOpenTicket = body.isOpenTicket;
     if (body.assignedDepartments) ticket.assignedDepartments = body.assignedDepartments;
     if (body.assignedUsers) ticket.assignedUsers = body.assignedUsers;
+    if (body.images !== undefined) {
+      console.log('🖼️ Updating ticket images:', body.images?.length || 0, 'images');
+      ticket.images = body.images;
+    }
 
     // Ensure activityLog is initialized as an array (for legacy tickets)
     if (!ticket.activityLog || !Array.isArray(ticket.activityLog)) {

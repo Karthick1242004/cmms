@@ -174,6 +174,11 @@ export default function TicketsPage() {
     window.location.href = `/tickets/${ticket.id}`
   }
 
+  const handleEditTicket = (ticket: Ticket) => {
+    // Navigate to ticket detail page in edit mode
+    window.location.href = `/tickets/${ticket.id}?edit=true`
+  }
+
   const handleGenerateReport = (ticket: Ticket) => {
     generateIndividualTicketReport({ ticket });
   }
@@ -555,6 +560,7 @@ export default function TicketsPage() {
                   <TicketListTable
                     tickets={filteredTickets}
                     onView={handleViewTicket}
+                    onEdit={handleEditTicket}
                     onDelete={handleDeleteTicket}
                     onStatusChange={handleUpdateStatus}
                     onApproveStatus={handleApproveStatus}
