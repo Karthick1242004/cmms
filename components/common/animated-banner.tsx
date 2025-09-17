@@ -63,7 +63,7 @@ export default function AnimatedBanner() {
   const tripleItems = [...activeBanners, ...activeBanners, ...activeBanners]
 
   return (
-    <div className="dark:bg-background/95 bg-background/95 overflow-hidden rounded-md relative border-b w-full flex-shrink-0">
+    <div className="dark:bg-background/95 bg-background/95 overflow-hidden rounded-md mt-2 relative border w-full flex-shrink-0">
       <div className="relative h-14 flex items-center py-3 border-gray-500 px-4">
         {/* Animated banner content */}
         <motion.div

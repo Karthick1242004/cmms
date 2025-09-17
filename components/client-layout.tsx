@@ -47,15 +47,18 @@ export function ClientLayout({ children }: ClientLayoutProps) {
             <AppSidebar />
           </Sidebar>
 
-          {/* Main Content with Banner */}
-          <SidebarInset className="flex-1 min-w-0">
+          {/* Main Content with Fixed Banner */}
+          <SidebarInset className="flex-1 min-w-0 relative">
             <div className="flex flex-col h-screen">
-              {/* Animated Banner - Above the outlet */}
-              <AnimatedBanner />
+              {/* Fixed Animated Banner at the top */}
+              <div className="fixed px-2 top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300" 
+                   style={{ left: '16rem', right: '0' }}>
+                <AnimatedBanner />
+              </div>
               
-              {/* Scrollable Content Area */}
-              <div className="flex-1 p-2">
-                <div className="h-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-lg border shadow-sm overflow-hidden">
+              {/* Scrollable Content Area with top padding to account for fixed banner */}
+              <div className="flex-1 p-2 pt-16">
+                <div className="h-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60  border shadow-sm overflow-hidden">
                   <Suspense fallback={<LoadingSpinner />}>
                     <div className="h-full overflow-y-auto custom-scrollbar">
                       <div className="space-y-4">

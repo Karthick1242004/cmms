@@ -110,7 +110,25 @@ export function calculateActivityDowntime(
         });
         
         // Track downtime by date
-        const logDateStr = parseISO(log.createdAt).toISOString().split('T')[0]
+        let logDateStr: string;
+        try {
+          // Handle different date formats
+          if (typeof log.createdAt === 'string') {
+            logDateStr = parseISO(log.createdAt).toISOString().split('T')[0];
+          } else if (log.createdAt instanceof Date) {
+            logDateStr = log.createdAt.toISOString().split('T')[0];
+          } else if (log.date) {
+            // Fallback to log.date if createdAt is not available
+            logDateStr = typeof log.date === 'string' ? parseISO(log.date).toISOString().split('T')[0] : log.date.toISOString().split('T')[0];
+          } else {
+            // Default to today if no valid date found
+            logDateStr = new Date().toISOString().split('T')[0];
+            console.warn('⚠️ [Downtime Utils] - No valid date found for log, using current date:', log);
+          }
+        } catch (error) {
+          console.error('❌ [Downtime Utils] - Error parsing date:', { log, error });
+          logDateStr = new Date().toISOString().split('T')[0];
+        }
         if (!downtimeByDate[logDateStr]) {
           downtimeByDate[logDateStr] = { totalMinutes: 0, plannedMinutes: 0, unplannedMinutes: 0, events: 0 }
         }

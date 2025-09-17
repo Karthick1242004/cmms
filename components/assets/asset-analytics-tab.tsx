@@ -51,6 +51,42 @@ const CHART_COLORS = {
 
 const PIE_COLORS = ['#3B82F6', '#EF4444']; // Blue for planned, Red for unplanned
 
+type DowntimeFilter = 'all' | 'maintenance' | 'activity_log' | 'inspection';
+
+interface DowntimeFilterOption {
+  value: DowntimeFilter;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+}
+
+const DOWNTIME_FILTERS: DowntimeFilterOption[] = [
+  {
+    value: 'all',
+    label: 'All Downtime',
+    icon: <BarChart3 className="h-4 w-4" />,
+    description: 'Show overall downtime and uptime analytics'
+  },
+  {
+    value: 'maintenance',
+    label: 'Maintenance',
+    icon: <Wrench className="h-4 w-4" />,
+    description: 'Show downtime from maintenance activities'
+  },
+  {
+    value: 'activity_log',
+    label: 'Activity Log',
+    icon: <Activity className="h-4 w-4" />,
+    description: 'Show downtime from daily activity logs'
+  },
+  {
+    value: 'inspection',
+    label: 'Inspection',
+    icon: <CheckCircle className="h-4 w-4" />,
+    description: 'Show downtime from safety inspections'
+  }
+];
+
 export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps) {
   const [analytics, setAnalytics] = useState<AssetAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +94,7 @@ export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps
   const [selectedPreset, setSelectedPreset] = useState<AnalyticsPreset>('last_30_days');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [downtimeFilter, setDowntimeFilter] = useState<DowntimeFilter>('all');
 
   const fetchAnalytics = async () => {
     setIsLoading(true);
@@ -74,10 +111,14 @@ export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps
         }
         filters = {
           startDate: customStartDate,
-          endDate: customEndDate
+          endDate: customEndDate,
+          downtimeFilter: downtimeFilter
         };
       } else {
-        filters = { preset: selectedPreset };
+        filters = { 
+          preset: selectedPreset,
+          downtimeFilter: downtimeFilter 
+        };
       }
 
       const response = await assetAnalyticsApi.getAssetAnalytics(assetId, filters);
@@ -97,7 +138,7 @@ export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps
 
   useEffect(() => {
     fetchAnalytics();
-  }, [assetId, selectedPreset]);
+  }, [assetId, selectedPreset, downtimeFilter]);
 
   const handlePresetChange = (preset: AnalyticsPreset) => {
     setSelectedPreset(preset);
@@ -113,8 +154,18 @@ export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps
     }
   };
 
+  // Simple approach: just track which filter is active and modify display
+  // For now, we'll use the existing analytics structure and add visual indicators
+  const getFilterLabel = () => {
+    return DOWNTIME_FILTERS.find(f => f.value === downtimeFilter)?.label || 'All';
+  };
+
+  const getFilterDescription = () => {
+    return DOWNTIME_FILTERS.find(f => f.value === downtimeFilter)?.description || 'Show overall analytics';
+  };
+
   // Prepare chart data
-  const chartData = analytics?.trends.map(trend => ({
+  const chartData = analytics?.trends?.map(trend => ({
     date: format(parseISO(trend.date), 'MMM dd'),
     uptime: Math.round((trend.totalUptimeMinutes / 60) * 100) / 100,
     downtime: Math.round((trend.totalDowntimeMinutes / 60) * 100) / 100,
@@ -124,14 +175,14 @@ export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps
     incidents: trend.numberOfIncidents
   })) || [];
 
-  const availabilityData = analytics?.trends.map(trend => ({
+  const availabilityData = analytics?.trends?.map(trend => ({
     date: format(parseISO(trend.date), 'MMM dd'),
     availability: trend.availability
   })) || [];
 
   const downtimeBreakdownData = analytics ? [
-    { name: 'Planned', value: analytics.downtimeBreakdown.planned.total, count: analytics.downtimeBreakdown.planned.incidents },
-    { name: 'Unplanned', value: analytics.downtimeBreakdown.unplanned.total, count: analytics.downtimeBreakdown.unplanned.incidents }
+    { name: 'Planned', value: analytics.downtimeBreakdown?.planned?.total || 0, count: analytics.downtimeBreakdown?.planned?.incidents || 0 },
+    { name: 'Unplanned', value: analytics.downtimeBreakdown?.unplanned?.total || 0, count: analytics.downtimeBreakdown?.unplanned?.incidents || 0 }
   ] : [];
 
   if (isLoading) {
@@ -205,9 +256,33 @@ export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps
           <p className="text-sm text-muted-foreground">
             {format(parseISO(analytics.analysisPeriod.startDate), 'MMM dd, yyyy')} - {format(parseISO(analytics.analysisPeriod.endDate), 'MMM dd, yyyy')}
           </p>
+          <div className="mt-2">
+            <Badge variant="outline" className="text-xs">
+              {DOWNTIME_FILTERS.find(f => f.value === downtimeFilter)?.icon}
+              <span className="ml-1">{getFilterDescription()}</span>
+            </Badge>
+          </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          {/* Downtime Filter */}
+          <Select value={downtimeFilter} onValueChange={(value: DowntimeFilter) => setDowntimeFilter(value)}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DOWNTIME_FILTERS.map(filter => (
+                <SelectItem key={filter.value} value={filter.value}>
+                  <div className="flex items-center gap-2">
+                    {filter.icon}
+                    <span>{filter.label}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {/* Date Range Filter */}
           <Select value={selectedPreset} onValueChange={handlePresetChange}>
             <SelectTrigger className="w-40">
               <SelectValue />
@@ -252,10 +327,12 @@ export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps
                 <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Overall Availability</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  {downtimeFilter === 'all' ? 'Overall Availability' : `${getFilterLabel()} Focus`}
+                </p>
                 <div className="flex items-center">
                   <p className="text-2xl font-bold text-green-600">
-                    {analytics.summary.overallAvailability.toFixed(1)}%
+                    {analytics?.summary?.overallAvailability?.toFixed(1) || '0.0'}%
                   </p>
                   <TrendingUp className="h-4 w-4 ml-1 text-green-600" />
                 </div>
@@ -271,9 +348,11 @@ export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Downtime</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  {downtimeFilter === 'all' ? 'Total Downtime' : `${getFilterLabel()} Analysis`}
+                </p>
                 <p className="text-2xl font-bold text-red-600">
-                  {analytics.summary.totalDowntimeHours.toFixed(1)}h
+                  {analytics?.summary?.totalDowntimeHours?.toFixed(1) || '0.0'}h
                 </p>
               </div>
             </div>
@@ -377,8 +456,20 @@ export function AssetAnalyticsTab({ assetId, assetName }: AssetAnalyticsTabProps
         {/* Uptime vs Downtime Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Daily Uptime vs Downtime (Hours)</CardTitle>
-            <CardDescription>Track daily operational performance</CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              Daily Uptime vs Downtime (Hours)
+              {downtimeFilter !== 'all' && (
+                <Badge variant="secondary" className="text-xs">
+                  {DOWNTIME_FILTERS.find(f => f.value === downtimeFilter)?.icon}
+                  <span className="ml-1">{getFilterLabel()}</span>
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>
+              {downtimeFilter === 'all' 
+                ? 'Track daily operational performance' 
+                : `Focusing on ${getFilterLabel().toLowerCase()} data`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
