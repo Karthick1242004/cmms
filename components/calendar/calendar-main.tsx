@@ -245,13 +245,71 @@ export function CalendarMain() {
     setShowReportFilter(false);
     
     try {
-      const calendar = calendarRef.current?.getApi();
-      if (calendar) {
-        const view = calendar.view;
-        const startDate = view.activeStart.toISOString().split('T')[0];
-        const endDate = view.activeEnd.toISOString().split('T')[0];
-        await generateFilteredReport(startDate, endDate, filters);
+      // Calculate date range based on filter options
+      let startDate: string;
+      let endDate: string;
+      
+      const { type, year, months, startDate: customStart, endDate: customEnd } = filters.dateRange;
+      
+      switch (type) {
+        case 'current_month': {
+          const now = new Date();
+          const start = new Date(now.getFullYear(), now.getMonth(), 1);
+          const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+          break;
+        }
+        case 'single_month': {
+          const month = months?.[0] || 0;
+          const start = new Date(year!, month, 1);
+          const end = new Date(year!, month + 1, 0);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+          break;
+        }
+        case 'multiple_months': {
+          if (!months || months.length === 0) {
+            throw new Error('No months selected');
+          }
+          const sortedMonths = [...months].sort((a, b) => a - b);
+          const firstMonth = sortedMonths[0];
+          const lastMonth = sortedMonths[sortedMonths.length - 1];
+          const start = new Date(year!, firstMonth, 1);
+          const end = new Date(year!, lastMonth + 1, 0);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+          break;
+        }
+        case 'whole_year': {
+          const start = new Date(year!, 0, 1);
+          const end = new Date(year!, 11, 31);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+          break;
+        }
+        case 'custom_range': {
+          if (!customStart || !customEnd) {
+            throw new Error('Custom date range requires both start and end dates');
+          }
+          startDate = customStart;
+          endDate = customEnd;
+          break;
+        }
+        default: {
+          // Fallback to current calendar view
+          const calendar = calendarRef.current?.getApi();
+          if (calendar) {
+            const view = calendar.view;
+            startDate = view.activeStart.toISOString().split('T')[0];
+            endDate = view.activeEnd.toISOString().split('T')[0];
+          } else {
+            throw new Error('Unable to determine date range');
+          }
+        }
       }
+      
+      await generateFilteredReport(startDate, endDate, filters);
     } catch (error) {
       console.error('Failed to generate filtered report:', error);
     } finally {

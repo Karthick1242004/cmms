@@ -22,8 +22,15 @@ import {
   UserCheck,
   Clock,
   FileText,
-  Download
+  Download,
+  CalendarDays,
+  CalendarRange
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+
+export type DateRangeType = 'current_month' | 'single_month' | 'multiple_months' | 'whole_year' | 'custom_range';
 
 export interface ReportFilterOptions {
   modules: {
@@ -37,6 +44,13 @@ export interface ReportFilterOptions {
     events: boolean;
   };
   includeAllData: boolean;
+  dateRange: {
+    type: DateRangeType;
+    year?: number;
+    months?: number[]; // Array of months (0-11)
+    startDate?: string; // For custom range
+    endDate?: string; // For custom range
+  };
 }
 
 interface CalendarReportFilterDialogProps {
@@ -111,6 +125,10 @@ export function CalendarReportFilterDialog({
   onGenerate,
   isGenerating = false
 }: CalendarReportFilterDialogProps) {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+  
   const [filters, setFilters] = useState<ReportFilterOptions>({
     modules: {
       dailyActivities: true,
@@ -122,7 +140,12 @@ export function CalendarReportFilterDialog({
       overtime: true,
       events: true
     },
-    includeAllData: true
+    includeAllData: true,
+    dateRange: {
+      type: 'current_month',
+      year: currentYear,
+      months: [currentMonth]
+    }
   });
 
   const handleModuleToggle = (moduleKey: keyof ReportFilterOptions['modules']) => {
@@ -148,12 +171,135 @@ export function CalendarReportFilterDialog({
     }));
   };
 
+  // Date range handling functions
+  const handleDateRangeTypeChange = (type: DateRangeType) => {
+    setFilters(prev => ({
+      ...prev,
+      dateRange: {
+        ...prev.dateRange,
+        type,
+        // Reset specific values when changing type
+        ...(type === 'current_month' && { 
+          year: currentYear,
+          months: [currentMonth] 
+        }),
+        ...(type === 'whole_year' && { 
+          year: currentYear,
+          months: undefined 
+        }),
+        ...(type === 'single_month' && { 
+          year: currentYear,
+          months: [currentMonth] 
+        }),
+        ...(type === 'multiple_months' && { 
+          year: currentYear,
+          months: [currentMonth] 
+        }),
+        ...(type === 'custom_range' && { 
+          startDate: '',
+          endDate: '',
+          year: undefined,
+          months: undefined 
+        })
+      }
+    }));
+  };
+
+  const handleYearChange = (year: number) => {
+    setFilters(prev => ({
+      ...prev,
+      dateRange: {
+        ...prev.dateRange,
+        year
+      }
+    }));
+  };
+
+  const handleMonthToggle = (month: number) => {
+    setFilters(prev => {
+      const currentMonths = prev.dateRange.months || [];
+      const isSelected = currentMonths.includes(month);
+      
+      let newMonths: number[];
+      if (prev.dateRange.type === 'single_month') {
+        newMonths = [month]; // Only one month for single selection
+      } else {
+        newMonths = isSelected 
+          ? currentMonths.filter(m => m !== month)
+          : [...currentMonths, month].sort((a, b) => a - b);
+      }
+      
+      return {
+        ...prev,
+        dateRange: {
+          ...prev.dateRange,
+          months: newMonths
+        }
+      };
+    });
+  };
+
+  const handleCustomDateChange = (field: 'startDate' | 'endDate', value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      dateRange: {
+        ...prev.dateRange,
+        [field]: value
+      }
+    }));
+  };
+
+  // Helper functions
+  const getMonthName = (month: number) => {
+    return new Date(2000, month, 1).toLocaleString('default', { month: 'long' });
+  };
+
+  const generateYearOptions = () => {
+    const years = [];
+    for (let year = currentYear - 2; year <= currentYear + 1; year++) {
+      years.push(year);
+    }
+    return years;
+  };
+
+  const formatDateRangeDisplay = () => {
+    const { type, year, months, startDate, endDate } = filters.dateRange;
+    
+    switch (type) {
+      case 'current_month':
+        return `Current Month (${getMonthName(currentMonth)} ${currentYear})`;
+      case 'single_month':
+        return `${getMonthName(months?.[0] || 0)} ${year}`;
+      case 'multiple_months':
+        if (!months || months.length === 0) return 'No months selected';
+        const monthNames = months.map(m => getMonthName(m)).join(', ');
+        return `${monthNames} ${year}`;
+      case 'whole_year':
+        return `Entire Year ${year}`;
+      case 'custom_range':
+        if (!startDate || !endDate) return 'Custom range (select dates)';
+        return `${startDate} to ${endDate}`;
+      default:
+        return 'Unknown range';
+    }
+  };
+
   const handleGenerate = () => {
     const selectedModules = Object.values(filters.modules).some(Boolean);
     if (!selectedModules) {
       // At least one module must be selected
       return;
     }
+    
+    // Validate date range
+    const { type, months, startDate, endDate } = filters.dateRange;
+    if (type === 'multiple_months' && (!months || months.length === 0)) {
+      return; // No months selected
+    }
+    if (type === 'custom_range' && (!startDate || !endDate)) {
+      return; // Custom range requires both dates
+    }
+    
     onGenerate(filters);
   };
 
@@ -203,6 +349,138 @@ export function CalendarReportFilterDialog({
                 Include all data (no limits)
               </Label>
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Date Range Selection */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CalendarRange className="h-4 w-4 text-blue-600" />
+              <h3 className="text-sm font-semibold">Date Range</h3>
+              <Badge variant="outline" className="text-xs">
+                {formatDateRangeDisplay()}
+              </Badge>
+            </div>
+
+            {/* Date Range Type Selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Report Period</Label>
+              <Select 
+                value={filters.dateRange.type} 
+                onValueChange={(value: DateRangeType) => handleDateRangeTypeChange(value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current_month">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4" />
+                      Current Month
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="single_month">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Single Month
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="multiple_months">
+                    <div className="flex items-center gap-2">
+                      <CalendarRange className="h-4 w-4" />
+                      Multiple Months
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="whole_year">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Whole Year
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="custom_range">
+                    <div className="flex items-center gap-2">
+                      <CalendarRange className="h-4 w-4" />
+                      Custom Date Range
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Year Selection (for all except custom_range) */}
+            {filters.dateRange.type !== 'custom_range' && filters.dateRange.type !== 'current_month' && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Year</Label>
+                <Select 
+                  value={filters.dateRange.year?.toString()} 
+                  onValueChange={(value) => handleYearChange(parseInt(value))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {generateYearOptions().map(year => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Month Selection (for single_month and multiple_months) */}
+            {(filters.dateRange.type === 'single_month' || filters.dateRange.type === 'multiple_months') && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  {filters.dateRange.type === 'single_month' ? 'Month' : 'Months'}
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const isSelected = filters.dateRange.months?.includes(i) || false;
+                    return (
+                      <Button
+                        key={i}
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleMonthToggle(i)}
+                        className="text-xs"
+                      >
+                        {getMonthName(i).substring(0, 3)}
+                      </Button>
+                    );
+                  })}
+                </div>
+                {filters.dateRange.type === 'multiple_months' && (
+                  <p className="text-xs text-muted-foreground">
+                    Select multiple months to include in the report
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Custom Date Range */}
+            {filters.dateRange.type === 'custom_range' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Start Date</Label>
+                  <Input
+                    type="date"
+                    value={filters.dateRange.startDate || ''}
+                    onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">End Date</Label>
+                  <Input
+                    type="date"
+                    value={filters.dateRange.endDate || ''}
+                    onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <Separator />
