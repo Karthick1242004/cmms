@@ -25,6 +25,7 @@ import { AddOvertimeDialog } from './add-overtime-dialog';
 import { CalendarSkeleton } from './calendar-skeleton';
 import { LoadingSpinner } from '@/components/loading-spinner';
 import { CalendarReportFilterDialog, ReportFilterOptions } from './calendar-report-filter-dialog';
+import { MonthYearPicker } from './month-year-picker';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +37,6 @@ export function CalendarMain() {
   const [showAddOvertime, setShowAddOvertime] = useState(false);
   const [showReportFilter, setShowReportFilter] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [calendarTitle, setCalendarTitle] = useState('Calendar');
 
   const {
     events,
@@ -45,13 +45,27 @@ export function CalendarMain() {
     isLoading,
     error,
     viewType,
+    currentDate,
     fetchEvents,
     setSelectedEvent,
     setViewType,
     setSelectedDate,
     generateReport,
-    generateFilteredReport
+    generateFilteredReport,
+    navigateToMonth,
+    goToPreviousMonth,
+    goToNextMonth,
+    goToToday
   } = useCalendarStore();
+
+  // Use store's currentDate for title
+  const calendarTitle = currentDate ? currentDate.toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric'
+  }) : new Date().toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric'
+  });
 
   // Fetch events when component mounts - using ref to avoid dependencies
   const fetchEventsRef = useRef(fetchEvents);
@@ -70,6 +84,17 @@ export function CalendarMain() {
 
     // Only fetch once on mount
     fetchInitialEvents();
+
+    // Initialize calendar to current month if needed (only on first mount)
+    const initializeCalendar = () => {
+      const today = new Date();
+      if (!currentDate || currentDate.getFullYear() === 1970) { // Check if currentDate is uninitialized
+        navigateToMonth(today.getFullYear(), today.getMonth());
+      }
+    };
+    
+    // Delay initialization to avoid conflicts
+    setTimeout(initializeCalendar, 100);
 
     // Cleanup timeout on unmount
     return () => {
@@ -131,15 +156,14 @@ export function CalendarMain() {
 
   // Use a ref to store the timeout ID
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Flag to prevent sync conflicts during programmatic navigation
+  const isNavigatingRef = useRef(false);
 
   const handleDatesSet = useCallback((dateInfo: any) => {
-    // Update calendar title with formatted date
-    const currentDate = dateInfo.start;
-    const formattedTitle = currentDate.toLocaleDateString('en-US', { 
-      month: 'long', 
-      year: 'numeric' 
-    });
-    setCalendarTitle(formattedTitle);
+    // Skip if we're in the middle of programmatic navigation to prevent conflicts
+    if (isNavigatingRef.current) {
+      return;
+    }
 
     // Clear any existing timeout
     if (timeoutRef.current) {
@@ -152,7 +176,7 @@ export function CalendarMain() {
       const endDate = dateInfo.end.toISOString().split('T')[0];
       fetchEventsRef.current(startDate, endDate);
     }, 300); // 300ms delay
-  }, []);
+  }, [currentDate]);
 
   const handleViewChange = useCallback((view: 'month' | 'week' | 'day' | 'list') => {
     setViewType(view);
@@ -165,14 +189,6 @@ export function CalendarMain() {
         list: 'listWeek'
       };
       calendar.changeView(viewMap[view]);
-      
-      // Update title with formatted date
-      const currentDate = calendar.view.currentStart;
-      const formattedTitle = currentDate.toLocaleDateString('en-US', { 
-        month: 'long', 
-        year: 'numeric' 
-      });
-      setCalendarTitle(formattedTitle);
     }
   }, [setViewType]);
 
@@ -195,6 +211,30 @@ export function CalendarMain() {
       }
     }
   }, [viewType, events]); // Re-sync when events change
+
+  // Sync FullCalendar with store's currentDate
+  useEffect(() => {
+    const calendar = calendarRef.current?.getApi();
+    if (calendar && currentDate) {
+      // Get the calendar's current date
+      const calendarCurrentDate = calendar.getDate();
+      
+      // Check if we need to navigate the calendar to match store's currentDate
+      if (calendarCurrentDate && 
+          (calendarCurrentDate.getFullYear() !== currentDate.getFullYear() ||
+           calendarCurrentDate.getMonth() !== currentDate.getMonth())) {
+        
+        // Set navigation flag to prevent conflicts during programmatic navigation
+        isNavigatingRef.current = true;
+        calendar.gotoDate(currentDate);
+        
+        // Clear the flag after navigation completes
+        setTimeout(() => {
+          isNavigatingRef.current = false;
+        }, 500);
+      }
+    }
+  }, [currentDate]);
 
   const handleGenerateReport = useCallback(async () => {
     setShowReportFilter(true);
@@ -308,12 +348,21 @@ export function CalendarMain() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
+            {/* Month/Year Navigation */}
             <div className="flex items-center gap-4">
-              <div className="text-lg font-semibold text-foreground">
-                {calendarTitle}
+              <MonthYearPicker
+                currentDate={currentDate}
+                onDateChange={navigateToMonth}
+                onPreviousMonth={goToPreviousMonth}
+                onNextMonth={goToNextMonth}
+                onToday={goToToday}
+              />
+              <div className="text-sm text-muted-foreground">
+                {filteredEvents.length} events this month
               </div>
             </div>
 
+            {/* View Type Controls */}
             <div className="flex items-center gap-1">
               {(['month', 'week', 'day'] as const).map((view) => (
                 <Button
@@ -344,7 +393,6 @@ export function CalendarMain() {
           ) : (
             <div className="calendar-container">
               <FullCalendar
-                key={`calendar-${viewType}`} // Force re-mount when view changes
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 initialView={
@@ -353,6 +401,7 @@ export function CalendarMain() {
                   viewType === 'day' ? 'timeGridDay' :
                   'listWeek'
                 }
+                initialDate={currentDate || new Date()}
                 headerToolbar={false} // We're using custom header
                 height="auto"
                 events={filteredEvents}

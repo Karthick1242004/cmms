@@ -41,6 +41,7 @@ export const useCalendarStore = create<CalendarState>()(
       isLoading: false,
       error: null,
       viewType: 'month',
+      currentDate: new Date(), // Track current viewing date
 
       // Fetch calendar events from multiple sources
       fetchEvents: async (startDate: string, endDate: string) => {
@@ -423,6 +424,55 @@ export const useCalendarStore = create<CalendarState>()(
           });
           throw error;
         }
+      },
+
+      // Navigation methods
+      setCurrentDate: (date: Date) => {
+        set((state) => {
+          state.currentDate = date;
+        });
+      },
+
+      navigateToMonth: (year: number, month: number) => {
+        const newDate = new Date(year, month, 1);
+        
+        set((state) => {
+          state.currentDate = newDate;
+        });
+        
+        // Calculate date range for the month
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0);
+        
+        // Clear cache to ensure fresh data for new month
+        lastFetchedRange = null;
+        
+        // Fetch events for the new month
+        const updatedState = get();
+        updatedState.fetchEvents(
+          startDate.toISOString().split('T')[0],
+          endDate.toISOString().split('T')[0]
+        );
+      },
+
+      goToPreviousMonth: () => {
+        const currentState = get();
+        const currentDate = currentState.currentDate;
+        const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+        currentState.navigateToMonth(newDate.getFullYear(), newDate.getMonth());
+      },
+
+      goToNextMonth: () => {
+        const currentState = get();
+        const currentDate = currentState.currentDate;
+        const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+        currentState.navigateToMonth(newDate.getFullYear(), newDate.getMonth());
+      },
+
+      goToToday: () => {
+        const today = new Date();
+        const currentState = get();
+        currentState.navigateToMonth(today.getFullYear(), today.getMonth());
       }
     })),
     {

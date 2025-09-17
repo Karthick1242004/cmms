@@ -78,6 +78,7 @@ export interface CalendarState {
   isLoading: boolean;
   error: string | null;
   viewType: 'month' | 'week' | 'day' | 'list';
+  currentDate: Date; // Track current viewing date
   
   // Actions
   fetchEvents: (startDate: string, endDate: string) => Promise<void>;
@@ -90,6 +91,14 @@ export interface CalendarState {
   setSelectedEvent: (event: CalendarEvent | null) => void;
   setViewType: (viewType: 'month' | 'week' | 'day' | 'list') => void;
   generateReport: (startDate: string, endDate: string) => Promise<void>;
+  generateFilteredReport: (filters: any) => Promise<void>;
+  
+  // Navigation methods
+  setCurrentDate: (date: Date) => void;
+  navigateToMonth: (year: number, month: number) => void;
+  goToPreviousMonth: () => void;
+  goToNextMonth: () => void;
+  goToToday: () => void;
 }
 
 export interface ReportModuleFilters {
