@@ -63,8 +63,8 @@ export default function AnimatedBanner() {
   const tripleItems = [...activeBanners, ...activeBanners, ...activeBanners]
 
   return (
-    <div className="dark:bg-background/95 bg-background/95 overflow-hidden rounded-md mt-2 relative border w-full flex-shrink-0">
-      <div className="relative h-14 flex items-center py-3 border-gray-500 px-4">
+    <div className="dark:bg-gradient-to-r dark:from-blue-900/20 dark:to-indigo-900/20 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 overflow-hidden rounded-md mt-2 relative border border-blue-200/50 dark:border-blue-800/50 w-full flex-shrink-0 shadow-sm">
+      <div className="relative h-14 flex items-center py-3 px-4">
         {/* Animated banner content */}
         <motion.div
           className="flex items-center whitespace-nowrap will-change-transform"
@@ -102,12 +102,12 @@ export default function AnimatedBanner() {
                 )}
                 
                 {/* Banner text with proper contrast for both modes */}
-                <span className="dark:text-white text-black font-medium tracking-normal leading-relaxed whitespace-nowrap drop-shadow-sm">
+                <span className="dark:text-blue-100 text-blue-900 font-medium tracking-normal leading-relaxed whitespace-nowrap drop-shadow-sm">
                   {banner.text}
                 </span>
                 
                 {/* Separator dot with much more spacing */}
-                <div className="mx-16 w-2.5 h-2.5 bg-white/60 rounded-full hidden sm:block flex-shrink-0" />
+                <div className="mx-16 w-2.5 h-2.5 bg-blue-400/70 dark:bg-blue-300/70 rounded-full hidden sm:block flex-shrink-0" />
               </div>
             </motion.div>
           ))}
