@@ -347,20 +347,26 @@ export async function updateStockReceiptForPartUpdate(
 
 /**
  * Validate if part-stock sync is needed based on part data
+ * CRITICAL FIX: Disable automatic stock transactions for initial part creation
+ * to prevent quantity doubling. The part already has the correct quantity when created.
  */
 export function shouldCreateStockTransaction(partData: Partial<Part>): boolean {
-  // Only create stock transaction if:
-  // 1. Part has initial quantity > 0
-  // 2. Part is marked as a stock item
-  // 3. Part has valid required fields
-  return !!(
-    partData.quantity && 
-    partData.quantity > 0 && 
-    partData.isStockItem !== false && 
-    partData.partNumber && 
-    partData.name && 
-    partData.department
-  );
+  // DISABLED: Automatic stock transaction creation causes quantity doubling
+  // When a part is created with initial quantity, the quantity is already set correctly
+  // Creating a stock receipt transaction then ADDS that same quantity again, causing doubling
+  // For now, initial stock transactions should be created manually if needed
+  
+  return false;
+  
+  // Original logic (commented out to prevent doubling):
+  // return !!(
+  //   partData.quantity && 
+  //   partData.quantity > 0 && 
+  //   partData.isStockItem !== false && 
+  //   partData.partNumber && 
+  //   partData.name && 
+  //   partData.department
+  // );
 }
 
 /**

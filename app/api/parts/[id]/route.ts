@@ -207,8 +207,16 @@ export async function PUT(
       }
     });
 
+
     // Store original quantity for stock sync comparison
     const originalQuantity = existingPart.quantity || 0;
+
+    // CRITICAL SAFEGUARD: If this is a sync update (only linkedAssets), ensure quantity is preserved
+    if (Object.keys(body).length === 2 && body.linkedAssets && body.quantity) {
+      if (existingPart.quantity !== body.quantity) {
+        updateData.quantity = existingPart.quantity; // Force preserve original
+      }
+    }
 
     // Store original data for change tracking
     const originalData = existingPart.toObject();
@@ -345,12 +353,6 @@ export async function PUT(
           const partSyncData = extractPartSyncData(responseData, user.id, user.name || 'System');
           
           if (partSyncData) {
-            console.log('[PART UPDATE API] Creating stock adjustment transaction for quantity change:', {
-              partNumber: responseData.partNumber,
-              originalQuantity,
-              newQuantity: updatedPart.quantity,
-              difference: quantityDifference
-            });
 
             // Get the base URL for API calls
             const protocol = request.headers.get('x-forwarded-proto') || 'http';
@@ -374,7 +376,6 @@ export async function PUT(
 
             if (stockSyncResult.success) {
               stockSyncMessage = ` Stock adjustment transaction created: ${stockSyncResult.stockTransactionNumber}`;
-              console.log('[PART UPDATE API] Stock adjustment transaction created successfully:', stockSyncResult.stockTransactionNumber);
             } else {
               console.warn('[PART UPDATE API] Failed to create stock adjustment transaction:', stockSyncResult.message);
               stockSyncMessage = ` Note: Stock adjustment transaction creation failed - ${stockSyncResult.message}`;
@@ -390,11 +391,6 @@ export async function PUT(
         stockSyncMessage = ' Note: Stock adjustment sync encountered an error';
       }
     } else if (quantityChanged) {
-      console.log('[PART UPDATE API] Quantity changed but no stock transaction needed:', {
-        partNumber: responseData.partNumber,
-        isStockItem: updatedPart.isStockItem,
-        quantityDifference
-      });
     }
 
     return NextResponse.json({

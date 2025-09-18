@@ -812,11 +812,35 @@ export default function PartsPage() {
 
   const fetchLocations = async () => {
     try {
-      const response = await fetch('/api/locations')
+      // Fetch all locations without pagination limit
+      const response = await fetch('/api/locations?limit=1000&page=1')
       const data = await response.json()
       
       if (data.success) {
-        setLocations(data.data?.locations || [])
+        let allLocations = data.data?.locations || []
+        
+        // If there are more pages, fetch them all
+        if (data.data?.pagination?.hasNext) {
+          const totalPages = data.data.pagination.totalPages
+          const additionalRequests = []
+          
+          // Fetch remaining pages
+          for (let page = 2; page <= totalPages; page++) {
+            additionalRequests.push(
+              fetch(`/api/locations?limit=1000&page=${page}`)
+                .then(res => res.json())
+                .then(pageData => pageData.success ? pageData.data?.locations || [] : [])
+            )
+          }
+          
+          const additionalPages = await Promise.all(additionalRequests)
+          additionalPages.forEach(pageLocations => {
+            allLocations = allLocations.concat(pageLocations)
+          })
+        }
+        
+        setLocations(allLocations)
+        console.log(`[LOCATIONS] Loaded ${allLocations.length} total locations for dropdown`)
       } else {
         console.error('Failed to fetch locations:', data.message)
       }
@@ -1129,10 +1153,12 @@ export default function PartsPage() {
           setIsCreateDialogOpen(false)
         }
 
-        // Sync part asset links to asset BOM if there are linked assets
+
+        // FIXED: Re-enable BOM sync for both CREATE and EDIT operations
+        // The quantity doubling was caused by stock transactions, not BOM sync
+        // BOM sync is safe and necessary for Asset Parts/BOM display
         if (formData.linkedAssets && formData.linkedAssets.length > 0) {
           try {
-            console.log('[PART SYNC] Starting asset sync for part with linked assets');
             
             const syncData: PartAssetSyncData = {
               partId: savedPart.id,
@@ -1146,11 +1172,11 @@ export default function PartsPage() {
             
             if (syncResult.success) {
               toast.success(`Part ${isEdit ? 'updated' : 'created'} and ${syncResult.syncedItems} assets synced successfully!`);
-              console.log('[PART SYNC] Asset sync completed:', syncResult.message);
             } else {
               toast.warning(`Part ${isEdit ? 'updated' : 'created'} but asset sync had issues: ${syncResult.message}`);
-              console.warn('[PART SYNC] Asset sync issues:', syncResult.errors);
             }
+
+            
           } catch (syncError) {
             console.error('[PART SYNC] Error during asset sync:', syncError);
             toast.warning(`Part ${isEdit ? 'updated' : 'created'} but asset sync failed. You can manually sync later.`);

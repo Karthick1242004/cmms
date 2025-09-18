@@ -425,9 +425,12 @@ async function updatePartAssetLink(
       updatedLinks = [...existingLinks, assetLink];
     }
 
+    // CRITICAL FIX: Explicitly preserve quantity during sync update
     const updateData = {
-      linkedAssets: updatedLinks
+      linkedAssets: updatedLinks,
+      quantity: existingPart.quantity // Explicitly preserve original quantity
     };
+
 
     const partUrl = baseUrl ? `${baseUrl}/api/parts/${existingPart.id}` : `/api/parts/${existingPart.id}`;
     

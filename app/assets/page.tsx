@@ -211,7 +211,7 @@ export default function AllAssetsPage() {
     fetchAssets() // Refresh assets list after status change
   }
 
-  const generateAssetsReport = () => {
+  const generateAssetsReport = async () => {
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -223,16 +223,28 @@ export default function AllAssetsPage() {
       second: '2-digit'
     })
 
-    // Calculate summary statistics
-    const totalAssets = filteredAssets.length
-    const maintenanceAssets = filteredAssets.filter(asset => asset.status === "maintenance")
-    const outOfServiceAssets = filteredAssets.filter(asset => asset.status === "out-of-service")
-    const operationalAssets = filteredAssets.filter(asset => asset.status === "operational")
-    const availableAssets = filteredAssets.filter(asset => asset.status === "available")
-    const totalValue = filteredAssets.reduce((sum, asset) => sum + (asset.purchasePrice || 0), 0)
+    // Fetch ALL assets for comprehensive report (not just current page)
+    let allAssetsForReport: Asset[] = []
+    try {
+      // Fetch all assets with a large limit to get complete data
+      await fetchAssets({ fetchAll: true, page: 1, limit: 1000 })
+      allAssetsForReport = assets // Use the assets from store after fetching all
+    } catch (error) {
+      console.error('Error fetching all assets for report:', error)
+      // Fallback to current filtered assets if fetch fails
+      allAssetsForReport = filteredAssets
+    }
 
-    // Group by category
-    const assetsByCategory = filteredAssets.reduce((acc, asset) => {
+    // Calculate summary statistics using ALL assets
+    const totalAssets = allAssetsForReport.length
+    const maintenanceAssets = allAssetsForReport.filter(asset => asset.status === "maintenance")
+    const outOfServiceAssets = allAssetsForReport.filter(asset => asset.status === "out-of-service")
+    const operationalAssets = allAssetsForReport.filter(asset => asset.status === "operational")
+    const availableAssets = allAssetsForReport.filter(asset => asset.status === "available")
+    const totalValue = allAssetsForReport.reduce((sum, asset) => sum + (asset.purchasePrice || 0), 0)
+
+    // Group by category using ALL assets
+    const assetsByCategory = allAssetsForReport.reduce((acc, asset) => {
       if (!acc[asset.type]) {
         acc[asset.type] = []
       }
@@ -240,8 +252,8 @@ export default function AllAssetsPage() {
       return acc
     }, {} as Record<string, Asset[]>)
 
-    // Group by department
-    const assetsByDepartment = filteredAssets.reduce((acc, asset) => {
+    // Group by department using ALL assets
+    const assetsByDepartment = allAssetsForReport.reduce((acc, asset) => {
       if (!acc[asset.department]) {
         acc[asset.department] = []
       }

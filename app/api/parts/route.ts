@@ -187,7 +187,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+
     // Prepare part data
+    const quantityValue = Number(body.quantity) || 0;
     const partData = {
       partNumber: body.partNumber,
       name: body.name,
@@ -197,7 +199,7 @@ export async function POST(request: NextRequest) {
       category: body.category,
       department: body.department,
       linkedAssets: body.linkedAssets || [],
-      quantity: Number(body.quantity) || 0,
+      quantity: quantityValue,
       minStockLevel: Number(body.minStockLevel) || 0,
       unitPrice: Number(body.unitPrice) || 0,
       supplier: body.supplier,
@@ -218,9 +220,12 @@ export async function POST(request: NextRequest) {
       imageSrc: body.imageSrc || ''
     };
 
+
     // Create the part
     const newPart = new Part(partData);
+    
     const savedPart = await newPart.save();
+    
 
     // Create log entry for part creation
     try {
@@ -311,11 +316,6 @@ export async function POST(request: NextRequest) {
           const partSyncData = extractPartSyncData(responseData, user.id, user.name || 'System');
           
           if (partSyncData) {
-            console.log('[PART API] Creating stock receipt transaction for new part:', {
-              partNumber: responseData.partNumber,
-              quantity: responseData.quantity,
-              department: responseData.department
-            });
 
             // Get the base URL for API calls
             const protocol = request.headers.get('x-forwarded-proto') || 'http';
@@ -331,7 +331,6 @@ export async function POST(request: NextRequest) {
 
             if (stockSyncResult.success) {
               stockSyncMessage = ` Stock receipt transaction created: ${stockSyncResult.stockTransactionNumber}`;
-              console.log('[PART API] Stock receipt transaction created successfully:', stockSyncResult.stockTransactionNumber);
             } else {
               console.warn('[PART API] Failed to create stock receipt transaction:', stockSyncResult.message);
               stockSyncMessage = ` Note: Stock transaction creation failed - ${stockSyncResult.message}`;
@@ -347,11 +346,6 @@ export async function POST(request: NextRequest) {
         stockSyncMessage = ' Note: Stock transaction sync encountered an error';
       }
     } else {
-      console.log('[PART API] No stock transaction needed for part:', {
-        partNumber: responseData.partNumber,
-        quantity: responseData.quantity,
-        isStockItem: responseData.isStockItem
-      });
     }
 
     return NextResponse.json({
