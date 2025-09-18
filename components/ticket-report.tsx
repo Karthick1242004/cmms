@@ -534,8 +534,8 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
               <div class="info-value">${ticket.equipmentId || 'N/A'}</div>
             </div>
             <div class="info-card">
-              <div class="info-label">Reviewed By</div>
-              <div class="info-value">${ticket.reviewedBy || 'N/A'}</div>
+              <div class="info-label">Attended By</div>
+              <div class="info-value">${ticket.inCharge ||'N/A'}</div>
             </div>
           </div>
         </div>

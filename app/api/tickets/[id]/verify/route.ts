@@ -79,6 +79,23 @@ export async function PATCH(
       )
     }
 
+    // Ensure activityLog is initialized as an array (for legacy tickets)
+    if (!ticket.activityLog || !Array.isArray(ticket.activityLog)) {
+      console.log('🔧 [Ticket Verify API] - Initializing activityLog for ticket:', id);
+      ticket.activityLog = [];
+    }
+
+    // Add verification activity log entry
+    const verificationLogEntry = {
+      date: new Date(),
+      loggedBy: user.name,
+      remarks: adminNotes ? `Ticket verified by ${user.name}. Admin notes: ${adminNotes}` : `Ticket verified by ${user.name}`,
+      action: 'Status Change'
+    };
+    
+    ticket.activityLog.push(verificationLogEntry);
+    console.log('🔧 [Ticket Verify API] - Added verification entry to activity log');
+
     // Update ticket with verification
     const updateData: any = {
       $set: {
@@ -86,8 +103,10 @@ export async function PATCH(
         adminVerified: true,
         verifiedBy: user.id,
         verifiedByName: user.name,
+        reviewedBy: user.name, // Also set reviewedBy for backward compatibility
         verifiedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        activityLog: ticket.activityLog // Include updated activityLog
       },
       $push: {
         activityHistory: {

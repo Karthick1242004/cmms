@@ -42,7 +42,16 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
       const activeTypes = Object.entries(ticket.reportType)
         .filter(([_, isActive]) => isActive)
         .map(([type, _]) => type.charAt(0).toUpperCase() + type.slice(1))
-      return activeTypes.join(', ') || 'N/A'
+      
+      if (activeTypes.length === 0) {
+        return '<span style="background-color: #f3f4f6; color: #6b7280; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; text-transform: uppercase; border: 1px solid #e5e7eb;">N/A</span>'
+      }
+      
+      return activeTypes.map(type => `
+        <span style="background-color: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; border: 1px solid #93c5fd; margin-right: 6px; display: inline-block;">
+          ${type}
+        </span>
+      `).join('')
     }
 
     const formatImages = () => {
@@ -96,6 +105,35 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
             📸 ${ticket.images.length} image${ticket.images.length > 1 ? 's' : ''} attached to this ticket
           </p>
         </div>
+      `
+    }
+
+    const formatActivityLog = () => {
+      if (!ticket.activityLog || ticket.activityLog.length === 0) {
+        return '<p class="text-gray-500 italic">No activity log entries available</p>'
+      }
+
+      return `
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-gray-50">
+              <th class="text-left p-2 border">DATE</th>
+              <th class="text-left p-2 border">DURATION</th>
+              <th class="text-left p-2 border">LOGGED BY</th>
+              <th class="text-left p-2 border">REMARKS / NOTES</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ticket.activityLog.map(entry => `
+              <tr class="border-b">
+                <td class="p-2 border">${format(new Date(entry.date), 'MMM dd, yyyy')}</td>
+                <td class="p-2 border">${entry.duration ? `${entry.duration} min` : 'N/A'}</td>
+                <td class="p-2 border">${entry.loggedBy}</td>
+                <td class="p-2 border">${entry.remarks}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       `
     }
 
@@ -471,6 +509,21 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
               ` : ''}
             </div>
 
+            ${ticket.adminNotes && ticket.adminVerified ? `
+            <!-- Admin Verification Notes -->
+            <div class="section">
+              <h2>✅ Admin Verification Notes</h2>
+              <div class="problem-solution">
+                <p style="padding: 15px; background-color: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 4px; margin: 0;">${ticket.adminNotes}</p>
+                ${ticket.verifiedAt ? `
+                <p style="margin-top: 10px; font-size: 12px; color: #6b7280;">
+                  Verified on ${format(new Date(ticket.verifiedAt), 'PPP')} at ${format(new Date(ticket.verifiedAt), 'p')}
+                </p>
+                ` : ''}
+              </div>
+            </div>
+            ` : ''}
+
             <!-- Personnel & Verification -->
             <div class="section">
               <h2>👥 Personnel & Verification</h2>
@@ -479,10 +532,10 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
                   <label>Logged By</label>
                   <div class="value">${ticket.loggedBy}</div>
                 </div>
-                ${ticket.reviewedBy ? `
+                ${ticket.verifiedByName || ticket.reviewedBy ? `
                 <div class="info-item">
                   <label>Reviewed By</label>
-                  <div class="value">${ticket.reviewedBy}</div>
+                  <div class="value">${ticket.verifiedByName || ticket.reviewedBy}</div>
                 </div>
                 ` : ''}
                 ${ticket.createdByName ? `
@@ -510,8 +563,25 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
                 </div>
                 ` : ''}
                 <div class="info-item">
-                  <label>Report Types</label>
-                  <div class="value">${formatReportTypes()}</div>
+                  <label style="font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">REPORT TYPE</label>
+                  <div class="value" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                    ${formatReportTypes()}
+                  </div>
+                </div>
+                <div class="info-item">
+                  <label style="font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">ASSIGNED DEPARTMENTS</label>
+                  <div class="value" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                    ${ticket.assignedDepartments && ticket.assignedDepartments.length > 0 
+                      ? ticket.assignedDepartments.map(dept => `
+                          <span style="background-color: #f3f4f6; color: #374151; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; border: 1px solid #e5e7eb;">
+                            ${dept}
+                          </span>
+                        `).join('')
+                      : `<span style="background-color: #f3f4f6; color: #374151; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; border: 1px solid #e5e7eb;">
+                          ALL DEPARTMENTS
+                        </span>`
+                    }
+                  </div>
                 </div>
               </div>
               ${ticket.adminNotes ? `
@@ -551,6 +621,12 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
                   <span class="label">Assigned Departments</span>
                 </div>
               </div>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="section">
+              <h2>📊 ACTIVITY LOG</h2>
+              ${formatActivityLog()}
             </div>
 
             <!-- Activity History -->
