@@ -276,7 +276,7 @@ export function StockTransactionForm({
         await Promise.all([
           fetchParts(),
           fetchLocations(),
-          fetchAssets(), // Fetch all assets for dropdown
+          fetchAssets({ fetchAll: true }), // Fetch ALL assets for dropdown without pagination
           fetchEmployees(), // Fetch all employees for dropdown
         ]);
       } catch (error) {
