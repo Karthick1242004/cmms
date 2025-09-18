@@ -65,8 +65,8 @@ export function PartsDetailDialog({
   if (!part) return null;
 
   const getStockStatus = (part: Part) => {
-    if (part.currentStock <= 0) return 'out-of-stock';
-    if (part.currentStock <= part.minimumStock) return 'low-stock';
+    if (part.quantity <= 0) return 'out-of-stock';
+    if (part.quantity <= part.minStockLevel) return 'low-stock';
     return 'in-stock';
   };
 
@@ -168,15 +168,19 @@ export function PartsDetailDialog({
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Current Stock:</span>
-                        <span className="font-medium">{part.currentStock}</span>
+                        <span className="font-medium">{part.quantity}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Minimum Stock:</span>
-                        <span className="font-medium">{part.minimumStock}</span>
+                        <span className="font-medium">{part.minStockLevel}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">Maximum Stock:</span>
-                        <span className="font-medium">{part.maximumStock}</span>
+                        <span className="text-sm">Unit Price:</span>
+                        <span className="font-medium text-green-600">${part.unitPrice.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Total Value:</span>
+                        <span className="font-medium text-blue-600">${(part.quantity * part.unitPrice).toFixed(2)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Status:</span>

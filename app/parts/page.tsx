@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History, CheckCircle, AlertCircle, Loader2, MoreHorizontal, Eye, Activity } from "lucide-react"
+import { Search, Package, AlertTriangle, Plus, Edit, Trash2, Filter, Download, Barcode, FileText, RefreshCw, X, History, CheckCircle, AlertCircle, Loader2, MoreHorizontal, Eye, Activity, Check, ChevronsUpDown, MapPin } from "lucide-react"
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Command, CommandEmpty, CommandInput, CommandItem } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -31,6 +33,7 @@ import { syncPartLinksToAssetBOM, syncPartDeletion } from "@/lib/asset-part-sync
 import type { PartAssetSyncData, PartDeletionSyncData } from "@/lib/asset-part-sync"
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary-config"
 import { LogTrackingTab } from "@/components/common/log-tracking-tab"
+import { cn } from "@/lib/utils"
 
 // Extracted form to prevent re-mount on every parent render (fixes input focus loss
 function PartFormStandalone({
@@ -70,6 +73,7 @@ function PartFormStandalone({
   const [assetSearchTerm, setAssetSearchTerm] = useState("")
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false)
   const [filteredAssets, setFilteredAssets] = useState<Array<{ id: string; name: string; department: string }>>([])
+  const [openLocations, setOpenLocations] = useState(false)
 
   // Update selectedAssets when formData.linkedAssets changes (for edit mode)
   useEffect(() => {
@@ -300,25 +304,76 @@ function PartFormStandalone({
         </div>
         <div className="space-y-2">
           <Label htmlFor="location">Location</Label>
-          <Select value={formData.location || "none"} onValueChange={(value) => onInputChange('location', value === "none" ? "" : value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No location assigned</SelectItem>
-              {locations
-                .filter(location => 
-                  isSuperAdmin || 
-                  location.department === (formData.department || currentUserDepartment)
-                )
-                .map((location) => (
-                <SelectItem key={location.id} value={location.name}>
-                  {location.name} - {location.type}
-                  {location.code && ` (${location.code})`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={openLocations} onOpenChange={setOpenLocations}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                className="w-full justify-between"
+              >
+                {formData.location ? (
+                  locations.find(location => location.name === formData.location)?.name || formData.location
+                ) : (
+                  "No location assigned"
+                )}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0" align="end">
+              <Command className="w-full">
+                <CommandInput placeholder="Search locations..." />
+                <CommandEmpty>No locations found.</CommandEmpty>
+                <div className="max-h-[200px] !overflow-y-scroll p-1">
+                  <CommandItem
+                    value="none"
+                    onSelect={() => {
+                      onInputChange('location', '')
+                      setOpenLocations(false)
+                    }}
+                    className="py-2 cursor-pointer hover:bg-accent"
+                  >
+                    <Check 
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        !formData.location ? "opacity-100" : "opacity-0"
+                      )} 
+                    />
+                    <div className="flex flex-col">
+                      <span>No location assigned</span>
+                      <span className="text-xs text-muted-foreground">Leave unassigned</span>
+                    </div>
+                  </CommandItem>
+                  {locations
+                    .filter(location => 
+                      isSuperAdmin || 
+                      location.department === (formData.department || currentUserDepartment)
+                    )
+                    .map((location) => (
+                      <CommandItem
+                        key={location.id}
+                        value={location.name}
+                        onSelect={() => {
+                          onInputChange('location', location.name)
+                          setOpenLocations(false)
+                        }}
+                        className="py-2 cursor-pointer hover:bg-accent"
+                      >
+                        <Check 
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            formData.location === location.name ? "opacity-100" : "opacity-0"
+                          )} 
+                        />
+                        <div className="flex flex-col">
+                          <span>{location.name}</span>
+                          <span className="text-xs text-muted-foreground">{location.type} • {location.department}{location.code && ` • ${location.code}`}</span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                </div>
+              </Command>
+            </PopoverContent>
+          </Popover>
           {locations.length === 0 && (
             <p className="text-sm text-muted-foreground">
               No locations available. Contact admin to add locations.
@@ -1584,7 +1639,7 @@ export default function PartsPage() {
                       <TableHead className="text-xs font-medium py-2 min-w-[100px]">Linked Assets</TableHead>
                       <TableHead className="text-xs font-medium py-2 min-w-[80px]">Stock Status</TableHead>
                       <TableHead className="text-xs font-medium py-2 min-w-[60px]">Quantity</TableHead>
-                      {/* <TableHead className="text-xs font-medium py-2 min-w-[90px]">Unit Price</TableHead> */}
+                      <TableHead className="text-xs font-medium py-2 min-w-[90px]">Unit Price</TableHead>
                       {showVendorColumns && <TableHead className="text-xs font-medium py-2 min-w-[80px]">Total Value</TableHead>}
                       {showVendorColumns && <TableHead className="text-xs font-medium py-2 min-w-[100px]">Supplier</TableHead>}
                       {showVendorColumns && <TableHead className="text-xs font-medium py-2 min-w-[80px]">Purchase Order</TableHead>}
@@ -1674,9 +1729,9 @@ export default function PartsPage() {
                             <div className="text-muted-foreground">Min: {part.minStockLevel}</div>
                           </div>
                         </TableCell>
-                        {/* <TableCell className="py-2">
+                        <TableCell className="py-2">
                           <div className="text-xs font-medium">${part.unitPrice.toFixed(2)}</div>
-                        </TableCell> */}
+                        </TableCell>
                         {showVendorColumns && (
                           <TableCell className="py-2">
                             <div className="text-xs font-medium">${part.totalValue ? part.totalValue.toFixed(2) : (part.quantity * part.unitPrice).toFixed(2)}</div>
