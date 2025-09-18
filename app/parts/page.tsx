@@ -368,7 +368,6 @@ function PartFormStandalone({
                       <TableRow>
                         <TableHead className="w-12">Select</TableHead>
                         <TableHead>Asset Name</TableHead>
-                        <TableHead>Asset ID</TableHead>
                         <TableHead>Department</TableHead>
                         <TableHead className="w-24">Quantity</TableHead>
                       </TableRow>
@@ -397,7 +396,6 @@ function PartFormStandalone({
                                 />
                               </TableCell>
                               <TableCell className="font-medium">{asset.name}</TableCell>
-                              <TableCell className="text-sm text-muted-foreground">{asset.id}</TableCell>
                               <TableCell>{asset.department}</TableCell>
                               <TableCell>
                                 {isSelected ? (

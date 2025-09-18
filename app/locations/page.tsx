@@ -86,6 +86,7 @@ export default function LocationsPage() {
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
   const [isUpdatingAssetCounts, setIsUpdatingAssetCounts] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [allLocationsForReport, setAllLocationsForReport] = useState<Location[]>([])
   
   // Filter states
   const [selectedDepartment, setSelectedDepartment] = useState<string>("")
@@ -111,6 +112,59 @@ export default function LocationsPage() {
 
   // Debounced search term
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
+
+  // Fetch all locations for comprehensive report
+  const fetchAllLocationsForReport = async () => {
+    try {
+      const token = localStorage.getItem('auth-token')
+      
+      // First, get the total count to determine how many pages to fetch
+      const initialResponse = await fetch('/api/locations?limit=1000&page=1', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      })
+
+      if (initialResponse.ok) {
+        const initialData = await initialResponse.json()
+        let allLocations = initialData.data.locations || []
+        
+        // If there are more pages, fetch them
+        if (initialData.data.pagination?.hasNext) {
+          const totalPages = initialData.data.pagination.totalPages
+          const additionalRequests = []
+          
+          for (let page = 2; page <= totalPages; page++) {
+            additionalRequests.push(
+              fetch(`/api/locations?limit=1000&page=${page}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(token && { 'Authorization': `Bearer ${token}` }),
+                },
+              })
+                .then(res => res.json())
+                .then(pageData => pageData.success ? pageData.data?.locations || [] : [])
+            )
+          }
+          
+          const additionalPages = await Promise.all(additionalRequests)
+          additionalPages.forEach(pageLocations => {
+            allLocations = allLocations.concat(pageLocations)
+          })
+        }
+        
+        setAllLocationsForReport(allLocations)
+        console.log('🔍 Total locations fetched for report:', allLocations.length)
+      }
+    } catch (error) {
+      console.error('Error fetching all locations for report:', error)
+      // Fallback to current locations if fetch fails
+      setAllLocationsForReport(locations)
+    }
+  }
 
   // Fetch locations from API with pagination
   const fetchLocations = async (page = 1) => {
@@ -498,7 +552,10 @@ export default function LocationsPage() {
             <>
               <Button 
                 variant="outline" 
-                onClick={() => setIsReportDialogOpen(true)}
+                onClick={async () => {
+                  await fetchAllLocationsForReport()
+                  setIsReportDialogOpen(true)
+                }}
                 className="flex items-center gap-2"
               >
                 <FileText className="h-4 w-4" />
@@ -1092,7 +1149,7 @@ export default function LocationsPage() {
       {/* Locations Report Dialog */}
       {isSuperAdmin && (
         <LocationsOverallReport
-          locations={locations}
+          locations={allLocationsForReport.length > 0 ? allLocationsForReport : locations}
           isOpen={isReportDialogOpen}
           onClose={() => setIsReportDialogOpen(false)}
         />

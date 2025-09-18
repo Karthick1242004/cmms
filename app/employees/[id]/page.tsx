@@ -731,7 +731,7 @@ export default function EmployeeDetailPage() {
                       {employee.currentAssignments.map((assetId, index) => (
                         <div key={index} className="flex items-center space-x-2 p-2 rounded-lg border">
                           <Target className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm">Asset ID: {assetId}</span>
+                          <span className="text-sm">Asset Assigned</span>
                           <Badge variant="outline">Active</Badge>
                         </div>
                       ))}

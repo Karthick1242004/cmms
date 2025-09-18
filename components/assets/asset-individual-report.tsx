@@ -307,10 +307,6 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
           </h2>
           <div class="overview-grid">
             <div class="overview-card">
-              <h3>Asset ID</h3>
-              <div class="value">${asset.id}</div>
-            </div>
-            <div class="overview-card">
               <h3>Status</h3>
               <div class="value">
                 <span class="status-badge status-${(asset.statusText || 'unknown').toLowerCase().replace(/\s+/g, '-')}">

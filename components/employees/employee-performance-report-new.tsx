@@ -484,7 +484,7 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
                 ${employee.currentAssignments.map(assetId => `
                   <div class="task-item">
                     <div class="task-icon">🎯</div>
-                    <div class="task-label">Asset ID: ${assetId}</div>
+                    <div class="task-label">Asset Assigned</div>
                     <div class="history-status">Active</div>
                   </div>
                 `).join('')}

@@ -218,11 +218,6 @@ export function DailyLogActivityView({ isOpen, onClose, activity }: DailyLogActi
                   <label className="text-sm font-medium text-muted-foreground">Asset Name</label>
                   <p className="text-base font-medium">{activity.assetName}</p>
                 </div>
-                <Separator />
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Asset ID</label>
-                  <p className="text-sm text-muted-foreground font-mono">{activity.assetId}</p>
-                </div>
               </CardContent>
             </Card>
           </div>

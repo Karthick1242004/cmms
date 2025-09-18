@@ -643,8 +643,7 @@ export default function TicketDetailPage() {
                               </div>
                             ) : ticket.equipmentId ? (
                               <div className="space-y-1">
-                                <p className="text-sm font-medium">Asset ID: {ticket.equipmentId}</p>
-                                <p className="text-xs text-muted-foreground">Asset details not available</p>
+                                <p className="text-sm font-medium">Asset details not available</p>
                               </div>
                             ) : (
                               <p className="text-sm text-muted-foreground">No asset linked</p>
