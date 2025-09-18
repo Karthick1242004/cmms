@@ -64,16 +64,31 @@ export function MaintenanceOverallReport({
   const getDepartmentStats = () => {
     const departmentCounts: Record<string, { total: number; overdue: number; completed: number }> = {}
     
+    // Process schedules
     schedules.forEach(schedule => {
-      if (!departmentCounts[schedule.department]) {
-        departmentCounts[schedule.department] = { total: 0, overdue: 0, completed: 0 }
+      const department = schedule.department || 'General' // Default to 'General' if undefined
+      if (!departmentCounts[department]) {
+        departmentCounts[department] = { total: 0, overdue: 0, completed: 0 }
       }
-      departmentCounts[schedule.department].total++
+      departmentCounts[department].total++
       
       if (schedule.status === 'overdue') {
-        departmentCounts[schedule.department].overdue++
+        departmentCounts[department].overdue++
       } else if (schedule.status === 'completed') {
-        departmentCounts[schedule.department].completed++
+        departmentCounts[department].completed++
+      }
+    })
+    
+    // Process records to get completion data
+    records.forEach(record => {
+      const department = record.department || 'General' // Default to 'General' if undefined
+      if (!departmentCounts[department]) {
+        departmentCounts[department] = { total: 0, overdue: 0, completed: 0 }
+      }
+      
+      // Count completed records
+      if (record.status === 'completed') {
+        departmentCounts[department].completed++
       }
     })
     

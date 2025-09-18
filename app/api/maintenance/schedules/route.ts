@@ -133,6 +133,16 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+    
+    // Ensure department field is populated in all schedules
+    if (data.success && data.data && data.data.schedules) {
+      data.data.schedules = data.data.schedules.map((schedule: any) => ({
+        ...schedule,
+        department: schedule.department || user?.department || 'General'
+      }));
+      console.log('🔄 Ensured department field in', data.data.schedules.length, 'schedules');
+    }
+    
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error('Error fetching maintenance schedules:', error);
@@ -417,20 +427,28 @@ export async function POST(request: NextRequest) {
 
     // CRITICAL FIX: Transform response back to new frontend structure
     // Extract checklist from parts and return as separate field
-    if (data.success && data.data && data.data.parts) {
-      let extractedChecklist: any[] = [];
+    if (data.success && data.data) {
+      // Ensure department field is included in response if missing
+      if (!data.data.department && body.department) {
+        data.data.department = body.department;
+        console.log('🔄 Added department field to response:', body.department);
+      }
       
-      // Extract checklist items from all parts
-      data.data.parts.forEach((part: any) => {
-        if (part.checklistItems && part.checklistItems.length > 0) {
-          extractedChecklist = extractedChecklist.concat(part.checklistItems);
-        }
-      });
+      if (data.data.parts) {
+        let extractedChecklist: any[] = [];
+        
+        // Extract checklist items from all parts
+        data.data.parts.forEach((part: any) => {
+          if (part.checklistItems && part.checklistItems.length > 0) {
+            extractedChecklist = extractedChecklist.concat(part.checklistItems);
+          }
+        });
 
-      // Add the extracted checklist as a separate field
-      if (extractedChecklist.length > 0) {
-        data.data.checklist = extractedChecklist;
-        console.log('🔄 Extracted checklist from parts back to separate field:', extractedChecklist.length, 'items');
+        // Add the extracted checklist as a separate field
+        if (extractedChecklist.length > 0) {
+          data.data.checklist = extractedChecklist;
+          console.log('🔄 Extracted checklist from parts back to separate field:', extractedChecklist.length, 'items');
+        }
       }
 
       // Optional: Clean up parts by removing checklistItems if they were general maintenance

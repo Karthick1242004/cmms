@@ -128,6 +128,16 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+    
+    // Ensure department field is populated in all records
+    if (data.success && data.data && data.data.records) {
+      data.data.records = data.data.records.map((record: any) => ({
+        ...record,
+        department: record.department || user?.department || 'General'
+      }));
+      console.log('🔄 Ensured department field in', data.data.records.length, 'records');
+    }
+    
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error('Error fetching maintenance records:', error);
@@ -259,6 +269,12 @@ export async function POST(request: NextRequest) {
         console.error('Error updating performance data or creating activity log:', performanceError);
         // Don't fail the main request if performance tracking fails
       }
+    }
+    
+    // Ensure department field is included in response
+    if (data.success && data.data && !data.data.department && body.department) {
+      data.data.department = body.department;
+      console.log('🔄 Added department field to maintenance record response:', body.department);
     }
     
     return NextResponse.json(data, { status: 201 });
