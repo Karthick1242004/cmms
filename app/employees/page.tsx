@@ -89,6 +89,7 @@ export default function EmployeesPage() {
 
   // Report dialog state
   const [reportDialogOpen, setReportDialogOpen] = useState(false)
+  const [allEmployeesForReport, setAllEmployeesForReport] = useState<Employee[]>([])
 
   // TanStack Query hooks
   const { user: authUser } = useAuthStore()
@@ -158,6 +159,36 @@ export default function EmployeesPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [debouncedSearchTerm, selectedStatus, selectedDepartment, selectedRole])
+
+  // Fetch all employees for comprehensive report
+  const fetchAllEmployeesForReport = async () => {
+    try {
+      const token = localStorage.getItem('auth-token')
+      if (!token) return []
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+
+      // Fetch all employees with large limit for comprehensive report
+      const response = await fetch('/api/employees?limit=10000&page=1', {
+        method: 'GET',
+        headers,
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data?.employees) {
+          return data.data.employees
+        }
+      }
+      return []
+    } catch (error) {
+      console.error('Error fetching all employees for report:', error)
+      return employees // Fallback to current employees
+    }
+  }
 
   useEffect(() => {
     fetchDepartments()
@@ -552,7 +583,11 @@ export default function EmployeesPage() {
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
-            onClick={() => setReportDialogOpen(true)}
+            onClick={async () => {
+              const allEmployees = await fetchAllEmployeesForReport()
+              setAllEmployeesForReport(allEmployees)
+              setReportDialogOpen(true)
+            }}
             className="flex items-center gap-2"
           >
             <BarChart3 className="h-4 w-4" />
@@ -1123,7 +1158,7 @@ export default function EmployeesPage() {
 
       {/* Employees Report Dialog */}
       <EmployeesOverallReport
-        employees={employees}
+        employees={allEmployeesForReport.length > 0 ? allEmployeesForReport : employees}
         isOpen={reportDialogOpen}
         onClose={() => setReportDialogOpen(false)}
       />

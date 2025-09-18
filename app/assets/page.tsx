@@ -99,11 +99,6 @@ export default function AllAssetsPage() {
     fetchAssets({ page: currentPage })
   }, [currentPage])
 
-  // Debug log to see what assets are in the store
-  useEffect(() => {
-    console.log('Assets in store:', assets)
-    console.log('First asset department:', assets[0]?.department)
-  }, [assets])
 
   // Get unique values for filter options
   const uniqueTypes = Array.from(new Set(assets.map(asset => asset.type))).filter(Boolean)
@@ -223,15 +218,63 @@ export default function AllAssetsPage() {
       second: '2-digit'
     })
 
-    // Fetch ALL assets for comprehensive report (not just current page)
+    // Fetch ALL assets for comprehensive report using the store method
     let allAssetsForReport: Asset[] = []
     try {
-      // Fetch all assets with a large limit to get complete data
-      await fetchAssets({ fetchAll: true, page: 1, limit: 1000 })
-      allAssetsForReport = assets // Use the assets from store after fetching all
+      // Use the assets store to fetch all assets, which handles the transformation correctly
+      const originalLimit = 15 // Store the current setup
+      await fetchAssets({ fetchAll: true, page: 1, limit: 10000 })
+      
+      // Wait a bit for the store to update
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Get all assets from the store after fetch
+      const storeState = useAssetsStore.getState()
+      allAssetsForReport = storeState.assets
+      
+      console.log('🔍 First asset in report data:', allAssetsForReport[0])
+      console.log('🔍 Total assets fetched for report:', allAssetsForReport.length)
+      
+      // If store method didn't work, try direct API call with transformation
+      if (!allAssetsForReport || allAssetsForReport.length === 0) {
+        console.log('⚠️ Store method failed, trying direct API call')
+        const token = localStorage.getItem('auth-token')
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        }
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+        
+        const response = await fetch('/api/assets?limit=10000&page=1', {
+          method: 'GET',
+          headers,
+        })
+        const data = await response.json()
+        
+        if (data.success && data.data?.assets) {
+          // Transform AssetDetail to Asset format
+          allAssetsForReport = data.data.assets.map((detail: any) => ({
+            id: detail.id,
+            name: detail.assetName || detail.name || 'N/A',
+            assetTag: detail.serialNo || detail.assetTag || detail.tag || 'N/A',
+            type: detail.category || detail.type || 'N/A',
+            location: detail.location || 'N/A',
+            department: detail.department || 'N/A',
+            status: detail.statusText || detail.status || 'unknown',
+            condition: detail.condition || 'Unknown',
+            purchasePrice: detail.costPrice || detail.purchasePrice || 0,
+          }))
+        }
+      }
     } catch (error) {
       console.error('Error fetching all assets for report:', error)
       // Fallback to current filtered assets if fetch fails
+      allAssetsForReport = filteredAssets
+    }
+
+    // Ensure we have data for the report, fallback to current assets if needed
+    if (!allAssetsForReport || allAssetsForReport.length === 0) {
       allAssetsForReport = filteredAssets
     }
 
@@ -245,19 +288,21 @@ export default function AllAssetsPage() {
 
     // Group by category using ALL assets
     const assetsByCategory = allAssetsForReport.reduce((acc, asset) => {
-      if (!acc[asset.type]) {
-        acc[asset.type] = []
+      const type = asset.type || 'Unknown'
+      if (!acc[type]) {
+        acc[type] = []
       }
-      acc[asset.type].push(asset)
+      acc[type].push(asset)
       return acc
     }, {} as Record<string, Asset[]>)
 
     // Group by department using ALL assets
     const assetsByDepartment = allAssetsForReport.reduce((acc, asset) => {
-      if (!acc[asset.department]) {
-        acc[asset.department] = []
+      const department = asset.department || 'Unknown'
+      if (!acc[department]) {
+        acc[department] = []
       }
-      acc[asset.department].push(asset)
+      acc[department].push(asset)
       return acc
     }, {} as Record<string, Asset[]>)
 
@@ -364,7 +409,7 @@ export default function AllAssetsPage() {
           <table>
             <thead><tr><th>Asset Name</th><th>Asset Tag</th><th>Type</th><th>Department</th><th>Location</th><th>Status</th><th>Condition</th><th>Value</th></tr></thead>
             <tbody>
-              ${filteredAssets.map(asset => `<tr><td>${asset.name}</td><td>${asset.assetTag || 'N/A'}</td><td>${asset.type}</td><td>${asset.department}</td><td>${asset.location}</td><td><span class="status-badge status-${asset.status.replace('-', '-')}">${asset.status}</span></td><td><span class="status-badge condition-${asset.condition}">${asset.condition}</span></td><td>$${(asset.purchasePrice || 0).toLocaleString()}</td></tr>`).join('')}
+              ${allAssetsForReport.map(asset => `<tr><td>${asset.name || 'N/A'}</td><td>${asset.assetTag || asset.id || 'N/A'}</td><td>${asset.type || 'N/A'}</td><td>${asset.department || 'N/A'}</td><td>${asset.location || 'N/A'}</td><td><span class="status-badge status-${(asset.status || 'unknown').replace('-', '-')}">${asset.status || 'Unknown'}</span></td><td><span class="status-badge condition-${(asset.condition || 'unknown')}">${asset.condition || 'Unknown'}</span></td><td>$${(asset.purchasePrice || 0).toLocaleString()}</td></tr>`).join('')}
             </tbody>
           </table>
         </div>
