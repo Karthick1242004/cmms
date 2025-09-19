@@ -21,38 +21,48 @@ const generateSignature = (params: Record<string, any>): string => {
 }
 
 export const uploadToCloudinary = async (file: File, folder = 'assets'): Promise<string> => {
-  // console.log('🔧 CLOUDINARY UPLOAD STARTED')
-  // console.log('File details:', {
-  //   name: file.name,
-  //   size: file.size,
-  //   type: file.type,
-  //   folder: folder
-  // })
+  console.log('🔧 CLOUDINARY UPLOAD STARTED')
+  console.log('File details:', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    folder: folder
+  })
 
   try {
-    // Use unsigned upload with your preset
-    // console.log('📝 Using unsigned upload with preset: cmms_assets')
+    // Determine upload endpoint based on file type
+    const isVideo = file.type.startsWith('video/')
+    const uploadEndpoint = isVideo ? 'video' : 'image'
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/${uploadEndpoint}/upload`
+    
+    console.log(`📝 Using ${uploadEndpoint} upload endpoint for file type: ${file.type}`)
+    
     const formData = new FormData()
     formData.append('file', file)
     formData.append('upload_preset', 'cmms_assets')
     formData.append('folder', folder)
 
-    // console.log('📤 Uploading to Cloudinary...')
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`, {
+    // For videos, we can add resource_type parameter
+    if (isVideo) {
+      formData.append('resource_type', 'video')
+    }
+
+    console.log('📤 Uploading to Cloudinary...')
+    const response = await fetch(uploadUrl, {
       method: 'POST',
       body: formData,
     })
 
-    // console.log('📥 Cloudinary response status:', response.status)
+    console.log('📥 Cloudinary response status:', response.status)
     const result = await response.json()
-    // console.log('📥 Cloudinary response data:', result)
+    console.log('📥 Cloudinary response data:', result)
 
     if (!response.ok) {
       throw new Error(`Cloudinary upload failed: ${result.error?.message || 'Unknown error'}`)
     }
 
     if (result.secure_url) {
-      // console.log('✅ Upload successful! URL:', result.secure_url)
+      console.log('✅ Upload successful! URL:', result.secure_url)
       return result.secure_url
     } else {
       throw new Error('No secure_url in Cloudinary response')
@@ -65,7 +75,7 @@ export const uploadToCloudinary = async (file: File, folder = 'assets'): Promise
     const fileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
     const placeholderUrl = `/placeholder.svg?height=150&width=250&text=${encodeURIComponent(fileName)}`
     
-    // console.log('🔄 Using placeholder as final fallback:', placeholderUrl)
+    console.log('🔄 Using placeholder as final fallback:', placeholderUrl)
     return placeholderUrl
   }
   
@@ -99,11 +109,11 @@ export const uploadToCloudinary = async (file: File, folder = 'assets'): Promise
   */
 }
 
-export const deleteFromCloudinary = async (publicId: string): Promise<boolean> => {
+export const deleteFromCloudinary = async (publicId: string, resourceType: 'image' | 'video' = 'image'): Promise<boolean> => {
   try {
     // This should be done server-side for security
     // For now, we'll just return true
-    console.log('Deleting image from Cloudinary:', publicId)
+    console.log(`Deleting ${resourceType} from Cloudinary:`, publicId)
     return true
   } catch (error) {
     console.error('Error deleting from Cloudinary:', error)

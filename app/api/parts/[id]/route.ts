@@ -198,7 +198,7 @@ export async function PUT(
       'department', 'linkedAssets', 'quantity', 'minStockLevel', 'unitPrice',
       'supplier', 'supplierCode', 'purchaseOrderNumber', 'vendorName', 'vendorContact',
       'location', 'alternativeLocations', 'totalConsumed', 'averageMonthlyUsage', 
-      'status', 'isStockItem', 'isCritical', 'departmentsServed', 'imageSrc'
+      'status', 'isStockItem', 'isCritical', 'departmentsServed', 'imageSrc', 'hyperlink'
     ];
 
     allowedFields.forEach(field => {

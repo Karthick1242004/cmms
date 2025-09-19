@@ -66,6 +66,9 @@ export interface Ticket {
   // Images
   images?: string[];
   
+  // Videos
+  videos?: string[];
+  
   // Virtual fields (computed on frontend)
   timeSinceLogged?: string;
   
@@ -129,6 +132,10 @@ export interface TicketFormData {
   // Images
   images?: string[];
   imageFiles?: File[];
+  
+  // Videos
+  videos?: string[];
+  videoFiles?: File[];
 }
 
 export interface TicketFilters {

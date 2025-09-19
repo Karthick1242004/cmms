@@ -215,6 +215,22 @@ function PartFormStandalone({
           />
         </div>
         <div className="space-y-2">
+          <Label htmlFor="hyperlink">External Link</Label>
+          <Input
+            id="hyperlink"
+            type="url"
+            value={formData.hyperlink || ""}
+            onChange={(e) => onInputChange('hyperlink', e.target.value)}
+            placeholder="https://example.com/specifications"
+          />
+          <p className="text-xs text-muted-foreground">
+            Link to external documentation, specifications, or manuals
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-2">
           <Label htmlFor="category">Category *</Label>
           <div className="flex gap-2">
             <select
@@ -330,10 +346,15 @@ function PartFormStandalone({
       {/* Enhanced Linked Assets Section */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>Linked Assets</Label>
+          <Label className={validationErrors.linkedAssets ? "text-red-500" : ""}>Linked Assets *</Label>
           <Dialog open={isAssetDialogOpen} onOpenChange={setIsAssetDialogOpen}>
             <DialogTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className="flex items-center gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                className={`flex items-center gap-2 ${validationErrors.linkedAssets ? "border-red-500 focus:border-red-500" : ""}`}
+              >
                 <Package className="h-4 w-4" />
                 Select Assets ({selectedAssets.length})
               </Button>
@@ -483,11 +504,16 @@ function PartFormStandalone({
         )}
 
         {selectedAssets.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground border rounded-md">
+          <div className={`text-center py-8 text-muted-foreground border rounded-md ${validationErrors.linkedAssets ? "border-red-500" : ""}`}>
             <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No assets linked</p>
             <p className="text-xs">Click "Select Assets" to link this part to assets</p>
           </div>
+        )}
+        
+        {/* Validation Error Message */}
+        {validationErrors.linkedAssets && (
+          <p className="text-sm text-red-500">{validationErrors.linkedAssets}</p>
         )}
       </div>
 
@@ -1002,6 +1028,11 @@ export default function PartsPage() {
       }
     })
 
+    // Validate asset selection
+    if (!formData.linkedAssets || formData.linkedAssets.length === 0) {
+      errors.linkedAssets = 'Please select at least one asset to link this part to'
+    }
+
     // Validate location belongs to department (if provided)
     if (formData.location && formData.department) {
       const selectedLocation = locations.find(loc => loc.name === formData.location)
@@ -1025,6 +1056,15 @@ export default function PartsPage() {
       setValidationErrors(prev => {
         const newErrors = { ...prev }
         delete newErrors[field]
+        return newErrors
+      })
+    }
+
+    // Special handling for linkedAssets - clear error when assets are selected
+    if (field === 'linkedAssets' && value && value.length > 0) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors.linkedAssets
         return newErrors
       })
     }
@@ -1104,7 +1144,9 @@ export default function PartsPage() {
         isStockItem: formData.isStockItem ?? true,
         isCritical: formData.isCritical ?? false,
         // Image field
-        imageSrc: imageUrl
+        imageSrc: imageUrl,
+        // External reference
+        hyperlink: formData.hyperlink || ''
       }
 
       // Debug logging

@@ -31,13 +31,16 @@ import {
   FileDown,
   FileText,
   ImageIcon,
-  ZoomIn
+  ZoomIn,
+  Video,
+  Play
 } from "lucide-react"
 import { toast } from "sonner"
 import { ticketsApi } from "@/lib/tickets-api"
 import { TicketReport } from "@/components/ticket-report"
 import { useAuthStore } from "@/stores/auth-store"
 import { TicketImageUpload } from "@/components/ticket-image-upload"
+import { TicketVideoUpload } from "@/components/ticket-video-upload"
 import { uploadToCloudinary } from "@/lib/cloudinary-config"
 import type { Ticket, ActivityLogEntry } from "@/types/ticket"
 
@@ -53,6 +56,10 @@ export default function TicketDetailPage() {
 
   const handleImageClick = (imageUrl: string) => {
     window.open(imageUrl, '_blank');
+  };
+
+  const handleVideoClick = (videoUrl: string) => {
+    window.open(videoUrl, '_blank');
   };
 
   const [ticket, setTicket] = useState<Ticket | null>(null)
@@ -85,6 +92,8 @@ export default function TicketDetailPage() {
     assignedUsers: [] as string[],
     images: [] as string[], // Existing image URLs
     imageFiles: [] as File[], // New image files to upload
+    videos: [] as string[], // Existing video URLs
+    videoFiles: [] as File[], // New video files to upload
   })
 
   // Fetch ticket details
@@ -111,6 +120,8 @@ export default function TicketDetailPage() {
           assignedUsers: ticketData.assignedUsers,
           images: ticketData.images || [],
           imageFiles: [],
+          videos: ticketData.videos || [],
+          videoFiles: [],
         })
       } else {
         toast.error(response.message || "Failed to fetch ticket")
@@ -172,6 +183,21 @@ export default function TicketDetailPage() {
     }))
   }
 
+  // Handle video changes
+  const handleVideosChange = (newVideos: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      videos: newVideos
+    }))
+  }
+
+  const handleVideoFilesChange = (newFiles: File[]) => {
+    setFormData(prev => ({
+      ...prev,
+      videoFiles: newFiles
+    }))
+  }
+
   // Save ticket changes
   const handleSave = async () => {
     setIsSaving(true)
@@ -194,25 +220,47 @@ export default function TicketDetailPage() {
         }
       }
 
-      // Combine existing images with newly uploaded images
-      const finalImages = [...formData.images, ...uploadedImageUrls];
+      // Upload new videos to Cloudinary if any
+      let uploadedVideoUrls: string[] = [];
+      
+      if (formData.videoFiles && formData.videoFiles.length > 0) {
+        toast.info('Uploading videos...');
+        
+        for (const videoFile of formData.videoFiles) {
+          try {
+            const videoUrl = await uploadToCloudinary(videoFile, 'tickets/videos');
+            uploadedVideoUrls.push(videoUrl);
+            console.log('🎥 Ticket video uploaded:', videoUrl);
+          } catch (error) {
+            console.error('🎥 Video upload failed:', error);
+            toast.error(`Failed to upload video: ${videoFile.name}`);
+          }
+        }
+      }
 
-      // Create update data with images
+      // Combine existing media with newly uploaded media
+      const finalImages = [...formData.images, ...uploadedImageUrls];
+      const finalVideos = [...formData.videos, ...uploadedVideoUrls];
+
+      // Create update data with images and videos
       const updateData = {
         ...formData,
         images: finalImages,
-        // Remove imageFiles as they shouldn't be sent to backend
-        imageFiles: undefined
+        videos: finalVideos,
+        // Remove file arrays as they shouldn't be sent to backend
+        imageFiles: undefined,
+        videoFiles: undefined
       };
 
       const response = await ticketsApi.updateTicket(ticketId, updateData)
       if (response.success) {
         toast.success("Ticket updated successfully")
         setIsEditing(false)
-        // Clear image files since they've been uploaded
+        // Clear media files since they've been uploaded
         setFormData(prev => ({
           ...prev,
-          imageFiles: []
+          imageFiles: [],
+          videoFiles: []
         }))
         await fetchTicket() // Refresh ticket data
       } else {
@@ -767,16 +815,25 @@ export default function TicketDetailPage() {
 
                   <Separator />
 
-                  {/* Image Management Section - Only show in edit mode */}
+                  {/* Media Management Section - Only show in edit mode */}
                   {isEditing && (
                     <>
-                      <div className="space-y-3">
+                      <div className="space-y-6">
                         <TicketImageUpload
                           images={formData.images}
                           imageFiles={formData.imageFiles}
                           onImagesChange={handleImagesChange}
                           onImageFilesChange={handleImageFilesChange}
                           maxImages={5}
+                        />
+                        
+                        <TicketVideoUpload
+                          videos={formData.videos}
+                          videoFiles={formData.videoFiles}
+                          onVideosChange={handleVideosChange}
+                          onVideoFilesChange={handleVideoFilesChange}
+                          maxVideos={3}
+                          maxFileSize={4 * 1024 * 1024} // 4MB
                         />
                       </div>
 
@@ -863,6 +920,51 @@ export default function TicketDetailPage() {
                     <p>No images attached to this ticket</p>
                     {isEditing && (
                       <p className="text-sm mt-2">You can add images using the form above</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Ticket Videos */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Video className="h-5 w-5 text-primary" />
+                  Ticket Videos ({ticket.videos ? ticket.videos.length : 0})
+                </CardTitle>
+                <CardDescription>
+                  Video documentation and attachments for this ticket
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {ticket.videos && ticket.videos.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {ticket.videos.map((videoUrl, index) => (
+                      <div 
+                        key={index} 
+                        className="relative group cursor-pointer"
+                        onClick={() => handleVideoClick(videoUrl)}
+                      >
+                        <div className="aspect-video border-2 border-dashed border-muted-foreground/25 rounded-lg overflow-hidden bg-muted/50 hover:bg-muted/70 transition-colors flex items-center justify-center">
+                          <div className="text-center">
+                            <Play className="h-12 w-12 mx-auto mb-2 text-primary opacity-70 group-hover:opacity-100 transition-opacity" />
+                            <p className="text-sm font-medium text-muted-foreground">Click to play video</p>
+                          </div>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                        </div>
+                        <p className="text-xs text-center text-muted-foreground mt-1">
+                          Video {index + 1}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Video className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No videos attached to this ticket</p>
+                    {isEditing && (
+                      <p className="text-sm mt-2">You can add videos using the form above</p>
                     )}
                   </div>
                 )}

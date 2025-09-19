@@ -524,6 +524,20 @@ export function PartsListTable({ initialParts, showAddButton = false }: PartsLis
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="hyperlink" className="text-right">
+                External Link
+              </Label>
+              <Input
+                id="hyperlink"
+                name="hyperlink"
+                type="url"
+                value={editFormData.hyperlink || ""}
+                onChange={handleEditFormChange}
+                placeholder="https://example.com/specifications"
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="price" className="text-right">
                 Price
               </Label>

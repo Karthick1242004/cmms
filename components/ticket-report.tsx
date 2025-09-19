@@ -636,6 +636,42 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
         </div>
         `}
 
+        <!-- Ticket Videos -->
+        ${ticket.videos && ticket.videos.length > 0 ? `
+        <div class="section">
+          <h2 class="section-title">🎥 Ticket Videos</h2>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+            ${ticket.videos.map((videoUrl, index) => `
+              <div class="info-card" style="text-align: center; padding: 15px;">
+                <div style="font-size: 32px; margin-bottom: 8px; color: #3b82f6;">🎥</div>
+                <p style="margin: 0; font-size: 12px; font-weight: 500; color: #374151;">Video ${index + 1}</p>
+                <p style="margin: 4px 0 8px 0; font-size: 10px; color: #6b7280;">Click to open video</p>
+                <a 
+                  href="${videoUrl}" 
+                  target="_blank" 
+                  style="display: inline-block; padding: 6px 12px; background: #3b82f6; color: white; text-decoration: none; border-radius: 4px; font-size: 11px;"
+                >
+                  🔗 Open Video Link
+                </a>
+              </div>
+            `).join('')}
+          </div>
+          <div style="text-align: center; margin-top: 15px; padding: 10px; background: #eff6ff; border-radius: 6px;">
+            <p style="font-size: 12px; color: #1d4ed8; margin: 0;">
+              🎥 ${ticket.videos.length} video${ticket.videos.length > 1 ? 's' : ''} attached to this ticket
+            </p>
+          </div>
+        </div>
+        ` : `
+        <div class="section">
+          <h2 class="section-title">🎥 Ticket Videos</h2>
+          <div class="content-box" style="text-align: center; padding: 30px;">
+            <div style="font-size: 48px; margin-bottom: 10px; color: #d1d5db;">🎥</div>
+            <p style="color: #6b7280; font-style: italic; margin: 0;">No videos attached to this ticket</p>
+          </div>
+        </div>
+        `}
+
         ${ticket.activityLog && ticket.activityLog.length > 0 ? `
         <div class="section">
           <h2 class="section-title">📊 Activity Log</h2>

@@ -12,6 +12,9 @@ export interface IPart extends Document {
   // Image information
   imageSrc?: string;
   
+  // External references
+  hyperlink?: string;
+  
   linkedAssets: Array<{
     assetId: string;
     assetName: string;
@@ -76,6 +79,9 @@ const PartSchema = new Schema<IPart>({
   
   // Image information
   imageSrc: { type: String, trim: true },
+  
+  // External references
+  hyperlink: { type: String, trim: true },
   
   linkedAssets: [LinkedAssetSchema],
   

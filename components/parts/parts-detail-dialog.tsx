@@ -31,7 +31,8 @@ import {
   ShoppingCart,
   Tag,
   Layers,
-  ImageIcon
+  ImageIcon,
+  ExternalLink
 } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -158,6 +159,19 @@ export function PartsDetailDialog({
                           {part.category}
                         </Badge>
                       </div>
+                      {part.hyperlink && (
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                          <a 
+                            href={part.hyperlink} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            External Link
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

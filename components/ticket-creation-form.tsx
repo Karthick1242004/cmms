@@ -15,6 +15,7 @@ import { Calendar, Clock, Save, AlertCircle, FileText, User, Building2, X, Check
 import { toast } from "sonner"
 import type { TicketFormData } from "@/types/ticket"
 import { TicketImageUpload } from "@/components/ticket-image-upload"
+import { TicketVideoUpload } from "@/components/ticket-video-upload"
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary-config"
 import { useDepartments } from "@/hooks/use-departments"
 import { useLocations } from "@/hooks/use-locations"
@@ -45,6 +46,7 @@ interface TicketCreationFormProps {
 export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: TicketCreationFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isUploadingImages, setIsUploadingImages] = useState(false)
+  const [isUploadingVideos, setIsUploadingVideos] = useState(false)
   const [openDepartments, setOpenDepartments] = useState(false)
   const [openLocations, setOpenLocations] = useState(false)
   const [openInCharge, setOpenInCharge] = useState(false)
@@ -82,6 +84,8 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
       assignedUsers: [],
       images: [],
       imageFiles: [],
+      videos: [],
+      videoFiles: [],
     };
   });
 
@@ -212,6 +216,7 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
 
     setIsLoading(true)
     setIsUploadingImages(true)
+    setIsUploadingVideos(true)
     try {
       // Upload new images to Cloudinary
       let uploadedImageUrls: string[] = [];
@@ -233,6 +238,27 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
       }
 
       setIsUploadingImages(false);
+
+      // Upload new videos to Cloudinary
+      let uploadedVideoUrls: string[] = [];
+      
+      if (formData.videoFiles && formData.videoFiles.length > 0) {
+        console.log('🎥 UPLOADING TICKET VIDEOS');
+        toast.info('Uploading videos...');
+        
+        for (const videoFile of formData.videoFiles) {
+          try {
+            const videoUrl = await uploadToCloudinary(videoFile, 'tickets/videos');
+            uploadedVideoUrls.push(videoUrl);
+            console.log('🎥 Ticket video uploaded:', videoUrl);
+          } catch (error) {
+            console.error('🎥 Video upload failed:', error);
+            toast.error(`Failed to upload video: ${videoFile.name}`);
+          }
+        }
+      }
+
+      setIsUploadingVideos(false);
 
       // Create ticket data with proper field mapping for backend
       const ticketData = {
@@ -263,6 +289,8 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
         loggedDateTime: new Date().toISOString(),
         // Images
         images: uploadedImageUrls,
+        // Videos
+        videos: uploadedVideoUrls,
       }
 
       // Call API to create ticket
@@ -313,6 +341,8 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
       }
     } finally {
       setIsLoading(false)
+      setIsUploadingImages(false)
+      setIsUploadingVideos(false)
     }
   }
 
@@ -327,11 +357,11 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading || isUploadingImages}>
-            {isLoading || isUploadingImages ? (
+          <Button onClick={handleSubmit} disabled={isLoading || isUploadingImages || isUploadingVideos}>
+            {isLoading || isUploadingImages || isUploadingVideos ? (
               <>
                 <Save className="mr-2 h-4 w-4 animate-spin" />
-                {isUploadingImages ? 'Uploading images...' : 'Creating...'}
+                {isUploadingImages ? 'Uploading images...' : isUploadingVideos ? 'Uploading videos...' : 'Creating...'}
               </>
             ) : (
               <>
@@ -1010,6 +1040,16 @@ export function TicketCreationForm({ onSuccess, onCancel, initialAssetId }: Tick
         onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
         onImageFilesChange={(imageFiles) => setFormData(prev => ({ ...prev, imageFiles }))}
         maxImages={5}
+      />
+
+      {/* Video Upload */}
+      <TicketVideoUpload
+        videos={formData.videos || []}
+        videoFiles={formData.videoFiles || []}
+        onVideosChange={(videos) => setFormData(prev => ({ ...prev, videos }))}
+        onVideoFilesChange={(videoFiles) => setFormData(prev => ({ ...prev, videoFiles }))}
+        maxVideos={3}
+        maxFileSize={4 * 1024 * 1024} // 4MB
       />
     </div>
   )

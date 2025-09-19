@@ -12,6 +12,9 @@ export interface Part {
   imageSrc?: string // Part image URL
   imageFile?: File | null // Image file for upload (frontend only)
   
+  // External References
+  hyperlink?: string // External hyperlink for part documentation, specifications, etc.
+  
   // Asset references - optimized for querying
   linkedAssets: Array<{
     assetId: string

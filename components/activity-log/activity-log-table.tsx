@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useActivityLogStore } from '@/stores/activity-log-store'
 import { useAuthStore } from '@/stores/auth-store'
@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Search, 
@@ -123,8 +123,16 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
   const [downtimeeDateFilter, setDowntimeDateFilter] = useState<DateFilter>({})
   const [showDowntimeFilters, setShowDowntimeFilters] = useState(false)
 
-  // Calculate downtime metrics from current logs with date filtering
-  const downtimeMetrics = calculateActivityDowntime(logs, downtimeeDateFilter)
+  // Filter logs by module for downtime calculation
+  const moduleFilteredLogs = useMemo(() => {
+    if (moduleFilter === 'all') {
+      return logs
+    }
+    return logs.filter(log => log.module === moduleFilter)
+  }, [logs, moduleFilter])
+
+  // Calculate downtime metrics from filtered logs with date filtering
+  const downtimeMetrics = calculateActivityDowntime(moduleFilteredLogs, downtimeeDateFilter)
   const uptimePercentage = calculateUptimePercentage(downtimeMetrics.totalDowntimeMinutes, downtimeMetrics.periodDays)
 
   // Check if user can delete activity logs
@@ -280,7 +288,19 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
       {/* Downtime Metrics Cards */}
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Downtime Analysis</h3>
+          <div>
+            <h3 className="text-lg font-semibold">Downtime Analysis</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className="text-xs">
+                {moduleFilter === 'all' ? 'All Modules' : moduleFilter.replace('_', ' ')}
+              </Badge>
+              {(downtimeeDateFilter.startDate || downtimeeDateFilter.endDate) && (
+                <Badge variant="secondary" className="text-xs">
+                  Date Filtered
+                </Badge>
+              )}
+            </div>
+          </div>
           <Button 
             variant="outline" 
             size="sm" 
@@ -467,21 +487,22 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
       {/* Activity Log Table */}
       <Card>
         <ScrollArea className="h-[600px]">
-          <Table>
-            <TableHeader className="sticky top-0 bg-background">
-              <TableRow>
-                <TableHead>Activity</TableHead>
-                <TableHead>Module</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Downtime</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Created By</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background">
+                <TableRow>
+                  <TableHead className="min-w-[200px]">Activity</TableHead>
+                  <TableHead className="min-w-[120px]">Module</TableHead>
+                  <TableHead className="min-w-[100px]">Action</TableHead>
+                  <TableHead className="min-w-[100px]">Priority</TableHead>
+                  <TableHead className="min-w-[100px]">Status</TableHead>
+                  <TableHead className="min-w-[100px]">Downtime</TableHead>
+                  <TableHead className="min-w-[150px]">Assigned To</TableHead>
+                  <TableHead className="min-w-[150px]">Created By</TableHead>
+                  <TableHead className="min-w-[140px]">Date</TableHead>
+                  <TableHead className="min-w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {logs.length === 0 ? (
                 <TableRow>
@@ -612,7 +633,9 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                 })
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </Card>
 

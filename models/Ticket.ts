@@ -50,6 +50,9 @@ export interface ITicket extends Document {
   // Images
   images?: string[]
   
+  // Videos
+  videos?: string[]
+  
   // Activity log
   activityLog: Array<{
     date: Date
@@ -199,6 +202,12 @@ const TicketSchema = new Schema<ITicket>({
   
   // Images
   images: [{
+    type: String,
+    trim: true
+  }],
+  
+  // Videos
+  videos: [{
     type: String,
     trim: true
   }],

@@ -108,6 +108,60 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
       `
     }
 
+    const formatVideos = () => {
+      console.log('🔍 [DEBUG] Ticket videos check:', {
+        hasVideos: !!ticket.videos,
+        videosLength: ticket.videos?.length || 0,
+        videosArray: ticket.videos,
+        ticketId: ticket.ticketId
+      });
+      
+      if (!ticket.videos || ticket.videos.length === 0) {
+        return `
+          <div class="text-center py-8 text-gray-500">
+            <div class="text-4xl mb-2">🎥</div>
+            <p class="italic">No videos attached to this ticket</p>
+            <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+              <strong>Debug:</strong> videos = ${JSON.stringify(ticket.videos)}, length = ${ticket.videos?.length || 'undefined'}
+            </div>
+          </div>
+        `
+      }
+
+      console.log('🎥 [DEBUG] Processing', ticket.videos.length, 'videos');
+      
+      return `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+          ${ticket.videos.map((videoUrl, index) => {
+            console.log('🎥 [DEBUG] Processing video', index + 1, ':', videoUrl);
+            return `
+              <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #f8fafc;">
+                <div style="padding: 15px; text-align: center;">
+                  <div style="font-size: 32px; margin-bottom: 8px; color: #3b82f6;">🎥</div>
+                  <p style="margin: 0; font-size: 12px; font-weight: 500; color: #374151;">Video ${index + 1}</p>
+                  <p style="margin: 4px 0 0 0; font-size: 10px; color: #6b7280;">Click to open video</p>
+                </div>
+                <div style="padding: 8px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
+                  <a 
+                    href="${videoUrl}" 
+                    target="_blank" 
+                    style="display: inline-block; width: 100%; padding: 6px 12px; background: #3b82f6; color: white; text-decoration: none; border-radius: 4px; font-size: 11px; text-align: center;"
+                  >
+                    🔗 Open Video Link
+                  </a>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div style="margin-top: 15px; text-align: center; padding: 10px; background: #eff6ff; border-radius: 6px;">
+          <p style="margin: 0; font-size: 12px; color: #1d4ed8;">
+            🎥 ${ticket.videos.length} video${ticket.videos.length > 1 ? 's' : ''} attached to this ticket
+          </p>
+        </div>
+      `
+    }
+
     const formatActivityLog = () => {
       if (!ticket.activityLog || ticket.activityLog.length === 0) {
         return '<p class="text-gray-500 italic">No activity log entries available</p>'
@@ -597,6 +651,14 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
               <h2>📸 Ticket Images</h2>
               <div class="images-grid">
                 ${formatImages()}
+              </div>
+            </div>
+
+            <!-- Ticket Videos -->
+            <div class="section">
+              <h2>🎥 Ticket Videos</h2>
+              <div class="videos-grid">
+                ${formatVideos()}
               </div>
             </div>
 

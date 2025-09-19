@@ -217,7 +217,9 @@ export async function POST(request: NextRequest) {
       isCritical: body.isCritical || false,
       departmentsServed: body.departmentsServed || [body.department],
       // Image field
-      imageSrc: body.imageSrc || ''
+      imageSrc: body.imageSrc || '',
+      // External references
+      hyperlink: body.hyperlink || ''
     };
 
 
@@ -278,6 +280,8 @@ export async function POST(request: NextRequest) {
       department: savedPart.department,
       // Image field
       imageSrc: savedPart.imageSrc || '',
+      // External references
+      hyperlink: savedPart.hyperlink || '',
       linkedAssets: savedPart.linkedAssets,
       quantity: savedPart.quantity,
       minStockLevel: savedPart.minStockLevel,
