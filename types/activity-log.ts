@@ -34,6 +34,10 @@ export interface ActivityLogEntry {
   title: string
   description: string
   
+  // Problem and Solution (for daily_log_activity and tickets modules)
+  problem?: string
+  solution?: string
+  
   // User Information  
   createdBy: string
   createdByName: string
@@ -82,6 +86,8 @@ export interface CreateActivityLogRequest {
   action: ActivityAction
   title: string
   description: string
+  problem?: string
+  solution?: string
   assignedTo?: string
   assignedToName?: string
   priority: ActivityPriority

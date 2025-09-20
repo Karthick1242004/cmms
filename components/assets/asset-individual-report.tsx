@@ -642,13 +642,15 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
           <table>
             <thead>
               <tr>
-                <th style="width: 20%;">Date</th>
-                <th style="width: 15%;">Module</th>
-                <th style="width: 10%;">Action</th>
-                <th style="width: 25%;">Activity</th>
-                <th style="width: 10%;">Priority</th>
-                <th style="width: 10%;">Status</th>
-                <th style="width: 10%;">Created By</th>
+                <th style="width: 15%;">Date</th>
+                <th style="width: 10%;">Module</th>
+                <th style="width: 8%;">Action</th>
+                <th style="width: 15%;">Activity</th>
+                <th style="width: 15%;">Problem</th>
+                <th style="width: 15%;">Solution</th>
+                <th style="width: 8%;">Priority</th>
+                <th style="width: 8%;">Status</th>
+                <th style="width: 6%;">Created By</th>
               </tr>
             </thead>
             <tbody>
@@ -704,6 +706,20 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
                       <div style="max-width: 200px;">
                         <div style="font-weight: 600; font-size: 12px; margin-bottom: 2px;">${log.title}</div>
                         <div style="font-size: 10px; color: #6b7280; line-height: 1.3;">${log.description || ''}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div style="max-width: 150px; font-size: 10px; line-height: 1.3;">
+                        ${(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
+                          log.problem ? log.problem : '<em style="color: #9ca3af;">No problem specified</em>'
+                        ) : '<span style="color: #9ca3af;">-</span>'}
+                      </div>
+                    </td>
+                    <td>
+                      <div style="max-width: 150px; font-size: 10px; line-height: 1.3;">
+                        ${(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
+                          log.solution ? log.solution : '<em style="color: #9ca3af;">No solution provided</em>'
+                        ) : '<span style="color: #9ca3af;">-</span>'}
                       </div>
                     </td>
                     <td>

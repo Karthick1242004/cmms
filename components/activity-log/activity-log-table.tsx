@@ -496,6 +496,8 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                   <TableHead className="min-w-[100px]">Action</TableHead>
                   <TableHead className="min-w-[100px]">Priority</TableHead>
                   <TableHead className="min-w-[100px]">Status</TableHead>
+                  <TableHead className="min-w-[200px]">Problem</TableHead>
+                  <TableHead className="min-w-[200px]">Solution</TableHead>
                   <TableHead className="min-w-[100px]">Downtime</TableHead>
                   <TableHead className="min-w-[150px]">Assigned To</TableHead>
                   <TableHead className="min-w-[150px]">Created By</TableHead>
@@ -506,7 +508,7 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
             <TableBody>
               {logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-12">
+                  <TableCell colSpan={12} className="text-center py-12">
                     <div className="text-gray-500">
                       <Archive className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p className="text-lg font-medium">No activity logs found</p>
@@ -552,6 +554,34 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                         <Badge className={statusColors[log.status]}>
                           {log.status.replace('_', ' ')}
                         </Badge>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="max-w-[200px] truncate" title={log.problem || ''}>
+                          {(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
+                            log.problem ? (
+                              <span className="text-sm">{log.problem}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">No problem specified</span>
+                            )
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="max-w-[200px] truncate" title={log.solution || ''}>
+                          {(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
+                            log.solution ? (
+                              <span className="text-sm">{log.solution}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">No solution provided</span>
+                            )
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </div>
                       </TableCell>
                       
                       <TableCell>

@@ -326,6 +326,8 @@ export async function POST(request: NextRequest) {
             action: 'created',
             title: 'Daily Activity Created',
             description: `Daily activity created: ${body.natureOfProblem}`,
+            problem: body.natureOfProblem,
+            solution: body.commentsOrSolution,
             assignedTo: body.assignedTo || body.attendedBy,
             assignedToName: body.assignedToName || body.attendedByName,
             priority: (body.priority || 'medium').toLowerCase() as any,

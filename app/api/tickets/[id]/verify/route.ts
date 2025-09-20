@@ -160,19 +160,26 @@ export async function PATCH(
           },
           body: JSON.stringify({
             assetId: updatedTicket.equipmentId,
+            assetName: '', // Will be populated by activity log API
+            assetTag: '', // Will be populated by activity log API  
+            module: 'tickets',
+            action: 'verified',
             title: `Ticket Verified - ${updatedTicket.ticketId}`,
-            description: `Ticket "${updatedTicket.subject}" has been verified by admin ${user.name}`,
-            type: 'verification',
-            status: 'completed',
-            priority: updatedTicket.priority,
+            description: `Ticket "${updatedTicket.title || updatedTicket.subject}" has been verified by admin ${user.name}`,
+            problem: updatedTicket.description,
+            solution: updatedTicket.solution || '',
             assignedTo: user.id,
             assignedToName: user.name,
-            department: updatedTicket.department,
+            priority: updatedTicket.priority.toLowerCase() as any,
+            status: 'completed',
+            recordId: updatedTicket._id.toString(),
+            recordType: 'ticket_verification',
             metadata: {
               ticketId: updatedTicket.ticketId,
               verifiedBy: user.name,
               verifiedAt: new Date().toISOString(),
-              adminNotes: adminNotes
+              adminNotes: adminNotes,
+              department: updatedTicket.department
             }
           })
         })

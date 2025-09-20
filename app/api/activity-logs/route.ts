@@ -269,6 +269,8 @@ export async function POST(request: NextRequest) {
       action: body.action,
       title: body.title,
       description: body.description,
+      problem: body.problem,
+      solution: body.solution,
       createdBy: user.id,
       createdByName: user.name,
       department: user.department,

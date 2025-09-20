@@ -305,18 +305,20 @@ export async function POST(request: NextRequest) {
     const ticket = new Ticket(ticketData);
     const savedTicket = await ticket.save();
 
-    // Create asset activity log entry if ticket has an asset
-    if (savedTicket.equipmentId) {
-      try {
-        const protocol = request.headers.get('x-forwarded-proto') || 'http';
-        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
-        const baseUrl = `${protocol}://${host}`;
-        
-        console.log('🚀 [Ticket] - Creating activity log for ticket creation');
-        
-        // Fetch asset details for activity log
-        let assetName = 'Unknown Asset';
-        let assetTag = '';
+    // Create activity log entry for all tickets (asset-based or general)
+    try {
+      const protocol = request.headers.get('x-forwarded-proto') || 'http';
+      const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+      const baseUrl = `${protocol}://${host}`;
+      
+      console.log('🚀 [Ticket] - Creating activity log for ticket creation');
+      
+      // Fetch asset details for activity log if ticket has an asset
+      let assetName = 'General Ticket';
+      let assetTag = '';
+      let assetId = savedTicket.equipmentId || 'general';
+      
+      if (savedTicket.equipmentId) {
         try {
           const { db } = await connectToDatabase();
           if (ObjectId.isValid(savedTicket.equipmentId)) {
@@ -329,6 +331,7 @@ export async function POST(request: NextRequest) {
         } catch (assetError) {
           console.error('Error fetching asset for activity log:', assetError);
         }
+      }
         
         const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
           method: 'POST',
@@ -338,13 +341,15 @@ export async function POST(request: NextRequest) {
             'Cookie': request.headers.get('Cookie') || '',
           },
           body: JSON.stringify({
-            assetId: savedTicket.equipmentId,
+            assetId: assetId,
             assetName: assetName,
             assetTag: assetTag,
-            module: 'ticket',
+            module: 'tickets',
             action: 'created',
-            title: 'Ticket Created',
+            title: `Ticket Created - ${savedTicket.ticketId}`,
             description: `Ticket created: ${savedTicket.title || savedTicket.subject}`,
+            problem: savedTicket.description,
+            solution: savedTicket.solution || '',
             assignedTo: user?.id || '',
             assignedToName: user?.name || savedTicket.loggedBy || 'Unknown User',
             priority: savedTicket.priority.toLowerCase() as any,
@@ -367,10 +372,9 @@ export async function POST(request: NextRequest) {
         } else {
           console.error('❌ [Ticket] - Activity log creation failed:', await activityLogResponse.text());
         }
-      } catch (error) {
-        console.error('❌ [Ticket] - Failed to create activity log:', error);
-        // Don't fail the main operation if activity log creation fails
-      }
+    } catch (error) {
+      console.error('❌ [Ticket] - Failed to create activity log:', error);
+      // Don't fail the main operation if activity log creation fails
     }
 
     // Transform the response to match frontend expectations

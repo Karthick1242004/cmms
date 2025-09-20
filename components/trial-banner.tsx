@@ -12,9 +12,9 @@ import {
 import { cn } from "@/lib/utils"
 
 // Trial configuration - easily update these dates for different trial periods
-// Updated to 21 days from August 30, 2025, 8:03 PM IST
+// Extended to 26 days from August 30, 2025, 8:03 PM IST (added 5 more days)
 const TRIAL_START_DATE = '2025-08-30T14:33:00.000Z' // August 30, 2025, 8:03 PM IST (UTC+5:30)
-const TRIAL_END_DATE = '2025-09-20T23:59:59.999Z'   // September 20, 2025, 11:59 PM UTC (21 days later)
+const TRIAL_END_DATE = '2025-09-26T23:59:59.999Z'   // September 25, 2025, 11:59 PM UTC (26 days later)
 
 interface TrialBannerProps {
   className?: string
@@ -31,7 +31,7 @@ export function TrialBanner({ className, variant = 'banner' }: TrialBannerProps)
   })
 
   useEffect(() => {
-    // Trial period: August 30, 2025 to September 20, 2025 (21 days)
+    // Trial period: August 30, 2025 to September 25, 2025 (26 days)
     const trialEndDate = new Date(TRIAL_END_DATE)
     
     const updateTimer = () => {
@@ -193,7 +193,7 @@ export function TrialStatusIndicator() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0 })
 
   useEffect(() => {
-    // Trial period: August 30, 2025 to September 20, 2025 (21 days)
+    // Trial period: August 30, 2025 to September 25, 2025 (26 days)
     const trialEndDate = new Date(TRIAL_END_DATE)
     
     const updateTimer = () => {
