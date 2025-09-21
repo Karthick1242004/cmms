@@ -431,7 +431,7 @@ export default function DepartmentsPage() {
 
       {isSuperAdmin && (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto glass-dialog">
             <DialogHeader>
               <DialogTitle>{editingDepartment ? "Edit" : "Add New"} Department</DialogTitle>
               <DialogDescription>
@@ -688,7 +688,7 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
-      <div className="border rounded-lg overflow-x-auto">
+      <div className="glass-table rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

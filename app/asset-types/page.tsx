@@ -468,7 +468,7 @@ export default function AssetTypesPage() {
         Showing {filteredAssetTypes.length} of {assetTypes.length} asset types
       </div>
 
-      <div className="border rounded-lg">
+      <div className="glass-table rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>

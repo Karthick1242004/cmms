@@ -606,7 +606,7 @@ export default function EmployeesPage() {
       <EmployeeStatsWidget className="mb-6" />
 
       <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px] glass-dialog">
             <DialogHeader>
               <DialogTitle>{editingEmployee ? "Edit Employee" : "Add New Employee"}</DialogTitle>
               <DialogDescription>
@@ -995,7 +995,7 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      <div className="border rounded-lg">
+      <div className="glass-table rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>

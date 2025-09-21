@@ -359,7 +359,7 @@ function PartFormStandalone({
                 Select Assets ({selectedAssets.length})
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col glass-dialog">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5" />
@@ -1636,7 +1636,7 @@ export default function PartsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-auto max-w-full max-h-[600px] border rounded-lg">
+            <div className="overflow-auto max-w-full max-h-[600px] glass-table rounded-lg">
               <div className="min-w-[1400px]">
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">

@@ -953,7 +953,7 @@ export default function LocationsPage() {
         )}
       </div>
 
-      <div className="border rounded-lg">
+      <div className="glass-table rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>

@@ -647,6 +647,109 @@
   max-width: 100%;
 }
 
+/* Glass morphism for module cards and tables */
+.glass-module-card {
+  background: rgba(255, 255, 255, 0.12) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 
+    0 8px 32px 0 rgba(255, 165, 0, 0.12),
+    0 4px 16px 0 rgba(59, 130, 246, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.15) !important;
+  transition: all 0.3s ease;
+}
+
+.dark .glass-module-card {
+  background: rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 
+    0 8px 32px 0 rgba(59, 130, 246, 0.15),
+    0 4px 16px 0 rgba(255, 165, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+}
+
+.glass-module-card:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 40px 0 rgba(255, 165, 0, 0.18),
+    0 6px 20px 0 rgba(59, 130, 246, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .glass-module-card:hover {
+  background: rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 
+    0 12px 40px 0 rgba(59, 130, 246, 0.22),
+    0 6px 20px 0 rgba(255, 165, 0, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Glass table styling */
+.glass-table {
+  background: rgba(255, 255, 255, 0.08) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(150%) !important;
+  backdrop-filter: blur(16px) saturate(150%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    0 6px 24px 0 rgba(255, 165, 0, 0.08),
+    0 3px 12px 0 rgba(59, 130, 246, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .glass-table {
+  background: rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 
+    0 6px 24px 0 rgba(59, 130, 246, 0.12),
+    0 3px 12px 0 rgba(255, 165, 0, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Glass dialog styling */
+.glass-dialog {
+  background: rgba(255, 255, 255, 0.15) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 
+    0 10px 40px 0 rgba(255, 165, 0, 0.15),
+    0 5px 20px 0 rgba(59, 130, 246, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .glass-dialog {
+  background: rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    0 10px 40px 0 rgba(59, 130, 246, 0.18),
+    0 5px 20px 0 rgba(255, 165, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Stats widget glass effect */
+.glass-stats-card {
+  background: rgba(255, 255, 255, 0.1) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(170%) !important;
+  backdrop-filter: blur(16px) saturate(170%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    0 6px 28px 0 rgba(255, 165, 0, 0.1),
+    0 3px 14px 0 rgba(59, 130, 246, 0.07),
+    0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+  transition: all 0.3s ease;
+}
+
+.dark .glass-stats-card {
+  background: rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 
+    0 6px 28px 0 rgba(59, 130, 246, 0.12),
+    0 3px 14px 0 rgba(255, 165, 0, 0.07),
+    0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .float-animation,
