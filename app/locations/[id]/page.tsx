@@ -330,7 +330,7 @@ export default function LocationDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-fade-in p-6">
+      <div className="space-y-3 animate-fade-in px-6 py-0">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex items-center space-x-2">
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -343,7 +343,7 @@ export default function LocationDetailPage() {
 
   if (error || !location) {
     return (
-      <div className="space-y-6 animate-fade-in p-6">
+      <div className="space-y-3 animate-fade-in px-6 py-0">
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <div className="text-center">
             <h2 className="text-2xl font-bold">Location Not Found</h2>
@@ -359,7 +359,7 @@ export default function LocationDetailPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in p-6">
+    <div className="space-y-3 animate-fade-in px-6 py-0">
       {/* Header */}
       <div className="flex flex-col space-y-4">
         {/* Back Navigation */}

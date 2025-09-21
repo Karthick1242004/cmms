@@ -19,7 +19,7 @@ export default function SettingsPage() {
   const [workOrderAlerts, setWorkOrderAlerts] = useState(true)
 
   return (
-    <div className="space-y-6 animate-fade-in p-6">
+    <div className="space-y-3 animate-fade-in px-6 py-0">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">Manage your system preferences and configurations</p>

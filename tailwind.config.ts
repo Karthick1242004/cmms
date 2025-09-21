@@ -87,7 +87,20 @@ const config: Config = {
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'float': 'float 6s ease-in-out infinite',
+  			'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
+  			'shimmer': 'shimmer 2s infinite',
+  			'fade-in': 'fadeIn 0.5s ease-out',
+  		},
+  		backdropBlur: {
+  			'xs': '2px',
+  			'sm': '4px',
+  			'md': '12px',
+  			'lg': '16px',
+  			'xl': '24px',
+  			'2xl': '40px',
+  			'3xl': '64px',
   		}
   	}
   },

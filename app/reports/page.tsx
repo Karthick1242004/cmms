@@ -1526,7 +1526,7 @@ export default function ReportsPage() {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-fade-in p-6">
+      <div className="space-y-3 animate-fade-in px-6 py-0">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
@@ -1556,7 +1556,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in p-6">
+    <div className="space-y-3 animate-fade-in px-6 py-0">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Reports</h1>

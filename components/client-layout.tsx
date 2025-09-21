@@ -2,21 +2,18 @@
 
 import type React from "react"
 import { usePathname } from "next/navigation"
-import { Suspense } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { LoginNotificationsPopup } from "@/components/login-notifications-popup"
-import { ProfileCompletionBanner } from "@/components/profile-completion-banner"
-import { TrialBanner } from "@/components/trial-banner"
-import AnimatedBanner from "@/components/common/animated-banner"
+import { AnimatedBackground } from "@/components/ui/animated-background"
 import { Toaster } from "@/components/ui/toaster"
 import { useAuthStore } from "@/stores/auth-store"
-import { LoadingSpinner } from "@/components/loading-spinner"
 import { ProtectedRoute } from "@/components/protected-route"
+import { NoticeBoardHeader } from "@/components/layout/notice-board-header"
+import { ContentOutlet } from "@/components/layout/content-outlet"
 import {
   SidebarProvider,
   Sidebar,
   SidebarInset,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 
 interface ClientLayoutProps {
@@ -41,39 +38,25 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <ProtectedRoute>
       <SidebarProvider defaultOpen={true}>
-        <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-          {/* Sidebar */}
-          <Sidebar variant="inset" className="w-64 flex-shrink-0">
+        <div className="min-h-screen flex w-full relative overflow-hidden">
+          {/* Animated Background */}
+          <AnimatedBackground />
+          {/* Glass Morphism Sidebar */}
+          <Sidebar variant="inset" className="w-64 flex-shrink-0 glass-morphism-sidebar border-none relative z-10">
             <AppSidebar />
           </Sidebar>
 
-          {/* Main Content with Fixed Banner */}
+          {/* Main Content with Separated Notice Board */}
           <SidebarInset className="flex-1 min-w-0 relative">
-            <div className="flex flex-col h-screen">
-              {/* Fixed Animated Banner at the top */}
-              <div className="fixed px-2 top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300" 
-                   style={{ left: '16rem', right: '0' }}>
-                <AnimatedBanner />
-              </div>
+            <div className="flex flex-col min-h-screen max-h-screen">
+              {/* Notice Board Header - Separated */}
+              <NoticeBoardHeader />
               
-              {/* Scrollable Content Area with top padding to account for fixed banner */}
-              <div className="flex-1 p-2 pt-16">
-                <div className="h-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60  border shadow-sm overflow-hidden">
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <div className="h-full overflow-y-auto custom-scrollbar">
-                      <div className="space-y-4">
-                        {/* Sidebar Toggle Button */}
-                        <div className="flex items-center justify-between px-6 pt-6">
-                          <SidebarTrigger className="h-8 w-8" />
-                          <div className="flex-1" />
-                        </div>
-                        <ProfileCompletionBanner className="mx-6" />
-                        <TrialBanner className="mx-6" variant="banner" />
-                        <div className="px-6 pb-6">{children}</div>
-                      </div>
-                    </div>
-                  </Suspense>
-                </div>
+              {/* Main Content Outlet - Scrollable */}
+              <div className="flex-1 p-2 overflow-hidden">
+                <ContentOutlet>
+                  {children}
+                </ContentOutlet>
               </div>
             </div>
           </SidebarInset>

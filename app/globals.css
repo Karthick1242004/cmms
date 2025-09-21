@@ -355,3 +355,309 @@
     transform: translate(-50%, -50%) rotate(360deg);
   }
 }
+
+/* Glass Morphism Utilities */
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+.dark .glass-morphism {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.glass-morphism-sidebar {
+  background: rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(32px) saturate(150%);
+  backdrop-filter: blur(32px) saturate(150%);
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 4px 0 40px 0 rgba(255, 165, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.dark .glass-morphism-sidebar {
+  background: rgba(0, 0, 0, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 4px 0 40px 0 rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.glass-morphism-banner {
+  background: rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 8px 32px 0 rgba(255, 165, 0, 0.12),
+    0 4px 16px 0 rgba(59, 130, 246, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass-morphism-banner {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 8px 32px 0 rgba(59, 130, 246, 0.15),
+    0 4px 16px 0 rgba(255, 165, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.12) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 8px 32px 0 rgba(255, 165, 0, 0.15), 0 4px 16px 0 rgba(59, 130, 246, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
+  transition: all 0.3s ease;
+}
+
+.dark .glass-card {
+  background: rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.2), 0 4px 16px 0 rgba(255, 165, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 48px 0 rgba(255, 165, 0, 0.25), 0 8px 24px 0 rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.25) !important;
+}
+
+.dark .glass-card:hover {
+  background: rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 16px 48px 0 rgba(59, 130, 246, 0.3), 0 8px 24px 0 rgba(255, 165, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Custom scrollbar for glass elements */
+.glass-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.glass-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.glass-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.glass-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.dark .glass-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dark .glass-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.float-animation {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Enhanced pulse glow effect with orange/blue theme */
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.4), 0 0 30px rgba(59, 130, 246, 0.2);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(255, 165, 0, 0.6), 0 0 60px rgba(59, 130, 246, 0.4), 0 0 80px rgba(147, 51, 234, 0.2);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Shimmer effect */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 2s infinite;
+}
+
+/* Smooth transitions for all glass elements */
+.glass-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced glass effect for vibrant backgrounds */
+.glass-enhanced {
+  background: rgba(255, 255, 255, 0.15);
+  -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(110%);
+  backdrop-filter: blur(24px) saturate(180%) brightness(110%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 
+    0 8px 32px 0 rgba(255, 165, 0, 0.12),
+    0 4px 16px 0 rgba(59, 130, 246, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.dark .glass-enhanced {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 8px 32px 0 rgba(59, 130, 246, 0.15),
+    0 4px 16px 0 rgba(255, 165, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Additional keyframes for animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive glass morphism */
+@media (max-width: 768px) {
+  .glass-morphism,
+  .glass-morphism-sidebar,
+  .glass-morphism-banner,
+  .glass-card,
+  .glass-enhanced {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  
+  /* Ensure proper scrolling on mobile */
+  .glass-enhanced,
+  .glass-card {
+    max-height: calc(100vh - 4rem);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .glass-morphism,
+  .glass-morphism-sidebar,
+  .glass-morphism-banner,
+  .glass-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(0, 0, 0, 0.5);
+  }
+  
+  .dark .glass-morphism,
+  .dark .glass-morphism-sidebar,
+  .dark .glass-morphism-banner,
+  .dark .glass-card {
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* Text contrast improvements for glass morphism */
+.glass-card .text-muted-foreground,
+.glass-enhanced .text-muted-foreground {
+  color: hsl(var(--foreground) / 0.8) !important;
+}
+
+.glass-card .text-foreground,
+.glass-enhanced .text-foreground {
+  color: hsl(var(--foreground) / 0.95) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.glass-card h1, .glass-card h2, .glass-card h3, .glass-card h4, .glass-card h5, .glass-card h6,
+.glass-enhanced h1, .glass-enhanced h2, .glass-enhanced h3, .glass-enhanced h4, .glass-enhanced h5, .glass-enhanced h6 {
+  color: hsl(var(--foreground)) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Ensure tables and content are scrollable within glass containers */
+.glass-enhanced table,
+.glass-card table {
+  width: 100%;
+  table-layout: auto;
+}
+
+.glass-enhanced .table-container,
+.glass-card .table-container {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+/* Ensure child elements respect the scrollable container */
+.glass-enhanced > div,
+.glass-card > div {
+  min-height: 0; /* Allow flex children to shrink */
+}
+
+/* Fix for any nested scrollable content */
+.glass-enhanced .overflow-y-auto {
+  height: auto;
+  max-height: none;
+}
+
+.glass-card .overflow-y-auto {
+  height: auto;  
+  max-height: none;
+}
+
+/* Notice board banner optimizations */
+.glass-morphism-banner {
+  min-width: 0; /* Allow banner to shrink properly */
+  overflow: hidden; /* Prevent content overflow */
+}
+
+.glass-morphism-banner .flex {
+  min-width: 0; /* Ensure flex children can shrink */
+}
+
+.glass-morphism-banner span {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .float-animation,
+  .pulse-glow,
+  .shimmer,
+  .glass-transition {
+    animation: none;
+    transition: none;
+  }
+  
+  .shimmer::before {
+    animation: none;
+  }
+}

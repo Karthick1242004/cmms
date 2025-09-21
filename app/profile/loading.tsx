@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 export default function Loading() {
   return (
-    <div className="space-y-6 animate-fade-in p-6">
+    <div className="space-y-3 animate-fade-in px-6 py-0">
       <div>
         <Skeleton className="h-10 w-[150px] mb-2" />
         <Skeleton className="h-4 w-[350px]" />

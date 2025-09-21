@@ -290,7 +290,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in p-6">
+    <div className="space-y-3 animate-fade-in px-6 py-0">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
         <p className="text-muted-foreground">Manage your personal information and preferences</p>

@@ -50,12 +50,17 @@ function SortableStatCard({ stat, index }: SortableStatCardProps) {
     <div ref={setNodeRef} style={style} {...attributes} className="relative" suppressHydrationWarning>
       <Card
         className={cn(
-          "overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-105 border-l-4 border-l-transparent hover:border-l-primary bg-gradient-to-br from-card to-card/50",
-          "animate-fade-in",
+          "overflow-hidden glass-card hover:shadow-2xl hover:scale-105 border-l-4 border-l-transparent hover:border-l-primary shimmer bg-transparent",
+          "animate-fade-in float-animation",
           { "animate-delay-100": index === 1 },
           { "animate-delay-200": index === 2 },
           { "animate-delay-300": index === 3 },
         )}
+        style={{
+          background: "rgba(255, 255, 255, 0.12) !important",
+          backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        }}
       >
         <button
           {...listeners}
@@ -65,7 +70,7 @@ function SortableStatCard({ stat, index }: SortableStatCardProps) {
         </button>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center transition-transform hover:scale-110">
+          <div className="h-10 w-10 rounded-full glass-morphism flex items-center justify-center transition-transform hover:scale-110 pulse-glow">
             <IconComponent className={`h-5 w-5 ${stat.color}`} />
           </div>
         </CardHeader>
@@ -231,7 +236,7 @@ export default function Dashboard() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Recent Activities */}
-        <Card className="animate-fade-in animate-delay-400 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-card to-card/50">
+        <Card className="glass-card animate-fade-in animate-delay-400 transition-all duration-300 hover:shadow-2xl shimmer">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -245,7 +250,7 @@ export default function Dashboard() {
                 <div
                   key={activity.id}
                   className={cn(
-                    "flex items-center space-x-4 p-3 rounded-lg transition-all duration-300 hover:bg-muted/50 hover:scale-[1.02] border border-transparent hover:border-border/50",
+                    "flex items-center space-x-4 p-3 rounded-lg transition-all duration-300 glass-transition hover:glass-card hover:scale-[1.02] border border-transparent hover:border-white/20 dark:hover:border-white/10",
                     "animate-fade-in",
                     { "animate-delay-100": index === 1 },
                     { "animate-delay-200": index === 2 },
@@ -275,7 +280,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Quick Actions */}
-        <Card className="animate-fade-in animate-delay-500 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-card to-card/50">
+        <Card className="glass-card animate-fade-in animate-delay-500 transition-all duration-300 hover:shadow-2xl shimmer">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
             <CardDescription>Common tasks and shortcuts</CardDescription>
@@ -289,7 +294,7 @@ export default function Dashboard() {
                     key={action.title}
                     onClick={() => handleQuickAction(action.href)}
                     className={cn(
-                      "flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-all duration-300 hover:shadow-md hover:scale-[1.02] group bg-gradient-to-r from-background to-background/50 hover:from-primary/5 hover:to-primary/10 text-left",
+                      "flex items-center justify-between p-4 border rounded-lg glass-transition cursor-pointer transition-all duration-300 hover:glass-card hover:shadow-xl hover:scale-[1.02] group text-left border-white/20 dark:border-white/10",
                       "animate-fade-in",
                       { "animate-delay-100": index === 1 },
                       { "animate-delay-200": index === 2 },
@@ -297,7 +302,7 @@ export default function Dashboard() {
                     )}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                      <div className="h-10 w-10 rounded-full glass-morphism flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 pulse-glow">
                         <IconComponent className={`h-5 w-5 ${action.color}`} />
                       </div>
                       <span className="font-medium">{action.title}</span>

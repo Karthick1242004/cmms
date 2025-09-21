@@ -123,7 +123,7 @@ export const AppSidebar = memo(function AppSidebar() {
       </SidebarHeader>
 
       {/* Navigation */}
-      <SidebarContent className="flex-1 p-2 overflow-y-auto custom-scrollbar bg-card/30">
+      <SidebarContent className="flex-1 p-2 overflow-y-auto glass-scrollbar bg-transparent">
           <div className="space-y-1">
             <div className="px-2 py-1">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Navigation</h3>
@@ -144,9 +144,9 @@ export const AppSidebar = memo(function AppSidebar() {
                           <Button
                             variant={isParentActive ? "secondary" : "ghost"}
                             className={cn(
-                              "w-full justify-between h-10 transition-all duration-200 group relative overflow-hidden",
-                              isParentActive && "bg-primary/10 text-primary border-primary/20 shadow-sm",
-                              !isParentActive && "hover:bg-accent hover:text-accent-foreground hover:translate-x-1",
+                              "w-full justify-between h-10 transition-all duration-200 group relative overflow-hidden glass-transition",
+                              isParentActive && "glass-card bg-white/15 dark:bg-white/5 text-primary border-primary/20 shadow-lg",
+                              !isParentActive && "hover:glass-card hover:bg-white/8 dark:hover:bg-white/3 hover:text-accent-foreground hover:translate-x-1",
                               isParentLoading && "opacity-70",
                             )}
                             disabled={isParentLoading}
@@ -201,9 +201,9 @@ export const AppSidebar = memo(function AppSidebar() {
                               <Button
                                 variant={isSubActive ? "secondary" : "ghost"}
                                 className={cn(
-                                  "w-full justify-start h-9 transition-all duration-200 group relative overflow-hidden text-sm",
-                                  isSubActive && "bg-primary/10 text-primary font-semibold",
-                                  !isSubActive && "hover:bg-accent hover:text-accent-foreground hover:translate-x-1",
+                                  "w-full justify-start h-9 transition-all duration-200 group relative overflow-hidden text-sm glass-transition",
+                                  isSubActive && "glass-card bg-white/12 dark:bg-white/4 text-primary font-semibold shadow-md",
+                                  !isSubActive && "hover:glass-card hover:bg-white/6 dark:hover:bg-white/2 hover:text-accent-foreground hover:translate-x-1",
                                   isSubLoading && "opacity-70",
                                 )}
                                 onClick={() => handleNavigation(subItem.href)}
@@ -259,9 +259,9 @@ export const AppSidebar = memo(function AppSidebar() {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start h-10 transition-all duration-200 group relative overflow-hidden",
-                        isActive && "bg-primary/10 text-primary border-primary/20 shadow-sm",
-                        !isActive && "hover:bg-accent hover:text-accent-foreground hover:translate-x-1",
+                        "w-full justify-start h-10 transition-all duration-200 group relative overflow-hidden glass-transition",
+                        isActive && "glass-card bg-white/15 dark:bg-white/5 text-primary border-primary/20 shadow-lg",
+                        !isActive && "hover:glass-card hover:bg-white/8 dark:hover:bg-white/3 hover:text-accent-foreground hover:translate-x-1",
                         isLoadingItem && "opacity-70",
                       )}
                       onClick={() => handleNavigation(item.href)}

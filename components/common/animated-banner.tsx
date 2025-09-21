@@ -63,8 +63,8 @@ export default function AnimatedBanner() {
   const tripleItems = [...activeBanners, ...activeBanners, ...activeBanners]
 
   return (
-    <div className="dark:bg-gradient-to-r dark:from-blue-900/20 dark:to-indigo-900/20 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 overflow-hidden rounded-md mt-2 relative border border-blue-200/50 dark:border-blue-800/50 w-full flex-shrink-0 shadow-sm">
-      <div className="relative h-14 flex items-center py-3 px-4">
+    <div className="overflow-hidden relative w-full min-w-0">
+      <div className="relative h-12 flex items-center py-2 px-2 bg-gradient-to-r from-orange-500/10 via-blue-500/10 to-purple-500/10 dark:from-orange-400/5 dark:via-blue-400/5 dark:to-purple-400/5 rounded-md">
         {/* Animated banner content */}
         <motion.div
           className="flex items-center whitespace-nowrap will-change-transform"
@@ -75,7 +75,7 @@ export default function AnimatedBanner() {
             x: {
               repeat: Infinity,
               repeatType: "loop",
-              duration: Math.max(60, activeBanners.length * 15), // Even slower for better readability
+              duration: Math.max(30, activeBanners.length * 1), // Faster animation for better visibility
               ease: "linear",
             },
           }}
@@ -87,18 +87,18 @@ export default function AnimatedBanner() {
           {tripleItems.map((banner: BannerMessage, index: number) => (
             <motion.div
               key={`banner-${index}`}
-              className="flex items-center justify-center text-sm font-medium tracking-wide px-32 py-2 hover:bg-white/10 transition-colors duration-300 cursor-pointer flex-shrink-0"
+              className="flex items-center justify-center text-sm font-medium tracking-wide px-8 py-2 hover:glass-card hover:bg-white/15 dark:hover:bg-white/5 transition-all duration-300 cursor-pointer flex-shrink-0 glass-transition"
               style={{ 
                 width: `${100 / tripleItems.length}%`, 
-                minWidth: activeBanners.length === 1 ? "100%" : "800px" // Much wider minimum width
+                minWidth: activeBanners.length === 1 ? "100%" : "600px" // Reduced minimum width for better fit
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
                 {/* Priority indicator */}
                 {banner.priority > 5 && (
-                  <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse flex-shrink-0 mr-3" />
+                  <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse flex-shrink-0" />
                 )}
                 
                 {/* Banner text with proper contrast for both modes */}
@@ -106,12 +106,40 @@ export default function AnimatedBanner() {
                   {banner.text}
                 </span>
                 
-                {/* Separator dot with much more spacing */}
-                <div className="mx-16 w-2.5 h-2.5 bg-blue-400/70 dark:bg-blue-300/70 rounded-full hidden sm:block flex-shrink-0" />
+                {/* Separator dot with reduced spacing */}
+                <div className="mx-8 w-2 h-2 bg-blue-400/70 dark:bg-blue-300/70 rounded-full hidden sm:block flex-shrink-0" />
               </div>
             </motion.div>
           ))}
         </motion.div>
+        
+        {/* Floating particles for enhanced effect */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-2 h-2 bg-white/20 dark:bg-white/10 rounded-full"
+              style={{
+                left: `${20 + i * 30}%`,
+                top: '50%',
+              }}
+              animate={{
+                y: [-10, 10, -10],
+                opacity: [0.3, 0.8, 0.3],
+                scale: [0.8, 1.2, 0.8],
+              }}
+              transition={{
+                duration: 2 + i * 0.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.3,
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Gradient overlay for depth */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none" />
       </div>
     </div>
   )

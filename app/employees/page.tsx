@@ -533,7 +533,7 @@ export default function EmployeesPage() {
   // Handle loading state
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-fade-in p-6">
+      <div className="space-y-3 animate-fade-in px-6 py-0">
         {/* Skeleton Loader */}
         <div className="animate-pulse">
           <div className="h-8 bg-muted rounded w-64 mb-2"></div>
@@ -561,7 +561,7 @@ export default function EmployeesPage() {
   // Handle error state
   if (error) {
     return (
-      <div className="space-y-6 animate-fade-in p-6">
+      <div className="space-y-3 animate-fade-in px-6 py-0">
         <div className="text-center py-12">
           <p className="text-red-600 mb-4">Error loading employees: {error.message}</p>
           <Button onClick={() => window.location.reload()}>Retry</Button>

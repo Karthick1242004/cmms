@@ -369,7 +369,7 @@ export default function DepartmentsPage() {
   // Handle loading state
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-fade-in p-6">
+      <div className="space-y-3 animate-fade-in px-6 py-0">
         {/* Skeleton Loader */}
         <div className="animate-pulse">
           <div className="h-8 bg-muted rounded w-64 mb-2"></div>
@@ -397,7 +397,7 @@ export default function DepartmentsPage() {
   // Handle error state
   if (error) {
     return (
-      <div className="space-y-6 animate-fade-in p-6">
+      <div className="space-y-3 animate-fade-in px-6 py-0">
         <div className="text-center py-12">
           <p className="text-red-600 mb-4">Error loading departments: {error.message}</p>
           <Button onClick={() => window.location.reload()}>Retry</Button>
@@ -410,7 +410,7 @@ export default function DepartmentsPage() {
   const isSubmitting = createDepartmentMutation.isPending || updateDepartmentMutation.isPending
 
   return (
-    <div className="space-y-6 animate-fade-in p-6">
+    <div className="space-y-3 animate-fade-in px-6 py-0">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Departments</h1>
