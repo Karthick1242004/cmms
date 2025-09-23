@@ -13,12 +13,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Plus, Search, FileText, Loader2 } from "lucide-react"
+import { Plus, Search, FileText, Loader2, Upload } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
 import { AssetListTable } from "@/components/asset-list-table"
 import { AssetCreationForm } from "@/components/asset-creation-form"
 import { AssetEditForm } from "@/components/asset-edit-form"
+import { ExcelImportDialog } from "@/components/assets/excel-import-dialog"
 import {
   Pagination,
   PaginationContent,
@@ -453,13 +454,26 @@ export default function AllAssetsPage() {
               Refresh Data
             </Button>
             {canModifyAssets && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Asset
-                  </Button>
-                </DialogTrigger>
+              <div className="flex items-center gap-2">
+                <ExcelImportDialog
+                  onAssetsCreated={(count) => {
+                    fetchAssets() // Refresh the assets list
+                  }}
+                  trigger={
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <Upload className="h-4 w-4" />
+                      Import from Excel
+                    </Button>
+                  }
+                />
+                
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Asset
+                    </Button>
+                  </DialogTrigger>
               <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                 <AssetCreationForm 
                   onSuccess={() => {
@@ -469,7 +483,8 @@ export default function AllAssetsPage() {
                   onCancel={() => setIsDialogOpen(false)}
                 />
               </DialogContent>
-            </Dialog>
+                </Dialog>
+              </div>
             )}
           </div>
         </div>

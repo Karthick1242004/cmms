@@ -728,6 +728,46 @@
     0 0 0 1px rgba(255, 255, 255, 0.15) !important;
 }
 
+/* Enhanced glass effects for better visibility */
+.backdrop-blur-3xl {
+  -webkit-backdrop-filter: blur(64px) saturate(180%) brightness(110%) !important;
+  backdrop-filter: blur(64px) saturate(180%) brightness(110%) !important;
+}
+
+.backdrop-blur-2xl {
+  -webkit-backdrop-filter: blur(40px) saturate(170%) brightness(105%) !important;
+  backdrop-filter: blur(40px) saturate(170%) brightness(105%) !important;
+}
+
+.backdrop-blur-xl {
+  -webkit-backdrop-filter: blur(24px) saturate(160%) brightness(105%) !important;
+  backdrop-filter: blur(24px) saturate(160%) brightness(105%) !important;
+}
+
+/* Scale animation for interactive elements */
+.scale-102 {
+  transform: scale(1.02);
+}
+
+/* Enhanced glass card hover effects */
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.22) !important;
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 
+    0 20px 60px 0 rgba(255, 165, 0, 0.2), 
+    0 10px 30px 0 rgba(59, 130, 246, 0.15), 
+    0 0 0 1px rgba(255, 255, 255, 0.3) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .glass-card:hover {
+  background: rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 
+    0 20px 60px 0 rgba(59, 130, 246, 0.25), 
+    0 10px 30px 0 rgba(255, 165, 0, 0.15), 
+    0 0 0 1px rgba(255, 255, 255, 0.25) !important;
+}
+
 /* Stats widget glass effect */
 .glass-stats-card {
   background: rgba(255, 255, 255, 0.1) !important;
