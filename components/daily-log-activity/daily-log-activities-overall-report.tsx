@@ -566,8 +566,8 @@ export function DailyLogActivitiesOverallReport({ isOpen, onClose, showDepartmen
                   <td>${format(new Date(activity.date), 'MMM dd, yyyy')}</td>
                   <td>${activity.area}</td>
                   <td>${activity.assetName}</td>
-                  <td>${activity.natureOfProblem.length > 50 ? activity.natureOfProblem.substring(0, 50) + '...' : activity.natureOfProblem}</td>
-                  <td>${activity.commentsOrSolution.length > 50 ? activity.commentsOrSolution.substring(0, 50) + '...' : activity.commentsOrSolution}</td>
+                  <td style="max-width: 200px; word-wrap: break-word; white-space: normal;">${activity.natureOfProblem}</td>
+                  <td style="max-width: 200px; word-wrap: break-word; white-space: normal;">${activity.commentsOrSolution}</td>
                   <td><span class="status-badge status-${activity.status.replace('-', '-')}">${activity.status.replace('_', ' ')}</span></td>
                   <td><span class="status-badge priority-${activity.priority}">${activity.priority}</span></td>
                   <td>${activity.downtime !== null && activity.downtime !== undefined ? formatDowntime(activity.downtime) : 'N/A'}</td>
@@ -604,8 +604,8 @@ export function DailyLogActivitiesOverallReport({ isOpen, onClose, showDepartmen
                   <td>${format(new Date(activity.date), 'MMM dd, yyyy')}</td>
                   <td>${activity.area}</td>
                   <td>${activity.assetName}</td>
-                  <td>${activity.natureOfProblem.length > 40 ? activity.natureOfProblem.substring(0, 40) + '...' : activity.natureOfProblem}</td>
-                  <td>${activity.commentsOrSolution.length > 40 ? activity.commentsOrSolution.substring(0, 40) + '...' : activity.commentsOrSolution}</td>
+                  <td style="max-width: 200px; word-wrap: break-word; white-space: normal;">${activity.natureOfProblem}</td>
+                  <td style="max-width: 200px; word-wrap: break-word; white-space: normal;">${activity.commentsOrSolution}</td>
                   <td><span class="status-badge status-${activity.status.replace('-', '-')}">${activity.status.replace('_', ' ')}</span></td>
                   <td><span class="status-badge priority-${activity.priority}">${activity.priority}</span></td>
                   ${showDepartmentColumns ? `<td>${activity.departmentName}</td>` : ''}

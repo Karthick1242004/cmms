@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,7 +27,7 @@ import {
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { SafetyInspectionRecordForm } from "./safety-inspection-record-form"
-import type { SafetyInspectionSchedule } from "@/types/safety-inspection"
+import type { SafetyInspectionSchedule, SafetyInspectionRecord } from "@/types/safety-inspection"
 
 interface SafetyInspectionScheduleDetailProps {
   schedule: SafetyInspectionSchedule | null
@@ -43,6 +43,37 @@ export function SafetyInspectionScheduleDetail({
   const { setSelectedSchedule, setRecordDialogOpen } = useSafetyInspectionStore()
   const { user } = useAuthStore()
   const [activeTab, setActiveTab] = useState("overview")
+  const [historyRecords, setHistoryRecords] = useState<SafetyInspectionRecord[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+
+  // Fetch history records when schedule changes or history tab is accessed
+  useEffect(() => {
+    if (schedule && activeTab === "history") {
+      fetchHistoryRecords()
+    }
+  }, [schedule, activeTab])
+
+  const fetchHistoryRecords = async () => {
+    if (!schedule) return
+    
+    setIsLoadingHistory(true)
+    try {
+      const response = await fetch(`/api/safety-inspection/records/schedule/${schedule.id}?limit=50&sortBy=completedDate&sortOrder=desc`)
+      const data = await response.json()
+      
+      if (data.success) {
+        setHistoryRecords(data.data.records || [])
+      } else {
+        console.error('Failed to fetch history records:', data.message)
+        setHistoryRecords([])
+      }
+    } catch (error) {
+      console.error('Error fetching history records:', error)
+      setHistoryRecords([])
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
 
   if (!schedule) return null
 
@@ -117,7 +148,12 @@ export function SafetyInspectionScheduleDetail({
     setRecordDialogOpen(true)
   }
 
-  const handleExportReport = () => {
+  const handleExportReport = async () => {
+    // Fetch history records if not already loaded
+    if (historyRecords.length === 0) {
+      await fetchHistoryRecords()
+    }
+    
     // Generate the report HTML
     const reportHTML = generateReportHTML()
     
@@ -505,6 +541,128 @@ export function SafetyInspectionScheduleDetail({
           `).join('')}
         </div>
 
+        <!-- Inspection History Section -->
+        ${historyRecords.length > 0 ? `
+        <div class="section">
+          <h2 class="section-title">📊 INSPECTION HISTORY (${historyRecords.length} Records)</h2>
+          ${historyRecords.slice(0, 10).map(record => `
+          <div class="content-box" style="margin-bottom: 16px; border-left: 4px solid ${
+            record.complianceStatus === 'compliant' ? '#10b981' :
+            record.complianceStatus === 'non_compliant' ? '#ef4444' : '#f59e0b'
+          };">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+              <div>
+                <h4 style="font-size: 16px; font-weight: 600; color: #374151; margin: 0 0 4px 0;">
+                  ${formatDate(record.completedDate)}
+                </h4>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                  <span style="background: ${
+                    record.complianceStatus === 'compliant' ? '#dcfce7; color: #166534' :
+                    record.complianceStatus === 'non_compliant' ? '#fee2e2; color: #991b1b' : '#fef3c7; color: #92400e'
+                  }; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                    ${record.complianceStatus.replace('_', ' ').toUpperCase()}
+                  </span>
+                  <span style="background: #f3f4f6; color: #6b7280; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                    ${record.overallComplianceScore}% COMPLIANCE
+                  </span>
+                  ${record.adminVerified ? `
+                  <span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                    VERIFIED
+                  </span>
+                  ` : ''}
+                </div>
+              </div>
+              <div style="text-align: right; font-size: 12px; color: #6b7280;">
+                <div><strong>Inspector:</strong> ${record.inspector}</div>
+                <div><strong>Duration:</strong> ${record.actualDuration}h</div>
+                <div><strong>Violations:</strong> ${record.violations.length}</div>
+              </div>
+            </div>
+            
+            ${record.adminVerified ? `
+            <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+              <div style="font-size: 12px; font-weight: 600; color: #0c4a6e; margin-bottom: 4px;">
+                Admin Verification
+              </div>
+              <div style="font-size: 12px; color: #0369a1;">
+                <div><strong>Verified by:</strong> ${record.adminVerifiedByName || record.adminVerifiedBy || 'N/A'}</div>
+                <div><strong>Verified at:</strong> ${record.adminVerifiedAt ? formatDateTime(record.adminVerifiedAt) : 'N/A'}</div>
+                ${record.adminNotes ? `<div style="margin-top: 4px;"><strong>Notes:</strong> ${record.adminNotes}</div>` : ''}
+              </div>
+            </div>
+            ` : ''}
+            
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 12px;">
+              <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 8px;">
+                Checklist Completion Summary:
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
+                ${record.categoryResults.map(category => {
+                  const completedItems = category.checklistItems.filter(item => item.completed).length
+                  const totalItems = category.checklistItems.length
+                  const completionPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
+                  return `
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #6b7280;">
+                    <span>${category.categoryName}</span>
+                    <span style="color: ${
+                      completionPercentage === 100 ? '#059669' :
+                      completionPercentage >= 80 ? '#d97706' : '#dc2626'
+                    }; font-weight: 600;">
+                      ${completedItems}/${totalItems} (${completionPercentage}%)
+                    </span>
+                  </div>
+                  `
+                }).join('')}
+              </div>
+            </div>
+            
+            ${record.violations.length > 0 ? `
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 12px;">
+              <div style="font-size: 12px; font-weight: 600; color: #dc2626; margin-bottom: 8px;">
+                Safety Violations (${record.violations.length}):
+              </div>
+              ${record.violations.slice(0, 3).map(violation => `
+              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 8px; margin-bottom: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; font-weight: 600; color: #991b1b;">${violation.description}</span>
+                  <span style="background: #fee2e2; color: #991b1b; padding: 1px 6px; border-radius: 2px; font-size: 10px; font-weight: 600;">
+                    ${violation.riskLevel.toUpperCase()}
+                  </span>
+                </div>
+                <div style="font-size: 10px; color: #7f1d1d; margin-top: 2px;">${violation.location}</div>
+              </div>
+              `).join('')}
+              ${record.violations.length > 3 ? `
+              <div style="font-size: 10px; color: #6b7280; text-align: center;">
+                +${record.violations.length - 3} more violations
+              </div>
+              ` : ''}
+            </div>
+            ` : ''}
+            
+            ${record.notes ? `
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 12px;">
+              <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px;">Inspection Notes:</div>
+              <div style="font-size: 11px; color: #6b7280; line-height: 1.4;">${record.notes}</div>
+            </div>
+            ` : ''}
+          </div>
+          `).join('')}
+          ${historyRecords.length > 10 ? `
+          <div style="text-align: center; font-size: 12px; color: #6b7280; margin-top: 16px;">
+            Showing latest 10 inspections of ${historyRecords.length} total records
+          </div>
+          ` : ''}
+        </div>
+        ` : `
+        <div class="section">
+          <h2 class="section-title">📊 INSPECTION HISTORY</h2>
+          <div class="content-box">
+            <div class="content-text">No inspection history available for this schedule</div>
+          </div>
+        </div>
+        `}
+
         <!-- Schedule History Section -->
         <div class="section">
           <h2 class="section-title">📝 SCHEDULE HISTORY</h2>
@@ -843,14 +1001,170 @@ export function SafetyInspectionScheduleDetail({
                     <CardTitle className="flex items-center gap-2">
                       <Clock className="h-5 w-5" />
                       Inspection History
+                      {historyRecords.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {historyRecords.length} records
+                        </Badge>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Inspection history will be shown here</p>
-                      <p className="text-xs mt-2">This feature will display past inspection records for this schedule</p>
-                    </div>
+                    {isLoadingHistory ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">Loading inspection history...</p>
+                      </div>
+                    ) : historyRecords.length > 0 ? (
+                      <div className="space-y-4">
+                        {historyRecords.map((record, index) => (
+                          <Card key={record.id} className="border-l-4 border-l-blue-500">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <Badge 
+                                    variant={record.status === 'completed' ? 'default' : 'secondary'}
+                                    className="capitalize"
+                                  >
+                                    {record.status.replace('_', ' ')}
+                                  </Badge>
+                                  <Badge 
+                                    className={
+                                      record.complianceStatus === 'compliant' ? 'bg-green-100 text-green-800' :
+                                      record.complianceStatus === 'non_compliant' ? 'bg-red-100 text-red-800' :
+                                      'bg-yellow-100 text-yellow-800'
+                                    }
+                                  >
+                                    {record.complianceStatus.replace('_', ' ')}
+                                  </Badge>
+                                  <span className="text-sm font-medium">{record.overallComplianceScore}% compliance</span>
+                                </div>
+                                <span className="text-sm text-muted-foreground">
+                                  {formatDateTime(record.completedDate)}
+                                </span>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3 text-sm">
+                                <div>
+                                  <span className="font-medium text-muted-foreground">Inspector:</span>
+                                  <p>{record.inspector}</p>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-muted-foreground">Duration:</span>
+                                  <p>{record.actualDuration} hours</p>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-muted-foreground">Violations:</span>
+                                  <p className={record.violations.length > 0 ? 'text-red-600 font-medium' : 'text-green-600'}>
+                                    {record.violations.length} found
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-muted-foreground">Admin Verified:</span>
+                                  <p className={record.adminVerified ? 'text-green-600' : 'text-yellow-600'}>
+                                    {record.adminVerified ? 'Yes' : 'Pending'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {record.adminVerified && (
+                                <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <CheckCircle className="h-4 w-4 text-blue-600" />
+                                    <span className="text-sm font-medium text-blue-800">Admin Verification</span>
+                                  </div>
+                                  <div className="text-sm text-blue-700">
+                                    <p><strong>Verified by:</strong> {record.adminVerifiedByName || record.adminVerifiedBy || 'N/A'}</p>
+                                    <p><strong>Verified at:</strong> {record.adminVerifiedAt ? formatDateTime(record.adminVerifiedAt) : 'N/A'}</p>
+                                    {record.adminNotes && (
+                                      <p className="mt-1"><strong>Notes:</strong> {record.adminNotes}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {record.notes && (
+                                <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-3">
+                                  <h4 className="text-sm font-medium text-gray-800 mb-1">Inspection Notes:</h4>
+                                  <p className="text-sm text-gray-700">{record.notes}</p>
+                                </div>
+                              )}
+
+                              {/* Checklist Summary */}
+                              <div className="border-t pt-3">
+                                <h4 className="text-sm font-medium mb-2">Checklist Summary:</h4>
+                                <div className="space-y-2">
+                                  {record.categoryResults.map((category) => {
+                                    const completedItems = category.checklistItems.filter(item => item.completed).length
+                                    const totalItems = category.checklistItems.length
+                                    const completionPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
+                                    
+                                    return (
+                                      <div key={category.categoryId} className="flex items-center justify-between text-sm">
+                                        <span className="font-medium">{category.categoryName}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-muted-foreground">
+                                            {completedItems}/{totalItems} items
+                                          </span>
+                                          <Badge 
+                                            variant="outline" 
+                                            className={
+                                              completionPercentage === 100 ? 'border-green-500 text-green-700' :
+                                              completionPercentage >= 80 ? 'border-yellow-500 text-yellow-700' :
+                                              'border-red-500 text-red-700'
+                                            }
+                                          >
+                                            {completionPercentage}%
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+
+                              {record.violations.length > 0 && (
+                                <div className="border-t pt-3 mt-3">
+                                  <h4 className="text-sm font-medium text-red-700 mb-2">
+                                    Safety Violations ({record.violations.length}):
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {record.violations.slice(0, 3).map((violation) => (
+                                      <div key={violation.id} className="bg-red-50 border border-red-200 rounded p-2">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-sm font-medium text-red-800">{violation.description}</span>
+                                          <Badge 
+                                            className={
+                                              violation.riskLevel === 'critical' ? 'bg-red-100 text-red-800' :
+                                              violation.riskLevel === 'high' ? 'bg-orange-100 text-orange-800' :
+                                              violation.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                              'bg-green-100 text-green-800'
+                                            }
+                                          >
+                                            {violation.riskLevel}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-xs text-red-700 mt-1">{violation.location}</p>
+                                      </div>
+                                    ))}
+                                    {record.violations.length > 3 && (
+                                      <p className="text-xs text-muted-foreground">
+                                        +{record.violations.length - 3} more violations
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No inspection history found</p>
+                        <p className="text-xs mt-2">This schedule has no completed inspection records yet</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress"
 import { MoreHorizontal, CheckCircle, XCircle, Clock, User, Calendar, Eye, Shield, MessageSquare, History, Edit } from "lucide-react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { SafetyInspectionScheduleDetail } from "./safety-inspection-schedule-detail"
+import { SafetyInspectionRecordDetail } from "./safety-inspection-record-detail"
 import { SafetyInspectionRecordForm } from "./safety-inspection-record-form"
 import { VerificationTroubleshooting } from "./verification-troubleshooting"
 import { useSafetyInspectionStore } from "@/stores/safety-inspection-store"
@@ -37,6 +38,10 @@ export function SafetyInspectionRecordTableEnhanced({ records, schedules, isLoad
     open: false,
     schedule: null
   })
+  const [recordDetailDialog, setRecordDetailDialog] = useState<{ open: boolean; record: SafetyInspectionRecord | null }>({
+    open: false,
+    record: null
+  })
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<SafetyInspectionRecord | null>(null)
   const [adminNotes, setAdminNotes] = useState("")
@@ -44,37 +49,8 @@ export function SafetyInspectionRecordTableEnhanced({ records, schedules, isLoad
   const [recordToEdit, setRecordToEdit] = useState<SafetyInspectionRecord | null>(null)
 
   const handleRecordClick = (record: SafetyInspectionRecord) => {
-    const relatedSchedule = schedules.find(schedule => schedule.id === record.scheduleId)
-    
-    if (relatedSchedule) {
-      setDetailDialog({ open: true, schedule: relatedSchedule })
-    } else {
-      const fallbackSchedule: SafetyInspectionSchedule = {
-        id: record.scheduleId,
-        assetId: record.assetId,
-        assetName: record.assetName,
-        assetTag: '',
-        assetType: 'Unknown',
-        location: 'Unknown',
-        department: record.department,
-        title: `Safety Inspection for ${record.assetName}`,
-        description: 'Inspection record details',
-        frequency: 'monthly' as const,
-        startDate: record.completedDate,
-        nextDueDate: record.nextScheduledDate || new Date().toISOString(),
-        priority: 'medium' as const,
-        riskLevel: 'medium' as const,
-        estimatedDuration: record.actualDuration,
-        assignedInspector: record.inspector,
-        safetyStandards: [],
-        status: 'completed' as const,
-        createdBy: record.inspector,
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-        checklistCategories: []
-      }
-      setDetailDialog({ open: true, schedule: fallbackSchedule })
-    }
+    // Open the record detail dialog instead of schedule detail
+    setRecordDetailDialog({ open: true, record })
   }
 
   const handleVerifyClick = (record: SafetyInspectionRecord) => {
@@ -418,6 +394,13 @@ export function SafetyInspectionRecordTableEnhanced({ records, schedules, isLoad
         schedule={detailDialog.schedule}
         isOpen={detailDialog.open}
         onClose={() => setDetailDialog({ open: false, schedule: null })}
+      />
+
+      {/* Record Detail Dialog */}
+      <SafetyInspectionRecordDetail
+        record={recordDetailDialog.record}
+        isOpen={recordDetailDialog.open}
+        onClose={() => setRecordDetailDialog({ open: false, record: null })}
       />
     </>
   )

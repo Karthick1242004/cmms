@@ -81,7 +81,7 @@ export function SafetyInspectionSchedulesReport({ onClose }: SafetyInspectionSch
     
     // Group by department
     const departmentGroups = allSchedules.reduce((acc, schedule) => {
-      const dept = schedule.department || 'Unknown'
+      const dept = schedule.department || schedule.departmentName || schedule.assetDepartment || 'Unknown'
       if (!acc[dept]) {
         acc[dept] = { count: 0, active: 0, overdue: 0, completed: 0 }
       }
@@ -437,7 +437,7 @@ export function SafetyInspectionSchedulesReport({ onClose }: SafetyInspectionSch
                 <tr>
                   <td class="font-medium">${schedule.title}</td>
                   <td>${schedule.assetName}</td>
-                  <td>${schedule.department}</td>
+                  <td>${schedule.department || schedule.departmentName || schedule.assetDepartment || 'N/A'}</td>
                   <td class="priority-${schedule.priority}">${schedule.priority.toUpperCase()}</td>
                   <td>
                     <span class="risk-${schedule.riskLevel} px-2 py-1 rounded text-xs font-medium">
@@ -605,7 +605,7 @@ export function SafetyInspectionSchedulesReport({ onClose }: SafetyInspectionSch
                 <tr>
                   <td class="font-medium">${schedule.title}</td>
                   <td>${schedule.assetName}</td>
-                  <td>${schedule.department}</td>
+                  <td>${schedule.department || schedule.departmentName || schedule.assetDepartment || 'N/A'}</td>
                   <td class="priority-${schedule.priority}">${schedule.priority.toUpperCase()}</td>
                   <td>
                     <span class="risk-${schedule.riskLevel} px-2 py-1 rounded text-xs font-medium">
@@ -648,7 +648,7 @@ export function SafetyInspectionSchedulesReport({ onClose }: SafetyInspectionSch
                 <tr>
                   <td class="font-medium">${schedule.title}</td>
                   <td class="text-sm">${schedule.assetName}</td>
-                  <td>${schedule.department}</td>
+                  <td>${schedule.department || schedule.departmentName || schedule.assetDepartment || 'N/A'}</td>
                   <td class="priority-${schedule.priority}">${schedule.priority.charAt(0).toUpperCase() + schedule.priority.slice(1)}</td>
                   <td>
                     <span class="risk-${schedule.riskLevel} px-2 py-1 rounded text-xs font-medium">
