@@ -160,6 +160,39 @@ export async function DELETE(
       );
     }
 
+    // Only super_admin can delete maintenance records
+    if (user.accessLevel !== 'super_admin') {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - Only super administrators can delete maintenance records' },
+        { status: 403 }
+      );
+    }
+
+    // First, fetch the maintenance record details for activity logging
+    let recordDetails = null;
+    try {
+      const fetchResponse = await fetch(`${SERVER_BASE_URL}/api/maintenance/records/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'x-user-id': user.id,
+          'x-user-name': user.name,
+          'x-user-email': user.email,
+          'x-user-department': user.department,
+          'x-user-role': 'admin',
+        },
+      });
+
+      if (fetchResponse.ok) {
+        const fetchData = await fetchResponse.json();
+        recordDetails = fetchData.data;
+      }
+    } catch (fetchError) {
+      console.error('Error fetching maintenance record details for logging:', fetchError);
+      // Continue with deletion even if we can't fetch details
+    }
+
     // Forward request to backend server with JWT token
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/records/${id}`, {
       method: 'DELETE',
@@ -170,7 +203,7 @@ export async function DELETE(
         'x-user-name': user.name,
         'x-user-email': user.email,
         'x-user-department': user.department,
-        'x-user-role': user.role === 'super_admin' ? 'admin' : user.role === 'department_admin' ? 'manager' : 'technician',
+        'x-user-role': 'admin',
       },
     });
 
@@ -183,6 +216,65 @@ export async function DELETE(
     }
 
     const data = await response.json();
+
+    // Create activity log entry for maintenance record deletion
+    try {
+      const clientIP = request.headers.get('x-forwarded-for') || 
+                      request.headers.get('x-real-ip') || 
+                      'unknown';
+      const userAgent = request.headers.get('user-agent') || 'unknown';
+
+      const protocol = request.headers.get('x-forwarded-proto') || 'http';
+      const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+      const baseUrl = `${protocol}://${host}`;
+
+      // Create activity log entry
+      const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Cookie': request.headers.get('Cookie') || '',
+        },
+        body: JSON.stringify({
+          assetId: recordDetails?.assetId || id,
+          assetName: recordDetails?.assetName || 'Unknown Asset',
+          assetTag: recordDetails?.assetTag || 'Unknown',
+          module: 'maintenance',
+          action: 'deleted',
+          title: 'Maintenance Record Deleted',
+          description: `Maintenance record for ${recordDetails?.assetName || 'Unknown Asset'} was deleted by super administrator`,
+          assignedTo: recordDetails?.technicianId || 'unknown',
+          assignedToName: recordDetails?.technician || 'Unknown Technician',
+          priority: 'high',
+          status: 'deleted',
+          recordId: id,
+          recordType: 'maintenance_record',
+          metadata: {
+            deletedBy: user.name,
+            deletedByEmail: user.email,
+            deletedByDepartment: user.department,
+            originalTechnician: recordDetails?.technician || 'Unknown',
+            originalAsset: recordDetails?.assetName || 'Unknown Asset',
+            originalStatus: recordDetails?.status || 'Unknown',
+            originalDuration: recordDetails?.actualDuration || 0,
+            originalCost: recordDetails?.cost || 0,
+            deletionReason: 'Super administrator deletion',
+            deletionTimestamp: new Date().toISOString()
+          }
+        })
+      });
+
+      if (activityLogResponse.ok) {
+        console.log('✅ [Maintenance] - Activity log created for record deletion');
+      } else {
+        console.error('❌ [Maintenance] - Activity log creation failed for deletion:', await activityLogResponse.text());
+      }
+    } catch (logError) {
+      console.error('Failed to create activity log for maintenance record deletion:', logError);
+      // Don't fail the main operation if logging fails
+    }
+
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error('Error deleting maintenance record:', error);

@@ -22,6 +22,7 @@ export const useMaintenanceStore = create<MaintenanceState>()(
         statusFilter: "all",
         priorityFilter: "all",
         frequencyFilter: "all",
+        dateFilter: "30days",
         isLoading: false,
         isScheduleDialogOpen: false,
         isRecordDialogOpen: false,
@@ -232,6 +233,14 @@ export const useMaintenanceStore = create<MaintenanceState>()(
             get().filterSchedules()
           }),
 
+        setDateFilter: (dateFilter) => {
+          set((state) => {
+            state.dateFilter = dateFilter
+          })
+          // Refetch records with new date filter for optimal performance
+          get().fetchRecords({ dateFilter })
+        },
+
         setLoading: (loading) =>
           set((state) => {
             state.isLoading = loading
@@ -303,6 +312,7 @@ export const useMaintenanceStore = create<MaintenanceState>()(
                 record.notes?.toLowerCase().includes(term)
             )
 
+            // Apply status filter
             if (state.statusFilter !== "all") {
               if (state.statusFilter === "verified") {
                 filtered = filtered.filter((record) => record.adminVerified)
@@ -310,6 +320,53 @@ export const useMaintenanceStore = create<MaintenanceState>()(
                 filtered = filtered.filter((record) => !record.adminVerified)
               } else {
                 filtered = filtered.filter((record) => record.status === state.statusFilter)
+              }
+            }
+
+            // Apply date filter
+            if (state.dateFilter !== "all") {
+              const now = new Date()
+              let cutoffDate: Date
+
+              switch (state.dateFilter) {
+                case "yesterday":
+                  cutoffDate = new Date(now)
+                  cutoffDate.setDate(cutoffDate.getDate() - 1)
+                  cutoffDate.setHours(0, 0, 0, 0)
+                  filtered = filtered.filter((record) => {
+                    const recordDate = new Date(record.completedDate)
+                    const nextDay = new Date(cutoffDate)
+                    nextDay.setDate(nextDay.getDate() + 1)
+                    return recordDate >= cutoffDate && recordDate < nextDay
+                  })
+                  break
+                case "7days":
+                  cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+                  filtered = filtered.filter((record) => new Date(record.completedDate) >= cutoffDate)
+                  break
+                case "30days":
+                  cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+                  filtered = filtered.filter((record) => new Date(record.completedDate) >= cutoffDate)
+                  break
+                case "2months":
+                  cutoffDate = new Date(now)
+                  cutoffDate.setMonth(cutoffDate.getMonth() - 2)
+                  filtered = filtered.filter((record) => new Date(record.completedDate) >= cutoffDate)
+                  break
+                case "6months":
+                  cutoffDate = new Date(now)
+                  cutoffDate.setMonth(cutoffDate.getMonth() - 6)
+                  filtered = filtered.filter((record) => new Date(record.completedDate) >= cutoffDate)
+                  break
+                case "1year":
+                  cutoffDate = new Date(now)
+                  cutoffDate.setFullYear(cutoffDate.getFullYear() - 1)
+                  filtered = filtered.filter((record) => new Date(record.completedDate) >= cutoffDate)
+                  break
+                case "all":
+                default:
+                  // No date filtering
+                  break
               }
             }
 
@@ -345,19 +402,65 @@ export const useMaintenanceStore = create<MaintenanceState>()(
           }
         },
 
-        fetchRecords: async () => {
+        fetchRecords: async (options?: { 
+          dateFilter?: string, 
+          limit?: number,
+          includeAllTime?: boolean 
+        }) => {
           set((state) => {
             state.isLoading = true
           })
 
           try {
-            // Note: Department filtering is now handled by the API based on user authentication
-            // No need to pass department explicitly as it's extracted from the user session/token
-            const response = await maintenanceApi.records.getAll({
-              limit: 100, // Get more records for now
+            // Determine query parameters based on date filter for better performance
+            const currentDateFilter = options?.dateFilter || get().dateFilter
+            const apiParams: any = {
+              limit: options?.limit || 1000,
               sortBy: 'completedDate',
               sortOrder: 'desc'
-            })
+            }
+
+            // Add server-side date filtering for better performance
+            if (currentDateFilter !== "all" && !options?.includeAllTime) {
+              const now = new Date()
+              let startDate: string | undefined
+
+              switch (currentDateFilter) {
+                case "yesterday":
+                  const yesterday = new Date(now)
+                  yesterday.setDate(yesterday.getDate() - 1)
+                  yesterday.setHours(0, 0, 0, 0)
+                  startDate = yesterday.toISOString()
+                  break
+                case "7days":
+                  startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+                  break
+                case "30days":
+                  startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+                  break
+                case "2months":
+                  const twoMonthsAgo = new Date(now)
+                  twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2)
+                  startDate = twoMonthsAgo.toISOString()
+                  break
+                case "6months":
+                  const sixMonthsAgo = new Date(now)
+                  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+                  startDate = sixMonthsAgo.toISOString()
+                  break
+                case "1year":
+                  const oneYearAgo = new Date(now)
+                  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+                  startDate = oneYearAgo.toISOString()
+                  break
+              }
+
+              if (startDate) {
+                apiParams.startDate = startDate
+              }
+            }
+
+            const response = await maintenanceApi.records.getAll(apiParams)
 
             set((state) => {
               state.records = response.data.records

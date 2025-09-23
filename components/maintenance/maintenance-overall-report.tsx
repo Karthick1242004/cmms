@@ -16,7 +16,7 @@ export function MaintenanceOverallReport({
   isOpen, 
   onClose 
 }: MaintenanceOverallReportProps) {
-  const { schedules, records, stats } = useMaintenanceStore()
+  const { schedules, records, filteredRecords, stats, dateFilter } = useMaintenanceStore()
 
   const handleExportReport = () => {
     // Generate the report HTML
@@ -53,12 +53,23 @@ export function MaintenanceOverallReport({
   }
 
   const getRecentRecords = () => {
-    const oneMonthAgo = new Date()
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-    return records
-      .filter(record => new Date(record.completedDate) >= oneMonthAgo)
+    // Use filtered records from the store which already applies date filtering
+    // Create a copy to avoid mutating the read-only array
+    return [...filteredRecords]
       .sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime())
-      .slice(0, 10)
+  }
+
+  const getDateRangeDescription = () => {
+    switch (dateFilter) {
+      case "yesterday": return "Yesterday"
+      case "7days": return "Last 7 Days"
+      case "30days": return "Last 30 Days"
+      case "2months": return "Last 2 Months"
+      case "6months": return "Last 6 Months"
+      case "1year": return "Last Year"
+      case "all": return "All Time"
+      default: return "Last 30 Days"
+    }
   }
 
   const getDepartmentStats = () => {
@@ -503,7 +514,7 @@ export function MaintenanceOverallReport({
         
         ${recentRecords.length > 0 ? `
         <div class="section">
-          <h2 class="section-title">📈 Recent Maintenance Records (Last 30 Days)</h2>
+          <h2 class="section-title">📈 Recent Maintenance Records (${getDateRangeDescription()})</h2>
           <table>
             <thead>
               <tr>
@@ -593,6 +604,15 @@ export function MaintenanceOverallReport({
           <p className="text-sm text-gray-600">
             Generate a comprehensive maintenance report that includes overview statistics, critical issues, upcoming schedules, and department performance. The report will open in a new window with print functionality.
           </p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Report Scope</h4>
+            <div className="space-y-1 text-xs text-blue-800">
+              <div><strong>Total Schedules:</strong> {schedules.length}</div>
+              <div><strong>Records for {getDateRangeDescription()}:</strong> {filteredRecords.length} out of {records.length} total</div>
+              <div><strong>Report Date:</strong> {formatDate(new Date().toISOString())}</div>
+            </div>
+          </div>
           
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="text-center p-3 bg-blue-50 rounded-lg">

@@ -17,6 +17,7 @@ import { MaintenanceScheduleTable } from "@/components/maintenance/maintenance-s
 import { MaintenanceRecordTable } from "@/components/maintenance/maintenance-record-table"
 import { MaintenanceStats } from "@/components/maintenance/maintenance-stats"
 import { MaintenanceOverallReport } from "@/components/maintenance/maintenance-overall-report"
+import { MaintenanceDateFilter } from "@/components/maintenance/maintenance-date-filter"
 import { LogTrackingTab } from "@/components/common/log-tracking-tab"
 
 export default function MaintenancePage() {
@@ -29,12 +30,14 @@ export default function MaintenancePage() {
     statusFilter,
     priorityFilter,
     frequencyFilter,
+    dateFilter,
     isLoading,
     stats,
     setSearchTerm,
     setStatusFilter,
     setPriorityFilter,
     setFrequencyFilter,
+    setDateFilter,
     fetchSchedules,
     fetchRecords,
   } = useMaintenanceStore()
@@ -71,7 +74,7 @@ export default function MaintenancePage() {
     } else {
       filterRecords()
     }
-  }, [searchTerm, statusFilter, priorityFilter, frequencyFilter, activeTab])
+  }, [searchTerm, statusFilter, priorityFilter, frequencyFilter, dateFilter, activeTab])
 
   const isAdmin = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
 
@@ -174,6 +177,13 @@ export default function MaintenancePage() {
             </>
           )}
 
+          {activeTab === "records" && (
+            <MaintenanceDateFilter
+              value={dateFilter}
+              onChange={setDateFilter}
+            />
+          )}
+
           <Button 
             variant="outline" 
             onClick={() => {
@@ -181,6 +191,7 @@ export default function MaintenancePage() {
               setStatusFilter("all")
               setPriorityFilter("all")
               setFrequencyFilter("all")
+              setDateFilter("30days")
             }}
             className="ml-2"
           >

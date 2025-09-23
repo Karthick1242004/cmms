@@ -9,13 +9,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { MoreHorizontal, CheckCircle, XCircle, Clock, User, Calendar, Eye, Shield, MessageSquare, Trash2 } from "lucide-react"
+import { MoreHorizontal, CheckCircle, XCircle, Clock, User, Calendar, Eye, Shield, MessageSquare } from "lucide-react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { MaintenanceRecordDetail } from "./maintenance-record-detail"
-import { useAuthStore } from "@/stores/auth-store"
-import { useToast } from "@/hooks/use-toast"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { MaintenanceRecord } from "@/types/maintenance"
 
 interface MaintenanceRecordTableProps {
@@ -25,19 +22,11 @@ interface MaintenanceRecordTableProps {
 }
 
 export function MaintenanceRecordTable({ records, isLoading, isAdmin }: MaintenanceRecordTableProps) {
-  const { verifyRecord, fetchRecords } = useMaintenanceStore()
+  const { verifyRecord } = useMaintenanceStore()
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<MaintenanceRecord | null>(null)
   const [adminNotes, setAdminNotes] = useState("")
-  const [isDeleting, setIsDeleting] = useState(false)
-  
-  const { user } = useAuthStore()
-  const { toast } = useToast()
-  
-  // Check if user is super admin
-  const isSuperAdmin = user?.accessLevel === 'super_admin'
 
   const handleVerifyClick = (record: MaintenanceRecord) => {
     setSelectedRecord(record)
@@ -50,11 +39,6 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
     setDetailDialogOpen(true)
   }
 
-  const handleDeleteClick = (record: MaintenanceRecord) => {
-    setSelectedRecord(record)
-    setDeleteDialogOpen(true)
-  }
-
   const handleVerifyConfirm = () => {
     if (selectedRecord) {
       verifyRecord(selectedRecord.id, adminNotes)
@@ -62,59 +46,6 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
     }
     setVerifyDialogOpen(false)
     setAdminNotes("")
-  }
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedRecord || !user) return
-
-    setIsDeleting(true)
-    try {
-      const token = localStorage.getItem('auth-token')
-      if (!token) {
-        toast({
-          title: "Authentication Error",
-          description: "Please log in again to perform this action.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      const response = await fetch(`/api/maintenance/records/${selectedRecord.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        toast({
-          title: "Record Deleted",
-          description: `Maintenance record for ${selectedRecord.assetName} has been deleted successfully.`,
-        })
-        setDeleteDialogOpen(false)
-        setSelectedRecord(null)
-        // Refresh the records list
-        fetchRecords()
-      } else {
-        toast({
-          title: "Delete Failed",
-          description: data.message || "Failed to delete maintenance record.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error('Error deleting maintenance record:', error)
-      toast({
-        title: "Delete Failed",
-        description: "An error occurred while deleting the maintenance record.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsDeleting(false)
-    }
   }
 
   const getStatusColor = (status: string) => {
@@ -283,15 +214,6 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                               Verify Record
                             </DropdownMenuItem>
                           )}
-                          {isSuperAdmin && (
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteClick(record)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Record
-                            </DropdownMenuItem>
-                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -361,57 +283,6 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-destructive" />
-              Delete Maintenance Record
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this maintenance record? This action cannot be undone.
-              <br /><br />
-              <strong>Record Details:</strong>
-              <br />
-              • Asset: {selectedRecord?.assetName}
-              <br />
-              • Technician: {selectedRecord?.technician}
-              <br />
-              • Date: {selectedRecord?.completedDate ? formatDate(selectedRecord.completedDate) : 'N/A'}
-              <br />
-              • Status: {selectedRecord?.status}
-              <br /><br />
-              <span className="text-destructive font-semibold">
-                This deletion will be logged in the activity log for audit purposes.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Record
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Detail Dialog - Enhanced with Checklist and History */}
       <MaintenanceRecordDetail 

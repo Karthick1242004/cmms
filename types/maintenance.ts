@@ -112,6 +112,7 @@ export interface MaintenanceState {
   statusFilter: string
   priorityFilter: string
   frequencyFilter: string
+  dateFilter: string
   isLoading: boolean
   isScheduleDialogOpen: boolean
   isRecordDialogOpen: boolean
@@ -132,6 +133,7 @@ export interface MaintenanceState {
   setStatusFilter: (status: string) => void
   setPriorityFilter: (priority: string) => void
   setFrequencyFilter: (frequency: string) => void
+  setDateFilter: (dateFilter: string) => void
   setLoading: (loading: boolean) => void
   setScheduleDialogOpen: (open: boolean) => void
   setRecordDialogOpen: (open: boolean) => void
