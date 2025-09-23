@@ -37,12 +37,12 @@ import React from 'react';
 import { NoticeBoardForm } from '@/components/notice-board/notice-board-form';
 import { BannerManagement } from '@/components/banner/banner-management';
 
-// Priority colors
+// Priority colors with enhanced styling
 const priorityColors = {
-  low: 'bg-blue-100 text-blue-800 border-blue-200',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  high: 'bg-orange-100 text-orange-800 border-orange-200',
-  urgent: 'bg-red-100 text-red-800 border-red-200',
+  low: 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-200 shadow-sm',
+  medium: 'bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-700 border-yellow-200 shadow-sm',
+  high: 'bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 border-orange-200 shadow-sm',
+  urgent: 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-red-200 shadow-sm',
 };
 
 // Type icons
@@ -153,35 +153,92 @@ export default function NoticeBoardPage() {
 
   const renderNoticeCard = (notice: NoticeBoard) => {
     const TypeIcon = typeIcons[notice.type];
+    const isExpired = notice.expiresAt && new Date(notice.expiresAt) < new Date();
+    const isExpiringSoon = notice.expiresAt && new Date(notice.expiresAt) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     
     return (
-      <Card key={notice.id} className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
+      <Card key={notice.id} className={`group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border shadow-lg ${
+        notice.priority === 'urgent' 
+          ? 'bg-gradient-to-br from-red-50 via-white to-red-50/30 border-red-200/60 hover:shadow-red-100/40' 
+          : notice.priority === 'high'
+          ? 'bg-gradient-to-br from-orange-50 via-white to-orange-50/30 border-orange-200/60 hover:shadow-orange-100/40'
+          : notice.priority === 'medium'
+          ? 'bg-gradient-to-br from-yellow-50 via-white to-yellow-50/30 border-yellow-200/60 hover:shadow-yellow-100/40'
+          : 'bg-gradient-to-br from-blue-50 via-white to-blue-50/30 border-blue-200/60 hover:shadow-blue-100/40'
+      }`}>
+        <CardHeader className="pb-2 relative overflow-hidden">
+          {/* Priority accent border */}
+          <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+            notice.priority === 'urgent' ? 'bg-gradient-to-r from-red-500 to-red-600' :
+            notice.priority === 'high' ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
+            notice.priority === 'medium' ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
+            'bg-gradient-to-r from-blue-500 to-blue-600'
+          }`} />
+          
+          {/* Corner ribbon for urgent/expired notices */}
+          {(notice.priority === 'urgent' || isExpired) && (
+            <div className={`absolute top-2 right-2 px-2 py-1 text-xs font-bold text-white rounded-full shadow-sm ${
+              isExpired ? 'bg-red-600' : 'bg-red-500'
+            }`}>
+              {isExpired ? 'EXPIRED' : 'URGENT'}
+            </div>
+          )}
+          
+          <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <TypeIcon className="h-4 w-4 text-gray-500" />
-                <Badge variant="outline" className={priorityColors[notice.priority]}>
-                  {getPriorityIcon(notice.priority)}
-                  <span className="ml-1 capitalize">{notice.priority}</span>
-                </Badge>
-                {getStatusIcon(notice)}
-                {!notice.isPublished && (
-                  <Badge variant="secondary" className="bg-gray-100 text-gray-700 text-xs">
-                    Draft
+              {/* Header with type and priority */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`p-2 rounded-lg shadow-sm ${
+                  notice.type === 'text' ? 'bg-blue-100 text-blue-700' :
+                  notice.type === 'link' ? 'bg-green-100 text-green-700' :
+                  'bg-purple-100 text-purple-700'
+                }`}>
+                  <TypeIcon className="h-4 w-4" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={`${priorityColors[notice.priority]} text-xs font-semibold shadow-sm`}>
+                    {getPriorityIcon(notice.priority)}
+                    <span className="ml-1 uppercase tracking-wide">{notice.priority}</span>
                   </Badge>
-                )}
+                  {getStatusIcon(notice)}
+                  {!notice.isPublished && (
+                    <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs font-semibold shadow-sm">
+                      DRAFT
+                    </Badge>
+                  )}
+                  {isExpiringSoon && !isExpired && (
+                    <Badge className="bg-yellow-200 text-yellow-800 text-xs font-semibold shadow-sm">
+                      EXPIRING SOON
+                    </Badge>
+                  )}
+                </div>
               </div>
-              <CardTitle className="text-lg line-clamp-2 cursor-pointer hover:text-blue-600" 
+              
+              {/* Title */}
+              <CardTitle className="text-xl font-bold line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors leading-tight mb-2" 
                         onClick={() => handleViewNotice(notice)}>
                 {notice.title}
               </CardTitle>
+              
+              {/* Author and date info */}
+              <div className="flex items-center gap-3 text-sm text-gray-600 mb-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    {notice.createdByName.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-medium">{notice.createdByName}</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="font-medium">{notice.createdByRole}</span>
+                </div>
+              </div>
             </div>
+            
             {canManageNotices && (
-              <div className="flex items-center gap-1 ml-2">
+              <div className="flex items-center gap-1 ml-3 opacity-70 group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="h-9 w-9 p-0 hover:bg-blue-100 hover:text-blue-700 transition-all shadow-sm"
                   onClick={() => handleEditNotice(notice)}
                 >
                   <Edit className="h-4 w-4" />
@@ -189,6 +246,7 @@ export default function NoticeBoardPage() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-700 transition-all shadow-sm"
                   onClick={() => handleDeleteNotice(notice.id)}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -197,65 +255,148 @@ export default function NoticeBoardPage() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600 line-clamp-3 mb-3">
-            {notice.content}
-          </p>
+        
+        <CardContent className="space-y-4 pt-0">
+          {/* Content preview */}
+          <div className={`p-3 rounded-lg border ${
+            notice.priority === 'urgent' 
+              ? 'bg-red-50/50 border-red-100/80' 
+              : notice.priority === 'high'
+              ? 'bg-orange-50/50 border-orange-100/80'
+              : notice.priority === 'medium'
+              ? 'bg-yellow-50/50 border-yellow-100/80'
+              : 'bg-blue-50/50 border-blue-100/80'
+          }`}>
+            <p className="text-sm text-gray-700 line-clamp-3 leading-relaxed">
+              {notice.content}
+            </p>
+          </div>
           
+          {/* Link/Attachment section */}
           {notice.linkUrl && (
-            <div className="mb-3">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <ExternalLink className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-semibold text-blue-800">Attachment</span>
+              </div>
               <a 
                 href={notice.linkUrl} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                className="text-blue-700 hover:text-blue-800 text-sm font-medium transition-colors hover:underline"
               >
-                <ExternalLink className="h-3 w-3" />
-                {notice.fileName || 'View Link'}
+                {notice.fileName || notice.linkUrl}
               </a>
             </div>
           )}
 
+          {/* Tags section */}
           {notice.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {notice.tags.slice(0, 3).map((tag, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {tag}
+            <div className="flex flex-wrap gap-1.5">
+              {notice.tags.slice(0, 4).map((tag, index) => (
+                <Badge key={index} variant="secondary" className="text-xs bg-gradient-to-r from-gray-100 to-gray-200 hover:from-blue-100 hover:to-blue-200 transition-all shadow-sm">
+                  #{tag}
                 </Badge>
               ))}
-              {notice.tags.length > 3 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{notice.tags.length - 3} more
+              {notice.tags.length > 4 && (
+                <Badge variant="secondary" className="text-xs bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 shadow-sm">
+                  +{notice.tags.length - 4} more
                 </Badge>
               )}
             </div>
           )}
 
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {formatDistanceToNow(new Date(notice.publishedAt || notice.createdAt), { addSuffix: true })}
+          {/* Key metrics row */}
+          <div className={`p-3 rounded-lg border shadow-sm ${
+            notice.priority === 'urgent' 
+              ? 'bg-gradient-to-r from-red-50/50 to-red-100/30 border-red-150/70' 
+              : notice.priority === 'high'
+              ? 'bg-gradient-to-r from-orange-50/50 to-orange-100/30 border-orange-150/70'
+              : notice.priority === 'medium'
+              ? 'bg-gradient-to-r from-yellow-50/50 to-yellow-100/30 border-yellow-150/70'
+              : 'bg-gradient-to-r from-blue-50/50 to-blue-100/30 border-blue-150/70'
+          }`}>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Calendar className={`h-3.5 w-3.5 ${
+                    notice.priority === 'urgent' ? 'text-red-600' :
+                    notice.priority === 'high' ? 'text-orange-600' :
+                    notice.priority === 'medium' ? 'text-yellow-600' :
+                    'text-blue-600'
+                  }`} />
+                  <span className="text-xs font-semibold text-gray-600">PUBLISHED</span>
+                </div>
+                <p className="text-xs font-bold text-gray-800">
+                  {formatDistanceToNow(new Date(notice.publishedAt || notice.createdAt), { addSuffix: true })}
+                </p>
               </div>
-              <div className="flex items-center gap-1">
-                <Eye className="h-3 w-3" />
-                {notice.viewCount} views
+              <div>
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Eye className={`h-3.5 w-3.5 ${
+                    notice.priority === 'urgent' ? 'text-red-600' :
+                    notice.priority === 'high' ? 'text-orange-600' :
+                    notice.priority === 'medium' ? 'text-yellow-600' :
+                    'text-green-600'
+                  }`} />
+                  <span className="text-xs font-semibold text-gray-600">VIEWS</span>
+                </div>
+                <p className="text-xs font-bold text-gray-800">{notice.viewCount}</p>
               </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              <span className="capitalize">{notice.targetAudience}</span>
+              <div>
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Users className={`h-3.5 w-3.5 ${
+                    notice.priority === 'urgent' ? 'text-red-600' :
+                    notice.priority === 'high' ? 'text-orange-600' :
+                    notice.priority === 'medium' ? 'text-yellow-600' :
+                    'text-purple-600'
+                  }`} />
+                  <span className="text-xs font-semibold text-gray-600">AUDIENCE</span>
+                </div>
+                <p className="text-xs font-bold text-gray-800 capitalize">
+                  {notice.targetAudience === 'all' ? 'All Users' : notice.targetAudience}
+                </p>
+              </div>
             </div>
           </div>
 
+          {/* Expiry warning */}
+          {notice.expiresAt && (
+            <div className={`p-2 rounded-lg border text-center ${
+              isExpired 
+                ? 'bg-red-50 border-red-200 text-red-700' 
+                : isExpiringSoon 
+                  ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                  : 'bg-green-50 border-green-200 text-green-700'
+            }`}>
+              <div className="flex items-center justify-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span className="text-xs font-semibold">
+                  {isExpired ? 'EXPIRED' : 'EXPIRES'} {format(new Date(notice.expiresAt), 'MMM d, yyyy')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Management actions */}
           {canManageNotices && (
-            <div className="mt-3 pt-3 border-t flex items-center justify-between">
-              <span className="text-xs text-gray-500">
-                By {notice.createdByName}
-              </span>
+            <div className="pt-3 border-t border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {notice.targetDepartments && notice.targetDepartments.length > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {notice.targetDepartments.slice(0, 2).join(', ')}
+                    {notice.targetDepartments.length > 2 && ` +${notice.targetDepartments.length - 2}`}
+                  </Badge>
+                )}
+              </div>
               <Button
                 variant="outline"
                 size="sm"
+                className={`transition-all shadow-sm font-semibold ${
+                  notice.isPublished 
+                    ? 'border-orange-300 text-orange-700 hover:bg-orange-50 hover:border-orange-400' 
+                    : 'border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400'
+                }`}
                 onClick={() => handleTogglePublish(notice.id, notice.isPublished)}
               >
                 {notice.isPublished ? 'Unpublish' : 'Publish'}
@@ -410,7 +551,7 @@ export default function NoticeBoardPage() {
           )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {filteredNotices.map(renderNoticeCard)}
           </div>
         )}
