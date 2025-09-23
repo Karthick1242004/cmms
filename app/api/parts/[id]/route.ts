@@ -12,10 +12,10 @@ import { createLogEntryServer, generateFieldChanges, getActionDescription } from
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     // Get user context for authentication
     const user = await getUserContext(request);
@@ -68,6 +68,8 @@ export async function GET(
       department: part.department,
       // Image field
       imageSrc: part.imageSrc || '',
+      // External references
+      hyperlink: part.hyperlink || '',
       linkedAssets: part.linkedAssets || [],
       quantity: part.quantity,
       minStockLevel: part.minStockLevel,
@@ -108,10 +110,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     // Get user context for authentication
     const user = await getUserContext(request);
@@ -312,6 +314,8 @@ export async function PUT(
       department: updatedPart.department,
       // Image field
       imageSrc: updatedPart.imageSrc || '',
+      // External references
+      hyperlink: updatedPart.hyperlink || '',
       linkedAssets: updatedPart.linkedAssets || [],
       quantity: updatedPart.quantity,
       minStockLevel: updatedPart.minStockLevel,
@@ -428,10 +432,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     // Get user context for authentication
     const user = await getUserContext(request);

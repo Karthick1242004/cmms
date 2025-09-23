@@ -1181,6 +1181,7 @@ export default function PartsPage() {
       if (data.success) {
         const savedPart = data.data;
         
+        
         if (isEdit) {
           // Update part in the list
           setParts(prev => prev.map(p => p.id === selectedPart?.id ? savedPart : p))
@@ -1282,6 +1283,7 @@ export default function PartsPage() {
       ...part,
       department: isSuperAdmin ? part.department : (user?.department || part.department)
     }
+    
     setFormData(editFormData)
     setValidationErrors({}) // Clear any existing validation errors
     setIsEditDialogOpen(true)

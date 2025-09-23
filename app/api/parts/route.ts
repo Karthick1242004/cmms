@@ -89,6 +89,8 @@ export async function GET(request: NextRequest) {
       department: part.department,
       // Image field
       imageSrc: part.imageSrc || '',
+      // External references
+      hyperlink: part.hyperlink || '',
       linkedAssets: part.linkedAssets || [],
       quantity: part.quantity,
       minStockLevel: part.minStockLevel,

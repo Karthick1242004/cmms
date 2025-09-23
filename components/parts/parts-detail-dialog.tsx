@@ -160,16 +160,20 @@ export function PartsDetailDialog({
                         </Badge>
                       </div>
                       {part.hyperlink && (
-                        <div className="flex items-center gap-2">
-                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                          <a 
-                            href={part.hyperlink} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                          >
-                            External Link
-                          </a>
+                        <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                          <ExternalLink className="h-4 w-4 text-blue-600" />
+                          <div className="flex-1">
+                            <p className="text-xs text-blue-700 font-medium mb-1">External Documentation</p>
+                            <a 
+                              href={part.hyperlink} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
+                              title={part.hyperlink}
+                            >
+                              {part.hyperlink.length > 40 ? `${part.hyperlink.substring(0, 40)}...` : part.hyperlink}
+                            </a>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -248,16 +252,10 @@ export function PartsDetailDialog({
                     </Badge>
                   </div>
                 )}
-                {part.material && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Material:</span>
-                    <span className="text-sm font-medium">{part.material}</span>
-                  </div>
-                )}
-                {part.specifications && (
+                {part.description && (
                   <div>
-                    <span className="text-sm text-muted-foreground">Specifications:</span>
-                    <p className="text-sm mt-1">{part.specifications}</p>
+                    <span className="text-sm text-muted-foreground">Description:</span>
+                    <p className="text-sm mt-1">{part.description}</p>
                   </div>
                 )}
               </CardContent>
@@ -290,11 +288,11 @@ export function PartsDetailDialog({
                     <span className="text-sm font-medium">{part.supplier}</span>
                   </div>
                 )}
-                {part.purchaseOrder && (
+                {part.purchaseOrderNumber && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Purchase Order:</span>
                     <Badge variant="outline" className="text-xs font-mono">
-                      {part.purchaseOrder}
+                      {part.purchaseOrderNumber}
                     </Badge>
                   </div>
                 )}
@@ -303,7 +301,7 @@ export function PartsDetailDialog({
           </div>
 
           {/* Financial Information */}
-          {(part.unitCost || part.totalValue) && (
+          {(part.unitPrice || part.totalValue) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -313,10 +311,10 @@ export function PartsDetailDialog({
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {part.unitCost && (
+                  {part.unitPrice && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Unit Cost:</span>
-                      <span className="text-sm font-medium">${part.unitCost.toFixed(2)}</span>
+                      <span className="text-sm text-muted-foreground">Unit Price:</span>
+                      <span className="text-sm font-medium">${part.unitPrice.toFixed(2)}</span>
                     </div>
                   )}
                   {part.totalValue && (
@@ -325,6 +323,58 @@ export function PartsDetailDialog({
                       <span className="text-sm font-medium">${part.totalValue.toFixed(2)}</span>
                     </div>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* External Resources */}
+          {part.hyperlink ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ExternalLink className="h-4 w-4" />
+                  External Resources
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <ExternalLink className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-blue-900 mb-1">Documentation & Specifications</p>
+                      <p className="text-xs text-blue-700 mb-2">Access external documentation, manuals, or specifications for this part</p>
+                      <a 
+                        href={part.hyperlink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Open Documentation
+                      </a>
+                      <p className="text-xs text-blue-600 mt-2 break-all font-mono bg-white p-1 rounded border">
+                        {part.hyperlink}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Show placeholder when no hyperlink exists (for testing purposes)
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base text-muted-foreground">
+                  <ExternalLink className="h-4 w-4" />
+                  External Resources
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-4">
+                  <ExternalLink className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground mb-1">No external documentation available</p>
+                  <p className="text-xs text-muted-foreground">External links will appear here when added during part creation or editing</p>
                 </div>
               </CardContent>
             </Card>
@@ -387,7 +437,7 @@ export function PartsDetailDialog({
                   <div>
                     <div className="text-sm font-medium">Created</div>
                     <div className="text-xs text-muted-foreground">
-                      {format(new Date(part.createdAt), 'MMM dd, yyyy • h:mm a')}
+                      {part.createdAt ? format(new Date(part.createdAt), 'MMM dd, yyyy • h:mm a') : 'N/A'}
                     </div>
                   </div>
                 </div>
@@ -396,7 +446,7 @@ export function PartsDetailDialog({
                   <div>
                     <div className="text-sm font-medium">Last Updated</div>
                     <div className="text-xs text-muted-foreground">
-                      {format(new Date(part.updatedAt), 'MMM dd, yyyy • h:mm a')}
+                      {part.updatedAt ? format(new Date(part.updatedAt), 'MMM dd, yyyy • h:mm a') : 'N/A'}
                     </div>
                   </div>
                 </div>
