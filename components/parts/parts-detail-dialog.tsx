@@ -159,23 +159,6 @@ export function PartsDetailDialog({
                           {part.category}
                         </Badge>
                       </div>
-                      {part.hyperlink && (
-                        <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                          <ExternalLink className="h-4 w-4 text-blue-600" />
-                          <div className="flex-1">
-                            <p className="text-xs text-blue-700 font-medium mb-1">External Documentation</p>
-                            <a 
-                              href={part.hyperlink} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
-                              title={part.hyperlink}
-                            >
-                              {part.hyperlink.length > 40 ? `${part.hyperlink.substring(0, 40)}...` : part.hyperlink}
-                            </a>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>

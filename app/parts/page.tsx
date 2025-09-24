@@ -359,7 +359,7 @@ function PartFormStandalone({
                 Select Assets ({selectedAssets.length})
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col glass-dialog">
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5" />
@@ -788,14 +788,18 @@ export default function PartsPage() {
         headers['Authorization'] = `Bearer ${token}`
       }
       
+      console.log('[PART FETCH DEBUG] Fetching parts from API...')
       const response = await fetch('/api/parts', {
         method: 'GET',
         headers,
+        cache: 'no-cache', // Ensure fresh data
       })
       const data = await response.json()
       
       if (data.success) {
         const partsData = data.data.parts || []
+        console.log('[PART FETCH DEBUG] Fetched parts count:', partsData.length)
+        console.log('[PART FETCH DEBUG] Test part current quantity:', partsData.find(p => p.name === 'test part')?.quantity)
         setParts(partsData)
         
         // Auto-sync if no parts are found and autoSync is enabled (only for super admin)
@@ -1150,8 +1154,12 @@ export default function PartsPage() {
       }
 
       // Debug logging
-      console.log('Form Data linkedAssets:', formData.linkedAssets)
-      console.log('Request Data being sent:', requestData)
+      console.log('[PART FRONTEND DEBUG] Form Data linkedAssets:', formData.linkedAssets)
+      console.log('[PART FRONTEND DEBUG] Request Data being sent:', requestData)
+      console.log('[PART FRONTEND DEBUG] Is Edit operation:', isEdit)
+      console.log('[PART FRONTEND DEBUG] Selected Part ID:', selectedPart?.id)
+      console.log('[PART FRONTEND DEBUG] Original quantity from selectedPart:', selectedPart?.quantity)
+      console.log('[PART FRONTEND DEBUG] New quantity being sent:', requestData.quantity)
 
       let response
       if (isEdit && selectedPart) {

@@ -213,15 +213,34 @@ export async function PUT(
     // Store original quantity for stock sync comparison
     const originalQuantity = existingPart.quantity || 0;
 
-    // CRITICAL SAFEGUARD: If this is a sync update (only linkedAssets), ensure quantity is preserved
-    if (Object.keys(body).length === 2 && body.linkedAssets && body.quantity) {
-      if (existingPart.quantity !== body.quantity) {
-        updateData.quantity = existingPart.quantity; // Force preserve original
-      }
+    // Debug logging for quantity updates
+    console.log('[PART UPDATE DEBUG] Request body keys:', Object.keys(body));
+    console.log('[PART UPDATE DEBUG] Original quantity:', originalQuantity);
+    console.log('[PART UPDATE DEBUG] New quantity from request:', body.quantity);
+    console.log('[PART UPDATE DEBUG] Has linkedAssets:', !!body.linkedAssets);
+    console.log('[PART UPDATE DEBUG] Full request body:', JSON.stringify(body, null, 2));
+
+    // CRITICAL SAFEGUARD: Only preserve quantity for pure asset sync operations
+    // A pure sync operation has exactly linkedAssets and maybe quantity, but no other part fields
+    const isPureAssetSync = Object.keys(body).length <= 2 && 
+                           body.linkedAssets && 
+                           !body.name && !body.partNumber && !body.sku && 
+                           !body.description && !body.category && !body.unitPrice;
+    
+    if (isPureAssetSync && body.quantity && existingPart.quantity !== body.quantity) {
+      console.log('[PART UPDATE DEBUG] Detected pure asset sync - preserving original quantity');
+      updateData.quantity = existingPart.quantity; // Force preserve original
+    } else if (body.quantity !== undefined) {
+      console.log('[PART UPDATE DEBUG] Normal part update - allowing quantity change');
+      updateData.quantity = body.quantity;
     }
 
     // Store original data for change tracking
     const originalData = existingPart.toObject();
+
+    // Debug logging before database update
+    console.log('[PART UPDATE DEBUG] Final updateData being saved to DB:', JSON.stringify(updateData, null, 2));
+    console.log('[PART UPDATE DEBUG] Database update fields:', Object.keys(updateData));
 
     // Update the part
     const updatedPart = await Part.findByIdAndUpdate(
@@ -229,6 +248,10 @@ export async function PUT(
       updateData,
       { new: true, runValidators: true }
     );
+
+    // Debug logging after database update
+    console.log('[PART UPDATE DEBUG] Updated part quantity after DB save:', updatedPart?.quantity);
+    console.log('[PART UPDATE DEBUG] Full updated part:', JSON.stringify(updatedPart, null, 2));
 
     if (!updatedPart) {
       return NextResponse.json(
