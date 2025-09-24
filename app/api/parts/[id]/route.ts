@@ -39,7 +39,7 @@ export async function GET(
     await connectDB();
 
     // Find the part
-    const part = await Part.findById(id).lean();
+    const part = await Part.findById(id).lean() as any;
 
     if (!part) {
       return NextResponse.json(
@@ -217,8 +217,6 @@ export async function PUT(
     console.log('[PART UPDATE DEBUG] Request body keys:', Object.keys(body));
     console.log('[PART UPDATE DEBUG] Original quantity:', originalQuantity);
     console.log('[PART UPDATE DEBUG] New quantity from request:', body.quantity);
-    console.log('[PART UPDATE DEBUG] Has linkedAssets:', !!body.linkedAssets);
-    console.log('[PART UPDATE DEBUG] Full request body:', JSON.stringify(body, null, 2));
 
     // CRITICAL SAFEGUARD: Only preserve quantity for pure asset sync operations
     // A pure sync operation has exactly linkedAssets and maybe quantity, but no other part fields
@@ -239,7 +237,6 @@ export async function PUT(
     const originalData = existingPart.toObject();
 
     // Debug logging before database update
-    console.log('[PART UPDATE DEBUG] Final updateData being saved to DB:', JSON.stringify(updateData, null, 2));
     console.log('[PART UPDATE DEBUG] Database update fields:', Object.keys(updateData));
 
     // Update the part
@@ -251,7 +248,6 @@ export async function PUT(
 
     // Debug logging after database update
     console.log('[PART UPDATE DEBUG] Updated part quantity after DB save:', updatedPart?.quantity);
-    console.log('[PART UPDATE DEBUG] Full updated part:', JSON.stringify(updatedPart, null, 2));
 
     if (!updatedPart) {
       return NextResponse.json(
@@ -365,60 +361,22 @@ export async function PUT(
 
     let stockSyncMessage = '';
     
-    // Check if quantity changed and create adjustment transaction if needed
-    const quantityChanged = (updatedPart.quantity || 0) !== originalQuantity;
-    const quantityDifference = (updatedPart.quantity || 0) - originalQuantity;
+    // CRITICAL FIX: Disable automatic stock transaction creation for direct part quantity edits
+    // The issue was that when a user directly edits a part quantity from 6 to 2, the system:
+    // 1. Updates the part quantity to 2 in the database (correct)
+    // 2. Detects a quantity change and creates a "stock adjustment transaction" for +4
+    // 3. The inventory service processes this transaction and adds 4 back to the part (2+4=6)
+    // This resulted in the quantity reverting to the original value after refresh.
+    //
+    // SOLUTION: Stock transactions should only be created for actual physical stock movements
+    // (receipts from suppliers, issues to assets, transfers between departments), NOT for
+    // direct administrative quantity edits in the parts management interface.
     
-    if (quantityChanged && quantityDifference !== 0 && updatedPart.isStockItem) {
-      try {
-        // Get authorization token from request headers
-        const authHeader = request.headers.get('authorization');
-        const token = authHeader?.replace('Bearer ', '') || '';
-        
-        if (token) {
-          // Extract sync data for stock transaction creation
-          const partSyncData = extractPartSyncData(responseData, user.id, user.name || 'System');
-          
-          if (partSyncData) {
-
-            // Get the base URL for API calls
-            const protocol = request.headers.get('x-forwarded-proto') || 'http';
-            const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
-            const baseUrl = `${protocol}://${host}`;
-
-            // For quantity adjustments, we'll create a receipt transaction with the difference
-            // The inventory service will handle the actual quantity calculation
-            const adjustmentSyncData = {
-              ...partSyncData,
-              quantity: Math.abs(quantityDifference), // Always positive for the transaction
-              description: `Quantity adjustment for part ${partSyncData.partNumber}: ${quantityDifference > 0 ? 'increase' : 'decrease'} of ${Math.abs(quantityDifference)} units`
-            };
-
-            // Create stock adjustment transaction
-            const stockSyncResult = await createStockReceiptForNewPart(
-              adjustmentSyncData,
-              token,
-              baseUrl
-            );
-
-            if (stockSyncResult.success) {
-              stockSyncMessage = ` Stock adjustment transaction created: ${stockSyncResult.stockTransactionNumber}`;
-            } else {
-              console.warn('[PART UPDATE API] Failed to create stock adjustment transaction:', stockSyncResult.message);
-              stockSyncMessage = ` Note: Stock adjustment transaction creation failed - ${stockSyncResult.message}`;
-            }
-          } else {
-            console.warn('[PART UPDATE API] Could not extract sync data for stock adjustment');
-          }
-        } else {
-          console.warn('[PART UPDATE API] No authorization token available for stock sync');
-        }
-      } catch (syncError) {
-        console.error('[PART UPDATE API] Error during stock sync:', syncError);
-        stockSyncMessage = ' Note: Stock adjustment sync encountered an error';
-      }
-    } else if (quantityChanged) {
-    }
+    console.log('[PART UPDATE DEBUG] Stock transaction creation DISABLED for direct part edits');
+    console.log('[PART UPDATE DEBUG] This prevents quantity double-accounting issues');
+    
+    // Note: If stock transaction creation is needed in the future for specific use cases,
+    // it should be explicitly requested via a separate API endpoint or toggle, not automatic.
 
     return NextResponse.json({
       success: true,
