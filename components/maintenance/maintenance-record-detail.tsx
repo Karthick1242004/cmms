@@ -808,7 +808,7 @@ export function MaintenanceRecordDetail({
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
+                    <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
                       {record.generalChecklist.map((item) => (
                         <div key={item.itemId} className="flex items-start gap-3 p-3 border rounded-lg">
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-sm font-bold ${
@@ -944,7 +944,7 @@ export function MaintenanceRecordDetail({
                   <p className="text-muted-foreground">Loading maintenance history...</p>
                 </div>
               ) : historyRecords.length > 0 ? (
-                <div className="space-y-4">
+                <div className="max-h-96 overflow-y-auto scrollbar-hide space-y-4 pr-2">
                   {historyRecords.map((historyRecord, index) => (
                     <Card key={historyRecord.id} className="border-l-4 border-l-blue-500">
                       <CardContent className="p-4">

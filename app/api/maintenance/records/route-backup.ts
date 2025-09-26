@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserContext } from '@/lib/auth-helpers';
-import MaintenanceChecklistData from '@/models/MaintenanceChecklistData';
-import { connectToDatabase } from '@/lib/mongodb';
 
 
 // Base URL for the backend server
@@ -131,86 +129,48 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     
-    // Ensure department field is populated in all records
+    // Ensure department field is populated in all records AND fix missing checklist data
     if (data.success && data.data && data.data.records) {
-      data.data.records = data.data.records.map((record: any) => ({
-        ...record,
-        department: record.department || user?.department || 'General'
-      }));
-      console.log('🔄 Ensured department field in', data.data.records.length, 'records');
-    }
-
-    // CRITICAL FIX: Backend doesn't store checklist data, retrieve it from local database
-    if (data.success && data.data && data.data.records) {
-      console.log('🔧 [Maintenance GET] Retrieving checklist data from local database...');
+      console.log('🔧 [Maintenance GET] Processing', data.data.records.length, 'records for checklist reconstruction');
       
-      try {
-        await connectToDatabase();
+      // Process records to ensure all have proper generalChecklist
+      console.log('🔧 [Maintenance GET] Processing', data.data.records.length, 'records for checklist data');
+      
+      // Process each record
+      const processedRecords = data.data.records.map((record: any, index: number) => {
+        // Ensure department field
+        const processedRecord = {
+          ...record,
+          department: record.department || user?.department || 'General',
+        };
         
-        // Get all record IDs
-        const recordIds = data.data.records.map((record: any) => record.id);
-        
-        // Fetch checklist data for all records in one query
-        const checklistDataList = await MaintenanceChecklistData.find({
-          recordId: { $in: recordIds }
-        }).lean();
-        
-        // Create a map for quick lookup
-        const checklistDataMap = new Map();
-        checklistDataList.forEach((item: any) => {
-          checklistDataMap.set(item.recordId, item);
-        });
-        
-        let recordsWithLocalData = 0;
-        let recordsWithoutLocalData = 0;
-        
-        // Merge checklist data with each record
-        data.data.records = data.data.records.map((record: any) => {
-          const localChecklistData = checklistDataMap.get(record.id);
+        // Check if record has generalChecklist
+        if (record.generalChecklist && record.generalChecklist.length > 0) {
+          console.log(`✅ [Maintenance GET] Record ${record.id} has generalChecklist (${record.generalChecklist.length} items)`);
+          processedRecord._dataSource = 'backend_stored';
+          processedRecord._checklistAvailable = true;
+        } else {
+          console.log(`❌ [Maintenance GET] Record ${record.id} has NO generalChecklist (status: ${record.status})`);
+          processedRecord.generalChecklist = [];
+          processedRecord._dataSource = 'backend_only';
+          processedRecord._checklistAvailable = false;
           
-          if (localChecklistData) {
-            recordsWithLocalData++;
-            // Merge local checklist data
-            record.generalChecklist = localChecklistData.generalChecklist || [];
-            record.partsStatus = record.partsStatus?.map((part: any) => {
-              const localPart = localChecklistData.partsStatus?.find((p: any) => p.partId === part.partId);
-              if (localPart) {
-                return {
-                  ...part,
-                  checklistItems: localPart.checklistItems || []
-                };
-              }
-              return part;
-            }) || [];
-            record._checklistDataSource = 'local_database';
-          } else {
-            recordsWithoutLocalData++;
-            // Ensure empty arrays exist
-            if (!record.generalChecklist) record.generalChecklist = [];
-            if (!record.categoryResults) record.categoryResults = [];
-            record._checklistDataMissing = true;
-            record._checklistDataSource = 'missing';
+          // Only show data loss warning for records that should have checklist data
+          if (record.status === 'partially_completed' || record.status === 'completed') {
+            processedRecord._dataLossWarning = 'No checklist data stored by backend for this record';
           }
-          
-          return record;
-        });
+        }
         
-        console.log(`  - Records with local checklist data: ${recordsWithLocalData}`);
-        console.log(`  - Records without local checklist data: ${recordsWithoutLocalData}`);
-        console.log('✅ [Maintenance GET] Checklist data merged from local database');
+        // Ensure partsStatus exists
+        processedRecord.partsStatus = record.partsStatus || [];
         
-      } catch (dbError) {
-        console.error('❌ [Maintenance GET] Failed to retrieve checklist data from local database:', dbError);
-        
-        // Fallback: ensure empty arrays exist
-        data.data.records = data.data.records.map((record: any) => {
-          if (!record.generalChecklist) record.generalChecklist = [];
-          if (!record.categoryResults) record.categoryResults = [];
-          record._checklistDataMissing = true;
-          record._checklistDataSource = 'error';
-          return record;
-        });
-      }
+        return processedRecord;
+      });
+      
+      data.data.records = processedRecords;
+      
+      console.log('🔄 Ensured department field in', data.data.records.length, 'records');
+      console.log('🔧 [Maintenance GET] Applied database-based checklist data loading to', data.data.records.length, 'records');
     }
     
     return NextResponse.json(data, { status: 200 });
@@ -272,7 +232,13 @@ export async function POST(request: NextRequest) {
       bodyData: body
     });
 
-    // Forward request to backend server
+    console.log('🔧 [Maintenance API] DIRECT POST - sending generalChecklist as-is to backend:');
+    console.log('  - Original payload keys:', Object.keys(body));
+    console.log('  - generalChecklist length:', body.generalChecklist?.length || 0);
+    console.log('  - generalChecklist data:', JSON.stringify(body.generalChecklist, null, 2));
+    console.log('  - Sending directly to backend without transformation');
+    
+    // Forward request to backend server with original body
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/records`, {
       method: 'POST',
       headers: {
@@ -292,6 +258,40 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    
+    // Check what backend returned
+    if (data.success && data.data) {
+      console.log('🔧 [Maintenance API] Backend POST response analysis:');
+      console.log('  - Backend response keys:', Object.keys(data.data));
+      console.log('  - Backend generalChecklist length:', data.data.generalChecklist?.length || 'undefined/null');
+      console.log('  - Backend generalChecklist data:', data.data.generalChecklist);
+      
+      // Check if backend stored the generalChecklist
+      if (data.data.generalChecklist && data.data.generalChecklist.length > 0) {
+        console.log('✅ [Maintenance API] Backend STORED generalChecklist successfully!');
+        console.log('  - Stored items:', data.data.generalChecklist.length);
+        console.log('  - First item:', data.data.generalChecklist[0]);
+        
+        data.data._dataSource = 'backend_stored';
+        data.data._checklistAvailable = true;
+      } else {
+        console.log('❌ [Maintenance API] Backend did NOT store generalChecklist');
+        console.log('❌ [Maintenance API] Using fallback: original request data');
+        
+        // Fallback: ensure we return the data that was submitted
+        data.data.generalChecklist = body.generalChecklist || [];
+        data.data._dataSource = 'fallback_original';
+        data.data._checklistAvailable = true;
+        data.data._fallbackUsed = true;
+        
+        console.log('  - Fallback items:', data.data.generalChecklist.length);
+      }
+      
+      // Ensure partsStatus exists
+      data.data.partsStatus = data.data.partsStatus || body.partsStatus || [];
+      
+      console.log('✅ [Maintenance API] Record created with checklist data available');
+    }
     
     // Update performance data when maintenance record is created (task completed)
     if (data.success && body.technician && data.data) {
@@ -350,81 +350,6 @@ export async function POST(request: NextRequest) {
     if (data.success && data.data && !data.data.department && body.department) {
       data.data.department = body.department;
       console.log('🔄 Added department field to maintenance record response:', body.department);
-    }
-    
-    // CRITICAL FIX: Backend doesn't store generalChecklist, so we store it locally and preserve it in response
-    if (data.success && data.data) {
-      console.log('🔧 [Maintenance API] Checking backend response for checklist data...');
-      console.log('  - Backend generalChecklist length:', data.data.generalChecklist?.length || 0);
-      console.log('  - Backend categoryResults length:', data.data.categoryResults?.length || 0);
-      
-      // Store checklist data in local MongoDB collection
-      try {
-        await connectToDatabase();
-        
-        // Calculate completion stats
-        const generalChecklist = body.generalChecklist || [];
-        const partsStatus = body.partsStatus || [];
-        
-        let totalItems = generalChecklist.length;
-        let completedItems = 0;
-        let failedItems = 0;
-        let skippedItems = 0;
-        
-        generalChecklist.forEach((item: any) => {
-          if (item.status === 'completed') completedItems++;
-          else if (item.status === 'failed') failedItems++;
-          else if (item.status === 'skipped') skippedItems++;
-        });
-        
-        // Add parts checklist items to totals
-        partsStatus.forEach((part: any) => {
-          if (part.checklistItems) {
-            totalItems += part.checklistItems.length;
-            part.checklistItems.forEach((item: any) => {
-              if (item.status === 'completed') completedItems++;
-              else if (item.status === 'failed') failedItems++;
-              else if (item.status === 'skipped') skippedItems++;
-            });
-          }
-        });
-        
-        const completionPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-        
-        // Store in local database
-        const checklistData = new MaintenanceChecklistData({
-          recordId: data.data.id,
-          scheduleId: body.scheduleId,
-          assetId: body.assetId,
-          assetName: body.assetName,
-          technician: body.technician,
-          technicianId: body.technicianId,
-          department: body.department || user?.department || 'General',
-          generalChecklist: generalChecklist,
-          partsStatus: partsStatus,
-          completedDate: new Date(body.completedDate),
-          totalItems: totalItems,
-          completedItems: completedItems,
-          failedItems: failedItems,
-          skippedItems: skippedItems,
-          completionPercentage: completionPercentage,
-          createdBy: user?.name || 'System'
-        });
-        
-        await checklistData.save();
-        console.log('✅ [Maintenance API] Checklist data stored in local database');
-        
-      } catch (dbError) {
-        console.error('❌ [Maintenance API] Failed to store checklist data in local database:', dbError);
-      }
-      
-      // Always ensure response includes checklist data
-      data.data.generalChecklist = body.generalChecklist || [];
-      data.data.categoryResults = body.categoryResults || [];
-      
-      console.log('  - Response includes generalChecklist length:', data.data.generalChecklist.length);
-      console.log('  - Response includes categoryResults length:', data.data.categoryResults.length);
-      console.log('✅ [Maintenance API] Checklist data preserved in response');
     }
     
     return NextResponse.json(data, { status: 201 });

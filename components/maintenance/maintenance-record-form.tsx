@@ -219,6 +219,16 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       status = stats.percentage >= 50 ? "partially_completed" : "failed"
     }
 
+    // Transform generalChecklist to categoryResults structure for the new API
+    const categoryResults = generalChecklist.length > 0 ? [{
+      categoryId: 'general_maintenance',
+      categoryName: 'General Maintenance',
+      checklistItems: generalChecklist,
+      categoryComplianceScore: Math.round((generalChecklist.filter(item => item.completed).length / generalChecklist.length) * 100),
+      weight: 100,
+      timeSpent: Math.round(actualDuration * 60) // Convert hours to minutes
+    }] : [];
+
     const recordData: Omit<MaintenanceRecord, "id" | "createdAt" | "updatedAt"> = {
       scheduleId: currentSchedule.id,
       assetId: currentSchedule.assetId,
@@ -234,7 +244,8 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       overallCondition: formData.overallCondition,
       notes: formData.notes,
       partsStatus,
-      generalChecklist,
+      categoryResults, // New structure for the backend
+      generalChecklist, // Keep for backward compatibility
       adminVerified: false,
     }
 

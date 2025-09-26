@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserContext } from '@/lib/auth-helpers'
+import MaintenanceChecklistData from '@/models/MaintenanceChecklistData'
+import { connectToDatabase } from '@/lib/mongodb'
 
 // Base URL for the backend server
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001'
@@ -77,6 +79,79 @@ export async function GET(
       data.data.total = filteredRecords.length
       
       console.log(`📋 Found ${filteredRecords.length} maintenance records for schedule ${scheduleId}`)
+    }
+
+    // CRITICAL FIX: Retrieve checklist data from local database for schedule records
+    if (data.success && data.data && data.data.records) {
+      console.log('🔧 [Schedule Records GET] Retrieving checklist data from local database...');
+      
+      try {
+        await connectToDatabase();
+        
+        // Get all record IDs
+        const recordIds = data.data.records.map((record: any) => record.id);
+        
+        // Fetch checklist data for all records in one query
+        const checklistDataList = await MaintenanceChecklistData.find({
+          recordId: { $in: recordIds }
+        }).lean();
+        
+        // Create a map for quick lookup
+        const checklistDataMap = new Map();
+        checklistDataList.forEach((item: any) => {
+          checklistDataMap.set(item.recordId, item);
+        });
+        
+        let recordsWithLocalData = 0;
+        let recordsWithoutLocalData = 0;
+        
+        // Merge checklist data with each record
+        data.data.records = data.data.records.map((record: any) => {
+          const localChecklistData = checklistDataMap.get(record.id);
+          
+          if (localChecklistData) {
+            recordsWithLocalData++;
+            // Merge local checklist data
+            record.generalChecklist = localChecklistData.generalChecklist || [];
+            record.partsStatus = record.partsStatus?.map((part: any) => {
+              const localPart = localChecklistData.partsStatus?.find((p: any) => p.partId === part.partId);
+              if (localPart) {
+                return {
+                  ...part,
+                  checklistItems: localPart.checklistItems || []
+                };
+              }
+              return part;
+            }) || [];
+            record._checklistDataSource = 'local_database';
+          } else {
+            recordsWithoutLocalData++;
+            // Ensure empty arrays exist
+            if (!record.generalChecklist) record.generalChecklist = [];
+            if (!record.categoryResults) record.categoryResults = [];
+            record._checklistDataMissing = true;
+            record._checklistDataSource = 'missing';
+          }
+          
+          return record;
+        });
+        
+        console.log(`  - Records with local checklist data: ${recordsWithLocalData}`);
+        console.log(`  - Records without local checklist data: ${recordsWithoutLocalData}`);
+        console.log('✅ [Schedule Records GET] Checklist data merged from local database');
+        
+      } catch (dbError) {
+        console.error('❌ [Schedule Records GET] Failed to retrieve checklist data from local database:', dbError);
+        
+        // Fallback: ensure empty arrays exist
+        data.data.records = data.data.records.map((record: any) => {
+          if (!record.generalChecklist) record.generalChecklist = [];
+          if (!record.categoryResults) record.categoryResults = [];
+          record._checklistDataMissing = true;
+          record._checklistDataSource = 'error';
+          return record;
+        });
+      }
     }
     
     return NextResponse.json(data, { status: 200 })
