@@ -140,10 +140,8 @@ export async function GET(request: NextRequest) {
       console.log('🔄 Ensured department field in', data.data.records.length, 'records');
     }
 
-    // CRITICAL FIX: Backend doesn't store checklist data, retrieve it from local database
+    // Retrieve checklist data from local database
     if (data.success && data.data && data.data.records) {
-      console.log('🔧 [Maintenance GET] Retrieving checklist data from local database...');
-      
       try {
         await connectToDatabase();
         
@@ -161,15 +159,11 @@ export async function GET(request: NextRequest) {
           checklistDataMap.set(item.recordId, item);
         });
         
-        let recordsWithLocalData = 0;
-        let recordsWithoutLocalData = 0;
-        
         // Merge checklist data with each record
         data.data.records = data.data.records.map((record: any) => {
           const localChecklistData = checklistDataMap.get(record.id);
           
           if (localChecklistData) {
-            recordsWithLocalData++;
             // Merge local checklist data
             record.generalChecklist = localChecklistData.generalChecklist || [];
             record.partsStatus = record.partsStatus?.map((part: any) => {
@@ -184,7 +178,6 @@ export async function GET(request: NextRequest) {
             }) || [];
             record._checklistDataSource = 'local_database';
           } else {
-            recordsWithoutLocalData++;
             // Ensure empty arrays exist
             if (!record.generalChecklist) record.generalChecklist = [];
             if (!record.categoryResults) record.categoryResults = [];
@@ -195,12 +188,8 @@ export async function GET(request: NextRequest) {
           return record;
         });
         
-        console.log(`  - Records with local checklist data: ${recordsWithLocalData}`);
-        console.log(`  - Records without local checklist data: ${recordsWithoutLocalData}`);
-        console.log('✅ [Maintenance GET] Checklist data merged from local database');
-        
       } catch (dbError) {
-        console.error('❌ [Maintenance GET] Failed to retrieve checklist data from local database:', dbError);
+        console.error('Failed to retrieve checklist data from local database:', dbError);
         
         // Fallback: ensure empty arrays exist
         data.data.records = data.data.records.map((record: any) => {
@@ -352,13 +341,8 @@ export async function POST(request: NextRequest) {
       console.log('🔄 Added department field to maintenance record response:', body.department);
     }
     
-    // CRITICAL FIX: Backend doesn't store generalChecklist, so we store it locally and preserve it in response
+    // Store checklist data in local MongoDB collection
     if (data.success && data.data) {
-      console.log('🔧 [Maintenance API] Checking backend response for checklist data...');
-      console.log('  - Backend generalChecklist length:', data.data.generalChecklist?.length || 0);
-      console.log('  - Backend categoryResults length:', data.data.categoryResults?.length || 0);
-      
-      // Store checklist data in local MongoDB collection
       try {
         await connectToDatabase();
         
@@ -412,19 +396,14 @@ export async function POST(request: NextRequest) {
         });
         
         await checklistData.save();
-        console.log('✅ [Maintenance API] Checklist data stored in local database');
         
       } catch (dbError) {
-        console.error('❌ [Maintenance API] Failed to store checklist data in local database:', dbError);
+        console.error('Failed to store checklist data in local database:', dbError);
       }
       
       // Always ensure response includes checklist data
       data.data.generalChecklist = body.generalChecklist || [];
       data.data.categoryResults = body.categoryResults || [];
-      
-      console.log('  - Response includes generalChecklist length:', data.data.generalChecklist.length);
-      console.log('  - Response includes categoryResults length:', data.data.categoryResults.length);
-      console.log('✅ [Maintenance API] Checklist data preserved in response');
     }
     
     return NextResponse.json(data, { status: 201 });

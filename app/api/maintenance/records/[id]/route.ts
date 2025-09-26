@@ -59,10 +59,8 @@ export async function GET(
 
     const data = await response.json();
     
-    // CRITICAL FIX: Retrieve checklist data from local database for individual record
+    // Retrieve checklist data from local database for individual record
     if (data.success && data.data) {
-      console.log('🔧 [Maintenance Individual GET] Retrieving checklist data from local database...');
-      
       try {
         await connectToDatabase();
         
@@ -72,7 +70,6 @@ export async function GET(
         }).lean();
         
         if (localChecklistData) {
-          console.log('✅ [Maintenance Individual GET] Found local checklist data');
           // Merge local checklist data
           data.data.generalChecklist = localChecklistData.generalChecklist || [];
           data.data.partsStatus = data.data.partsStatus?.map((part: any) => {
@@ -94,7 +91,6 @@ export async function GET(
             completionPercentage: localChecklistData.completionPercentage
           };
         } else {
-          console.log('⚠️ [Maintenance Individual GET] No local checklist data found');
           // Ensure empty arrays exist
           if (!data.data.generalChecklist) data.data.generalChecklist = [];
           if (!data.data.categoryResults) data.data.categoryResults = [];
@@ -103,7 +99,7 @@ export async function GET(
         }
         
       } catch (dbError) {
-        console.error('❌ [Maintenance Individual GET] Failed to retrieve checklist data from local database:', dbError);
+        console.error('Failed to retrieve checklist data from local database:', dbError);
         
         // Fallback: ensure empty arrays exist
         if (!data.data.generalChecklist) data.data.generalChecklist = [];

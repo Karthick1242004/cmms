@@ -201,7 +201,7 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                 <TableHead>Duration</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Verified</TableHead>
-                <TableHead>Completion</TableHead>
+                {/* <TableHead>Completion</TableHead> */}
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -209,7 +209,11 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
               {records.map((record) => {
                 const stats = getCompletionStats(record)
                 return (
-                  <TableRow key={record.id}>
+                  <TableRow 
+                    key={record.id} 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleDetailClick(record)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div>
@@ -254,7 +258,7 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                         <Badge variant="outline">Pending</Badge>
                       )}
                     </TableCell>
-                    <TableCell>
+                    {/* <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="text-sm">
                           {stats.completed}/{stats.total}
@@ -263,37 +267,48 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                           {stats.percentage}%
                         </Badge>
                       </div>
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleDetailClick(record)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          {isAdmin && !record.adminVerified && (
-                            <DropdownMenuItem onClick={() => handleVerifyClick(record)}>
-                              <Shield className="mr-2 h-4 w-4" />
-                              Verify Record
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleDetailClick(record);
+                            }}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
                             </DropdownMenuItem>
-                          )}
-                          {isSuperAdmin && (
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteClick(record)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Record
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {isAdmin && !record.adminVerified && (
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                handleVerifyClick(record);
+                              }}>
+                                <Shield className="mr-2 h-4 w-4" />
+                                Verify Record
+                              </DropdownMenuItem>
+                            )}
+                            {isSuperAdmin && (
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(record);
+                                }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Record
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )
