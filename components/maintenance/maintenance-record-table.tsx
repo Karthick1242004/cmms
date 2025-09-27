@@ -16,15 +16,26 @@ import { MaintenanceRecordDetail } from "./maintenance-record-detail"
 import { useAuthStore } from "@/stores/auth-store"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import type { MaintenanceRecord } from "@/types/maintenance"
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import type { MaintenanceRecord, MaintenancePagination } from "@/types/maintenance"
 
 interface MaintenanceRecordTableProps {
   records: MaintenanceRecord[]
   isLoading: boolean
   isAdmin: boolean
+  pagination?: MaintenancePagination
+  onPageChange?: (page: number) => void
 }
 
-export function MaintenanceRecordTable({ records, isLoading, isAdmin }: MaintenanceRecordTableProps) {
+export function MaintenanceRecordTable({ records, isLoading, isAdmin, pagination, onPageChange }: MaintenanceRecordTableProps) {
   const { verifyRecord, fetchRecords } = useMaintenanceStore()
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -218,7 +229,14 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                       <div className="flex items-center gap-2">
                         <div>
                           <p className="font-medium">{record.assetName}</p>
-                          <p className="text-sm text-muted-foreground">{record.department}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-muted-foreground">{record.department}</p>
+                            {record.isOpenTicket && (
+                              <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50 text-xs">
+                                Open Access
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
@@ -317,6 +335,79 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex justify-center mt-6">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (pagination.hasPrevious && onPageChange) {
+                      onPageChange(pagination.currentPage - 1)
+                    }
+                  }}
+                  className={!pagination.hasPrevious ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {/* Page numbers */}
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                let pageNum
+                if (pagination.totalPages <= 5) {
+                  pageNum = i + 1
+                } else if (pagination.currentPage <= 3) {
+                  pageNum = i + 1
+                } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                  pageNum = pagination.totalPages - 4 + i
+                } else {
+                  pageNum = pagination.currentPage - 2 + i
+                }
+                
+                return (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (onPageChange) {
+                          onPageChange(pageNum)
+                        }
+                      }}
+                      isActive={pagination.currentPage === pageNum}
+                      className="cursor-pointer"
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              })}
+              
+              {pagination.totalPages > 5 && pagination.currentPage < pagination.totalPages - 2 && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (pagination.hasNext && onPageChange) {
+                      onPageChange(pagination.currentPage + 1)
+                    }
+                  }}
+                  className={!pagination.hasNext ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
 
       {/* Verification Dialog */}
       <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>

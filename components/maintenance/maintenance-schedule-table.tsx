@@ -161,6 +161,7 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
               <TableRow>
                 <TableHead>Asset</TableHead>
                 <TableHead>Title</TableHead>
+                <TableHead>Department</TableHead>
                 <TableHead>Frequency</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
@@ -194,6 +195,18 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
                         <div className="text-sm text-muted-foreground line-clamp-2">
                           {schedule.description}
                         </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <Badge variant="secondary" className="capitalize">
+                        {schedule.department || 'N/A'}
+                      </Badge>
+                      {schedule.isOpenTicket && (
+                        <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
+                          Open Access
+                        </Badge>
                       )}
                     </div>
                   </TableCell>

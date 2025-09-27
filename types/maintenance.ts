@@ -15,7 +15,10 @@ export interface MaintenanceSchedule {
   lastCompletedDate?: string
   priority: "low" | "medium" | "high" | "critical"
   estimatedDuration: number // in hours
-  assignedTechnician?: string
+  assignedTechnician?: string // Legacy single technician (deprecated)
+  isOpenTicket: boolean // If true, all departments can access this maintenance schedule
+  assignedDepartment?: string // Single department assigned to this schedule
+  assignedUsers: string[] // Multiple users assigned to this schedule
   status: "active" | "inactive" | "completed" | "overdue"
   createdBy: string
   createdAt: string
@@ -55,8 +58,11 @@ export interface MaintenanceRecord {
   startTime: string
   endTime: string
   actualDuration: number // in hours
-  technician: string
+  technician: string // Primary technician who completed the record
   technicianId: string
+  isOpenTicket: boolean // If true, all departments can access this maintenance record
+  assignedDepartment?: string // Single department assigned to this record
+  assignedUsers: string[] // Multiple users assigned to this record
   status: "completed" | "partially_completed" | "failed" | "in_progress"
   overallCondition: "excellent" | "good" | "fair" | "poor"
   notes?: string
@@ -103,6 +109,14 @@ export interface MaintenanceStats {
   assetUptime: number
 }
 
+export interface MaintenancePagination {
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  hasNext: boolean
+  hasPrevious: boolean
+}
+
 export interface MaintenanceState {
   schedules: MaintenanceSchedule[]
   records: MaintenanceRecord[]
@@ -119,6 +133,7 @@ export interface MaintenanceState {
   selectedSchedule: MaintenanceSchedule | null
   selectedRecord: MaintenanceRecord | null
   stats: MaintenanceStats
+  recordsPagination: MaintenancePagination
 
   // Actions
   setSchedules: (schedules: MaintenanceSchedule[]) => void
@@ -142,8 +157,9 @@ export interface MaintenanceState {
   filterSchedules: () => void
   filterRecords: () => void
   fetchSchedules: () => Promise<void>
-  fetchRecords: () => Promise<void>
+  fetchRecords: (options?: { page?: number; limit?: number; includeAllTime?: boolean }) => Promise<void>
   fetchStats: () => Promise<void>
   calculateStats: () => void
   initialize: () => Promise<void>
+  setRecordsPage: (page: number) => void
 } 

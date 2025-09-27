@@ -119,8 +119,9 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Department': user?.department || 'General',
+        // Don't send user department to avoid backend overriding stored departments
         'X-User-Name': user?.name || 'Test User',
+        'X-User-Access-Level': user?.accessLevel || 'normal_user',
       },
     });
 
@@ -134,13 +135,30 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     
-    // Ensure department field is populated in all schedules
+    // Ensure new fields are present with proper defaults (don't override existing department data)
     if (data.success && data.data && data.data.schedules) {
+      console.log('📥 [GET SCHEDULES] Raw backend response sample:', {
+        totalSchedules: data.data.schedules.length,
+        firstScheduleDept: data.data.schedules[0]?.department,
+        firstScheduleAssignedDept: data.data.schedules[0]?.assignedDepartment,
+        sampleSchedule: data.data.schedules[0]
+      });
+      
       data.data.schedules = data.data.schedules.map((schedule: any) => ({
         ...schedule,
-        department: schedule.department || user?.department || 'General'
+        // PRESERVE ACTUAL DEPARTMENT DATA - don't override with General unless truly missing
+        department: schedule.department ?? 'General',
+        // Ensure new fields are present with defaults
+        isOpenTicket: schedule.isOpenTicket ?? false,
+        assignedDepartment: schedule.assignedDepartment || schedule.department || '',
+        assignedUsers: schedule.assignedUsers || []
       }));
-      console.log('🔄 Ensured department field in', data.data.schedules.length, 'schedules');
+      
+      console.log('📤 [GET SCHEDULES] After processing sample:', {
+        firstScheduleDept: data.data.schedules[0]?.department,
+        firstScheduleAssignedDept: data.data.schedules[0]?.assignedDepartment,
+        processedCount: data.data.schedules.length
+      });
     }
     
     return NextResponse.json(data, { status: 200 });
@@ -392,13 +410,21 @@ export async function POST(request: NextRequest) {
     });
 
     // Forward request to backend server
+    // Only send user department as fallback if no department is explicitly set in body
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-User-Name': user?.name || 'Test User',
+      'X-User-Access-Level': user?.accessLevel || 'normal_user',
+    };
+    
+    // Only include user department header if no department is specified in the request body
+    if (!body.department && !body.assignedDepartment) {
+      headers['X-User-Department'] = user?.department || 'General';
+    }
+    
     const response = await fetch(`${SERVER_BASE_URL}/api/maintenance/schedules`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-Department': user?.department || 'General',
-        'X-User-Name': user?.name || 'Test User',
-      },
+      headers,
       body: JSON.stringify(body),
     });
     
@@ -432,6 +458,22 @@ export async function POST(request: NextRequest) {
       if (!data.data.department && body.department) {
         data.data.department = body.department;
         console.log('🔄 Added department field to response:', body.department);
+      }
+      
+      // Ensure new assignment fields are included in response
+      if (data.data.isOpenTicket === undefined && body.isOpenTicket !== undefined) {
+        data.data.isOpenTicket = body.isOpenTicket;
+        console.log('🔄 Added isOpenTicket field to response:', body.isOpenTicket);
+      }
+      
+      if (!data.data.assignedDepartment && body.assignedDepartment) {
+        data.data.assignedDepartment = body.assignedDepartment;
+        console.log('🔄 Added assignedDepartment field to response:', body.assignedDepartment);
+      }
+      
+      if (!data.data.assignedUsers && body.assignedUsers) {
+        data.data.assignedUsers = body.assignedUsers;
+        console.log('🔄 Added assignedUsers field to response:', body.assignedUsers);
       }
       
       if (data.data.parts) {

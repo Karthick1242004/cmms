@@ -82,8 +82,13 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    // Note: GET locations is public (no auth required). All users can view locations.
-    // However, asset counts require authentication to fetch from the backend server.
+    // Get user context for department filtering (with fallback for testing)
+    const user = await getUserContext(request);
+    
+    // TEMPORARY: Allow access even without authentication for testing
+    if (!user) {
+      // proceed without permission checks for unauthenticated requests (testing mode)
+    }
 
     const { searchParams } = new URL(request.url);
     
@@ -94,8 +99,13 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') || '';
     const status = searchParams.get('status') || '';
     
-    // Build filter query - no department filtering, all users see all locations
+    // Build filter query with department filtering for non-super admins
     const filter: any = {};
+    
+    // Apply department filter for non-super admin users (only if user is authenticated)
+    if (user && user.accessLevel !== 'super_admin') {
+      filter.department = user.department;
+    }
     
     // Apply search filter
     if (search) {

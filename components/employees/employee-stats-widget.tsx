@@ -121,10 +121,10 @@ export function EmployeeStatsWidget({ className }: EmployeeStatsWidgetProps) {
   return (
     <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${className}`}>
       {/* Total Employees */}
-      <Card className="glass-stats-card border-l-4 border-l-blue-500 shimmer float-animation">
+      <Card className="border-l-4 border-l-blue-500">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full glass-morphism flex items-center justify-center pulse-glow">
+            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
               <Users className="h-4 w-4 text-blue-600" />
             </div>
             {user?.accessLevel !== 'super_admin' ? 'Department Employees' : 'Total Employees'}
@@ -139,10 +139,10 @@ export function EmployeeStatsWidget({ className }: EmployeeStatsWidgetProps) {
       </Card>
 
       {/* Active Employees */}
-      <Card className="glass-stats-card border-l-4 border-l-green-500 shimmer float-animation" style={{ animationDelay: '1s' }}>
+      <Card className="border-l-4 border-l-green-500">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full glass-morphism flex items-center justify-center pulse-glow">
+            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
               <UserCheck className="h-4 w-4 text-green-600" />
             </div>
             Active Today
@@ -157,10 +157,10 @@ export function EmployeeStatsWidget({ className }: EmployeeStatsWidgetProps) {
       </Card>
 
       {/* Employees on Leave */}
-      <Card className="glass-stats-card border-l-4 border-l-orange-500 shimmer float-animation" style={{ animationDelay: '2s' }}>
+      <Card className="border-l-4 border-l-orange-500">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full glass-morphism flex items-center justify-center pulse-glow">
+            <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
               <UserX className="h-4 w-4 text-orange-600" />
             </div>
             On Leave Today

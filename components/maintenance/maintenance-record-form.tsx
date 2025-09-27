@@ -11,12 +11,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import { Plus, Clock, CheckCircle, XCircle, SkipForward, Camera } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Plus, Clock, CheckCircle, XCircle, SkipForward, Camera, Users, Building2, Check, ChevronsUpDown, X } from "lucide-react"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { useToast } from "@/hooks/use-toast"
 import type { MaintenanceSchedule, MaintenanceRecord, MaintenancePartRecord, MaintenanceChecklistRecord } from "@/types/maintenance"
 import { maintenanceApi } from "@/lib/maintenance-api"
+import { useDepartments } from "@/hooks/use-departments"
+import { useEmployees } from "@/hooks/use-employees"
+import { cn } from "@/lib/utils"
 
 interface MaintenanceRecordFormProps {
   trigger: React.ReactNode
@@ -71,6 +88,9 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
     status: "completed" as const,
     overallCondition: "good" as const,
     notes: "",
+    isOpenTicket: false,
+    assignedDepartment: "",
+    assignedUsers: [] as string[],
   })
 
   // Function to validate time range
@@ -90,6 +110,34 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
   const [generalChecklist, setGeneralChecklist] = useState<MaintenanceChecklistRecord[]>([])
   const [currentSchedule, setCurrentSchedule] = useState<MaintenanceSchedule>(schedule)
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false)
+  
+  // State for assignment dropdowns
+  const [openAssignedDepartment, setOpenAssignedDepartment] = useState(false)
+  const [openAssignedUsers, setOpenAssignedUsers] = useState(false)
+  
+  // Fetch departments and employees data
+  const { data: departmentsData, isLoading: isLoadingDepartments } = useDepartments()
+  const { data: assignedEmployeesData, isLoading: isLoadingAssignedEmployees } = useEmployees({
+    department: formData.assignedDepartment || undefined,
+    status: 'active',
+    fetchAll: true // Fetch all employees for dropdown
+  })
+
+  // Helper functions for assignment handling
+  const handleAssignedDepartmentChange = (department: string) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedDepartment: department,
+      assignedUsers: [] // Clear users when department changes
+    }))
+  }
+
+  const handleAssignedUsersChange = (users: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedUsers: users
+    }))
+  }
 
   // Function to fetch the latest schedule data
   const fetchLatestSchedule = async () => {
@@ -240,6 +288,9 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
       actualDuration,
       technician: user?.name || "Unknown Technician",
       technicianId: user?.id?.toString() || "unknown",
+      isOpenTicket: formData.isOpenTicket || false,
+      assignedDepartment: formData.assignedDepartment || "",
+      assignedUsers: formData.assignedUsers || [],
       status,
       overallCondition: formData.overallCondition,
       notes: formData.notes,
@@ -366,6 +417,202 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
               />
             </div>
           </div>
+
+          {/* Assignment & Access Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Assignment & Access
+              </CardTitle>
+              <CardDescription>Assign this maintenance record to specific department or users (optional)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Open Ticket Toggle */}
+              <div className="space-y-2">
+                <Label htmlFor="isOpenTicket" className="flex items-center gap-2">
+                  <Switch
+                    id="isOpenTicket"
+                    checked={formData.isOpenTicket}
+                    onCheckedChange={(checked) => setFormData(prev => ({ 
+                      ...prev, 
+                      isOpenTicket: checked,
+                      assignedUsers: checked ? [] : prev.assignedUsers // Clear users when open ticket is enabled
+                    }))}
+                  />
+                  Open Maintenance Record
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {formData.isOpenTicket ? 'All departments can access this maintenance record' : 'Only assigned department can access'}
+                </p>
+              </div>
+
+              {/* Assigned Department - Only show if not open ticket */}
+              {!formData.isOpenTicket && (
+                <div className="space-y-2">
+                  <Label htmlFor="assignedDepartment">Assigned Department</Label>
+                  <Popover open={openAssignedDepartment} onOpenChange={setOpenAssignedDepartment}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between"
+                        disabled={isLoadingDepartments}
+                      >
+                        {!formData.assignedDepartment ? (
+                          "Select department..."
+                        ) : (
+                          formData.assignedDepartment
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Search departments..." />
+                        <CommandList>
+                          <CommandEmpty>No departments found.</CommandEmpty>
+                          <CommandGroup>
+                            {departmentsData?.data?.departments?.map((dept) => {
+                              const isSelected = formData.assignedDepartment === dept.name
+                              return (
+                                <CommandItem
+                                  key={dept.id}
+                                  value={dept.name}
+                                  onSelect={() => {
+                                    handleAssignedDepartmentChange(dept.name)
+                                    setOpenAssignedDepartment(false)
+                                  }}
+                                >
+                                  <Check 
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      isSelected ? "opacity-100" : "opacity-0"
+                                    )} 
+                                  />
+                                  {dept.name}
+                                </CommandItem>
+                              )
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  
+                  <p className="text-xs text-muted-foreground">
+                    Select the department that should be assigned to this maintenance record
+                  </p>
+                </div>
+              )}
+
+              {/* Assigned Users - Only show if NOT open ticket and department is selected */}
+              {(!formData.isOpenTicket && formData.assignedDepartment) && (
+                <div className="space-y-2">
+                  <Label htmlFor="assignedUsers">Assigned Users</Label>
+                  <Popover open={openAssignedUsers} onOpenChange={setOpenAssignedUsers}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between"
+                        disabled={isLoadingAssignedEmployees || !formData.assignedDepartment}
+                      >
+                        {formData.assignedUsers.length === 0 ? (
+                          !formData.assignedDepartment 
+                            ? "Select department first"
+                            : isLoadingAssignedEmployees 
+                            ? "Loading employees..." 
+                            : "Select users..."
+                        ) : (
+                          <div className="flex flex-wrap gap-1 max-w-[300px]">
+                            {formData.assignedUsers.slice(0, 2).map((user) => (
+                              <Badge key={user} variant="secondary" className="text-xs">
+                                {user}
+                              </Badge>
+                            ))}
+                            {formData.assignedUsers.length > 2 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{formData.assignedUsers.length - 2} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Search employees..." />
+                        <CommandList>
+                          <CommandEmpty>No employees found.</CommandEmpty>
+                          <CommandGroup>
+                            {assignedEmployeesData?.data?.employees?.map((employee) => {
+                              const isSelected = formData.assignedUsers.includes(employee.name)
+                              return (
+                                <CommandItem
+                                  key={employee.id}
+                                  value={employee.name}
+                                  onSelect={() => {
+                                    if (isSelected) {
+                                      // Remove user
+                                      handleAssignedUsersChange(
+                                        formData.assignedUsers.filter(u => u !== employee.name)
+                                      )
+                                    } else {
+                                      // Add user
+                                      handleAssignedUsersChange([...formData.assignedUsers, employee.name])
+                                    }
+                                  }}
+                                >
+                                  <Check 
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      isSelected ? "opacity-100" : "opacity-0"
+                                    )} 
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{employee.name}</span>
+                                    <span className="text-xs text-muted-foreground">{employee.role} • {employee.department}</span>
+                                  </div>
+                                </CommandItem>
+                              )
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  
+                  {/* Show selected users as removable badges */}
+                  {formData.assignedUsers.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {formData.assignedUsers.map((user) => (
+                        <Badge key={user} variant="secondary" className="text-xs">
+                          {user}
+                          <button
+                            type="button"
+                            onClick={() => handleAssignedUsersChange(
+                              formData.assignedUsers.filter(u => u !== user)
+                            )}
+                            className="ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                            title={`Remove ${user}`}
+                            aria-label={`Remove ${user} user`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <p className="text-xs text-muted-foreground">
+                    Select users from assigned department to receive notifications
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Progress Overview */}
           <Card>

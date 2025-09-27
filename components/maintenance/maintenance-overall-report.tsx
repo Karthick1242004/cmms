@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, BarChart3 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -16,7 +16,32 @@ export function MaintenanceOverallReport({
   isOpen, 
   onClose 
 }: MaintenanceOverallReportProps) {
-  const { schedules, records, filteredRecords, stats, dateFilter } = useMaintenanceStore()
+  const { schedules, records, filteredRecords, stats, dateFilter, fetchRecords } = useMaintenanceStore()
+  const [allRecords, setAllRecords] = useState<MaintenanceRecord[]>([])
+  const [isLoadingAllRecords, setIsLoadingAllRecords] = useState(false)
+
+  // Fetch all records for report when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchAllRecordsForReport()
+    }
+  }, [isOpen])
+
+  const fetchAllRecordsForReport = async () => {
+    setIsLoadingAllRecords(true)
+    try {
+      // Fetch all records without pagination for comprehensive report
+      await fetchRecords({ limit: 10000, includeAllTime: true })
+      // The records will be updated in the store, so we can use them
+      setAllRecords(records)
+    } catch (error) {
+      console.error('Error fetching all records for report:', error)
+      // Fallback to current records if fetch fails
+      setAllRecords(records)
+    } finally {
+      setIsLoadingAllRecords(false)
+    }
+  }
 
   const handleExportReport = () => {
     // Generate the report HTML
@@ -53,9 +78,9 @@ export function MaintenanceOverallReport({
   }
 
   const getRecentRecords = () => {
-    // Use filtered records from the store which already applies date filtering
-    // Create a copy to avoid mutating the read-only array
-    return [...filteredRecords]
+    // Use all records for comprehensive report
+    const recordsToUse = allRecords.length > 0 ? allRecords : records
+    return [...recordsToUse]
       .sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime())
   }
 
@@ -492,6 +517,7 @@ export function MaintenanceOverallReport({
                 <th>Frequency</th>
                 <th>Next Due</th>
                 <th>Assigned Technician</th>
+                <th>Access Type</th>
               </tr>
             </thead>
             <tbody>
@@ -506,6 +532,7 @@ export function MaintenanceOverallReport({
                   <td class="capitalize">${schedule.frequency}</td>
                   <td>${formatDate(schedule.nextDueDate)}</td>
                   <td>${schedule.assignedTechnician || 'Unassigned'}</td>
+                  <td>${schedule.isOpenTicket ? '<span class="status-badge status-active">Open Access</span>' : '<span class="status-badge status-inactive">Department Only</span>'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -609,7 +636,7 @@ export function MaintenanceOverallReport({
             <h4 className="text-sm font-medium text-blue-900 mb-2">Report Scope</h4>
             <div className="space-y-1 text-xs text-blue-800">
               <div><strong>Total Schedules:</strong> {schedules.length}</div>
-              <div><strong>Records for {getDateRangeDescription()}:</strong> {filteredRecords.length} out of {records.length} total</div>
+              <div><strong>Records for {getDateRangeDescription()}:</strong> {isLoadingAllRecords ? 'Loading...' : `${allRecords.length > 0 ? allRecords.length : records.length} total records`}</div>
               <div><strong>Report Date:</strong> {formatDate(new Date().toISOString())}</div>
             </div>
           </div>
@@ -626,9 +653,13 @@ export function MaintenanceOverallReport({
           </div>
           
           <div className="flex gap-2 pt-4">
-            <Button onClick={handleExportReport} className="flex-1">
+            <Button 
+              onClick={handleExportReport} 
+              className="flex-1"
+              disabled={isLoadingAllRecords}
+            >
               <Download className="mr-2 h-4 w-4" />
-              Generate Report
+              {isLoadingAllRecords ? 'Loading Data...' : 'Generate Report'}
             </Button>
             <Button variant="outline" onClick={onClose}>
               Cancel

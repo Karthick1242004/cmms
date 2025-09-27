@@ -33,6 +33,7 @@ export default function MaintenancePage() {
     dateFilter,
     isLoading,
     stats,
+    recordsPagination,
     setSearchTerm,
     setStatusFilter,
     setPriorityFilter,
@@ -40,16 +41,18 @@ export default function MaintenancePage() {
     setDateFilter,
     fetchSchedules,
     fetchRecords,
+    setRecordsPage,
   } = useMaintenanceStore()
 
   const { user } = useAuthStore()
   const [activeTab, setActiveTab] = useState("schedules")
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [recordsCurrentPage, setRecordsCurrentPage] = useState(1)
 
   useEffect(() => {
     fetchSchedules()
-    fetchRecords()
-  }, [fetchSchedules, fetchRecords])
+    fetchRecords({ page: recordsCurrentPage, limit: 50 })
+  }, [fetchSchedules, fetchRecords, recordsCurrentPage])
 
   // Apply filters when tab changes
   useEffect(() => {
@@ -77,6 +80,12 @@ export default function MaintenancePage() {
   }, [searchTerm, statusFilter, priorityFilter, frequencyFilter, dateFilter, activeTab])
 
   const isAdmin = user?.accessLevel === 'super_admin' || user?.accessLevel === 'department_admin'
+
+  // Pagination handlers
+  const handleRecordsPageChange = (page: number) => {
+    setRecordsCurrentPage(page)
+    setRecordsPage(page)
+  }
 
   return (
     <PageLayout>
@@ -191,7 +200,7 @@ export default function MaintenancePage() {
               setStatusFilter("all")
               setPriorityFilter("all")
               setFrequencyFilter("all")
-              setDateFilter("30days")
+              setDateFilter("all")
             }}
             className="ml-2"
           >
@@ -230,6 +239,8 @@ export default function MaintenancePage() {
               records={filteredRecords}
               isLoading={isLoading}
               isAdmin={isAdmin}
+              pagination={recordsPagination}
+              onPageChange={handleRecordsPageChange}
             />
           </TabsContent>
 

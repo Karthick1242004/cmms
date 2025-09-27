@@ -423,6 +423,22 @@ export function MaintenanceScheduleDetail({
                 <td>${schedule.assignedTechnician || 'Unassigned'}</td>
               </tr>
               <tr>
+                <td class="info-label">Access Type</td>
+                <td>${schedule.isOpenTicket ? '🌐 Open Access (All Departments)' : '🔒 Department Only'}</td>
+              </tr>
+              ${!schedule.isOpenTicket && schedule.assignedDepartment ? `
+              <tr>
+                <td class="info-label">Assigned Department</td>
+                <td>${schedule.assignedDepartment}</td>
+              </tr>
+              ` : ''}
+              ${!schedule.isOpenTicket && schedule.assignedUsers && schedule.assignedUsers.length > 0 ? `
+              <tr>
+                <td class="info-label">Assigned Users</td>
+                <td>${schedule.assignedUsers.join(', ')} (${schedule.assignedUsers.length} user${schedule.assignedUsers.length !== 1 ? 's' : ''})</td>
+              </tr>
+              ` : ''}
+              <tr>
                 <td class="info-label">Total Parts</td>
                 <td>${schedule.parts.length} parts</td>
               </tr>
@@ -698,6 +714,56 @@ export function MaintenanceScheduleDetail({
                               <p className="text-sm">{schedule.assignedTechnician || "Unassigned"}</p>
                             </div>
                           </div>
+                        </div>
+
+                        {/* Assignment & Access Control Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-slate-50 rounded-lg">
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Access Type</label>
+                            <div className="flex items-center gap-2 mt-1">
+                              {schedule.isOpenTicket ? (
+                                <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
+                                  🌐 Open Access
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50">
+                                  🔒 Department Only
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          {!schedule.isOpenTicket && schedule.assignedDepartment && (
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Assigned Department</label>
+                              <div className="flex items-center gap-1 mt-1">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-sm font-medium">{schedule.assignedDepartment}</p>
+                              </div>
+                            </div>
+                          )}
+                          {!schedule.isOpenTicket && schedule.assignedUsers && schedule.assignedUsers.length > 0 && (
+                            <div className="md:col-span-2">
+                              <label className="text-sm font-medium text-muted-foreground">Assigned Users</label>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {schedule.assignedUsers.map((userName, index) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    <User className="h-3 w-3 mr-1" />
+                                    {userName}
+                                  </Badge>
+                                ))}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {schedule.assignedUsers.length} user{schedule.assignedUsers.length !== 1 ? 's' : ''} assigned
+                              </p>
+                            </div>
+                          )}
+                          {schedule.isOpenTicket && (
+                            <div className="md:col-span-2">
+                              <p className="text-sm text-muted-foreground">
+                                🌐 This maintenance schedule is open to all departments and users. Any qualified technician can perform this maintenance.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>

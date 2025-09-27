@@ -22,7 +22,7 @@ export const useMaintenanceStore = create<MaintenanceState>()(
         statusFilter: "all",
         priorityFilter: "all",
         frequencyFilter: "all",
-        dateFilter: "30days",
+        dateFilter: "all",
         isLoading: false,
         isScheduleDialogOpen: false,
         isRecordDialogOpen: false,
@@ -36,6 +36,13 @@ export const useMaintenanceStore = create<MaintenanceState>()(
           pendingVerification: 0,
           averageCompletionTime: 0,
           assetUptime: 0,
+        },
+        recordsPagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalCount: 0,
+          hasNext: false,
+          hasPrevious: false,
         },
 
         setSchedules: (schedules) =>
@@ -82,11 +89,28 @@ export const useMaintenanceStore = create<MaintenanceState>()(
           })
 
           try {
+            console.log('🏪 [STORE] Updating schedule in store:', {
+              scheduleId: id,
+              updatesDepartment: updates.department,
+              updatesAssignedDepartment: updates.assignedDepartment
+            });
+            
             const response = await maintenanceApi.schedules.update(id, updates)
+            
+            console.log('🏪 [STORE] Received response from API:', {
+              responseSuccess: response.success,
+              responseDepartment: response.data?.department,
+              responseAssignedDepartment: response.data?.assignedDepartment,
+              fullData: response.data
+            });
             
             set((state) => {
               const index = state.schedules.findIndex((s) => s.id === id)
               if (index !== -1) {
+                console.log('🏪 [STORE] Updating schedule in state at index:', index, {
+                  oldDepartment: state.schedules[index].department,
+                  newDepartment: response.data.department
+                });
                 state.schedules[index] = response.data
               }
               state.isLoading = false
@@ -379,6 +403,8 @@ export const useMaintenanceStore = create<MaintenanceState>()(
           })
 
           try {
+            console.log('🔄 [STORE] Fetching schedules from API...');
+            
             // Note: Department filtering is now handled by the API based on user authentication
             // No need to pass department explicitly as it's extracted from the user session/token
             const response = await maintenanceApi.schedules.getAll({
@@ -386,6 +412,17 @@ export const useMaintenanceStore = create<MaintenanceState>()(
               sortBy: 'nextDueDate',
               sortOrder: 'asc'
             })
+
+            console.log('🔄 [STORE] Fetched schedules from API:', {
+              totalSchedules: response.data.schedules?.length,
+              firstScheduleDept: response.data.schedules?.[0]?.department,
+              sampleSchedules: response.data.schedules?.slice(0, 2).map(s => ({
+                id: s.id,
+                title: s.title,
+                department: s.department,
+                assignedDepartment: s.assignedDepartment
+              }))
+            });
 
             set((state) => {
               state.schedules = response.data.schedules
@@ -405,7 +442,8 @@ export const useMaintenanceStore = create<MaintenanceState>()(
         fetchRecords: async (options?: { 
           dateFilter?: string, 
           limit?: number,
-          includeAllTime?: boolean 
+          includeAllTime?: boolean,
+          page?: number
         }) => {
           set((state) => {
             state.isLoading = true
@@ -415,7 +453,8 @@ export const useMaintenanceStore = create<MaintenanceState>()(
             // Determine query parameters based on date filter for better performance
             const currentDateFilter = options?.dateFilter || get().dateFilter
             const apiParams: any = {
-              limit: options?.limit || 1000,
+              limit: options?.limit || 50, // Default to 50 records per page
+              page: options?.page || 1,
               sortBy: 'completedDate',
               sortOrder: 'desc'
             }
@@ -461,9 +500,16 @@ export const useMaintenanceStore = create<MaintenanceState>()(
             }
 
             const response = await maintenanceApi.records.getAll(apiParams)
-
+            
             set((state) => {
               state.records = response.data.records
+              state.recordsPagination = response.data.pagination || {
+                currentPage: 1,
+                totalPages: 1,
+                totalCount: response.data.records.length,
+                hasNext: false,
+                hasPrevious: false,
+              }
               state.isLoading = false
             })
 
@@ -520,6 +566,11 @@ export const useMaintenanceStore = create<MaintenanceState>()(
             }
 
             state.stats = stats
+          }),
+
+        setRecordsPage: (page: number) =>
+          set((state) => {
+            state.recordsPagination.currentPage = page
           }),
 
         // Initialize data on store creation
