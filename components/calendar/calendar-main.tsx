@@ -37,6 +37,11 @@ export function CalendarMain() {
   const [showAddOvertime, setShowAddOvertime] = useState(false);
   const [showReportFilter, setShowReportFilter] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  
+  // Refs to prevent multiple initializations and cleanup timeouts
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialized = useRef(false);
+  const isNavigatingRef = useRef(false);
 
   const {
     events,
@@ -72,35 +77,43 @@ export function CalendarMain() {
   fetchEventsRef.current = fetchEvents;
 
   useEffect(() => {
-    const fetchInitialEvents = () => {
-      const calendar = calendarRef.current?.getApi();
-      if (calendar) {
-        const view = calendar.view;
-        const startDate = view.activeStart.toISOString().split('T')[0];
-        const endDate = view.activeEnd.toISOString().split('T')[0];
-        fetchEventsRef.current(startDate, endDate);
-      }
-    };
+    // Prevent multiple initializations
+    if (isInitialized.current) {
+      console.log('📅 [Calendar] - Already initialized, skipping...');
+      return;
+    }
 
-    // Only fetch once on mount
-    fetchInitialEvents();
+    console.log('📅 [Calendar] - Initializing calendar component...');
+    isInitialized.current = true;
 
-    // Initialize calendar to current month if needed (only on first mount)
     const initializeCalendar = () => {
       const today = new Date();
-      if (!currentDate || currentDate.getFullYear() === 1970) { // Check if currentDate is uninitialized
+      
+      // Only initialize if currentDate is truly uninitialized
+      if (!currentDate || currentDate.getFullYear() === 1970) {
+        console.log('📅 [Calendar] - Setting initial date to current month');
         navigateToMonth(today.getFullYear(), today.getMonth());
+      } else {
+        // If currentDate is already set, just fetch events for that month
+        console.log('📅 [Calendar] - Current date already set, fetching events...');
+        const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        fetchEventsRef.current(
+          startDate.toISOString().split('T')[0],
+          endDate.toISOString().split('T')[0]
+        );
       }
     };
     
-    // Delay initialization to avoid conflicts
-    setTimeout(initializeCalendar, 100);
+    // Small delay to ensure calendar component is ready
+    timeoutRef.current = setTimeout(initializeCalendar, 100);
 
-    // Cleanup timeout on unmount
+    // Cleanup on unmount
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      isInitialized.current = false; // Reset on unmount
     };
   }, []); // Empty dependency array to run only once
 
@@ -154,14 +167,18 @@ export function CalendarMain() {
     setSelectedDate(dateInfo.dateStr);
   }, [setSelectedDate]);
 
-  // Use a ref to store the timeout ID
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Flag to prevent sync conflicts during programmatic navigation
-  const isNavigatingRef = useRef(false);
+  // timeoutRef and isNavigatingRef already declared above
 
   const handleDatesSet = useCallback((dateInfo: any) => {
     // Skip if we're in the middle of programmatic navigation to prevent conflicts
     if (isNavigatingRef.current) {
+      console.log('📅 [Calendar] - Skipping datesSet during navigation');
+      return;
+    }
+
+    // Skip if component is not yet initialized to prevent early fetches
+    if (!isInitialized.current) {
+      console.log('📅 [Calendar] - Skipping datesSet during initialization');
       return;
     }
 
@@ -174,9 +191,11 @@ export function CalendarMain() {
     timeoutRef.current = setTimeout(() => {
       const startDate = dateInfo.start.toISOString().split('T')[0];
       const endDate = dateInfo.end.toISOString().split('T')[0];
+      
+      console.log('📅 [Calendar] - datesSet triggered fetch:', { startDate, endDate });
       fetchEventsRef.current(startDate, endDate);
-    }, 300); // 300ms delay
-  }, [currentDate]);
+    }, 500); // Increased delay to 500ms for better stability
+  }, []);
 
   const handleViewChange = useCallback((view: 'month' | 'week' | 'day' | 'list') => {
     setViewType(view);
@@ -441,16 +460,26 @@ export function CalendarMain() {
         </CardHeader>
 
         <CardContent>
-          {isLoading ? (
-            <div className="calendar-container">
-              <div className="flex items-center justify-center h-96 text-muted-foreground">
-                <LoadingSpinner className="mr-2" />
-                Loading calendar events...
+          <div className="calendar-container relative">
+            {/* Show overlay spinner only on initial load or when no events have been loaded yet */}
+            {isLoading && events.length === 0 && (
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                <div className="flex items-center justify-center text-muted-foreground">
+                  <LoadingSpinner className="mr-2" />
+                  Loading calendar events...
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="calendar-container">
-              <FullCalendar
+            )}
+            
+            {/* Show subtle loading indicator in top corner when refreshing with existing data */}
+            {isLoading && events.length > 0 && (
+              <div className="absolute top-2 right-2 z-10 bg-background/90 rounded-md px-2 py-1 text-xs flex items-center gap-1 text-muted-foreground border shadow-sm">
+                <LoadingSpinner size="sm" />
+                Refreshing...
+              </div>
+            )}
+            
+            <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 initialView={
@@ -501,8 +530,7 @@ export function CalendarMain() {
                   }
                 }}
               />
-            </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 

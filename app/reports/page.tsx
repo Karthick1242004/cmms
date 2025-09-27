@@ -184,35 +184,36 @@ export default function ReportsPage() {
     },
     charts: {
       costTrend: [
-        { month: "Jan", cost: 0 },
-        { month: "Feb", cost: 0 },
-        { month: "Mar", cost: 0 },
-        { month: "Apr", cost: 0 },
-        { month: "May", cost: 0 },
-        { month: "Jun", cost: 0 }
+        { month: "Jan", cost: 4200 },
+        { month: "Feb", cost: 3800 },
+        { month: "Mar", cost: 5100 },
+        { month: "Apr", cost: 4600 },
+        { month: "May", cost: 5300 },
+        { month: "Jun", cost: 4900 }
       ],
       completionRate: [
-        { week: "Week 1", rate: 0 },
-        { week: "Week 2", rate: 0 },
-        { week: "Week 3", rate: 0 },
-        { week: "Week 4", rate: 0 }
+        { week: "Week 1", rate: 85 },
+        { week: "Week 2", rate: 92 },
+        { week: "Week 3", rate: 78 },
+        { week: "Week 4", rate: 94 }
       ],
       uptime: [
-        { day: "Mon", uptime: 0 },
-        { day: "Tue", uptime: 0 },
-        { day: "Wed", uptime: 0 },
-        { day: "Thu", uptime: 0 },
-        { day: "Fri", uptime: 0 },
-        { day: "Sat", uptime: 0 },
-        { day: "Sun", uptime: 0 }
+        { day: "Mon", uptime: 96.2 },
+        { day: "Tue", uptime: 94.8 },
+        { day: "Wed", uptime: 97.1 },
+        { day: "Thu", uptime: 93.5 },
+        { day: "Fri", uptime: 95.7 },
+        { day: "Sat", uptime: 98.2 },
+        { day: "Sun", uptime: 96.8 }
       ],
       maintenanceTypes: [
-        { name: "Preventive", value: 0, fill: "#06b6d4" },
-        { name: "Corrective", value: 0, fill: "#f59e0b" },
-        { name: "Predictive", value: 0, fill: "#10b981" }
+        { name: "Preventive", value: 65, fill: "#06b6d4" },
+        { name: "Corrective", value: 25, fill: "#f59e0b" },
+        { name: "Predictive", value: 10, fill: "#10b981" }
       ]
     }
   })
+
 
     // Export functionality with chart image capture and real data
   const handleExportReport = async (event: React.MouseEvent<HTMLButtonElement>) => {

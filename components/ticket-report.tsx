@@ -529,16 +529,60 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
               <div class="info-label">In-Charge</div>
               <div class="info-value">${ticket.inCharge}</div>
             </div>
+            ${ticket.asset ? `
             <div class="info-card">
-              <div class="info-label">Equipment ID</div>
-              <div class="info-value">${ticket.equipmentId || 'N/A'}</div>
+              <div class="info-label">Equipment Name</div>
+              <div class="info-value">${ticket.asset.name}</div>
             </div>
+            ` : ticket.equipmentId ? `
+            <div class="info-card">
+              <div class="info-label">Equipment Reference</div>
+              <div class="info-value">${ticket.equipmentId}</div>
+            </div>
+            ` : `
+            <div class="info-card">
+              <div class="info-label">Equipment</div>
+              <div class="info-value">N/A</div>
+            </div>
+            `}
             <div class="info-card">
               <div class="info-label">Attended By</div>
               <div class="info-value">${ticket.inCharge ||'N/A'}</div>
             </div>
           </div>
         </div>
+
+        ${ticket.asset ? `
+        <div class="section">
+          <h2 class="section-title">🔗 Linked Asset Information</h2>
+          <div class="grid-4">
+            <div class="info-card">
+              <div class="info-label">Asset Name</div>
+              <div class="info-value" style="font-weight: 600;">${ticket.asset.name}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Asset Tag</div>
+              <div class="info-value">${ticket.asset.assetTag || 'N/A'}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Asset Type</div>
+              <div class="info-value">${ticket.asset.type}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Location</div>
+              <div class="info-value">${ticket.asset.location || 'N/A'}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Status</div>
+              <div class="info-value">${ticket.asset.status}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Department</div>
+              <div class="info-value">${ticket.asset.department}</div>
+            </div>
+          </div>
+        </div>
+        ` : ''}
 
         <div class="section">
           <h2 class="section-title">🏷️ Report Type & Access</h2>

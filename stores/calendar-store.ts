@@ -47,18 +47,25 @@ export const useCalendarStore = create<CalendarState>()(
       fetchEvents: async (startDate: string, endDate: string) => {
         const currentState = get();
         
+        // Create unique request key for this date range
+        const requestKey = `${startDate}-${endDate}`;
+        
         // Prevent duplicate requests for the same date range
         if (currentState.isLoading) {
+          console.log('📅 [Calendar] - Request already in progress, skipping...');
           return;
         }
 
-        // Check if we already have data for this range
+        // Check if we already have data for this exact range (even if empty)
         if (lastFetchedRange && 
             lastFetchedRange.startDate === startDate && 
-            lastFetchedRange.endDate === endDate &&
-            currentState.events.length > 0) {
+            lastFetchedRange.endDate === endDate) {
+          console.log('📅 [Calendar] - Data already fetched for this range, skipping...');
           return;
         }
+
+        console.log('📅 [Calendar] - Fetching events for range:', { startDate, endDate });
+        
         set((state) => {
           state.isLoading = true;
           state.error = null;
@@ -69,7 +76,6 @@ export const useCalendarStore = create<CalendarState>()(
           if (!token) {
             throw new Error('Authentication required');
           }
-
 
           // Fetch events from calendar events API
           const response = await fetch(`/api/calendar/events?startDate=${startDate}&endDate=${endDate}`, {
@@ -86,12 +92,16 @@ export const useCalendarStore = create<CalendarState>()(
           const data = await response.json();
           
           if (data.success) {
+            console.log('📅 [Calendar] - Successfully fetched events:', { count: data.data?.length || 0 });
+            
             set((state) => {
               state.events = data.data || [];
               state.isLoading = false;
+              state.error = null; // Clear any previous errors
             });
             
-            // Update cache
+            // Update cache REGARDLESS of whether events array is empty
+            // This prevents refetching empty results
             lastFetchedRange = { startDate, endDate };
             
           } else {
@@ -102,7 +112,11 @@ export const useCalendarStore = create<CalendarState>()(
           set((state) => {
             state.error = error instanceof Error ? error.message : 'Failed to fetch events';
             state.isLoading = false;
+            state.events = []; // Set empty array on error to prevent infinite loading
           });
+          
+          // Cache the failed request to prevent immediate retry
+          lastFetchedRange = { startDate, endDate };
         }
       },
 
@@ -286,8 +300,19 @@ export const useCalendarStore = create<CalendarState>()(
           state.filters = { ...state.filters, ...newFilters };
         });
         
-        // Clear cache when filters change to force fresh data
-        lastFetchedRange = null;
+        // Only clear cache for filters that affect data fetching (like departments)
+        // Client-side filters (like showLeaves, showMaintenance) don't need cache clearing
+        const dataAffectingFilters = ['departments', 'employees'];
+        const hasDataAffectingChanges = Object.keys(newFilters).some(key => 
+          dataAffectingFilters.includes(key)
+        );
+        
+        if (hasDataAffectingChanges) {
+          console.log('📅 [Calendar] - Data-affecting filter change, clearing cache');
+          lastFetchedRange = null;
+        } else {
+          console.log('📅 [Calendar] - Client-side filter change, keeping cache');
+        }
       },
 
       // Set selected date
@@ -443,16 +468,21 @@ export const useCalendarStore = create<CalendarState>()(
         // Calculate date range for the month
         const startDate = new Date(year, month, 1);
         const endDate = new Date(year, month + 1, 0);
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
         
-        // Clear cache to ensure fresh data for new month
-        lastFetchedRange = null;
+        console.log('📅 [Calendar] - Navigating to month:', { year, month, startDateStr, endDateStr });
+        
+        // Only clear cache if we're navigating to a truly different month
+        if (lastFetchedRange && 
+            (lastFetchedRange.startDate !== startDateStr || lastFetchedRange.endDate !== endDateStr)) {
+          console.log('📅 [Calendar] - Different month detected, clearing cache');
+          lastFetchedRange = null;
+        }
         
         // Fetch events for the new month
         const updatedState = get();
-        updatedState.fetchEvents(
-          startDate.toISOString().split('T')[0],
-          endDate.toISOString().split('T')[0]
-        );
+        updatedState.fetchEvents(startDateStr, endDateStr);
       },
 
       goToPreviousMonth: () => {

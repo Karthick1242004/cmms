@@ -523,20 +523,27 @@ export function generateIndividualTicketReport({ ticket }: GenerateIndividualTic
                   <label>In Charge</label>
                   <div class="value">${ticket.inCharge}</div>
                 </div>
-                ${ticket.equipmentId ? `
-                <div class="info-item">
-                  <label>Equipment ID</label>
-                  <div class="value">${ticket.equipmentId}</div>
-                </div>
-                ` : ''}
                 ${ticket.asset ? `
                 <div class="info-item">
-                  <label>Asset Name</label>
+                  <label>Equipment Name</label>
                   <div class="value">${ticket.asset.name}</div>
+                </div>
+                <div class="info-item">
+                  <label>Asset Tag</label>
+                  <div class="value">${ticket.asset.assetTag || 'N/A'}</div>
                 </div>
                 <div class="info-item">
                   <label>Asset Type</label>
                   <div class="value">${ticket.asset.type}</div>
+                </div>
+                <div class="info-item">
+                  <label>Location</label>
+                  <div class="value">${ticket.asset.location || 'N/A'}</div>
+                </div>
+                ` : ticket.equipmentId ? `
+                <div class="info-item">
+                  <label>Equipment Reference</label>
+                  <div class="value">${ticket.equipmentId}</div>
                 </div>
                 ` : ''}
                 ${resolutionTime !== null ? `
