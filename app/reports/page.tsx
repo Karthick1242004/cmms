@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart, LineChart, PieChart, RefreshCw, BarChart3, Circle, Package, TrendingUp, DollarSign, AlertTriangle, CheckCircle, Clock, FileText } from "lucide-react"
+import { BarChart, LineChart, PieChart, RefreshCw, BarChart3, Circle, Package, TrendingUp, DollarSign, AlertTriangle, CheckCircle, Clock, FileText, Printer, Building, Gauge, Calendar, Wrench } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 import { 
@@ -25,7 +25,8 @@ import {
   ComposedChart
 } from "recharts"
 import { useToast } from "@/hooks/use-toast"
-import ModernReportGenerator from "@/components/reports/modern-report-generator"
+import { OverviewTab } from "@/components/reports/overview-tab"
+import { renderPartsChart, renderTransactionsChart, renderAssetChart, renderInventoryChart, renderMetricsChart } from "@/components/reports/chart-renderers"
 
 export default function ReportsPage() {
   const [timeRange, setTimeRange] = useState("realtime")
@@ -41,7 +42,6 @@ export default function ReportsPage() {
   const [inventoryChartType, setInventoryChartType] = useState<'donut' | 'pie' | 'bar'>('donut')
   const [partsChartType, setPartsChartType] = useState<'bar' | 'pie' | 'line'>('bar')
   const [transactionsChartType, setTransactionsChartType] = useState<'line' | 'bar' | 'area'>('line')
-  const [showModernReport, setShowModernReport] = useState(false)
 
   // Helper function to get auth headers (consistent with other API calls)
   const getAuthHeaders = () => {
@@ -219,6 +219,82 @@ export default function ReportsPage() {
     }
   })
 
+  // Overview chart data with debugging
+  const fallbackData = getFallbackReportData()
+  const costTrendData = (reportData?.charts?.costTrend && reportData.charts.costTrend.length > 0) 
+    ? reportData.charts.costTrend 
+    : fallbackData.charts.costTrend
+  const completionRateData = (reportData?.charts?.completionRate && reportData.charts.completionRate.length > 0) 
+    ? reportData.charts.completionRate 
+    : fallbackData.charts.completionRate
+  const uptimeData = (reportData?.charts?.uptime && reportData.charts.uptime.length > 0) 
+    ? reportData.charts.uptime 
+    : fallbackData.charts.uptime
+
+  // Debug log to see what data we're using
+  console.log('📊 Chart Data Debug:')
+  console.log('🗂️ Report Data Exists:', !!reportData)
+  console.log('📈 Chart Data Exists:', !!reportData?.charts)
+  console.log('📊 Raw Data Lengths:', {
+    costTrendLength: costTrendData?.length,
+    completionRateLength: completionRateData?.length,
+    uptimeLength: uptimeData?.length
+  })
+  console.log('📋 Raw Data Samples:')
+  console.log('  💰 Cost Trend Sample:', JSON.stringify(costTrendData?.[0], null, 2))
+  console.log('  📊 Completion Rate Sample:', JSON.stringify(completionRateData?.[0], null, 2))
+  console.log('  ⏱️ Uptime Sample:', JSON.stringify(uptimeData?.[0], null, 2))
+  console.log('🔄 Loading State:', isLoading)
+  console.log('🎯 Fallback Data Check:')
+  console.log('  💰 Fallback Cost Sample:', JSON.stringify(fallbackData.charts.costTrend[0], null, 2))
+  console.log('  📊 Fallback Completion Sample:', JSON.stringify(fallbackData.charts.completionRate[0], null, 2))
+  console.log('  ⏱️ Fallback Uptime Sample:', JSON.stringify(fallbackData.charts.uptime[0], null, 2))
+
+  // Force fallback data for immediate display if still loading
+  const safeGetData = (data: any[], fallback: any[], dataName?: string) => {
+    console.log(`🔍 SafeGetData for ${dataName}:`, {
+      hasData: !!data,
+      isArray: Array.isArray(data),
+      dataLength: data?.length,
+      dataType: typeof data,
+      actualData: data,
+      fallbackLength: fallback?.length,
+      fallbackSample: fallback?.[0]
+    })
+    
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      console.log(`🔄 Using fallback data for ${dataName}`)
+      return fallback
+    }
+    console.log(`✅ Using actual data for ${dataName}`)
+    return data
+  }
+
+  // TEMPORARY: Force fallback data to test if the issue is with data source
+  console.log('🚨 TEMPORARY: Forcing fallback data for testing')
+  const finalCostTrendData = fallbackData.charts.costTrend
+  const finalCompletionRateData = fallbackData.charts.completionRate
+  const finalUptimeData = fallbackData.charts.uptime
+  
+  // Original logic (commented out for testing):
+  // const finalCostTrendData = safeGetData(costTrendData, fallbackData.charts.costTrend, 'costTrend')
+  // const finalCompletionRateData = safeGetData(completionRateData, fallbackData.charts.completionRate, 'completionRate')
+  // const finalUptimeData = safeGetData(uptimeData, fallbackData.charts.uptime, 'uptime')
+
+  // Enhanced debugging for chart data
+  console.log('🔍 Final Chart Data:')
+  console.log('💰 Cost Trend Data:', JSON.stringify(finalCostTrendData, null, 2))
+  console.log('📊 Completion Rate Data:', JSON.stringify(finalCompletionRateData, null, 2))
+  console.log('⏱️ Uptime Data:', JSON.stringify(finalUptimeData, null, 2))
+  console.log('✅ Charts Final Status:', {
+    costTrendHasData: finalCostTrendData && finalCostTrendData.length > 0,
+    completionRateHasData: finalCompletionRateData && finalCompletionRateData.length > 0,
+    uptimeHasData: finalUptimeData && finalUptimeData.length > 0,
+    costTrendLength: finalCostTrendData?.length,
+    completionRateLength: finalCompletionRateData?.length,
+    uptimeLength: finalUptimeData?.length
+  })
+
   // Sample data for parts and transactions
   const partsStockTrendData = [
     { month: "Apr", totalStock: 1205, lowStockItems: 15 },
@@ -294,130 +370,542 @@ export default function ReportsPage() {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
-  // Chart rendering functions
-  const renderPartsChart = (chartType: 'bar' | 'pie' | 'line') => {
-    const data = reportData?.parts?.byCategory || partsCategoryData
 
-    switch (chartType) {
-      case 'bar':
-        return (
-          <RechartsBarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="category" />
-            <YAxis />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-          </RechartsBarChart>
-        )
-      case 'pie':
-        return (
-          <RechartsPieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={({ category, percentage }) => `${category}: ${percentage}%`}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="count"
-            >
-              {data.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <ChartTooltip content={<ChartTooltipContent />} />
-          </RechartsPieChart>
-        )
-      default:
-        return (
-          <RechartsBarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="category" />
-            <YAxis />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-          </RechartsBarChart>
-        )
-    }
-  }
+  // Individual tab print functionality
+  const printTabContent = async (tabName: string, tabDisplayName: string) => {
+    try {
+      // Find the tab content
+      const tabElement = document.querySelector(`[data-tab="${tabName}"]`)
+      if (!tabElement) {
+        toast({
+          title: "Error",
+          description: `Could not find ${tabDisplayName} content to print`,
+          variant: "destructive"
+        })
+        return
+      }
 
-  const renderTransactionsChart = (chartType: 'line' | 'bar' | 'area') => {
-    const data = reportData?.transactions?.volumeTrend || transactionVolumeData
+      // Clone the content
+      const clonedContent = tabElement.cloneNode(true) as HTMLElement
+      
+      // Remove print buttons and other unwanted elements from cloned content
+      const printButtons = clonedContent.querySelectorAll('[data-print-button]')
+      printButtons.forEach(button => button.remove())
+      
+      // Remove any existing print controls
+      const printControls = clonedContent.querySelectorAll('.print-controls')
+      printControls.forEach(control => control.remove())
+      
+      // Remove chart option buttons (the bar/pie/line toggle buttons)
+      const chartOptionButtons = clonedContent.querySelectorAll('button[class*="variant"], .flex.items-center.space-x-2 button')
+      chartOptionButtons.forEach(button => button.remove())
+      
+      // Remove chart option containers
+      const chartOptions = clonedContent.querySelectorAll('.flex.items-center.space-x-2')
+      chartOptions.forEach(option => {
+        // Only remove if it contains buttons (chart options)
+        if (option.querySelector('button')) {
+          option.remove()
+        }
+      })
+      
+      // Clean up button containers in card headers
+      const cardHeaders = clonedContent.querySelectorAll('.flex.items-center.justify-between')
+      cardHeaders.forEach(header => {
+        const buttonContainer = header.querySelector('.flex.items-center.space-x-2')
+        if (buttonContainer && buttonContainer.querySelector('button')) {
+          buttonContainer.remove()
+        }
+      })
+      
+      // Remove all buttons including "View Details"
+      const allButtons = clonedContent.querySelectorAll('button')
+      allButtons.forEach(button => button.remove())
+      
+      // Remove card footers that typically contain buttons
+      const cardFooters = clonedContent.querySelectorAll('[class*="card-footer"], .justify-between')
+      cardFooters.forEach(footer => {
+        if (footer.querySelector('button') || footer.textContent?.includes('View Details') || footer.textContent?.includes('Details')) {
+          footer.remove()
+        }
+      })
+      
+      // Remove badge containers at the bottom of cards
+      const badgeContainers = clonedContent.querySelectorAll('.flex.flex-wrap.gap-2')
+      badgeContainers.forEach(container => {
+        // Keep if it doesn't contain badges, remove if it does
+        if (container.querySelector('[class*="badge"]')) {
+          container.remove()
+        }
+      })
+      
+      // Group charts with their related data for better page breaks
+      const cards = clonedContent.querySelectorAll('[class*="card"]')
+      cards.forEach((card, index) => {
+        // Add grouping classes for better print layout
+        if (card.querySelector('[class*="recharts"], [class*="chart"]')) {
+          card.classList.add('chart-section')
+        } else if (card.querySelector('[class*="grid"]')) {
+          card.classList.add('data-section')
+        }
+        
+        // Add page break classes for better layout
+        if (index === 0) {
+          card.classList.add('first-section')
+        }
+      })
+      
+      // Add print-optimized classes to content
+      clonedContent.classList.add('print-optimized')
 
-    switch (chartType) {
-      case 'line':
-        return (
-          <RechartsLineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Line 
-              type="monotone" 
-              dataKey="volume" 
-              stroke="#3b82f6" 
-              strokeWidth={2}
-              name="Volume"
-            />
-            <Line 
-              type="monotone" 
-              dataKey="value" 
-              stroke="#10b981" 
-              strokeWidth={2}
-              name="Value ($)"
-            />
-          </RechartsLineChart>
-        )
-      case 'bar':
-        return (
-          <RechartsBarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Bar dataKey="volume" fill="#3b82f6" name="Volume" />
-            <Bar dataKey="value" fill="#10b981" name="Value ($)" />
-          </RechartsBarChart>
-        )
-      case 'area':
-        return (
-          <AreaChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Area 
-              type="monotone" 
-              dataKey="volume" 
-              stackId="1"
-              stroke="#3b82f6" 
-              fill="#3b82f6"
-              name="Volume"
-            />
-            <Area 
-              type="monotone" 
-              dataKey="value" 
-              stackId="2"
-              stroke="#10b981" 
-              fill="#10b981"
-              name="Value ($)"
-            />
-          </AreaChart>
-        )
-      default:
-        return (
-          <RechartsLineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Line type="monotone" dataKey="volume" stroke="#3b82f6" strokeWidth={2} />
-          </RechartsLineChart>
-        )
+      // Create print window
+      const printWindow = window.open('', '_blank', 'width=1200,height=800')
+      if (!printWindow) {
+        toast({
+          title: "Error", 
+          description: "Could not open print window",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Generate print HTML
+      const currentDate = new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })
+      const currentTime = new Date().toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
+
+      const printHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>FMMS 360 - ${tabDisplayName} Report</title>
+          <style>
+            * {
+              margin: 0 !important;
+              padding: 0 !important;
+              box-sizing: border-box !important;
+            }
+            
+            html, body {
+              font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif !important;
+              line-height: 1.6 !important;
+              color: #1a202c !important;
+              background: #ffffff !important;
+              padding: 0 !important;
+              font-size: 14px !important;
+              margin: 0 !important;
+              width: 100% !important;
+              height: auto !important;
+            }
+            
+            body {
+              padding: 40px !important;
+            }
+            
+            .print-container {
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+            }
+            
+            .print-header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+              color: white !important;
+              padding: 25px !important;
+              border-radius: 8px !important;
+              text-align: center !important;
+              margin-bottom: 30px !important;
+              box-shadow: none !important;
+              page-break-after: avoid !important;
+            }
+            
+            .print-header h1 {
+              font-size: 28px;
+              font-weight: 700;
+              margin-bottom: 8px;
+            }
+            
+            .print-header .subtitle {
+              font-size: 16px;
+              opacity: 0.9;
+              margin-bottom: 8px;
+            }
+            
+            .print-header .meta {
+              font-size: 13px;
+              opacity: 0.8;
+            }
+            
+            .print-content {
+              background: white;
+              border-radius: 8px;
+              overflow: hidden;
+              padding: 0;
+              margin-top: 0;
+            }
+            
+            .content-wrapper {
+              padding: 30px !important;
+              margin: 0 !important;
+              width: 100% !important;
+            }
+            
+            .content-wrapper > * {
+              margin-bottom: 25px !important;
+              page-break-inside: avoid !important;
+            }
+            
+            .content-wrapper > *:last-child {
+              margin-bottom: 0 !important;
+            }
+            
+            /* Chart and data grouping */
+            .chart-section {
+              page-break-inside: avoid !important;
+              margin-bottom: 35px !important;
+            }
+            
+            .data-section {
+              page-break-inside: avoid !important;
+              margin-bottom: 25px !important;
+            }
+            
+            /* Preserve existing component styles */
+            .print-content [class*="card"] {
+              background: white !important;
+              border: 1px solid #e2e8f0 !important;
+              border-radius: 8px !important;
+              margin-bottom: 20px !important;
+              padding: 0 !important;
+              page-break-inside: avoid !important;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+            }
+            
+            .print-content [class*="card-header"] {
+              padding: 15px 20px !important;
+              border-bottom: 1px solid #e2e8f0 !important;
+              margin: 0 !important;
+            }
+            
+            .print-content [class*="card-content"] {
+              padding: 20px !important;
+              margin: 0 !important;
+            }
+            
+            .print-content [class*="card-title"] {
+              font-size: 16px !important;
+              font-weight: 600 !important;
+              color: #1e293b !important;
+              margin-bottom: 8px !important;
+              margin-top: 0 !important;
+            }
+            
+            .print-content [class*="card-description"] {
+              font-size: 13px !important;
+              color: #64748b !important;
+              margin: 0 !important;
+            }
+            
+            /* Grid layouts */
+            .print-content [class*="grid"] {
+              display: grid !important;
+              gap: 15px !important;
+              margin-bottom: 25px !important;
+              page-break-inside: avoid !important;
+            }
+            
+            .print-content [class*="grid-cols-2"] {
+              grid-template-columns: repeat(2, 1fr) !important;
+            }
+            
+            .print-content [class*="grid-cols-3"] {
+              grid-template-columns: repeat(3, 1fr) !important;
+            }
+            
+            .print-content [class*="grid-cols-4"] {
+              grid-template-columns: repeat(4, 1fr) !important;
+            }
+            
+            /* Better spacing for grid items */
+            .print-content [class*="grid"] > * {
+              margin-bottom: 0 !important;
+              margin-top: 0 !important;
+            }
+            
+            /* Chart containers */
+            .print-content [class*="recharts"] {
+              background: white;
+            }
+            
+            /* Metrics and stats */
+            .print-content [class*="text-2xl"] {
+              font-size: 24px;
+              font-weight: 700;
+              color: #1e293b;
+            }
+            
+            .print-content [class*="text-lg"] {
+              font-size: 18px;
+              font-weight: 600;
+            }
+            
+            .print-content [class*="text-sm"] {
+              font-size: 14px;
+            }
+            
+            .print-content [class*="text-xs"] {
+              font-size: 12px;
+            }
+            
+            /* Status indicators */
+            .print-content [class*="text-green"] {
+              color: #10b981;
+            }
+            
+            .print-content [class*="text-red"] {
+              color: #ef4444;
+            }
+            
+            .print-content [class*="text-orange"] {
+              color: #f59e0b;
+            }
+            
+            .print-content [class*="text-blue"] {
+              color: #3b82f6;
+            }
+            
+            /* Spacing */
+            .print-content [class*="space-y-4"] > * + * {
+              margin-top: 16px;
+            }
+            
+            .print-content [class*="space-y-3"] > * + * {
+              margin-top: 12px;
+            }
+            
+            .print-content [class*="mb-4"] {
+              margin-bottom: 16px;
+            }
+            
+            .print-content [class*="mb-6"] {
+              margin-bottom: 24px;
+            }
+            
+            /* Activity summary styling */
+            .print-content [class*="space-y-3"] {
+              margin-top: 0;
+              padding-top: 0;
+            }
+            
+            .print-content [class*="space-y-3"] > div {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 12px 16px;
+              margin-bottom: 12px;
+              border-radius: 8px;
+              border: 1px solid #e2e8f0;
+            }
+            
+            .print-content [class*="space-y-3"] > div:last-child {
+              margin-bottom: 0;
+            }
+            
+            /* Print-specific styles */
+            @media print {
+              html, body {
+                width: 210mm !important;
+                height: 297mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              
+              body {
+                padding: 15mm !important;
+              }
+              
+              .print-container {
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+              
+              .print-header {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                margin-bottom: 20px !important;
+                padding: 20px !important;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              
+              .print-content {
+                padding: 0 !important;
+                margin: 0 !important;
+              }
+              
+              .content-wrapper {
+                padding: 25px !important;
+                margin: 0 !important;
+                width: 100% !important;
+              }
+              
+              .print-content [class*="card"] {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                margin-bottom: 15px !important;
+                padding: 0 !important;
+              }
+              
+              .print-content [class*="grid"] {
+                page-break-inside: avoid !important;
+                margin-bottom: 20px !important;
+                gap: 12px !important;
+              }
+              
+              .print-controls {
+                display: none !important;
+                visibility: hidden !important;
+              }
+              
+              .print-content > * {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+              }
+              
+              /* Remove any button containers that might remain */
+              .print-content button,
+              .print-content [class*="variant-"],
+              button,
+              [class*="variant-"] {
+                display: none !important;
+                visibility: hidden !important;
+              }
+              
+              /* Fix card header alignment when buttons are removed */
+              .print-content [class*="justify-between"] {
+                justify-content: flex-start !important;
+              }
+              
+              /* Force text styles */
+              .print-content [class*="text-2xl"] {
+                font-size: 20px !important;
+              }
+              
+              .print-content [class*="text-lg"] {
+                font-size: 16px !important;
+              }
+              
+              .print-content [class*="text-sm"] {
+                font-size: 12px !important;
+              }
+              
+              /* Force consistent spacing */
+              .print-content * {
+                line-height: 1.4 !important;
+              }
+            }
+            
+            @page {
+              size: A4 !important;
+              margin: 10mm !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="print-header">
+              <h1>🏭 FMMS 360 - ${tabDisplayName} Report</h1>
+              <div class="subtitle">Maintenance Management System</div>
+              <div class="meta">Generated: ${currentDate} at ${currentTime}</div>
+            </div>
+            
+            <div class="print-content">
+              <div class="content-wrapper">
+                ${clonedContent.innerHTML}
+              </div>
+            </div>
+          </div>
+          
+          <!-- Print Controls -->
+          <div class="print-controls" style="
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+          ">
+            <button onclick="window.print()" style="
+              background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+              color: white;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              transition: all 0.2s ease;
+              font-size: 14px;
+            ">
+              🖨️ Print / Save PDF
+            </button>
+            <button onclick="window.close()" style="
+              background: linear-gradient(135deg, #6b7280, #4b5563);
+              color: white;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              transition: all 0.2s ease;
+              font-size: 14px;
+            ">
+              ✕ Close
+            </button>
+          </div>
+        </body>
+        </html>
+      `
+
+      printWindow.document.write(printHTML)
+      printWindow.document.close()
+      
+      toast({
+        title: "Success",
+        description: `${tabDisplayName} report opened for printing`,
+      })
+
+    } catch (error) {
+      console.error('Error printing tab:', error)
+      toast({
+        title: "Error",
+        description: "Failed to generate print view",
+        variant: "destructive"
+      })
     }
   }
 
@@ -1580,9 +2068,6 @@ export default function ReportsPage() {
   }
 
   // Get data from API or fallback
-  const costTrendData = reportData?.charts?.costTrend || getFallbackReportData().charts.costTrend
-  const completionRateData = reportData?.charts?.completionRate || getFallbackReportData().charts.completionRate
-  const uptimeData = reportData?.charts?.uptime || getFallbackReportData().charts.uptime
   // Enhanced maintenance type data with guaranteed colors
   const baseMaintentanceTypeData = reportData?.charts?.maintenanceTypes || getFallbackReportData().charts.maintenanceTypes
   const maintenanceColors = ["#06b6d4", "#f59e0b", "#10b981", "#8b5cf6", "#ef4444"]
@@ -1655,258 +2140,7 @@ export default function ReportsPage() {
     hours: { label: "Hours", color: "#8b5cf6" },
   }
 
-  // Helper function to render maintenance chart based on type
-  const renderMaintenanceChart = (type: 'bar' | 'pie' | 'line') => {
-    switch (type) {
-      case 'bar':
-        return (
-          <RechartsBarChart data={maintenanceTypeData} height={250}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" fontSize={10} />
-            <YAxis fontSize={10} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {maintenanceTypeData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </RechartsBarChart>
-        )
-      case 'line':
-        return (
-          <RechartsLineChart data={maintenanceTypeData} height={250}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" fontSize={10} />
-            <YAxis fontSize={10} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Line 
-              type="monotone" 
-              dataKey="value" 
-              stroke="#06b6d4" 
-              strokeWidth={3}
-              dot={{ fill: "#06b6d4", r: 4 }}
-            />
-          </RechartsLineChart>
-        )
-      case 'pie':
-      default:
-        return (
-          <RechartsPieChart width={300} height={250}>
-            <Pie
-              data={maintenanceTypeData}
-              cx="50%"
-              cy="50%"
-              outerRadius={80}
-              dataKey="value"
-              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
-            >
-              {maintenanceTypeData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Pie>
-            <ChartTooltip 
-              content={<ChartTooltipContent />}
-              formatter={(value) => [`${value} tasks`, '']}
-            />
-          </RechartsPieChart>
-        )
-    }
-  }
 
-  // Helper function to render asset performance chart based on type
-  const renderAssetChart = (type: 'pie' | 'bar' | 'donut') => {
-    switch (type) {
-      case 'bar':
-        return (
-          <RechartsBarChart data={assetPerformanceData} height={250}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" fontSize={10} />
-            <YAxis fontSize={10} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {assetPerformanceData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </RechartsBarChart>
-        )
-      case 'donut':
-        return (
-          <RechartsPieChart width={300} height={250}>
-            <Pie
-              data={assetPerformanceData}
-              cx="50%"
-              cy="50%"
-              innerRadius={40}
-              outerRadius={80}
-              dataKey="value"
-              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
-            >
-              {assetPerformanceData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Pie>
-            <ChartTooltip 
-              content={<ChartTooltipContent />}
-              formatter={(value) => [`${value} assets`, '']}
-            />
-          </RechartsPieChart>
-        )
-      case 'pie':
-      default:
-        return (
-          <RechartsPieChart width={300} height={250}>
-            <Pie
-              data={assetPerformanceData}
-              cx="50%"
-              cy="50%"
-              outerRadius={80}
-              dataKey="value"
-              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
-            >
-              {assetPerformanceData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Pie>
-            <ChartTooltip 
-              content={<ChartTooltipContent />}
-              formatter={(value) => [`${value} assets`, '']}
-            />
-          </RechartsPieChart>
-        )
-    }
-  }
-
-  // Helper function to render maintenance metrics chart based on type
-  const renderMetricsChart = (type: 'pie' | 'bar' | 'area') => {
-    switch (type) {
-      case 'bar':
-        return (
-          <RechartsBarChart data={maintenanceMetricsData} height={250}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" fontSize={10} />
-            <YAxis fontSize={10} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {maintenanceMetricsData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </RechartsBarChart>
-        )
-      case 'area':
-        return (
-          <AreaChart data={maintenanceMetricsData} height={250}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" fontSize={10} />
-            <YAxis fontSize={10} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Area 
-              type="monotone" 
-              dataKey="value" 
-              stroke="#8b5cf6"
-              fill="#8b5cf6"
-              fillOpacity={0.3}
-            />
-          </AreaChart>
-        )
-      case 'pie':
-      default:
-        return (
-          <RechartsPieChart width={300} height={250}>
-            <Pie
-              data={maintenanceMetricsData}
-              cx="50%"
-              cy="50%"
-              outerRadius={80}
-              dataKey="value"
-              label={({ name, value }) => `${name}: ${value}${name.includes('MTTR') || name.includes('MTBF') ? 'hrs' : '%'}`}
-              labelLine={false}
-            >
-              {maintenanceMetricsData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Pie>
-            <ChartTooltip 
-              content={<ChartTooltipContent />}
-              formatter={(value, name) => [
-                `${value}${String(name).includes('MTTR') || String(name).includes('MTBF') ? ' hrs' : '%'}`, 
-                name
-              ]}
-            />
-          </RechartsPieChart>
-        )
-    }
-  }
-
-  // Helper function to render inventory chart based on type
-  const renderInventoryChart = (type: 'donut' | 'pie' | 'bar') => {
-    switch (type) {
-      case 'bar':
-        return (
-          <RechartsBarChart data={inventoryData} height={250}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="category" fontSize={10} />
-            <YAxis fontSize={10} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {inventoryData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </RechartsBarChart>
-        )
-      case 'pie':
-        return (
-          <RechartsPieChart width={300} height={250}>
-            <Pie
-              data={inventoryData}
-              cx="50%"
-              cy="50%"
-              outerRadius={80}
-              dataKey="value"
-              label={({ category, percent }) => `${category}: ${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
-            >
-              {inventoryData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Pie>
-            <ChartTooltip 
-              content={<ChartTooltipContent />}
-              formatter={(value) => [`${value} units`, '']}
-            />
-          </RechartsPieChart>
-        )
-      case 'donut':
-      default:
-        return (
-          <RechartsPieChart width={300} height={250}>
-            <Pie
-              data={inventoryData}
-              cx="50%"
-              cy="50%"
-              innerRadius={40}
-              outerRadius={80}
-              dataKey="value"
-              label={({ category, percent }) => `${category}: ${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
-            >
-              {inventoryData.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Pie>
-            <ChartTooltip 
-              content={<ChartTooltipContent />}
-              formatter={(value) => [`${value} units`, '']}
-            />
-          </RechartsPieChart>
-        )
-    }
-  }
 
   // Show loading state
   if (isLoading) {
@@ -1977,14 +2211,6 @@ export default function ReportsPage() {
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button 
-            onClick={() => setShowModernReport(true)} 
-            disabled={!reportData}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Generate Modern Report
-          </Button>
         </div>
       </div>
 
@@ -2024,160 +2250,35 @@ export default function ReportsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="transition-all duration-300 hover:shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Maintenance Costs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  ${(reportData?.overview?.maintenanceCosts || 24685).toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+2.5%</span> from previous period
-                </p>
-                <div className="mt-4 h-32 w-full" data-chart-type="line" data-chart-name="costTrend">
-                  <ChartContainer config={chartConfig} className="w-full h-full">
-                    <RechartsLineChart data={costTrendData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" fontSize={10} />
-                      <YAxis fontSize={10} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="cost" 
-                        stroke="#06b6d4" 
-                        strokeWidth={2}
-                        dot={{ fill: "#06b6d4", r: 3 }}
-                      />
-                    </RechartsLineChart>
-                  </ChartContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="transition-all duration-300 hover:shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Work Order Completion</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {reportData?.overview?.completionRate || 87}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-red-600">-3.2%</span> from previous period
-                </p>
-                <div className="mt-4 h-32 w-full" data-chart-type="bar" data-chart-name="completionRate">
-                  <ChartContainer config={chartConfig} className="w-full h-full">
-                    <RechartsBarChart data={completionRateData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="week" fontSize={10} />
-                      <YAxis fontSize={10} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar 
-                        dataKey="rate" 
-                        fill="#10b981" 
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </RechartsBarChart>
-                  </ChartContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="transition-all duration-300 hover:shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Asset Uptime</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {reportData?.overview?.assetUptime || 94.3}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+1.7%</span> from previous period
-                </p>
-                <div className="mt-4 h-32 w-full" data-chart-type="area" data-chart-name="assetUptime">
-                  <ChartContainer config={chartConfig} className="w-full h-full">
-                    <AreaChart data={uptimeData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="day" fontSize={10} />
-                      <YAxis domain={[90, 100]} fontSize={10} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Area 
-                        type="monotone" 
-                        dataKey="uptime" 
-                        stroke="#8b5cf6"
-                        fill="#8b5cf6"
-                        fillOpacity={0.3}
-                      />
-                    </AreaChart>
-                  </ChartContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="transition-all duration-300 hover:shadow-md">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Maintenance Overview</CardTitle>
-                  <CardDescription>Comprehensive view of maintenance activities</CardDescription>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant={maintenanceChartType === 'bar' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setMaintenanceChartType('bar')}
-                    className="p-2"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={maintenanceChartType === 'pie' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setMaintenanceChartType('pie')}
-                    className="p-2"
-                  >
-                    <PieChart className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={maintenanceChartType === 'line' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setMaintenanceChartType('line')}
-                    className="p-2"
-                  >
-                    <LineChart className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 w-full flex justify-center">
-                <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
-                  {renderMaintenanceChart(maintenanceChartType)}
-                </ChartContainer>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <div className="flex items-center space-x-2">
-                <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-                  Preventive
-                </Badge>
-                <Badge variant="outline" className="bg-orange-100 text-orange-800 hover:bg-orange-100">
-                  Corrective
-                </Badge>
-                <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">
-                  Predictive
-                </Badge>
-              </div>
-              <Button variant="outline">View Details</Button>
-            </CardFooter>
-          </Card>
+        <TabsContent value="overview">
+          <OverviewTab
+            reportData={reportData}
+            finalCostTrendData={finalCostTrendData}
+            finalCompletionRateData={finalCompletionRateData}
+            finalUptimeData={finalUptimeData}
+            maintenanceChartType={maintenanceChartType}
+            setMaintenanceChartType={setMaintenanceChartType}
+            maintenanceTypeData={maintenanceTypeData}
+            chartConfig={chartConfig}
+            printTabContent={printTabContent}
+          />
         </TabsContent>
 
-        <TabsContent value="assets" className="space-y-4">
+        <TabsContent value="assets" className="space-y-4" data-tab="assets">
+          {/* Print Button */}
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={() => printTabContent('assets', 'Asset Management')}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+              data-print-button
+            >
+              <Printer className="h-4 w-4" />
+              Print Assets Report
+            </Button>
+          </div>
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -2216,14 +2317,152 @@ export default function ReportsPage() {
             <CardContent>
               <div className="h-64 w-full flex justify-center">
                 <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
-                  {renderAssetChart(assetChartType)}
+                  {renderAssetChart(assetChartType, assetPerformanceData)}
                 </ChartContainer>
               </div>
             </CardContent>
           </Card>
+
+          {/* Asset Summary Data */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Building className="h-4 w-4 text-blue-600" />
+                  Total Assets
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.assets?.totalAssets || 150}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+5</span> added this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Active Assets
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {reportData?.assets?.activeAssets || 142}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  94.7% operational
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  Under Maintenance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.assets?.underMaintenance || 8}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Scheduled maintenance
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-purple-600" />
+                  Average Uptime
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.assets?.averageUptime || '94.3%'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Last 30 days
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Critical Assets List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Critical Assets Status</CardTitle>
+              <CardDescription>Assets requiring immediate attention</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center space-x-3">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <div>
+                      <div className="font-medium">Hydraulic System A</div>
+                      <div className="text-sm text-muted-foreground">Production Line 1</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-red-600">Critical</div>
+                    <div className="text-sm text-muted-foreground">Maintenance overdue</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center space-x-3">
+                    <Clock className="h-4 w-4 text-orange-600" />
+                    <div>
+                      <div className="font-medium">Conveyor Belt System</div>
+                      <div className="text-sm text-muted-foreground">Warehouse B</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-orange-600">Maintenance Due</div>
+                    <div className="text-sm text-muted-foreground">Due in 2 days</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <div>
+                      <div className="font-medium">Generator Unit 2</div>
+                      <div className="text-sm text-muted-foreground">Power Plant</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-green-600">Good</div>
+                    <div className="text-sm text-muted-foreground">Next maintenance: 30 days</div>
+                  </div>
+                </div>
+                </div>
+              </CardContent>
+            </Card>
         </TabsContent>
 
-        <TabsContent value="maintenance" className="space-y-4">
+        <TabsContent value="maintenance" className="space-y-4" data-tab="maintenance">
+          {/* Print Button */}
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={() => printTabContent('maintenance', 'Maintenance Operations')}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+              data-print-button
+            >
+              <Printer className="h-4 w-4" />
+              Print Maintenance Report
+            </Button>
+          </div>
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -2262,14 +2501,152 @@ export default function ReportsPage() {
             <CardContent>
               <div className="h-64 w-full flex justify-center">
                 <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
-                  {renderMetricsChart(metricsChartType)}
+              {renderMetricsChart(metricsChartType, maintenanceMetricsData)}
                 </ChartContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Maintenance Summary Data */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-blue-600" />
+                  Total Work Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.maintenance?.totalWorkOrders || 145}
+              </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+8</span> this week
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Completed
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {reportData?.maintenance?.completedWorkOrders || 126}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  87% completion rate
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-orange-600" />
+                  In Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.maintenance?.inProgressWorkOrders || 12}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Currently active
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  Overdue
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {reportData?.maintenance?.overdueWorkOrders || 7}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Require attention
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Upcoming Maintenance Schedule */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Upcoming Maintenance Schedule</CardTitle>
+              <CardDescription>Scheduled maintenance activities</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <div className="font-medium">Hydraulic System Inspection</div>
+                      <div className="text-sm text-muted-foreground">Production Line A</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-blue-600">Tomorrow</div>
+                    <div className="text-sm text-muted-foreground">2:00 PM - 4:00 PM</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="h-4 w-4 text-orange-600" />
+                    <div>
+                      <div className="font-medium">Conveyor Belt Maintenance</div>
+                      <div className="text-sm text-muted-foreground">Warehouse B</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-orange-600">Friday</div>
+                    <div className="text-sm text-muted-foreground">9:00 AM - 12:00 PM</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="h-4 w-4 text-green-600" />
+                    <div>
+                      <div className="font-medium">Generator Routine Check</div>
+                      <div className="text-sm text-muted-foreground">Power Plant</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-green-600">Next Week</div>
+                    <div className="text-sm text-muted-foreground">Monday 8:00 AM</div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="inventory" className="space-y-4">
+        <TabsContent value="inventory" className="space-y-4" data-tab="inventory">
+          {/* Print Button */}
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={() => printTabContent('inventory', 'Inventory Management')}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+              data-print-button
+            >
+              <Printer className="h-4 w-4" />
+              Print Inventory Report
+            </Button>
+          </div>
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -2308,14 +2685,152 @@ export default function ReportsPage() {
             <CardContent>
               <div className="h-64 w-full flex justify-center">
                 <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
-                  {renderInventoryChart(inventoryChartType)}
+                  {renderInventoryChart(inventoryChartType, inventoryData)}
                 </ChartContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Inventory Summary Data */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Package className="h-4 w-4 text-blue-600" />
+                  Total Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.inventory?.totalItems || 2450}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+45</span> added this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  Total Value
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  ${(reportData?.inventory?.totalValue || 245000).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Inventory valuation
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  Low Stock
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.inventory?.lowStockItems || 35}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Below minimum levels
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                  Turnover Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.inventory?.turnoverRate || '6.2x'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Annual turnover
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Critical Inventory Alerts */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Critical Inventory Alerts</CardTitle>
+              <CardDescription>Items requiring immediate restocking</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center space-x-3">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                <div>
+                      <div className="font-medium">Industrial Lubricant</div>
+                      <div className="text-sm text-muted-foreground">SKU: IND-LUB-001</div>
+                </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-red-600">0 units</div>
+                    <div className="text-sm text-muted-foreground">Min: 50</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center space-x-3">
+                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                    <div>
+                      <div className="font-medium">Safety Helmets</div>
+                      <div className="text-sm text-muted-foreground">SKU: SAF-HEL-002</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-orange-600">8 units</div>
+                    <div className="text-sm text-muted-foreground">Min: 25</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="flex items-center space-x-3">
+                    <Clock className="h-4 w-4 text-yellow-600" />
+                    <div>
+                      <div className="font-medium">Cutting Tools</div>
+                      <div className="text-sm text-muted-foreground">SKU: CUT-TOL-003</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-yellow-600">15 units</div>
+                    <div className="text-sm text-muted-foreground">Min: 20</div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="parts" className="space-y-4">
+        <TabsContent value="parts" className="space-y-4" data-tab="parts">
+          {/* Print Button */}
+          <div className="flex justify-end mb-4">
+                  <Button
+              onClick={() => printTabContent('parts', 'Parts & Inventory')}
+              variant="outline" 
+                    size="sm"
+              className="flex items-center gap-2"
+              data-print-button
+                  >
+              <Printer className="h-4 w-4" />
+              Print Parts Report
+                  </Button>
+          </div>
+
           {/* Parts Overview Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="transition-all duration-300 hover:shadow-md">
@@ -2397,30 +2912,30 @@ export default function ReportsPage() {
                     <CardDescription>Distribution of parts across categories</CardDescription>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Button
+                  <Button
                       variant={partsChartType === 'bar' ? 'default' : 'outline'}
-                      size="sm"
+                    size="sm"
                       onClick={() => setPartsChartType('bar')}
-                      className="p-2"
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                    </Button>
-                    <Button
+                    className="p-2"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
                       variant={partsChartType === 'pie' ? 'default' : 'outline'}
-                      size="sm"
+                    size="sm"
                       onClick={() => setPartsChartType('pie')}
-                      className="p-2"
-                    >
+                    className="p-2"
+                  >
                       <PieChart className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
+              </div>
+            </CardHeader>
+            <CardContent>
                 <div className="h-64 w-full" data-chart-type="mixed" data-chart-name="partsCategory">
                   <ChartContainer config={chartConfig} className="w-full h-full">
-                    {renderPartsChart(partsChartType)}
-                  </ChartContainer>
+                    {renderPartsChart(partsChartType, partsCategoryData, reportData)}
+                </ChartContainer>
                 </div>
               </CardContent>
             </Card>
@@ -2488,7 +3003,21 @@ export default function ReportsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="transactions" className="space-y-4">
+        <TabsContent value="transactions" className="space-y-4" data-tab="transactions">
+          {/* Print Button */}
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={() => printTabContent('transactions', 'Stock Transactions')}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+              data-print-button
+            >
+              <Printer className="h-4 w-4" />
+              Print Transactions Report
+            </Button>
+          </div>
+
           {/* Transaction Overview Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="transition-all duration-300 hover:shadow-md">
@@ -2562,46 +3091,46 @@ export default function ReportsPage() {
 
           {/* Transaction Analysis Charts */}
           <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
                     <CardTitle>Transaction Volume</CardTitle>
                     <CardDescription>Monthly transaction trends</CardDescription>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant={transactionsChartType === 'line' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTransactionsChartType('line')}
-                      className="p-2"
-                    >
-                      <LineChart className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant={transactionsChartType === 'bar' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTransactionsChartType('bar')}
-                      className="p-2"
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant={transactionsChartType === 'area' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTransactionsChartType('area')}
-                      className="p-2"
-                    >
-                      <BarChart className="h-4 w-4" />
-                    </Button>
-                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
+                <div className="flex items-center space-x-2">
+                  <Button
+                      variant={transactionsChartType === 'line' ? 'default' : 'outline'}
+                    size="sm"
+                      onClick={() => setTransactionsChartType('line')}
+                    className="p-2"
+                  >
+                      <LineChart className="h-4 w-4" />
+                  </Button>
+                  <Button
+                      variant={transactionsChartType === 'bar' ? 'default' : 'outline'}
+                    size="sm"
+                      onClick={() => setTransactionsChartType('bar')}
+                    className="p-2"
+                  >
+                      <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                      variant={transactionsChartType === 'area' ? 'default' : 'outline'}
+                    size="sm"
+                      onClick={() => setTransactionsChartType('area')}
+                    className="p-2"
+                  >
+                      <BarChart className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
                 <div className="h-64 w-full" data-chart-type="mixed" data-chart-name="transactionVolume">
                   <ChartContainer config={chartConfig} className="w-full h-full">
-                    {renderTransactionsChart(transactionsChartType)}
-                  </ChartContainer>
+                    {renderTransactionsChart(transactionsChartType, transactionVolumeData, reportData)}
+                </ChartContainer>
                 </div>
               </CardContent>
             </Card>
@@ -2670,18 +3199,6 @@ export default function ReportsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Modern Report Generator Modal */}
-      {showModernReport && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-auto">
-            <ModernReportGenerator 
-              reportData={reportData}
-              timeRange={timeRange}
-              onClose={() => setShowModernReport(false)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
