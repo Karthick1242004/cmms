@@ -48,6 +48,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -140,9 +146,9 @@ export function StockTransactionList({
     fetchTransactions();
   };
 
-  // Get status badge variant
+  // Get status badge variant with enhanced colors
   const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'completed':
         return 'default';
       case 'approved':
@@ -153,26 +159,56 @@ export function StockTransactionList({
         return 'outline';
       case 'cancelled':
         return 'destructive';
+      case 'in-progress':
+        return 'outline';
+      case 'rejected':
+        return 'destructive';
       default:
         return 'outline';
     }
   };
 
-  // Get status icon
-  const getStatusIcon = (status: string) => {
-    switch (status) {
+  // Get custom status styling
+  const getStatusStyling = (status: string) => {
+    switch (status.toLowerCase()) {
       case 'completed':
-        return <CheckCircle className="h-4 w-4" />;
+        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200';
       case 'approved':
-        return <CheckCircle className="h-4 w-4" />;
+        return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200';
       case 'pending':
-        return <Clock className="h-4 w-4" />;
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200';
       case 'draft':
-        return <Edit className="h-4 w-4" />;
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200';
       case 'cancelled':
-        return <XCircle className="h-4 w-4" />;
+        return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200';
+      case 'in-progress':
+        return 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200';
       default:
-        return <Clock className="h-4 w-4" />;
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200';
+    }
+  };
+
+  // Get status icon with enhanced colors
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'approved':
+        return <CheckCircle className="h-4 w-4 text-blue-600" />;
+      case 'pending':
+        return <Clock className="h-4 w-4 text-yellow-600" />;
+      case 'draft':
+        return <Edit className="h-4 w-4 text-gray-600" />;
+      case 'cancelled':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      case 'in-progress':
+        return <Clock className="h-4 w-4 text-orange-600" />;
+      case 'rejected':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-600" />;
     }
   };
 
@@ -424,6 +460,7 @@ export function StockTransactionList({
                   <TableHead>Vendor Name</TableHead>
                   {/* <TableHead>Vendor Contact</TableHead> */}
                   <TableHead>Items</TableHead>
+                  <TableHead>Reason</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Created By</TableHead>
@@ -494,12 +531,28 @@ export function StockTransactionList({
                         </div>
                       </TableCell>
                       <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="text-sm max-w-[200px] truncate cursor-help">
+                                {transaction.description || '-'}
+                              </div>
+                            </TooltipTrigger>
+                            {transaction.description && (
+                              <TooltipContent side="top" className="max-w-[300px]">
+                                <p className="text-sm">{transaction.description}</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                      <TableCell>
                         <Badge
                           variant={getStatusBadgeVariant(transaction.status)}
-                          className="flex items-center gap-1 w-fit"
+                          className={`flex items-center gap-1 w-fit border ${getStatusStyling(transaction.status)}`}
                         >
                           {getStatusIcon(transaction.status)}
-                          <span className="capitalize">{transaction.status}</span>
+                          <span className="capitalize font-medium">{transaction.status}</span>
                         </Badge>
                       </TableCell>
                       <TableCell>
