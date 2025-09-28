@@ -29,7 +29,7 @@ import { OverviewTab } from "@/components/reports/overview-tab"
 import { renderPartsChart, renderTransactionsChart, renderAssetChart, renderInventoryChart, renderMetricsChart } from "@/components/reports/chart-renderers"
 
 export default function ReportsPage() {
-  const [timeRange, setTimeRange] = useState("realtime")
+  const [timeRange, setTimeRange] = useState("week")
   const [reportData, setReportData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
