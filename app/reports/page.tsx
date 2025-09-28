@@ -231,24 +231,7 @@ export default function ReportsPage() {
     ? reportData.charts.uptime 
     : fallbackData.charts.uptime
 
-  // Debug log to see what data we're using
-  console.log('📊 Chart Data Debug:')
-  console.log('🗂️ Report Data Exists:', !!reportData)
-  console.log('📈 Chart Data Exists:', !!reportData?.charts)
-  console.log('📊 Raw Data Lengths:', {
-    costTrendLength: costTrendData?.length,
-    completionRateLength: completionRateData?.length,
-    uptimeLength: uptimeData?.length
-  })
-  console.log('📋 Raw Data Samples:')
-  console.log('  💰 Cost Trend Sample:', JSON.stringify(costTrendData?.[0], null, 2))
-  console.log('  📊 Completion Rate Sample:', JSON.stringify(completionRateData?.[0], null, 2))
-  console.log('  ⏱️ Uptime Sample:', JSON.stringify(uptimeData?.[0], null, 2))
-  console.log('🔄 Loading State:', isLoading)
-  console.log('🎯 Fallback Data Check:')
-  console.log('  💰 Fallback Cost Sample:', JSON.stringify(fallbackData.charts.costTrend[0], null, 2))
-  console.log('  📊 Fallback Completion Sample:', JSON.stringify(fallbackData.charts.completionRate[0], null, 2))
-  console.log('  ⏱️ Fallback Uptime Sample:', JSON.stringify(fallbackData.charts.uptime[0], null, 2))
+
 
   // Force fallback data for immediate display if still loading
   const safeGetData = (data: any[], fallback: any[], dataName?: string) => {
@@ -281,28 +264,47 @@ export default function ReportsPage() {
   // const finalCompletionRateData = safeGetData(completionRateData, fallbackData.charts.completionRate, 'completionRate')
   // const finalUptimeData = safeGetData(uptimeData, fallbackData.charts.uptime, 'uptime')
 
-  // Enhanced debugging for chart data
-  console.log('🔍 Final Chart Data:')
-  console.log('💰 Cost Trend Data:', JSON.stringify(finalCostTrendData, null, 2))
-  console.log('📊 Completion Rate Data:', JSON.stringify(finalCompletionRateData, null, 2))
-  console.log('⏱️ Uptime Data:', JSON.stringify(finalUptimeData, null, 2))
-  console.log('✅ Charts Final Status:', {
-    costTrendHasData: finalCostTrendData && finalCostTrendData.length > 0,
-    completionRateHasData: finalCompletionRateData && finalCompletionRateData.length > 0,
-    uptimeHasData: finalUptimeData && finalUptimeData.length > 0,
-    costTrendLength: finalCostTrendData?.length,
-    completionRateLength: finalCompletionRateData?.length,
-    uptimeLength: finalUptimeData?.length
-  })
 
-  // Sample data for parts and transactions
-  const partsStockTrendData = [
-    { month: "Apr", totalStock: 1205, lowStockItems: 15 },
-    { month: "May", totalStock: 1187, lowStockItems: 18 },
-    { month: "Jun", totalStock: 1234, lowStockItems: 12 },
-    { month: "Jul", totalStock: 1198, lowStockItems: 23 },
-    { month: "Aug", totalStock: 1267, lowStockItems: 19 },
-    { month: "Sep", totalStock: 1247, lowStockItems: 23 }
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
+
+  // Chart configuration
+  const chartConfig = {
+    cost: { label: "Cost ($)", color: "#06b6d4" },
+    rate: { label: "Rate (%)", color: "#10b981" },
+    uptime: { label: "Uptime (%)", color: "#8b5cf6" },
+    preventive: { label: "Preventive", color: "#06b6d4" },
+    corrective: { label: "Corrective", color: "#f59e0b" },
+    predictive: { label: "Predictive", color: "#10b981" },
+    hours: { label: "Hours", color: "#8b5cf6" },
+  }
+
+  // Sample data for charts
+  const maintenanceTypeData = [
+    { name: "Preventive", value: 65, fill: "#06b6d4" },
+    { name: "Corrective", value: 25, fill: "#f59e0b" },
+    { name: "Predictive", value: 10, fill: "#10b981" }
+  ]
+
+  const assetPerformanceData = [
+    { name: "Excellent", value: 45, fill: "#06b6d4" },
+    { name: "Good", value: 35, fill: "#10b981" },
+    { name: "Needs Attention", value: 15, fill: "#f59e0b" },
+    { name: "Critical", value: 5, fill: "#ef4444" }
+  ]
+
+  const maintenanceMetricsData = [
+    { name: "MTTR", value: 4.2, fill: "#8b5cf6" },
+    { name: "MTBF", value: 180, fill: "#06b6d4" },
+    { name: "Availability", value: 94.3, fill: "#10b981" },
+    { name: "Reliability", value: 87.5, fill: "#f59e0b" }
+  ]
+
+  const inventoryData = [
+    { category: "Critical Parts", value: 25, fill: "#ef4444" },
+    { category: "Standard Parts", value: 45, fill: "#06b6d4" },
+    { category: "Consumables", value: 20, fill: "#10b981" },
+    { category: "Tools", value: 10, fill: "#f59e0b" }
   ]
 
   const partsCategoryData = [
@@ -368,31 +370,13 @@ export default function ReportsPage() {
     }
   ]
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
-
-  // Chart configuration
-  const chartConfig = {
-    cost: { label: "Cost ($)", color: "#06b6d4" },
-    rate: { label: "Rate (%)", color: "#10b981" },
-    uptime: { label: "Uptime (%)", color: "#8b5cf6" },
-    preventive: { label: "Preventive", color: "#06b6d4" },
-    corrective: { label: "Corrective", color: "#f59e0b" },
-    predictive: { label: "Predictive", color: "#10b981" },
-    hours: { label: "Hours", color: "#8b5cf6" },
-  }
-
-  // Sample data for charts
-  const maintenanceTypeData = [
-    { name: "Preventive", value: 65, fill: "#06b6d4" },
-    { name: "Corrective", value: 25, fill: "#f59e0b" },
-    { name: "Predictive", value: 10, fill: "#10b981" }
-  ]
-
-  const assetPerformanceData = [
-    { name: "Excellent", value: 45, fill: "#06b6d4" },
-    { name: "Good", value: 35, fill: "#10b981" },
-    { name: "Needs Attention", value: 15, fill: "#f59e0b" },
-    { name: "Critical", value: 5, fill: "#ef4444" }
+  const partsStockTrendData = [
+    { month: "Apr", totalStock: 1205, lowStockItems: 15 },
+    { month: "May", totalStock: 1187, lowStockItems: 18 },
+    { month: "Jun", totalStock: 1234, lowStockItems: 12 },
+    { month: "Jul", totalStock: 1198, lowStockItems: 23 },
+    { month: "Aug", totalStock: 1267, lowStockItems: 19 },
+    { month: "Sep", totalStock: 1247, lowStockItems: 23 }
   ]
 
   // Individual tab print functionality
@@ -603,6 +587,880 @@ export default function ReportsPage() {
                 <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
                   {renderAssetChart(assetChartType, assetPerformanceData)}
                 </ChartContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Asset Summary Data */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Building className="h-4 w-4 text-blue-600" />
+                  Total Assets
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.assets?.totalAssets || 150}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+5</span> added this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Active Assets
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {reportData?.assets?.activeAssets || 142}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  94.7% operational
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  Under Maintenance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.assets?.underMaintenance || 8}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Scheduled maintenance
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-purple-600" />
+                  Average Uptime
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.assets?.averageUptime || '94.3%'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Last 30 days
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Critical Assets List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Critical Assets Status</CardTitle>
+              <CardDescription>Assets requiring immediate attention</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center space-x-3">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <div>
+                      <div className="font-medium">Hydraulic System A</div>
+                      <div className="text-sm text-muted-foreground">Production Line 1</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-red-600">Critical</div>
+                    <div className="text-sm text-muted-foreground">Maintenance overdue</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center space-x-3">
+                    <Clock className="h-4 w-4 text-orange-600" />
+                    <div>
+                      <div className="font-medium">Conveyor Belt System</div>
+                      <div className="text-sm text-muted-foreground">Warehouse B</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-orange-600">Maintenance Due</div>
+                    <div className="text-sm text-muted-foreground">Due in 2 days</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <div>
+                      <div className="font-medium">Generator Unit 2</div>
+                      <div className="text-sm text-muted-foreground">Power Plant</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-green-600">Good</div>
+                    <div className="text-sm text-muted-foreground">Next maintenance: 30 days</div>
+                  </div>
+                </div>
+                </div>
+              </CardContent>
+            </Card>
+        </TabsContent>
+
+        <TabsContent value="maintenance" className="space-y-4" data-tab="maintenance">
+          {/* Print Button */}
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={() => printTabContent('maintenance', 'Maintenance Operations')}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+              data-print-button
+            >
+              <Printer className="h-4 w-4" />
+              Print Maintenance Report
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Maintenance Metrics</CardTitle>
+                  <CardDescription>Key performance indicators for maintenance operations</CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant={metricsChartType === 'pie' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMetricsChartType('pie')}
+                    className="p-2"
+                  >
+                    <PieChart className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={metricsChartType === 'bar' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMetricsChartType('bar')}
+                    className="p-2"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={metricsChartType === 'area' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMetricsChartType('area')}
+                    className="p-2"
+                  >
+                    <LineChart className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 w-full flex justify-center">
+                <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
+                  {renderMetricsChart(metricsChartType, maintenanceMetricsData)}
+                </ChartContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Maintenance Summary Data */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-blue-600" />
+                  Total Work Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.maintenance?.totalWorkOrders || 145}
+              </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+8</span> this week
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Completed
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {reportData?.maintenance?.completedWorkOrders || 126}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  87% completion rate
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-orange-600" />
+                  In Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.maintenance?.inProgressWorkOrders || 12}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Currently active
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  Overdue
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {reportData?.maintenance?.overdueWorkOrders || 7}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Require attention
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Upcoming Maintenance Schedule */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Upcoming Maintenance Schedule</CardTitle>
+              <CardDescription>Scheduled maintenance activities</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <div className="font-medium">Hydraulic System Inspection</div>
+                      <div className="text-sm text-muted-foreground">Production Line A</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-blue-600">Tomorrow</div>
+                    <div className="text-sm text-muted-foreground">2:00 PM - 4:00 PM</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="h-4 w-4 text-orange-600" />
+                    <div>
+                      <div className="font-medium">Conveyor Belt Maintenance</div>
+                      <div className="text-sm text-muted-foreground">Warehouse B</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-orange-600">Friday</div>
+                    <div className="text-sm text-muted-foreground">9:00 AM - 12:00 PM</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="h-4 w-4 text-green-600" />
+                    <div>
+                      <div className="font-medium">Generator Routine Check</div>
+                      <div className="text-sm text-muted-foreground">Power Plant</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-green-600">Next Week</div>
+                    <div className="text-sm text-muted-foreground">Monday 8:00 AM</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="inventory" className="space-y-4" data-tab="inventory">
+          {/* Print Button */}
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={() => printTabContent('inventory', 'Inventory Management')}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+              data-print-button
+            >
+              <Printer className="h-4 w-4" />
+              Print Inventory Report
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Inventory Analysis</CardTitle>
+                  <CardDescription>Stock levels and inventory turnover metrics</CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant={inventoryChartType === 'donut' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setInventoryChartType('donut')}
+                    className="p-2"
+                  >
+                    <Circle className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={inventoryChartType === 'pie' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setInventoryChartType('pie')}
+                    className="p-2"
+                  >
+                    <PieChart className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={inventoryChartType === 'bar' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setInventoryChartType('bar')}
+                    className="p-2"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 w-full flex justify-center">
+                <ChartContainer config={chartConfig} className="w-full h-full max-w-md">
+                  {renderInventoryChart(inventoryChartType, inventoryData)}
+                </ChartContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Inventory Summary Data */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Package className="h-4 w-4 text-blue-600" />
+                  Total Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.inventory?.totalItems || 2450}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+45</span> added this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  Total Value
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  ${(reportData?.inventory?.totalValue || 245000).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Inventory valuation
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  Low Stock
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.inventory?.lowStockItems || 35}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Below minimum levels
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                  Turnover Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.inventory?.turnoverRate || '6.2x'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Annual turnover
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Critical Inventory Alerts */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Critical Inventory Alerts</CardTitle>
+              <CardDescription>Items requiring immediate restocking</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center space-x-3">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                <div>
+                      <div className="font-medium">Industrial Lubricant</div>
+                      <div className="text-sm text-muted-foreground">SKU: IND-LUB-001</div>
+                </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-red-600">0 units</div>
+                    <div className="text-sm text-muted-foreground">Min: 50</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center space-x-3">
+                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                    <div>
+                      <div className="font-medium">Safety Helmets</div>
+                      <div className="text-sm text-muted-foreground">SKU: SAF-HEL-002</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-orange-600">8 units</div>
+                    <div className="text-sm text-muted-foreground">Min: 25</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="flex items-center space-x-3">
+                    <Clock className="h-4 w-4 text-yellow-600" />
+                    <div>
+                      <div className="font-medium">Cutting Tools</div>
+                      <div className="text-sm text-muted-foreground">SKU: CUT-TOL-003</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-yellow-600">15 units</div>
+                    <div className="text-sm text-muted-foreground">Min: 20</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="parts" className="space-y-4" data-tab="parts">
+          {/* Print Button */}
+          <div className="flex justify-end mb-4">
+                  <Button
+              onClick={() => printTabContent('parts', 'Parts & Inventory')}
+              variant="outline" 
+                    size="sm"
+              className="flex items-center gap-2"
+              data-print-button
+                  >
+              <Printer className="h-4 w-4" />
+              Print Parts Report
+                  </Button>
+          </div>
+
+          {/* Parts Overview Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Package className="h-4 w-4 text-blue-600" />
+                  Total Parts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.parts?.totalParts || 1247}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+12</span> added this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  Total Value
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ${(reportData?.parts?.totalValue || 156780).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+5.2%</span> from last month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  Low Stock
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.parts?.lowStockCount || 23}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Parts below minimum level
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                  Turnover Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.parts?.turnoverRate || 4.2}x
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Annual inventory turnover
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Parts Analysis Charts */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Parts by Category</CardTitle>
+                    <CardDescription>Distribution of parts across categories</CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                  <Button
+                      variant={partsChartType === 'bar' ? 'default' : 'outline'}
+                    size="sm"
+                      onClick={() => setPartsChartType('bar')}
+                    className="p-2"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                      variant={partsChartType === 'pie' ? 'default' : 'outline'}
+                    size="sm"
+                      onClick={() => setPartsChartType('pie')}
+                    className="p-2"
+                  >
+                      <PieChart className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+                <div className="h-64 w-full" data-chart-type="mixed" data-chart-name="partsCategory">
+                  <ChartContainer config={chartConfig} className="w-full h-full">
+                    {renderPartsChart(partsChartType, partsCategoryData, reportData)}
+                </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Stock Levels Trend</CardTitle>
+                <CardDescription>Inventory levels over the past 6 months</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 w-full" data-chart-type="line" data-chart-name="stockTrend">
+                  <ChartContainer config={chartConfig} className="w-full h-full">
+                    <RechartsLineChart data={reportData?.parts?.stockTrend || partsStockTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="totalStock" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        name="Total Stock"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="lowStockItems" 
+                        stroke="#f59e0b" 
+                        strokeWidth={2}
+                        name="Low Stock Items"
+                      />
+                    </RechartsLineChart>
+                  </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Critical Parts Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Critical Stock Alerts</CardTitle>
+              <CardDescription>Parts requiring immediate attention</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(reportData?.parts?.criticalParts || criticalPartsData).map((part: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="flex items-center space-x-3">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      <div>
+                        <div className="font-medium">{part.partName}</div>
+                        <div className="text-sm text-muted-foreground">{part.partNumber}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium text-orange-600">{part.currentStock} units</div>
+                      <div className="text-sm text-muted-foreground">Min: {part.minStock}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="transactions" className="space-y-4" data-tab="transactions">
+          {/* Print Button */}
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={() => printTabContent('transactions', 'Stock Transactions')}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+              data-print-button
+            >
+              <Printer className="h-4 w-4" />
+              Print Transactions Report
+            </Button>
+          </div>
+
+          {/* Transaction Overview Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-blue-600" />
+                  Total Transactions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.transactions?.totalTransactions || 342}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+18</span> this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  Transaction Value
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ${(reportData?.transactions?.totalValue || 89450).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+12.3%</span> from last month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Completed
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {reportData?.transactions?.completedCount || 318}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  93% completion rate
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-orange-600" />
+                  Pending
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.transactions?.pendingCount || 24}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Awaiting approval
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Transaction Analysis Charts */}
+          <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle>Transaction Volume</CardTitle>
+                    <CardDescription>Monthly transaction trends</CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                      variant={transactionsChartType === 'line' ? 'default' : 'outline'}
+                    size="sm"
+                      onClick={() => setTransactionsChartType('line')}
+                    className="p-2"
+                  >
+                      <LineChart className="h-4 w-4" />
+                  </Button>
+                  <Button
+                      variant={transactionsChartType === 'bar' ? 'default' : 'outline'}
+                    size="sm"
+                      onClick={() => setTransactionsChartType('bar')}
+                    className="p-2"
+                  >
+                      <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                      variant={transactionsChartType === 'area' ? 'default' : 'outline'}
+                    size="sm"
+                      onClick={() => setTransactionsChartType('area')}
+                    className="p-2"
+                  >
+                      <BarChart className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+                <div className="h-64 w-full" data-chart-type="mixed" data-chart-name="transactionVolume">
+                  <ChartContainer config={chartConfig} className="w-full h-full">
+                    {renderTransactionsChart(transactionsChartType, transactionVolumeData, reportData)}
+                </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Transaction Types</CardTitle>
+                <CardDescription>Breakdown by transaction type</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 w-full" data-chart-type="pie" data-chart-name="transactionTypes">
+                  <ChartContainer config={chartConfig} className="w-full h-full">
+                    <RechartsPieChart>
+                      <Pie
+                        data={reportData?.transactions?.byType || transactionTypeData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ type, percentage }) => `${type}: ${percentage}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="count"
+                      >
+                        {(reportData?.transactions?.byType || transactionTypeData).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </RechartsPieChart>
+                  </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recent Transactions Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Transactions</CardTitle>
+              <CardDescription>Latest stock movements and updates</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(reportData?.transactions?.recent || recentTransactionsData).map((transaction: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-2 h-2 rounded-full ${
+                        transaction.type === 'receipt' ? 'bg-green-500' :
+                        transaction.type === 'issue' ? 'bg-blue-500' :
+                        transaction.type === 'transfer' ? 'bg-purple-500' : 'bg-orange-500'
+                      }`} />
+                      <div>
+                        <div className="font-medium">{transaction.description}</div>
+                        <div className="text-sm text-muted-foreground">{transaction.transactionNumber}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">${transaction.amount?.toLocaleString() || '0'}</div>
+                      <div className="text-sm text-muted-foreground">{transaction.date}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
