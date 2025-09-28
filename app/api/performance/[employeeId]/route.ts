@@ -7,13 +7,13 @@ import type { WorkHistoryEntry, AssetAssignment } from '@/types/employee';
 // GET - Fetch performance record for specific employee
 export async function GET(
   request: NextRequest,
-  { params }: { params: { employeeId: string } }
+  { params }: { params: Promise<{ employeeId: string }> }
 ) {
   try {
     await connectDB();
     
     const user = await getUserContext(request);
-    const { employeeId } = params;
+    const { employeeId } = await params;
     
     // Find performance record
     const performanceRecord = await PerformanceModel.findOne({ 

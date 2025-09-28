@@ -14,32 +14,89 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 // Helper function to update safety inspection performance data when a record is created
 async function updateSafetyInspectionPerformanceData(recordData: any, createdRecord: any, user: any) {
   try {
-    // Get employee details by name (since we store inspector name, not ID)
     const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-    const employeeResponse = await fetch(`${baseUrl}/api/employees?search=${encodeURIComponent(recordData.inspector)}&limit=1`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
     
-    if (!employeeResponse.ok) {
-      console.warn('Could not fetch employee details for safety inspection performance tracking');
-      return;
+    // Collect all employees involved in this safety inspection
+    const employeeNames = new Set<string>();
+    
+    // Add inspector
+    if (recordData.inspector) {
+      employeeNames.add(recordData.inspector);
     }
     
-    const employeeData = await employeeResponse.json();
-    const employee = employeeData?.data?.employees?.[0];
+    // Add assigned employees
+    if (recordData.assignedToName) {
+      employeeNames.add(recordData.assignedToName);
+    }
     
-    if (!employee) {
-      console.warn(`Employee not found for inspector: ${recordData.inspector}`);
-      return;
+    // Add attendees (can be array or single value)
+    if (recordData.attendedByName) {
+      if (Array.isArray(recordData.attendedByName)) {
+        recordData.attendedByName.forEach(name => employeeNames.add(name));
+      } else {
+        employeeNames.add(recordData.attendedByName);
+      }
+    }
+    
+    // Add creator
+    if (recordData.createdByName) {
+      employeeNames.add(recordData.createdByName);
+    }
+    
+    // Update performance data for all involved employees
+    for (const employeeName of employeeNames) {
+      try {
+        const employeeResponse = await fetch(`${baseUrl}/api/employees?search=${encodeURIComponent(employeeName)}&limit=1`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!employeeResponse.ok) {
+          continue;
+        }
+        
+        const employeeData = await employeeResponse.json();
+        const employee = employeeData?.data?.employees?.[0];
+        
+        if (!employee) {
+          continue;
+        }
+        
+        await updateEmployeePerformanceRecord(employee, recordData, createdRecord);
+      } catch (employeeError) {
+        console.warn(`Failed to update performance for employee: ${employeeName}`, employeeError);
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error in updateSafetyInspectionPerformanceData:', error);
+  }
+}
+
+// Helper function to update individual employee performance record
+async function updateEmployeePerformanceRecord(employee: any, recordData: any, createdRecord: any) {
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    
+    // Determine the role of this employee in the safety inspection
+    let assignmentRole = 'Inspector'; // Default
+    if (recordData.assignedToName === employee.name) {
+      assignmentRole = 'Assigned Inspector';
+    } else if (recordData.createdByName === employee.name) {
+      assignmentRole = 'Creator';
+    } else if (recordData.attendedByName) {
+      const attendees = Array.isArray(recordData.attendedByName) ? recordData.attendedByName : [recordData.attendedByName];
+      if (attendees.includes(employee.name)) {
+        assignmentRole = 'Attendee';
+      }
     }
     
     // Add completed work history entry
     const workHistoryEntry = {
       type: 'safety-inspection' as const,
-      title: `Completed: ${recordData.assetName} Safety Inspection`,
+      title: `${assignmentRole}: ${recordData.assetName} Safety Inspection`,
       description: recordData.notes || `Safety inspection completed for ${recordData.assetName}`,
       assetName: recordData.assetName,
       status: recordData.status === 'completed' ? 'completed' as const : 'failed' as const,
@@ -47,7 +104,7 @@ async function updateSafetyInspectionPerformanceData(recordData: any, createdRec
       duration: recordData.actualDuration,
       scheduleId: recordData.scheduleId,
       recordId: createdRecord.id,
-      assignmentRole: 'Inspector'
+      assignmentRole: assignmentRole
     };
     
     // Update performance data by adding the work history entry
@@ -65,12 +122,10 @@ async function updateSafetyInspectionPerformanceData(recordData: any, createdRec
     if (!performanceResponse.ok) {
       const errorData = await performanceResponse.json().catch(() => ({}));
       console.warn('Failed to update safety inspection performance data:', errorData);
-    } else {
-      console.log('Safety inspection performance data updated successfully');
     }
     
   } catch (error) {
-    console.error('Error in updateSafetyInspectionPerformanceData:', error);
+    console.error('Error updating employee performance record:', error);
   }
 }
 
@@ -157,6 +212,32 @@ export async function POST(request: NextRequest) {
     if (!body.inspector || body.inspector === '') {
       body.inspector = user.name || 'Unknown Inspector';
       body.inspectorId = user.id?.toString() || 'unknown';
+    }
+    
+    // Add enhanced employee tracking data (similar to tickets and daily logs)
+    if (!body.createdBy) {
+      body.createdBy = user.id?.toString();
+      body.createdByName = user.name;
+    }
+    
+    // If assignedTo is not provided, default to inspector
+    if (!body.assignedTo && body.inspectorId) {
+      body.assignedTo = body.inspectorId;
+      body.assignedToName = body.inspector;
+    }
+    
+    // If attendedBy is not provided, default to inspector
+    if (!body.attendedBy && body.inspectorId) {
+      body.attendedBy = [body.inspectorId];
+      body.attendedByName = [body.inspector];
+    }
+    
+    // Ensure attendedBy is always an array for consistency
+    if (body.attendedBy && !Array.isArray(body.attendedBy)) {
+      body.attendedBy = [body.attendedBy];
+    }
+    if (body.attendedByName && !Array.isArray(body.attendedByName)) {
+      body.attendedByName = [body.attendedByName];
     }
 
     // Ensure scheduleId has a value (create temporary ObjectId if missing)

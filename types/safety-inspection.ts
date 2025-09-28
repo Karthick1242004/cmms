@@ -58,6 +58,21 @@ export interface SafetyInspectionRecord {
   actualDuration: number // in hours
   inspector: string
   inspectorId: string
+  
+  // Enhanced employee tracking (similar to tickets and daily logs)
+  assignedTo?: string // Employee ID assigned to this inspection
+  assignedToName?: string // Employee name assigned to this inspection
+  attendedBy?: string | string[] // Employee ID(s) who attended/participated
+  attendedByName?: string | string[] // Employee name(s) who attended/participated
+  attendedByDetails?: Array<{
+    id: string
+    name: string
+    role: string
+    department: string
+  }> // Detailed info for multiple attendees
+  createdBy?: string // Employee ID who created the record
+  createdByName?: string // Employee name who created the record
+  
   status: "completed" | "partially_completed" | "failed" | "in_progress"
   overallComplianceScore: number // 0-100 percentage
   complianceStatus: "compliant" | "non_compliant" | "requires_attention"

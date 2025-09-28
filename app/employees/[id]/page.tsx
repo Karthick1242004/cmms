@@ -89,10 +89,11 @@ export default function EmployeeDetailPage() {
     }
   }, [employeeId, user])
 
-  const fetchEmployeeDetails = async () => {
+  const fetchEmployeeDetails = async (forceRefresh = false) => {
     try {
       setIsLoading(true)
       setError(null)
+      
       
       // Check if this is the sample employee (Srinath VV) and use sample data
       if (employeeId === "689aad45e3d407a4e867a91e") {
@@ -101,48 +102,85 @@ export default function EmployeeDetailPage() {
         return
       }
       
-      // Try to fetch performance data first
-      try {
-        const performanceResponse = await performanceApi.getByEmployeeId(employeeId)
+      // Try to fetch performance data first (skip if force refresh requested)
+      if (!forceRefresh) {
+        try {
+          const performanceResponse = await performanceApi.getByEmployeeId(employeeId)
+        
         if (performanceResponse.success && performanceResponse.data) {
-          console.log('Using performance collection data for employee:', employeeId)
-          setPerformanceData(performanceResponse.data)
+          // Check if performance data is actually useful (has real activity data)
+          const metrics = performanceResponse.data.performanceMetrics
+          const hasRealData = metrics && (
+            (metrics.totalTasksCompleted && metrics.totalTasksCompleted > 0) ||
+            (metrics.dailyLogEntries && metrics.dailyLogEntries > 0) ||
+            (metrics.ticketsResolved && metrics.ticketsResolved > 0) ||
+            (metrics.maintenanceCompleted && metrics.maintenanceCompleted > 0) ||
+            (metrics.safetyInspectionsCompleted && metrics.safetyInspectionsCompleted > 0)
+          )
           
-          // Convert performance data to EmployeeDetail format
-          const employeeFromPerformance: EmployeeDetail = {
-            id: performanceResponse.data.employeeId,
-            name: performanceResponse.data.employeeName,
-            email: performanceResponse.data.employeeEmail,
-            phone: '', // Not stored in performance data
-            department: performanceResponse.data.department,
-            role: performanceResponse.data.role,
-            status: 'active',
-            avatar: '/placeholder-user.jpg',
-            employeeId: performanceResponse.data.employeeId,
-            joinDate: '',
-            supervisor: '',
-            accessLevel: 'normal_user',
-            workShift: 'Day',
-            workHistory: performanceResponse.data.workHistory,
-            assetAssignments: performanceResponse.data.assetAssignments,
-            currentAssignments: performanceResponse.data.currentAssignments,
-            performanceMetrics: performanceResponse.data.performanceMetrics,
-            totalWorkHours: performanceResponse.data.totalWorkHours,
-            productivityScore: performanceResponse.data.productivityScore,
-            reliabilityScore: performanceResponse.data.reliabilityScore,
-            createdAt: performanceResponse.data.createdAt,
-            updatedAt: performanceResponse.data.updatedAt
+          if (hasRealData) {
+            setPerformanceData(performanceResponse.data)
+            
+            // Convert performance data to EmployeeDetail format
+            const employeeFromPerformance: EmployeeDetail = {
+              id: performanceResponse.data.employeeId,
+              name: performanceResponse.data.employeeName,
+              email: performanceResponse.data.employeeEmail,
+              phone: '', // Not stored in performance data
+              department: performanceResponse.data.department,
+              role: performanceResponse.data.role,
+              status: 'active',
+              avatar: '/placeholder-user.jpg',
+              employeeId: performanceResponse.data.employeeId,
+              joinDate: '',
+              supervisor: '',
+              accessLevel: 'normal_user',
+              workShift: 'Day',
+              workHistory: performanceResponse.data.workHistory,
+              assetAssignments: performanceResponse.data.assetAssignments,
+              currentAssignments: performanceResponse.data.currentAssignments,
+              performanceMetrics: performanceResponse.data.performanceMetrics,
+              totalWorkHours: performanceResponse.data.totalWorkHours,
+              productivityScore: performanceResponse.data.productivityScore,
+              reliabilityScore: performanceResponse.data.reliabilityScore,
+              createdAt: performanceResponse.data.createdAt,
+              updatedAt: performanceResponse.data.updatedAt
+            }
+            
+            setEmployee(employeeFromPerformance)
+            setUsePerformanceData(true)
+            setIsLoading(false)
+            return
+          } else {
+            
+            // Try to refresh/recalculate performance data by calling employee details API
+            try {
+              const refreshResponse = await fetch(`/api/employees/${employeeId}/details?refresh=true`, {
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
+                  'Content-Type': 'application/json'
+                }
+              })
+              
+              if (refreshResponse.ok) {
+                const refreshData = await refreshResponse.json()
+                if (refreshData.success && refreshData.data) {
+                  setEmployee(refreshData.data)
+                  setUsePerformanceData(false)
+                  setIsLoading(false)
+                  return
+                }
+              }
+            } catch (refreshError) {
+              // Continue with fallback
+            }
+            
+            // Fall through to use calculated metrics from employee details API
           }
-          
-          setEmployee(employeeFromPerformance)
-          setUsePerformanceData(true)
-          setIsLoading(false)
-          return
         }
-      } catch (performanceError) {
-        // Performance data not available - this is expected for employees without performance records
-        // Gracefully falling back to calculated metrics from employee activities
-        console.log('Performance record not found for employee:', employeeId, '- using calculated metrics instead')
+        } catch (performanceError) {
+          // Performance data not available - fall back to calculated metrics
+        }
       }
       
       // Fallback to regular employee API
@@ -152,12 +190,13 @@ export default function EmployeeDetailPage() {
         setEmployee(response.data)
         setUsePerformanceData(false)
       } else {
-        // If employee not found in main database, try to check if this is from shift details
-        // by attempting to fetch shift details for this employee
+        // If employee not found in main database, try shift details
         try {
           const shiftResponse = await fetch(`/api/shift-details?employeeId=${employeeId}&limit=1`)
+          
           if (shiftResponse.ok) {
             const shiftData = await shiftResponse.json()
+            
             if (shiftData.success && shiftData.data?.shiftDetails?.length > 0) {
               const shiftDetail = shiftData.data.shiftDetails[0]
               
@@ -203,7 +242,7 @@ export default function EmployeeDetailPage() {
             }
           }
         } catch (shiftError) {
-          console.log('No shift details found either')
+          // No shift details found
         }
         
         setError(response.message || 'Failed to fetch employee details')

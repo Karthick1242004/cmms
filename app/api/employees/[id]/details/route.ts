@@ -29,62 +29,170 @@ async function calculatePerformanceMetrics(employee: any) {
   try {
     const { db } = await connectToDatabase()
     
-    console.log('🔍 Calculating performance for employee:', employee.name, 'ID:', employee._id.toString())
     
     // Get employee work data from different collections
     const employeeId = employee._id.toString()
     
     // 1. Daily Log Activities
-    const dailyActivities = await db.collection('dailylogactivities').find({
+    // More comprehensive search to catch all possible field variations
+    const searchQuery = {
       $or: [
+        // Search by employee ID
         { assignedTo: employeeId },
         { attendedBy: employeeId },
+        { createdBy: employeeId },
+        { updatedBy: employeeId },
+        
+        // Search by employee name (exact match)
         { assignedToName: employee.name },
-        { attendedByName: employee.name }
+        { attendedByName: employee.name },
+        { createdByName: employee.name },
+        { updatedByName: employee.name },
+        
+        // Search by employee name with case insensitive regex
+        { assignedToName: { $regex: employee.name, $options: 'i' } },
+        { attendedByName: { $regex: employee.name, $options: 'i' } },
+        { createdByName: { $regex: employee.name, $options: 'i' } },
+        { updatedByName: { $regex: employee.name, $options: 'i' } },
+        
+        // Alternative field names that might be used
+        { assignedUser: employee.name },
+        { attendedUser: employee.name },
+        { assignedEmployee: employee.name },
+        { attendedEmployee: employee.name },
+        
+        // Case insensitive for alternative fields
+        { assignedUser: { $regex: employee.name, $options: 'i' } },
+        { attendedUser: { $regex: employee.name, $options: 'i' } },
+        { assignedEmployee: { $regex: employee.name, $options: 'i' } },
+        { attendedEmployee: { $regex: employee.name, $options: 'i' } },
+        
+        // Array fields (for attendees lists)
+        { attendees: { $elemMatch: { name: employee.name } } },
+        { attendees: { $elemMatch: { name: { $regex: employee.name, $options: 'i' } } } },
+        { attendees: { $elemMatch: { employeeName: employee.name } } },
+        { attendees: { $elemMatch: { employeeName: { $regex: employee.name, $options: 'i' } } } },
+        { attendees: { $elemMatch: { userId: employeeId } } },
+        { attendees: { $elemMatch: { employeeId: employeeId } } },
+        
+        // Simple array search (if attendees is just array of names or IDs)
+        { attendees: employee.name },
+        { attendees: employeeId },
+        { attendees: { $in: [employee.name, employeeId] } },
+        
+        // Additional attendee field variations
+        { attendeeNames: { $in: [employee.name] } },
+        { attendeeIds: { $in: [employeeId] } },
+        { participants: { $in: [employee.name, employeeId] } },
+        { members: { $in: [employee.name, employeeId] } }
       ]
-    }).toArray()
+    }
     
-    console.log('📊 Found daily activities:', dailyActivities.length)
+    
+    const dailyActivities = await db.collection('dailylogactivities').find(searchQuery).toArray()
+    
+    
     
     // 2. Tickets (if any are assigned to this user)
-    const tickets = await db.collection('tickets').find({
+    const ticketQuery = {
       $or: [
+        // Search by employee name
         { loggedBy: employee.name },
-        { assignedUsers: employee.name }
+        { assignedUsers: employee.name },
+        { createdBy: employee.name },
+        { assignedTo: employee.name },
+        
+        // Case insensitive search
+        { loggedBy: { $regex: employee.name, $options: 'i' } },
+        { assignedUsers: { $regex: employee.name, $options: 'i' } },
+        { createdBy: { $regex: employee.name, $options: 'i' } },
+        { assignedTo: { $regex: employee.name, $options: 'i' } },
+        
+        // Search by employee ID
+        { loggedBy: employeeId },
+        { assignedUsers: employeeId },
+        { createdBy: employeeId },
+        { assignedTo: employeeId },
+        
+        // Array fields (in case assignedUsers is an array)
+        { assignedUsers: { $in: [employee.name, employeeId] } }
       ]
-    }).toArray()
+    }
     
-    console.log('🎫 Found tickets:', tickets.length)
+    const tickets = await db.collection('tickets').find(ticketQuery).toArray()
     
     // 3. Maintenance tasks (if maintenance collection exists)
     let maintenanceTasks = []
     try {
-      maintenanceTasks = await db.collection('maintenance').find({
+      const maintenanceQuery = {
         $or: [
+          // Search by employee ID
           { assignedTo: employeeId },
-          { assignedToName: employee.name }
+          { createdBy: employeeId },
+          { updatedBy: employeeId },
+          
+          // Search by employee name
+          { assignedToName: employee.name },
+          { createdByName: employee.name },
+          { updatedByName: employee.name },
+          
+          // Case insensitive search
+          { assignedToName: { $regex: employee.name, $options: 'i' } },
+          { createdByName: { $regex: employee.name, $options: 'i' } },
+          { updatedByName: { $regex: employee.name, $options: 'i' } },
+          
+          // Alternative field names
+          { assignedUser: employee.name },
+          { assignedEmployee: employee.name },
+          { assignedUser: { $regex: employee.name, $options: 'i' } },
+          { assignedEmployee: { $regex: employee.name, $options: 'i' } }
         ]
-      }).toArray()
+      }
+      
+      maintenanceTasks = await db.collection('maintenance').find(maintenanceQuery).toArray()
     } catch (error) {
-      console.log('No maintenance collection found')
+      // No maintenance collection found
     }
     
-    console.log('🔧 Found maintenance tasks:', maintenanceTasks.length)
     
     // 4. Safety Inspections (if safety inspection collection exists)
     let safetyInspections = []
     try {
-      safetyInspections = await db.collection('safetyinspections').find({
+      const safetyQuery = {
         $or: [
+          // Search by employee ID
           { assignedTo: employeeId },
-          { assignedToName: employee.name }
+          { createdBy: employeeId },
+          { updatedBy: employeeId },
+          { inspectedBy: employeeId },
+          
+          // Search by employee name
+          { assignedToName: employee.name },
+          { createdByName: employee.name },
+          { updatedByName: employee.name },
+          { inspectedByName: employee.name },
+          
+          // Case insensitive search
+          { assignedToName: { $regex: employee.name, $options: 'i' } },
+          { createdByName: { $regex: employee.name, $options: 'i' } },
+          { updatedByName: { $regex: employee.name, $options: 'i' } },
+          { inspectedByName: { $regex: employee.name, $options: 'i' } },
+          
+          // Alternative field names
+          { assignedUser: employee.name },
+          { assignedEmployee: employee.name },
+          { inspector: employee.name },
+          { assignedUser: { $regex: employee.name, $options: 'i' } },
+          { assignedEmployee: { $regex: employee.name, $options: 'i' } },
+          { inspector: { $regex: employee.name, $options: 'i' } }
         ]
-      }).toArray()
+      }
+      
+      safetyInspections = await db.collection('safetyinspections').find(safetyQuery).toArray()
     } catch (error) {
-      console.log('No safety inspections collection found')
+      // No safety inspections collection found
     }
     
-    console.log('🛡️ Found safety inspections:', safetyInspections.length)
     
     // Calculate metrics
     const completedDailyActivities = dailyActivities.filter(activity => 
@@ -136,7 +244,6 @@ async function calculatePerformanceMetrics(employee: any) {
         null
     }
     
-    console.log('📈 Calculated performance metrics:', performanceMetrics)
     
     // Build work history from all activities
     const workHistory = []
@@ -196,15 +303,17 @@ async function calculatePerformanceMetrics(employee: any) {
     // Sort work history by date (most recent first)
     workHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     
-    console.log('📝 Built work history with', workHistory.length, 'entries')
     
-    return {
+    const finalResult = {
       performanceMetrics,
       workHistory: workHistory.slice(0, 50), // Limit to last 50 entries
       totalWorkHours,
       productivityScore: Math.min(100, Math.round((completedTasks / 10) * 100)),
       reliabilityScore: efficiency
     }
+    
+    
+    return finalResult
     
   } catch (error) {
     console.error('Error calculating performance metrics:', error)
@@ -259,7 +368,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    console.log('🔍 Fetching details for employee:', employee.name)
 
     // Calculate performance metrics from actual data
     const performanceData = await calculatePerformanceMetrics(employee)
@@ -296,7 +404,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       updatedAt: employee.updatedAt
     }
 
-    console.log('✅ Employee details calculated successfully')
 
     return NextResponse.json({
       success: true,
