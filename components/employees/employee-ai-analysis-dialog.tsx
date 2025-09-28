@@ -45,11 +45,22 @@ export function EmployeeAIAnalysisDialog({ employee, isOpen, onClose }: Employee
       setIsAnalyzing(true)
       setError(null)
       
+      // Get auth token from localStorage
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/ai/employee-analysis', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
+        credentials: 'include', // Include cookies for authentication
         body: JSON.stringify({
           employeeData: employee
         }),
@@ -61,6 +72,10 @@ export function EmployeeAIAnalysisDialog({ employee, isOpen, onClose }: Employee
         setAnalysisData(data.data)
         toast.success('AI analysis completed successfully!')
       } else {
+        // Handle specific authentication errors
+        if (response.status === 401 || data.code === 'NO_TOKEN') {
+          throw new Error('Authentication required. Please log in again.')
+        }
         throw new Error(data.message || 'Failed to analyze employee data')
       }
     } catch (error) {

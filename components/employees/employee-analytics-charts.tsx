@@ -32,42 +32,61 @@ interface EmployeeAnalyticsChartsProps {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
-// Helper function to reorder data to place current month in the middle
-const reorderDataWithCurrentMonthInMiddle = <T extends { month: string }>(data: T[]): T[] => {
-  if (!data || data.length === 0) return data
+// Helper function to transform data for month-only display (no years)
+const transformDataForMonthOnlyDisplay = <T extends { month: string }>(data: T[]): (T & { monthName: string, sortOrder: number })[] => {
+  console.log('🔍 DEBUG: Transforming data for month-only display:', data?.map(d => d?.month) || 'null/undefined')
   
-  // Get current month and year for comparison (Sep '25 format)
-  const now = new Date()
-  const currentMonthYear = now.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).replace(' ', " '")
-  
-  // Find the index of current month or the most recent month
-  let targetIndex = data.findIndex(item => item.month === currentMonthYear)
-  
-  // If current month is not found, use the last month in the array (most recent)
-  if (targetIndex === -1) {
-    targetIndex = data.length - 1
+  if (!data || data.length === 0) {
+    console.log('❌ DEBUG: No data provided')
+    return []
   }
   
-  // Calculate target middle position
-  const targetMiddle = Math.floor(data.length / 2)
+  // Validate and process data
+  const validData = data.filter(item => {
+    if (!item || typeof item !== 'object') {
+      console.warn('⚠️ DEBUG: Invalid data item:', item)
+      return false
+    }
+    if (!item.month || typeof item.month !== 'string') {
+      console.warn('⚠️ DEBUG: Invalid month property:', item)
+      return false
+    }
+    return true
+  })
   
-  // Calculate how many positions to shift
-  const shift = targetIndex - targetMiddle
-  
-  if (shift === 0) return data // Already in middle
-  
-  // Create new array with the target month in the middle
-  const reorderedData = [...data]
-  
-  // Rotate the array
-  if (shift > 0) {
-    // Current month is to the right of center, move data left
-    return [...reorderedData.slice(shift), ...reorderedData.slice(0, shift)]
-  } else {
-    // Current month is to the left of center, move data right
-    const absShift = Math.abs(shift)
-    return [...reorderedData.slice(-absShift), ...reorderedData.slice(0, -absShift)]
+  if (validData.length === 0) {
+    console.log('❌ DEBUG: No valid data after filtering')
+    return []
   }
+  
+  // Transform data to month-only format with proper sorting
+  const transformedData = validData.map(item => {
+    const monthPart = item.month.split(" '")[0] // Extract "Oct" from "Oct '24"
+    const yearPart = item.month.split(" '")[1] // Extract "24" from "Oct '24"
+    
+    // Create sort order based on chronological position
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const monthIndex = monthNames.indexOf(monthPart)
+    const yearNum = parseInt(yearPart) || 0
+    const sortOrder = (yearNum * 12) + monthIndex // Create unique sort order
+    
+    console.log(`📅 DEBUG: Transformed ${item.month} -> ${monthPart} (sort: ${sortOrder})`)
+    
+    return {
+      ...item,
+      monthName: monthPart,
+      sortOrder: sortOrder
+    }
+  })
+  
+  // Sort by chronological order
+  const sortedData = transformedData.sort((a, b) => a.sortOrder - b.sortOrder)
+  
+  // Get last 12 months for better visualization
+  const recentData = sortedData.slice(-12)
+  
+  console.log('✅ DEBUG: Final month-only data:', recentData.map(d => d.monthName))
+  return recentData
 }
 
 export function EmployeeAnalyticsCharts({ employeeId }: EmployeeAnalyticsChartsProps) {
@@ -209,58 +228,22 @@ export function EmployeeAnalyticsCharts({ employeeId }: EmployeeAnalyticsChartsP
           <CardHeader>
             <CardTitle>Monthly Activity Trend</CardTitle>
             <CardDescription>
-              Task completion patterns over the last 12 months (current month centered)
+              Task completion patterns by month (recent 12 months)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={reorderDataWithCurrentMonthInMiddle(analytics.monthlyActivity)}>
+              <BarChart data={transformDataForMonthOnlyDisplay(analytics?.monthlyActivity || [])} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
+                <XAxis dataKey="monthName" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Area 
-                  type="monotone" 
-                  dataKey="count" 
-                  stackId="1" 
-                  stroke="#8884d8" 
-                  fill="#8884d8" 
-                  name="Total Tasks"
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="tickets" 
-                  stackId="2" 
-                  stroke="#82ca9d" 
-                  fill="#82ca9d" 
-                  name="Tickets"
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="maintenance" 
-                  stackId="2" 
-                  stroke="#ffc658" 
-                  fill="#ffc658" 
-                  name="Maintenance"
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="dailyLog" 
-                  stackId="2" 
-                  stroke="#ff7300" 
-                  fill="#ff7300" 
-                  name="Daily Logs"
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="safetyInspection" 
-                  stackId="2" 
-                  stroke="#ff0000" 
-                  fill="#ff0000" 
-                  name="Safety Inspections"
-                />
-              </AreaChart>
+                <Bar dataKey="tickets" stackId="a" fill="#82ca9d" name="Tickets" />
+                <Bar dataKey="maintenance" stackId="a" fill="#ffc658" name="Maintenance" />
+                <Bar dataKey="dailyLog" stackId="a" fill="#ff7300" name="Daily Logs" />
+                <Bar dataKey="safetyInspection" stackId="a" fill="#ff0000" name="Safety Inspections" />
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -301,39 +284,26 @@ export function EmployeeAnalyticsCharts({ employeeId }: EmployeeAnalyticsChartsP
           <CardHeader>
             <CardTitle>Performance Trends</CardTitle>
             <CardDescription>
-              Efficiency trends over time (current month centered)
+              Efficiency trends by month (recent 12 months)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={reorderDataWithCurrentMonthInMiddle(analytics.performanceTrends)}>
+              <AreaChart data={transformDataForMonthOnlyDisplay(analytics?.performanceTrends || [])}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
+                <XAxis dataKey="monthName" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line 
+                <Area 
                   type="monotone" 
                   dataKey="efficiency" 
                   stroke="#8884d8" 
-                  strokeWidth={2}
+                  fill="#8884d8"
+                  fillOpacity={0.6}
                   name="Efficiency (%)"
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="totalTasks" 
-                  stroke="#82ca9d" 
-                  strokeWidth={2}
-                  name="Total Tasks"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="completedTasks" 
-                  stroke="#ffc658" 
-                  strokeWidth={2}
-                  name="Completed Tasks"
-                />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>

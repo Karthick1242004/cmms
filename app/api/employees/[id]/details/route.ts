@@ -347,7 +347,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    const { id } = params
+    const { id } = await params
     
     // First try to get the employee from local database
     await connectDB()
