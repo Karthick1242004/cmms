@@ -7,36 +7,42 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user context for authentication (with fallback for testing)
+    // Get user context for authentication
     const user = await getUserContext(request);
 
-    // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('⚠️ Dashboard activities API: No user context found, proceeding with fallback');
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
     }
+
+    console.log('📜 Dashboard Activities API - User context:', {
+      id: user.id,
+      name: user.name,
+      department: user.department,
+      accessLevel: user.accessLevel
+    });
 
     // Prepare headers with user context
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    // Add user context headers if user is available
-    if (user) {
-      const roleForBackend =
-        user.accessLevel === 'super_admin' || user.accessLevel === 'department_admin'
-          ? 'admin'
-          : user.role;
+    const roleForBackend =
+      user.accessLevel === 'super_admin' || user.accessLevel === 'department_admin'
+        ? 'admin'
+        : user.role;
 
-      headers['x-user-id'] = user.id;
-      headers['x-user-name'] = user.name;
-      headers['x-user-email'] = user.email;
-      headers['x-user-department'] = user.department;
-      headers['x-user-role'] = roleForBackend;
-      headers['x-user-access-level'] = user.accessLevel;
-      headers['x-user-role-name'] = user.role;
-    }
+    headers['x-user-id'] = user.id;
+    headers['x-user-name'] = user.name;
+    headers['x-user-email'] = user.email;
+    headers['x-user-department'] = user.department;
+    headers['x-user-role'] = roleForBackend;
+    headers['x-user-access-level'] = user.accessLevel;
+    headers['x-user-role-name'] = user.role;
 
-    // Fetch real recent activities from various endpoints
+    // Fetch recent activities with access level filtering
     const activities = await fetchRecentActivities(user, headers);
 
     return NextResponse.json({
@@ -51,6 +57,7 @@ export async function GET(request: NextRequest) {
     console.error('Dashboard activities API Error:', error);
     return NextResponse.json(
       { 
+        success: false,
         error: 'Internal server error',
         message: 'Failed to fetch dashboard activities'
       },
@@ -65,23 +72,34 @@ async function fetchRecentActivities(user: any, headers: Record<string, string>)
     // Connect to MongoDB directly
     const { db } = await connectToDatabase();
     
-    // Fetch recent activities from multiple collections
+    // Build department filter based on user access level
+    const departmentFilter = user.accessLevel === 'super_admin' 
+      ? {} // Super admin sees all activities
+      : { department: user.department }; // Others see only their department activities
+    
+    console.log('🔍 Dashboard Activities - Department filter:', {
+      accessLevel: user.accessLevel,
+      userDepartment: user.department,
+      filter: departmentFilter
+    });
+
+    // Fetch recent activities from multiple collections with department filtering
     const [recentTickets, recentAssets, recentMaintenanceRecords] = await Promise.all([
-      // Get recent tickets
+      // Get recent tickets (with department filter for non-super admins)
       db.collection('tickets')
-        .find()
+        .find(departmentFilter)
         .sort({ createdAt: -1 })
         .limit(3)
         .toArray(),
-      // Get recent assets
+      // Get recent assets (with department filter for non-super admins)
       db.collection('assets')
-        .find()
+        .find(departmentFilter)
         .sort({ createdAt: -1 })
         .limit(2)
         .toArray(),
-      // Get recent maintenance records
+      // Get recent maintenance records (with department filter for non-super admins)
       db.collection('maintenancerecords')
-        .find()
+        .find(departmentFilter)
         .sort({ createdAt: -1 })
         .limit(2)
         .toArray()
@@ -163,6 +181,10 @@ async function fetchRecentActivities(user: any, headers: Record<string, string>)
 
   } catch (error) {
     console.error('Error fetching recent activities:', error);
+    console.log('📝 Dashboard Activities - Returning fallback data for user:', {
+      accessLevel: user?.accessLevel,
+      department: user?.department
+    });
     // Return fallback data in case of error
     return [
       {

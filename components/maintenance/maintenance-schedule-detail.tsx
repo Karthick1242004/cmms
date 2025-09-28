@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { MaintenanceRecordForm } from "./maintenance-record-form"
+import { formatDuration } from "@/lib/duration-utils"
 import type { MaintenanceSchedule } from "@/types/maintenance"
 
 interface MaintenanceScheduleDetailProps {
@@ -664,7 +665,7 @@ export function MaintenanceScheduleDetail({
                           <label className="text-sm font-medium text-muted-foreground">Est. Duration</label>
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{schedule.estimatedDuration} hours</span>
+                            <span className="text-sm">{formatDuration(schedule.estimatedDuration, 'long')}</span>
                           </div>
                         </div>
                       </div>

@@ -13,8 +13,14 @@ import { Command, CommandEmpty, CommandInput, CommandItem } from "@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Trash2, Edit, Users, Check, X, ChevronsUpDown, Building2, Copy } from "lucide-react"
+import { Plus, Trash2, Edit, Users, Check, X, ChevronsUpDown, Building2, Copy, Clock, HelpCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { 
+  parseDurationString, 
+  formatDuration, 
+  validateDuration,
+  getDurationExamples 
+} from "@/lib/duration-utils"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { useAssets } from "@/hooks/use-assets"
@@ -52,6 +58,9 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
 
   // State for duplication dialog
   const [isDuplicationDialogOpen, setIsDuplicationDialogOpen] = useState(false)
+
+  // State for duration input (separate from form data for better UX)
+  const [durationInput, setDurationInput] = useState('')
 
   type FormData = {
     assetId: string
@@ -216,6 +225,9 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
         assignedUsers: schedule.assignedUsers || [],
       })
       
+      // Set duration input with formatted value
+      setDurationInput(formatDuration(schedule.estimatedDuration, 'short'))
+      
       // Extract checklist items from parts (API stores them inside parts)
       const extractedChecklist: any[] = [];
       const partsWithoutChecklist: any[] = [];
@@ -261,6 +273,7 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       if (!isInitializing) {
         const userDept = decodeHtmlEntities(user?.department || "");
         setSelectedDepartment(isSuperAdmin ? "" : userDept)
+        setDurationInput('') // Reset duration input
       }
     }
   }, [schedule, isSuperAdmin, user?.department])
@@ -792,26 +805,75 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="duration">Estimated Duration (Hours)</Label>
-              <Input
-                id="duration"
-                type="number"
-                step="0.5"
-                value={formData.estimatedDuration || ''}
-                onChange={(e) => {
-                  const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-                  if (e.target.value !== '' && (isNaN(value as number) || (value as number) < 0.5)) {
-                    return; // Don't update if invalid
-                  }
-                  setFormData(prev => ({ ...prev, estimatedDuration: value as number }));
-                }}
-                placeholder="2"
-                min="0.5"
-                className={validationErrors.estimatedDuration ? "border-red-500" : ""}
-                required
-              />
+              <div className="flex items-center gap-2">
+                <Label htmlFor="duration">Estimated Duration</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
+                      <HelpCircle className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Duration Format Examples:</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {getDurationExamples().map((example, idx) => (
+                          <div key={idx} className="font-mono bg-muted px-2 py-1 rounded">
+                            {example}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Use formats like "2h 30m", "2:30", or "2.5" hours
+                      </p>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="relative">
+                <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="duration"
+                  type="text"
+                  value={durationInput}
+                  onChange={(e) => {
+                    const input = e.target.value;
+                    setDurationInput(input);
+                    
+                    // Validate and convert to decimal hours
+                    const validation = validateDuration(input, 0.1, 24);
+                    if (validation.isValid && validation.decimalHours !== undefined) {
+                      setFormData(prev => ({ ...prev, estimatedDuration: validation.decimalHours! }));
+                      // Clear validation error
+                      if (validationErrors.estimatedDuration) {
+                        setValidationErrors(prev => ({ ...prev, estimatedDuration: '' }));
+                      }
+                    } else if (input.trim() !== '') {
+                      // Set validation error for non-empty invalid input
+                      setValidationErrors(prev => ({ 
+                        ...prev, 
+                        estimatedDuration: validation.errorMessage || 'Invalid duration format' 
+                      }));
+                    } else {
+                      // Clear error for empty input
+                      setValidationErrors(prev => ({ ...prev, estimatedDuration: '' }));
+                    }
+                  }}
+                  placeholder="2h 30m or 2:30 or 2.5"
+                  className={cn(
+                    "pl-10",
+                    validationErrors.estimatedDuration ? "border-red-500" : ""
+                  )}
+                  required
+                />
+              </div>
               {validationErrors.estimatedDuration && (
                 <p className="text-sm text-red-500 mt-1">{validationErrors.estimatedDuration}</p>
+              )}
+              {durationInput && !validationErrors.estimatedDuration && formData.estimatedDuration && (
+                <p className="text-xs text-muted-foreground">
+                  Duration: {formatDuration(formData.estimatedDuration, 'long')}
+                </p>
               )}
             </div>
 

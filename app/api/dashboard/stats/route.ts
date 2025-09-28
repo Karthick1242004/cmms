@@ -7,36 +7,42 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || 'http://localhost:5001';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user context for authentication (with fallback for testing)
+    // Get user context for authentication
     const user = await getUserContext(request);
 
-    // TEMPORARY: Allow access even without authentication for testing
     if (!user) {
-      console.log('⚠️ Dashboard stats API: No user context found, proceeding with fallback');
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
     }
+
+    console.log('🎯 Dashboard Stats API - User context:', {
+      id: user.id,
+      name: user.name,
+      department: user.department,
+      accessLevel: user.accessLevel
+    });
 
     // Prepare headers with user context
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    // Add user context headers if user is available
-    if (user) {
-      const roleForBackend =
-        user.accessLevel === 'super_admin' || user.accessLevel === 'department_admin'
-          ? 'admin'
-          : user.role;
+    const roleForBackend =
+      user.accessLevel === 'super_admin' || user.accessLevel === 'department_admin'
+        ? 'admin'
+        : user.role;
 
-      headers['x-user-id'] = user.id;
-      headers['x-user-name'] = user.name;
-      headers['x-user-email'] = user.email;
-      headers['x-user-department'] = user.department;
-      headers['x-user-role'] = roleForBackend;
-      headers['x-user-access-level'] = user.accessLevel;
-      headers['x-user-role-name'] = user.role;
-    }
+    headers['x-user-id'] = user.id;
+    headers['x-user-name'] = user.name;
+    headers['x-user-email'] = user.email;
+    headers['x-user-department'] = user.department;
+    headers['x-user-role'] = roleForBackend;
+    headers['x-user-access-level'] = user.accessLevel;
+    headers['x-user-role-name'] = user.role;
 
-    // Fetch real data from existing API endpoints
+    // Fetch data with access level filtering
     const stats = await fetchDashboardStats(user, headers);
 
     return NextResponse.json({
@@ -51,6 +57,7 @@ export async function GET(request: NextRequest) {
     console.error('Dashboard Stats API Error:', error);
     return NextResponse.json(
       { 
+        success: false,
         error: 'Internal server error',
         message: 'Failed to fetch dashboard statistics'
       },
@@ -65,21 +72,74 @@ async function fetchDashboardStats(user: any, headers: Record<string, string>) {
     // Connect to MongoDB directly
     const { db } = await connectToDatabase();
     
-    // Fetch counts directly from MongoDB collections
+    // Build department filter based on user access level
+    const departmentFilter = user.accessLevel === 'super_admin' 
+      ? {} // Super admin sees all data
+      : { department: user.department }; // Others see only their department
+    
+    console.log('🔍 Dashboard Stats - Department filter:', {
+      accessLevel: user.accessLevel,
+      userDepartment: user.department,
+      filter: departmentFilter
+    });
+
+    // Debug: Check actual department values in collections for non-super admins
+    if (user.accessLevel !== 'super_admin') {
+      console.log('🔍 Dashboard Stats - Debugging department data...');
+      
+      // Sample employees to check department field values
+      const sampleEmployees = await db.collection('employees').find({}).limit(5).toArray();
+      console.log('📋 Sample employees departments:', sampleEmployees.map(emp => ({
+        id: emp._id,
+        name: emp.name || emp.employeeName || 'Unknown',
+        department: emp.department
+      })));
+      
+      // Count employees by department
+      const employeeDeptCounts = await db.collection('employees').aggregate([
+        { $group: { _id: '$department', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]).toArray();
+      console.log('📊 Employee department breakdown:', employeeDeptCounts);
+      
+      // Check if user department exists in data
+      const userDeptCount = await db.collection('employees').countDocuments({ department: user.department });
+      console.log(`👤 User department '${user.department}' employee count:`, userDeptCount);
+      
+      // Also check for case-insensitive match
+      const userDeptCountCaseInsensitive = await db.collection('employees').countDocuments({ 
+        department: { $regex: new RegExp(`^${user.department}$`, 'i') } 
+      });
+      console.log(`👤 User department '${user.department}' case-insensitive count:`, userDeptCountCaseInsensitive);
+    }
+
+    // Fetch counts directly from MongoDB collections with department filtering
     const [totalAssets, totalTickets, totalDepartments, totalEmployees] = await Promise.all([
-      // Count assets
-      db.collection('assets').countDocuments(),
-      // Count tickets
-      db.collection('tickets').countDocuments(),
-      // Count departments  
+      // Count assets (with department filter for non-super admins)
+      db.collection('assets').countDocuments(departmentFilter),
+      // Count tickets (with department filter for non-super admins)  
+      db.collection('tickets').countDocuments(departmentFilter),
+      // Count departments - always show total count for all users (organizational context)
       db.collection('departments').countDocuments(),
-      // Count employees
-      db.collection('employees').countDocuments()
+      // Count employees (with department filter for non-super admins)
+      db.collection('employees').countDocuments(departmentFilter)
     ]);
 
-    // Count active work orders (tickets with status 'open' or 'in-progress')
+    // Count active work orders (tickets with status 'open' or 'in-progress' and department filter)
     const activeWorkOrders = await db.collection('tickets').countDocuments({
-      status: { $in: ['open', 'in-progress'] }
+      status: { $in: ['open', 'in-progress'] },
+      ...departmentFilter
+    });
+
+    // Log the final counts for debugging
+    console.log('📈 Dashboard Stats - Final counts:', {
+      totalAssets,
+      totalTickets,
+      activeWorkOrders,
+      totalDepartments: `${totalDepartments} (always shows all departments for organizational context)`,
+      totalEmployees,
+      accessLevel: user.accessLevel,
+      userDepartment: user.department
     });
 
     // Calculate percentage changes (simple mock calculation for now)
@@ -121,6 +181,10 @@ async function fetchDashboardStats(user: any, headers: Record<string, string>) {
 
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
+    console.log('📊 Dashboard Stats - Returning fallback data for user:', {
+      accessLevel: user?.accessLevel,
+      department: user?.department
+    });
     // Return fallback data in case of error
     return [
       {

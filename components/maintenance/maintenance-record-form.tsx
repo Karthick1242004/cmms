@@ -28,6 +28,7 @@ import {
 import { Plus, Clock, CheckCircle, XCircle, SkipForward, Camera, Users, Building2, Check, ChevronsUpDown, X } from "lucide-react"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { useAuthStore } from "@/stores/auth-store"
+import { formatDuration } from "@/lib/duration-utils"
 import { useToast } from "@/hooks/use-toast"
 import type { MaintenanceSchedule, MaintenanceRecord, MaintenancePartRecord, MaintenanceChecklistRecord } from "@/types/maintenance"
 import { maintenanceApi } from "@/lib/maintenance-api"

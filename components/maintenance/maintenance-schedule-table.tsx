@@ -15,6 +15,7 @@ import { MaintenanceScheduleForm } from "./maintenance-schedule-form"
 import { MaintenanceRecordForm } from "./maintenance-record-form"
 import { MaintenanceScheduleDetail } from "./maintenance-schedule-detail"
 import { DuplicationDialog } from "@/components/common/duplication-dialog"
+import { formatDuration } from "@/lib/duration-utils"
 import type { MaintenanceSchedule } from "@/types/maintenance"
 
 interface MaintenanceScheduleTableProps {
@@ -286,8 +287,8 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>{schedule.estimatedDuration}h</span>
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>{formatDuration(schedule.estimatedDuration, 'short')}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

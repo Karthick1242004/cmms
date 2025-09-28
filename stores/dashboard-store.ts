@@ -6,8 +6,8 @@ import { fetchDashboardData } from "@/lib/dashboard-api"
 
 export const useDashboardStore = create<DashboardState>()(
   devtools(
-    persist(
-      immer((set, get) => ({
+    // Remove persist for dashboard data to ensure fresh data on each session
+    immer((set, get) => ({
         stats: [],
         recentActivities: [],
         quickActions: [],
@@ -89,55 +89,75 @@ export const useDashboardStore = create<DashboardState>()(
           })
 
           try {
-            // Fetch real data from API endpoints
+            // Get auth token from localStorage
+            const token = localStorage.getItem('auth-token');
+            const headers: Record<string, string> = {
+              'Content-Type': 'application/json',
+            };
+            
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            console.log('🔄 Dashboard Store - Refreshing with auth headers');
+
+            // Fetch real data from API endpoints with authentication
             const [statsResponse, activitiesResponse] = await Promise.allSettled([
-              fetch('/api/dashboard/stats'),
-              fetch('/api/dashboard/activities')
+              fetch('/api/dashboard/stats', { headers }),
+              fetch('/api/dashboard/activities', { headers })
             ]);
 
             // Process stats response
             if (statsResponse.status === 'fulfilled' && statsResponse.value.ok) {
               const statsData = await statsResponse.value.json();
               if (statsData.success && statsData.data?.stats) {
+                console.log('✅ Dashboard Store - Stats fetched successfully:', statsData.data.stats);
                 set((state) => {
                   state.stats = statsData.data.stats;
                 });
+              } else {
+                console.error('❌ Dashboard Store - Stats API returned error:', statsData);
+                // Keep existing stats or use fallback
               }
             } else {
-              console.error('Failed to fetch dashboard stats');
-              // Set fallback stats
-              set((state) => {
-                state.stats = [
-                  {
-                    title: "Total Assets",
-                    value: "7",
-                    change: "+12%",
-                    iconName: "Package",
-                    color: "text-blue-600",
-                  },
-                  {
-                    title: "Active Work Orders",
-                    value: "4",
-                    change: "-5%",
-                    iconName: "Wrench",
-                    color: "text-orange-600",
-                  },
-                  {
-                    title: "Departments",
-                    value: "10",
-                    change: "0%",
-                    iconName: "Building2",
-                    color: "text-green-600",
-                  },
-                  {
-                    title: "Total Employees",
-                    value: "28",
-                    change: "+3%",
-                    iconName: "Users",
-                    color: "text-purple-600",
-                  },
-                ];
-              });
+              console.error('❌ Dashboard Store - Failed to fetch dashboard stats:', 
+                statsResponse.status === 'fulfilled' ? await statsResponse.value.text() : statsResponse.reason);
+              // Don't set fallback stats to avoid showing incorrect data
+              // Keep existing stats if any, or initialize empty
+              if (!get().stats || get().stats.length === 0) {
+                set((state) => {
+                  state.stats = [
+                    {
+                      title: "Total Assets",
+                      value: "0",
+                      change: "0%",
+                      iconName: "Package",
+                      color: "text-blue-600",
+                    },
+                    {
+                      title: "Active Work Orders",
+                      value: "0", 
+                      change: "0%",
+                      iconName: "Wrench",
+                      color: "text-orange-600",
+                    },
+                    {
+                      title: "Departments",
+                      value: "0",
+                      change: "0%",
+                      iconName: "Building2",
+                      color: "text-green-600",
+                    },
+                    {
+                      title: "Total Employees",
+                      value: "0",
+                      change: "0%",
+                      iconName: "Users",
+                      color: "text-purple-600",
+                    },
+                  ];
+                });
+              }
             }
 
             // Process activities response
@@ -229,16 +249,6 @@ export const useDashboardStore = create<DashboardState>()(
           await get().refreshDashboard();
         },
       })),
-      {
-        name: "dashboard-storage",
-        partialize: (state) => ({
-          stats: state.stats,
-          recentActivities: state.recentActivities,
-          quickActions: state.quickActions,
-          lastUpdated: state.lastUpdated,
-        }),
-      },
-    ),
     { name: "dashboard-store" },
   ),
 )

@@ -15,6 +15,7 @@ import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { MaintenanceRecordDetail } from "./maintenance-record-detail"
 import { useAuthStore } from "@/stores/auth-store"
 import { useToast } from "@/hooks/use-toast"
+import { formatDuration } from "@/lib/duration-utils"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { 
   Pagination,
@@ -255,7 +256,7 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin, pagination
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{record.actualDuration.toFixed(1)}h</span>
+                        <span>{formatDuration(record.actualDuration, 'short')}</span>
                       </div>
                     </TableCell>
                     <TableCell>

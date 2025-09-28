@@ -13,6 +13,7 @@ import { MoreHorizontal, CheckCircle, XCircle, Clock, User, Calendar, Eye, Shiel
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { MaintenanceRecordDetail } from "./maintenance-record-detail"
+import { formatDuration } from "@/lib/duration-utils"
 import type { MaintenanceRecord } from "@/types/maintenance"
 
 interface MaintenanceRecordTableProps {
@@ -164,7 +165,7 @@ export function MaintenanceRecordTable({ records, isLoading, isAdmin }: Maintena
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{record.actualDuration.toFixed(1)}h</span>
+                        <span>{formatDuration(record.actualDuration, 'short')}</span>
                       </div>
                     </TableCell>
                     <TableCell>
