@@ -48,11 +48,17 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
     // Department admin can start maintenance in their department
     if (user.accessLevel === 'department_admin' && user.department === schedule.department) return true
     
-    // Regular users can only start maintenance if they are the assigned technician
+    // If this is an open ticket (department-specific), allow any user from the assigned department
+    if (schedule.isOpenTicket && schedule.assignedDepartment && user.department === schedule.assignedDepartment) return true
+    
+    // If this is NOT an open ticket, only assigned users can start it
+    if (!schedule.isOpenTicket && schedule.assignedUsers && schedule.assignedUsers.includes(user.name)) return true
+    
+    // Legacy support: Check if user is the assigned technician
     if (schedule.assignedTechnician && user.name === schedule.assignedTechnician) return true
     
-    // If no technician is assigned, allow users from the same department as the asset
-    if (!schedule.assignedTechnician && user.department === schedule.department) return true
+    // Fallback: If no specific assignment, allow users from the same department as the asset
+    if (!schedule.assignedTechnician && !schedule.assignedUsers?.length && user.department === schedule.department) return true
     
     return false
   }

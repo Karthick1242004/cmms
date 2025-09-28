@@ -56,11 +56,17 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
     // Department admin can start maintenance in their department
     if (user.accessLevel === 'department_admin' && user.department === schedule.department) return true
     
-    // Regular users can only start maintenance if they are the assigned technician
+    // If this is an open ticket (department-specific), allow any user from the assigned department
+    if (schedule.isOpenTicket && schedule.assignedDepartment && user.department === schedule.assignedDepartment) return true
+    
+    // If this is NOT an open ticket, only assigned users can start it
+    if (!schedule.isOpenTicket && schedule.assignedUsers && schedule.assignedUsers.includes(user.name)) return true
+    
+    // Legacy support: Check if user is the assigned technician
     if (schedule.assignedTechnician && user.name === schedule.assignedTechnician) return true
     
-    // If no technician is assigned, allow users from the same department as the asset
-    if (!schedule.assignedTechnician && user.department === schedule.department) return true
+    // Fallback: If no specific assignment, allow users from the same department as the asset
+    if (!schedule.assignedTechnician && !schedule.assignedUsers?.length && user.department === schedule.department) return true
     
     return false
   }
@@ -69,7 +75,11 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
   const handleUnauthorizedAccess = () => {
     let description = ''
     
-    if (schedule.assignedTechnician) {
+    if (schedule.isOpenTicket && schedule.assignedDepartment) {
+      description = `This is a department-specific open maintenance schedule for ${schedule.assignedDepartment} department. Only employees from this department, department head, or super admin can start this maintenance.`
+    } else if (!schedule.isOpenTicket && schedule.assignedUsers?.length) {
+      description = `This maintenance schedule is assigned to specific users: ${schedule.assignedUsers.join(', ')}. Only assigned users, department head, or super admin can start this maintenance.`
+    } else if (schedule.assignedTechnician) {
       description = `This maintenance schedule is assigned to ${schedule.assignedTechnician}. Only the assigned technician, department head, or super admin can start this maintenance.`
     } else {
       description = `This maintenance schedule is for the ${schedule.department} department. Only employees from this department, department head, or super admin can start this maintenance.`
@@ -441,15 +451,15 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
                       assignedUsers: checked ? [] : prev.assignedUsers // Clear users when open ticket is enabled
                     }))}
                   />
-                  Open Maintenance Record
+                  Department-Specific Open Record
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  {formData.isOpenTicket ? 'All departments can access this maintenance record' : 'Only assigned department can access'}
+                  {formData.isOpenTicket ? 'Any user in the assigned department can access this maintenance record' : 'Only specific assigned users can access'}
                 </p>
               </div>
 
-              {/* Assigned Department - Only show if not open ticket */}
-              {!formData.isOpenTicket && (
+              {/* Assigned Department - Show when open ticket is enabled for department-specific access */}
+              {formData.isOpenTicket && (
                 <div className="space-y-2">
                   <Label htmlFor="assignedDepartment">Assigned Department</Label>
                   <Popover open={openAssignedDepartment} onOpenChange={setOpenAssignedDepartment}>
@@ -507,8 +517,8 @@ export function MaintenanceRecordForm({ trigger, schedule }: MaintenanceRecordFo
                 </div>
               )}
 
-              {/* Assigned Users - Only show if NOT open ticket and department is selected */}
-              {(!formData.isOpenTicket && formData.assignedDepartment) && (
+              {/* Assigned Users - Only show if NOT open ticket (for user-specific assignments) */}
+              {!formData.isOpenTicket && (
                 <div className="space-y-2">
                   <Label htmlFor="assignedUsers">Assigned Users</Label>
                   <Popover open={openAssignedUsers} onOpenChange={setOpenAssignedUsers}>

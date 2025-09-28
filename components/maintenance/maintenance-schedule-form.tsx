@@ -1021,15 +1021,15 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                       assignedUsers: checked ? [] : prev.assignedUsers // Clear users when open ticket is enabled
                     }))}
                   />
-                  Open Maintenance Schedule
+                  Department-Specific Open Ticket
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  {formData.isOpenTicket ? 'All departments can access this maintenance schedule' : 'Only assigned department can access'}
+                  {formData.isOpenTicket ? 'Any user in the assigned department can access this maintenance schedule' : 'Only specific assigned users can access'}
                 </p>
               </div>
 
-              {/* Assigned Department - Only show if not open ticket */}
-              {!formData.isOpenTicket && (
+              {/* Assigned Department - Show when open ticket is enabled for department-specific access */}
+              {formData.isOpenTicket && (
                 <div className="space-y-2">
                   <Label htmlFor="assignedDepartment">Assigned Department</Label>
                   <Popover open={openAssignedDepartment} onOpenChange={setOpenAssignedDepartment}>
@@ -1083,8 +1083,8 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
                 </div>
               )}
 
-              {/* Assigned Users - Only show if NOT open ticket and department is selected */}
-              {(!formData.isOpenTicket && formData.assignedDepartment) && (
+              {/* Assigned Users - Only show if NOT open ticket (for user-specific assignments) */}
+              {!formData.isOpenTicket && (
                 <div className="space-y-2">
                   <Label htmlFor="assignedUsers">Assigned Users</Label>
                   <Popover open={openAssignedUsers} onOpenChange={setOpenAssignedUsers}>

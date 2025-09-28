@@ -724,16 +724,16 @@ export function MaintenanceScheduleDetail({
                             <div className="flex items-center gap-2 mt-1">
                               {schedule.isOpenTicket ? (
                                 <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
-                                  🌐 Open Access
+                                  🏢 Department Open
                                 </Badge>
                               ) : (
                                 <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50">
-                                  🔒 Department Only
+                                  👥 User Specific
                                 </Badge>
                               )}
                             </div>
                           </div>
-                          {!schedule.isOpenTicket && schedule.assignedDepartment && (
+                          {schedule.isOpenTicket && schedule.assignedDepartment && (
                             <div>
                               <label className="text-sm font-medium text-muted-foreground">Assigned Department</label>
                               <div className="flex items-center gap-1 mt-1">
@@ -761,7 +761,7 @@ export function MaintenanceScheduleDetail({
                           {schedule.isOpenTicket && (
                             <div className="md:col-span-2">
                               <p className="text-sm text-muted-foreground">
-                                🌐 This maintenance schedule is open to all departments and users. Any qualified technician can perform this maintenance.
+                                🏢 This maintenance schedule is open to all users in the assigned department. Any technician from the assigned department can perform this maintenance.
                               </p>
                             </div>
                           )}
