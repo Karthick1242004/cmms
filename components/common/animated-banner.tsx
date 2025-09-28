@@ -59,57 +59,51 @@ export default function AnimatedBanner() {
     return null
   }
 
-  // Create triple set for truly seamless scrolling
-  const tripleItems = [...activeBanners, ...activeBanners, ...activeBanners]
+  // Create seamless infinite scroll with proper duplication
+  const duplicatedBanners = [...activeBanners, ...activeBanners]
 
   return (
     <div className="overflow-hidden relative w-full min-w-0">
-      <div className="relative h-12 flex items-center py-2 px-2 bg-gradient-to-r from-orange-500/10 via-blue-500/10 to-purple-500/10 dark:from-orange-400/5 dark:via-blue-400/5 dark:to-purple-400/5 rounded-md">
+      <div className="relative min-h-12 flex items-center py-3 px-2 bg-gradient-to-r from-orange-500/10 via-blue-500/10 to-purple-500/10 dark:from-orange-400/5 dark:via-blue-400/5 dark:to-purple-400/5 rounded-md">
         {/* Animated banner content */}
         <motion.div
-          className="flex items-center whitespace-nowrap will-change-transform"
+          className="flex items-center will-change-transform"
           animate={{
-            x: [`0%`, `-${100 / 3}%`] // Move exactly 1/3 of the total width (one set of items)
+            x: [`0%`, `-50%`] // Move exactly half the width (one complete set)
           }}
           transition={{
             x: {
               repeat: Infinity,
               repeatType: "loop",
-              duration: Math.max(30, activeBanners.length * 1), // Faster animation for better visibility
+              duration: Math.max(20, activeBanners.length * 4), // Reasonable speed
               ease: "linear",
             },
           }}
           style={{
-            width: `${100 * 3}%`, // Triple width for triple items
+            width: 'max-content', // Allow content to determine its natural width
           }}
         >
-          {/* Render all triple items */}
-          {tripleItems.map((banner: BannerMessage, index: number) => (
-            <motion.div
+          {/* Render duplicated items for seamless scroll */}
+          {duplicatedBanners.map((banner: BannerMessage, index: number) => (
+            <div
               key={`banner-${index}`}
-              className="flex items-center justify-center text-sm font-medium tracking-wide px-8 py-2 hover:glass-card hover:bg-white/15 dark:hover:bg-white/5 transition-all duration-300 cursor-pointer flex-shrink-0 glass-transition"
-              style={{ 
-                width: `${100 / tripleItems.length}%`, 
-                minWidth: activeBanners.length === 1 ? "100%" : "600px" // Reduced minimum width for better fit
-              }}
-              whileHover={{ scale: 1.01 }}
-              transition={{ duration: 0.2 }}
+              className="inline-flex items-center justify-center font-medium tracking-wide px-6 sm:px-12 py-2 hover:bg-white/10 dark:hover:bg-white/5 transition-all duration-300 cursor-pointer flex-shrink-0"
             >
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-4">
                 {/* Priority indicator */}
                 {banner.priority > 5 && (
                   <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse flex-shrink-0" />
                 )}
                 
-                {/* Banner text with proper contrast for both modes */}
-                <span className="dark:text-blue-100 text-blue-900 font-medium tracking-normal leading-relaxed whitespace-nowrap drop-shadow-sm">
+                {/* Banner text with full visibility */}
+                <span className="dark:text-blue-100 text-blue-900 font-medium tracking-normal leading-relaxed drop-shadow-sm text-sm sm:text-base whitespace-nowrap">
                   {banner.text}
                 </span>
                 
-                {/* Separator dot with reduced spacing */}
-                <div className="mx-8 w-2 h-2 bg-blue-400/70 dark:bg-blue-300/70 rounded-full hidden sm:block flex-shrink-0" />
+                {/* Separator dot between items */}
+                <div className="w-2 h-2 bg-blue-400/70 dark:bg-blue-300/70 rounded-full flex-shrink-0" />
               </div>
-            </motion.div>
+            </div>
           ))}
         </motion.div>
         
