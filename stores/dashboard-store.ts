@@ -99,7 +99,6 @@ export const useDashboardStore = create<DashboardState>()(
               headers['Authorization'] = `Bearer ${token}`;
             }
 
-            console.log('🔄 Dashboard Store - Refreshing with auth headers');
 
             // Fetch real data from API endpoints with authentication
             const [statsResponse, activitiesResponse] = await Promise.allSettled([
@@ -111,17 +110,12 @@ export const useDashboardStore = create<DashboardState>()(
             if (statsResponse.status === 'fulfilled' && statsResponse.value.ok) {
               const statsData = await statsResponse.value.json();
               if (statsData.success && statsData.data?.stats) {
-                console.log('✅ Dashboard Store - Stats fetched successfully:', statsData.data.stats);
                 set((state) => {
                   state.stats = statsData.data.stats;
                 });
-              } else {
-                console.error('❌ Dashboard Store - Stats API returned error:', statsData);
-                // Keep existing stats or use fallback
               }
             } else {
-              console.error('❌ Dashboard Store - Failed to fetch dashboard stats:', 
-                statsResponse.status === 'fulfilled' ? await statsResponse.value.text() : statsResponse.reason);
+              console.error('Failed to fetch dashboard stats');
               // Don't set fallback stats to avoid showing incorrect data
               // Keep existing stats if any, or initialize empty
               if (!get().stats || get().stats.length === 0) {

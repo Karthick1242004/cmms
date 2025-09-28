@@ -59,16 +59,11 @@ async function updateSafetyInspectionPerformanceData(recordData: any, createdRec
     // Add creator
     if (recordData.createdByName) {
       employeeNames.add(recordData.createdByName);
-      console.log('👤 SAFETY INSPECTION PERFORMANCE - Added creator:', recordData.createdByName);
     }
-    
-    console.log('👥 SAFETY INSPECTION PERFORMANCE - Total unique employees to update:', employeeNames.size);
-    console.log('📝 SAFETY INSPECTION PERFORMANCE - Employee names:', Array.from(employeeNames));
     
     // Update performance data for all involved employees
     for (const employeeName of employeeNames) {
       try {
-        console.log(`🔍 SAFETY INSPECTION PERFORMANCE - Searching for employee: "${employeeName}"`);
         
         const employeeResponse = await fetch(`${baseUrl}/api/employees?search=${encodeURIComponent(employeeName)}&limit=1`, {
           method: 'GET',
@@ -77,70 +72,47 @@ async function updateSafetyInspectionPerformanceData(recordData: any, createdRec
           },
         });
         
-        console.log(`📡 SAFETY INSPECTION PERFORMANCE - Employee search response status for "${employeeName}":`, employeeResponse.status);
-        
         if (!employeeResponse.ok) {
-          console.log(`❌ SAFETY INSPECTION PERFORMANCE - Failed to fetch employee "${employeeName}", status:`, employeeResponse.status);
           continue;
         }
         
         const employeeData = await employeeResponse.json();
-        console.log(`📊 SAFETY INSPECTION PERFORMANCE - Employee search result for "${employeeName}":`, {
-          success: employeeData.success,
-          employeesFound: employeeData?.data?.employees?.length || 0,
-          firstEmployee: employeeData?.data?.employees?.[0]?.name || 'None'
-        });
-        
         const employee = employeeData?.data?.employees?.[0];
         
         if (!employee) {
-          console.log(`❌ SAFETY INSPECTION PERFORMANCE - No employee found for name: "${employeeName}"`);
           continue;
         }
         
-        console.log(`✅ SAFETY INSPECTION PERFORMANCE - Found employee "${employeeName}", updating performance...`);
         await updateEmployeePerformanceRecord(employee, recordData, createdRecord);
-        console.log(`✅ SAFETY INSPECTION PERFORMANCE - Completed performance update for "${employeeName}"`);
         
       } catch (employeeError) {
-        console.error(`❌ SAFETY INSPECTION PERFORMANCE - Failed to update performance for employee: ${employeeName}`, employeeError);
+        console.error(`Failed to update performance for employee: ${employeeName}`, employeeError);
       }
     }
     
-    console.log('🏁 SAFETY INSPECTION PERFORMANCE - Completed all employee updates');
-    
   } catch (error) {
-    console.error('❌ SAFETY INSPECTION PERFORMANCE - Critical error:', error);
+    console.error('Critical error in safety inspection performance update:', error);
   }
 }
 
 // Helper function to update individual employee performance record
 async function updateEmployeePerformanceRecord(employee: any, recordData: any, createdRecord: any) {
   try {
-    console.log(`🔧 EMPLOYEE PERFORMANCE UPDATE - Starting for employee: ${employee.name} (ID: ${employee.id})`);
-    
     const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
     
     // Determine the role of this employee in the safety inspection
     let assignmentRole = 'Inspector'; // Default
-    console.log(`🔍 EMPLOYEE PERFORMANCE UPDATE - Determining role for ${employee.name}...`);
     
     if (recordData.assignedToName === employee.name) {
       assignmentRole = 'Assigned Inspector';
-      console.log(`✅ EMPLOYEE PERFORMANCE UPDATE - Role: Assigned Inspector (matched assignedToName)`);
     } else if (recordData.createdByName === employee.name) {
       assignmentRole = 'Creator';
-      console.log(`✅ EMPLOYEE PERFORMANCE UPDATE - Role: Creator (matched createdByName)`);
     } else if (recordData.attendedByName) {
       const attendees = Array.isArray(recordData.attendedByName) ? recordData.attendedByName : [recordData.attendedByName];
-      console.log(`🔍 EMPLOYEE PERFORMANCE UPDATE - Checking attendees:`, attendees);
       if (attendees.includes(employee.name)) {
         assignmentRole = 'Attendee';
-        console.log(`✅ EMPLOYEE PERFORMANCE UPDATE - Role: Attendee (found in attendees list)`);
       }
     }
-    
-    console.log(`📋 EMPLOYEE PERFORMANCE UPDATE - Final role assigned: ${assignmentRole}`);
     
     // Add completed work history entry
     const workHistoryEntry = {
@@ -156,11 +128,7 @@ async function updateEmployeePerformanceRecord(employee: any, recordData: any, c
       assignmentRole: assignmentRole
     };
     
-    console.log(`📝 EMPLOYEE PERFORMANCE UPDATE - Work history entry created:`, workHistoryEntry);
-    
     // Update performance data by adding the work history entry
-    console.log(`📡 EMPLOYEE PERFORMANCE UPDATE - Sending performance update to: ${baseUrl}/api/performance/${employee.id}`);
-    
     const performanceResponse = await fetch(`${baseUrl}/api/performance/${employee.id}`, {
       method: 'PATCH',
       headers: {
@@ -172,15 +140,12 @@ async function updateEmployeePerformanceRecord(employee: any, recordData: any, c
       }),
     });
     
-    console.log(`📡 EMPLOYEE PERFORMANCE UPDATE - Performance API response status:`, performanceResponse.status);
-    
     if (!performanceResponse.ok) {
       const errorData = await performanceResponse.json().catch(() => ({}));
-      console.error(`❌ EMPLOYEE PERFORMANCE UPDATE - Failed to update performance data for ${employee.name}:`, errorData);
+      console.error(`Failed to update performance data for ${employee.name}:`, errorData);
       
       // If performance record doesn't exist (404), create it first
       if (performanceResponse.status === 404) {
-        console.log(`🔄 EMPLOYEE PERFORMANCE UPDATE - Performance record not found, creating new one for ${employee.name}...`);
         
         try {
           const createResponse = await fetch(`${baseUrl}/api/performance`, {
@@ -209,21 +174,17 @@ async function updateEmployeePerformanceRecord(employee: any, recordData: any, c
           
           if (createResponse.ok) {
             const createData = await createResponse.json().catch(() => ({}));
-            console.log(`✅ EMPLOYEE PERFORMANCE UPDATE - Created new performance record for ${employee.name}:`, createData);
           } else {
-            console.error(`❌ EMPLOYEE PERFORMANCE UPDATE - Failed to create performance record for ${employee.name}`);
+            console.error(`Failed to create performance record for ${employee.name}`);
           }
         } catch (createError) {
-          console.error(`❌ EMPLOYEE PERFORMANCE UPDATE - Error creating performance record for ${employee.name}:`, createError);
+          console.error(`Error creating performance record for ${employee.name}:`, createError);
         }
       }
-    } else {
-      const successData = await performanceResponse.json().catch(() => ({}));
-      console.log(`✅ EMPLOYEE PERFORMANCE UPDATE - Successfully updated performance for ${employee.name}:`, successData);
     }
     
   } catch (error) {
-    console.error(`❌ EMPLOYEE PERFORMANCE UPDATE - Critical error for ${employee?.name || 'unknown'}:`, error);
+    console.error(`Critical error for ${employee?.name || 'unknown'}:`, error);
   }
 }
 
@@ -238,13 +199,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 SAFETY INSPECTION RECORDS - User context:', {
-      id: user.id,
-      name: user.name,
-      department: user.department,
-      accessLevel: user.accessLevel
-    });
-
     const { searchParams } = new URL(request.url)
     
     // Add department filter for non-super-admin users
@@ -253,9 +207,6 @@ export async function GET(request: NextRequest) {
       if (!searchParams.has('department')) {
         searchParams.set('department', user.department);
       }
-      console.log('🏢 SAFETY INSPECTION RECORDS - Applied department filter:', user.department);
-    } else {
-      console.log('👑 SAFETY INSPECTION RECORDS - Super admin access, no department filter applied');
     }
     
     // Forward all query parameters to the backend
@@ -323,55 +274,30 @@ export async function POST(request: NextRequest) {
     }
     
     // Add enhanced employee tracking data (similar to tickets and daily logs)
-    console.log('🔍 SAFETY INSPECTION - Before employee tracking setup:', {
-      originalInspector: body.inspector,
-      originalInspectorId: body.inspectorId,
-      originalCreatedBy: body.createdBy,
-      originalAssignedTo: body.assignedTo,
-      originalAttendedBy: body.attendedBy,
-      userInfo: { id: user.id, name: user.name }
-    });
-    
     if (!body.createdBy) {
       body.createdBy = user.id?.toString();
       body.createdByName = user.name;
-      console.log('✅ SAFETY INSPECTION - Added creator info:', { createdBy: body.createdBy, createdByName: body.createdByName });
     }
     
     // If assignedTo is not provided, default to inspector
     if (!body.assignedTo && body.inspectorId) {
       body.assignedTo = body.inspectorId;
       body.assignedToName = body.inspector;
-      console.log('✅ SAFETY INSPECTION - Added assigned info:', { assignedTo: body.assignedTo, assignedToName: body.assignedToName });
     }
     
     // If attendedBy is not provided, default to inspector
     if (!body.attendedBy && body.inspectorId) {
       body.attendedBy = [body.inspectorId];
       body.attendedByName = [body.inspector];
-      console.log('✅ SAFETY INSPECTION - Added attended info:', { attendedBy: body.attendedBy, attendedByName: body.attendedByName });
     }
     
     // Ensure attendedBy is always an array for consistency
     if (body.attendedBy && !Array.isArray(body.attendedBy)) {
       body.attendedBy = [body.attendedBy];
-      console.log('🔄 SAFETY INSPECTION - Converted attendedBy to array:', body.attendedBy);
     }
     if (body.attendedByName && !Array.isArray(body.attendedByName)) {
       body.attendedByName = [body.attendedByName];
-      console.log('🔄 SAFETY INSPECTION - Converted attendedByName to array:', body.attendedByName);
     }
-    
-    console.log('📊 SAFETY INSPECTION - Final employee tracking data:', {
-      inspector: body.inspector,
-      inspectorId: body.inspectorId,
-      createdBy: body.createdBy,
-      createdByName: body.createdByName,
-      assignedTo: body.assignedTo,
-      assignedToName: body.assignedToName,
-      attendedBy: body.attendedBy,
-      attendedByName: body.attendedByName
-    });
 
     // Ensure scheduleId has a value (create temporary ObjectId if missing)
     if (!body.scheduleId || body.scheduleId === '') {
@@ -506,47 +432,15 @@ export async function POST(request: NextRequest) {
 
     const result = await response.json()
     
-    console.log('🔥 DEBUG [Safety Inspection Record Creation] - Backend response result:', result);
-    console.log('🔍 DEBUG [Safety Inspection Record Creation] - Result structure analysis:', {
-      hasSuccess: 'success' in result,
-      successValue: result.success,
-      hasData: 'data' in result,
-      dataType: typeof result.data,
-      dataKeys: result.data ? Object.keys(result.data) : 'no data',
-      dataId: result.data?.id || result.data?._id || 'no id found'
-    });
-    
     // Update performance data when safety inspection record is created (task completed)
-    console.log('🎯 SAFETY INSPECTION POST - Checking if performance update should run:', {
-      resultSuccess: result.success,
-      hasInspector: !!body.inspector,
-      hasResultData: !!result.data,
-      shouldUpdate: result.success && body.inspector && result.data
-    });
     
     if (result.success && body.inspector && result.data) {
       try {
-        console.log('🚀 SAFETY INSPECTION POST - Starting performance data update...');
-        console.log('📋 SAFETY INSPECTION POST - Data being passed to performance update:', {
-          body: {
-            inspector: body.inspector,
-            inspectorId: body.inspectorId,
-            assignedToName: body.assignedToName,
-            attendedByName: body.attendedByName,
-            createdByName: body.createdByName,
-            assetName: body.assetName,
-            status: body.status
-          },
-          resultData: result.data,
-          user: { id: user.id, name: user.name }
-        });
-        
         // Update performance data to mark the safety inspection task as completed
         await updateSafetyInspectionPerformanceData(body, result.data, user);
-        console.log('✅ SAFETY INSPECTION POST - Performance data update completed successfully');
 
       } catch (performanceUpdateError) {
-        console.error('❌ SAFETY INSPECTION POST - Error in performance data update:', performanceUpdateError);
+        console.error('Error in performance data update:', performanceUpdateError);
         // Don't fail the main request if performance update fails
       }
 
@@ -589,7 +483,6 @@ export async function POST(request: NextRequest) {
         });
         
         if (activityLogResponse.ok) {
-          console.log('✅ [Safety Inspection] - Activity log created');
         } else {
           console.error('❌ [Safety Inspection] - Activity log creation failed:', await activityLogResponse.text());
         }

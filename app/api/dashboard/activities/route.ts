@@ -17,12 +17,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('📜 Dashboard Activities API - User context:', {
-      id: user.id,
-      name: user.name,
-      department: user.department,
-      accessLevel: user.accessLevel
-    });
 
     // Prepare headers with user context
     const headers: Record<string, string> = {
@@ -77,11 +71,6 @@ async function fetchRecentActivities(user: any, headers: Record<string, string>)
       ? {} // Super admin sees all activities
       : { department: user.department }; // Others see only their department activities
     
-    console.log('🔍 Dashboard Activities - Department filter:', {
-      accessLevel: user.accessLevel,
-      userDepartment: user.department,
-      filter: departmentFilter
-    });
 
     // Fetch recent activities from multiple collections with department filtering
     const [recentTickets, recentAssets, recentMaintenanceRecords] = await Promise.all([
@@ -181,10 +170,6 @@ async function fetchRecentActivities(user: any, headers: Record<string, string>)
 
   } catch (error) {
     console.error('Error fetching recent activities:', error);
-    console.log('📝 Dashboard Activities - Returning fallback data for user:', {
-      accessLevel: user?.accessLevel,
-      department: user?.department
-    });
     // Return fallback data in case of error
     return [
       {

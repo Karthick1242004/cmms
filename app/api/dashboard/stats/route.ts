@@ -17,12 +17,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🎯 Dashboard Stats API - User context:', {
-      id: user.id,
-      name: user.name,
-      department: user.department,
-      accessLevel: user.accessLevel
-    });
 
     // Prepare headers with user context
     const headers: Record<string, string> = {
@@ -77,41 +71,6 @@ async function fetchDashboardStats(user: any, headers: Record<string, string>) {
       ? {} // Super admin sees all data
       : { department: user.department }; // Others see only their department
     
-    console.log('🔍 Dashboard Stats - Department filter:', {
-      accessLevel: user.accessLevel,
-      userDepartment: user.department,
-      filter: departmentFilter
-    });
-
-    // Debug: Check actual department values in collections for non-super admins
-    if (user.accessLevel !== 'super_admin') {
-      console.log('🔍 Dashboard Stats - Debugging department data...');
-      
-      // Sample employees to check department field values
-      const sampleEmployees = await db.collection('employees').find({}).limit(5).toArray();
-      console.log('📋 Sample employees departments:', sampleEmployees.map(emp => ({
-        id: emp._id,
-        name: emp.name || emp.employeeName || 'Unknown',
-        department: emp.department
-      })));
-      
-      // Count employees by department
-      const employeeDeptCounts = await db.collection('employees').aggregate([
-        { $group: { _id: '$department', count: { $sum: 1 } } },
-        { $sort: { count: -1 } }
-      ]).toArray();
-      console.log('📊 Employee department breakdown:', employeeDeptCounts);
-      
-      // Check if user department exists in data
-      const userDeptCount = await db.collection('employees').countDocuments({ department: user.department });
-      console.log(`👤 User department '${user.department}' employee count:`, userDeptCount);
-      
-      // Also check for case-insensitive match
-      const userDeptCountCaseInsensitive = await db.collection('employees').countDocuments({ 
-        department: { $regex: new RegExp(`^${user.department}$`, 'i') } 
-      });
-      console.log(`👤 User department '${user.department}' case-insensitive count:`, userDeptCountCaseInsensitive);
-    }
 
     // Fetch counts directly from MongoDB collections with department filtering
     const [totalAssets, totalTickets, totalDepartments, totalEmployees] = await Promise.all([
@@ -131,16 +90,6 @@ async function fetchDashboardStats(user: any, headers: Record<string, string>) {
       ...departmentFilter
     });
 
-    // Log the final counts for debugging
-    console.log('📈 Dashboard Stats - Final counts:', {
-      totalAssets,
-      totalTickets,
-      activeWorkOrders,
-      totalDepartments: `${totalDepartments} (always shows all departments for organizational context)`,
-      totalEmployees,
-      accessLevel: user.accessLevel,
-      userDepartment: user.department
-    });
 
     // Calculate percentage changes (simple mock calculation for now)
     const assetChange = calculatePercentageChange(totalAssets, Math.max(totalAssets - 1, 0));
@@ -181,10 +130,6 @@ async function fetchDashboardStats(user: any, headers: Record<string, string>) {
 
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
-    console.log('📊 Dashboard Stats - Returning fallback data for user:', {
-      accessLevel: user?.accessLevel,
-      department: user?.department
-    });
     // Return fallback data in case of error
     return [
       {

@@ -235,34 +235,16 @@ export default function ReportsPage() {
 
   // Force fallback data for immediate display if still loading
   const safeGetData = (data: any[], fallback: any[], dataName?: string) => {
-    console.log(`🔍 SafeGetData for ${dataName}:`, {
-      hasData: !!data,
-      isArray: Array.isArray(data),
-      dataLength: data?.length,
-      dataType: typeof data,
-      actualData: data,
-      fallbackLength: fallback?.length,
-      fallbackSample: fallback?.[0]
-    })
-    
     if (!data || !Array.isArray(data) || data.length === 0) {
-      console.log(`🔄 Using fallback data for ${dataName}`)
       return fallback
     }
-    console.log(`✅ Using actual data for ${dataName}`)
     return data
   }
 
-  // TEMPORARY: Force fallback data to test if the issue is with data source
-  console.log('🚨 TEMPORARY: Forcing fallback data for testing')
-  const finalCostTrendData = fallbackData.charts.costTrend
-  const finalCompletionRateData = fallbackData.charts.completionRate
-  const finalUptimeData = fallbackData.charts.uptime
+  const finalCostTrendData = safeGetData(reportData?.charts?.costTrend, fallbackData.charts.costTrend, 'costTrend')
+  const finalCompletionRateData = safeGetData(reportData?.charts?.completionRate, fallbackData.charts.completionRate, 'completionRate')
+  const finalUptimeData = safeGetData(reportData?.charts?.uptime, fallbackData.charts.uptime, 'uptime')
   
-  // Original logic (commented out for testing):
-  // const finalCostTrendData = safeGetData(costTrendData, fallbackData.charts.costTrend, 'costTrend')
-  // const finalCompletionRateData = safeGetData(completionRateData, fallbackData.charts.completionRate, 'completionRate')
-  // const finalUptimeData = safeGetData(uptimeData, fallbackData.charts.uptime, 'uptime')
 
 
 

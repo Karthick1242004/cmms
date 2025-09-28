@@ -131,7 +131,6 @@ export async function PATCH(
     });
     
     // Find existing performance record
-    console.log('🔍 PERFORMANCE API PATCH - Searching for performance record with employeeId:', employeeId);
     const existingRecord = await PerformanceModel.findOne({ employeeId });
     
     console.log('📊 PERFORMANCE API PATCH - Performance record search result:', {

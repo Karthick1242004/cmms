@@ -184,7 +184,6 @@ export default function EmployeeDetailPage() {
           
           // If it's a 404 error, we'll create the performance record when we fetch employee details
           if (performanceError?.message?.includes('Performance record not found')) {
-            console.log('📝 Will create performance record after fetching employee details');
           }
         }
       }
@@ -199,10 +198,8 @@ export default function EmployeeDetailPage() {
         // If we fetched employee details successfully but no performance record exists, create one
         try {
           const existingPerformance = await performanceApi.getByEmployeeId(employeeId);
-          console.log('✅ Performance record exists for employee');
         } catch (performanceNotFoundError: any) {
           if (performanceNotFoundError?.message?.includes('Performance record not found')) {
-            console.log('📝 Creating initial performance record for employee:', response.data.name);
             try {
               await performanceApi.initializeEmployeePerformance({
                 employeeId: employeeId,
@@ -211,7 +208,6 @@ export default function EmployeeDetailPage() {
                 department: response.data.department || 'General',
                 role: response.data.role || 'Employee'
               });
-              console.log('✅ Initial performance record created successfully');
             } catch (createError) {
               console.warn('⚠️ Failed to create initial performance record:', createError);
             }

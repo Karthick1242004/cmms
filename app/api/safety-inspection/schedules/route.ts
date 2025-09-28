@@ -227,12 +227,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 SAFETY INSPECTION SCHEDULES - User context:', {
-      id: user.id,
-      name: user.name,
-      department: user.department,
-      accessLevel: user.accessLevel
-    });
 
     const { searchParams } = new URL(request.url)
     
