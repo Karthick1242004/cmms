@@ -2,7 +2,20 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { X, Download } from "lucide-react"
+import { 
+  X, 
+  Download, 
+  FileText, 
+  User, 
+  TrendingUp, 
+  BarChart3, 
+  Award, 
+  Activity, 
+  Target, 
+  PieChart, 
+  Brain,
+  Loader2
+} from "lucide-react"
 import type { EmployeeDetail, EmployeeAnalytics } from "@/types/employee"
 import { employeesApi } from "@/lib/employees-api"
 import { useToast } from "@/hooks/use-toast"
@@ -296,24 +309,34 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
               background: white;
             }
             .report-container {
-              max-width: 210mm;
-              margin: 0 auto;
-              padding: 20mm;
+              width: 100%;
+              max-width: none;
+              margin: 0;
+              padding: 40px;
             }
             .header {
+              background: linear-gradient(135deg, #3b82f6, #1e40af);
+              color: white;
               text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #3b82f6;
-              padding-bottom: 20px;
+              margin: -40px -40px 40px -40px;
+              padding: 40px;
+              border-radius: 0;
             }
             .header h1 {
-              font-size: 28px;
-              color: #1e40af;
+              font-size: 32px;
+              font-weight: 700;
               margin-bottom: 10px;
+              text-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             .header p {
-              font-size: 16px;
-              color: #6b7280;
+              font-size: 18px;
+              opacity: 0.9;
+              margin-bottom: 5px;
+            }
+            .header .generated-info {
+              font-size: 14px;
+              opacity: 0.8;
+              font-weight: 300;
             }
             .employee-overview {
               background: #f8fafc;
@@ -396,9 +419,9 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
             }
             .metrics-grid {
               display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              gap: 20px;
-              margin-bottom: 30px;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 25px;
+              margin-bottom: 40px;
             }
             .metric-card {
               background: #f8fafc;
@@ -549,7 +572,7 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
             <div class="header">
               <h1>Employee Performance Report</h1>
               <p>Comprehensive performance analysis for ${employee.name}</p>
-              <p><strong>Generated:</strong> ${currentDate}</p>
+              <div class="generated-info">Generated: ${currentDate}</div>
             </div>
 
             <!-- Employee Overview -->
@@ -942,69 +965,205 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div>
-            <h2 className="text-xl font-bold">Employee Performance Report</h2>
-            <p className="text-muted-foreground text-sm">Generate report for {employee.name}</p>
-          </div>
-          <Button onClick={onClose} variant="ghost" size="sm">
+        <div className="relative bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+          <Button 
+            onClick={onClose} 
+            variant="ghost" 
+            size="sm"
+            className="absolute top-4 right-4 text-white hover:bg-white/20"
+          >
             <X className="h-4 w-4" />
           </Button>
+          <div className="pr-12">
+            <h2 className="text-2xl font-bold">Employee Performance Report</h2>
+            <p className="text-blue-100 text-sm mt-1">Comprehensive performance analysis and insights</p>
+          </div>
         </div>
 
         {/* Content */}
         <div className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-lg font-semibold text-blue-700">
-                  {employee.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <h3 className="font-semibold">{employee.name}</h3>
-                <p className="text-sm text-muted-foreground">{employee.role} • {employee.department}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Employee Overview Card */}
+            <div className="lg:col-span-1">
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-6 border border-slate-200">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                    <span className="text-xl font-bold text-white">
+                      {employee.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">{employee.name}</h3>
+                    <p className="text-sm text-slate-600">{employee.role}</p>
+                    <p className="text-xs text-slate-500">{employee.department}</p>
+                  </div>
+                </div>
+                
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="bg-white rounded-lg p-3 border border-slate-200">
+                    <div className="text-2xl font-bold text-blue-600">{employee.performanceMetrics.totalTasksCompleted}</div>
+                    <div className="text-xs text-slate-600">Tasks Completed</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-slate-200">
+                    <div className="text-2xl font-bold text-green-600">{employee.performanceMetrics.efficiency}%</div>
+                    <div className="text-xs text-slate-600">Efficiency</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-slate-200">
+                    <div className="text-2xl font-bold text-purple-600">{employee.performanceMetrics.rating}/5</div>
+                    <div className="text-xs text-slate-600">Rating</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-slate-200">
+                    <div className="text-2xl font-bold text-orange-600">{Math.round(employee.performanceMetrics.averageCompletionTime)}h</div>
+                    <div className="text-xs text-slate-600">Avg. Time</div>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div className="text-sm text-muted-foreground">
-              <p>This will generate a comprehensive performance report including:</p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Employee overview and basic information</li>
-                <li>Performance metrics and ratings</li>
-                <li>Task breakdown by type</li>
-                <li>Skills and certifications</li>
-                <li>Recent work history</li>
-                <li>Current asset assignments</li>
+
+            {/* Report Content Description */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-xl border border-slate-200 p-6">
+                <h4 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <FileText className="h-5 w-5 text-blue-600 mr-2" />
+                  Report Contents
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <User className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-700">Employee Overview</div>
+                        <div className="text-xs text-slate-500">Basic information & details</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-700">Performance Metrics</div>
+                        <div className="text-xs text-slate-500">KPIs & efficiency ratings</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg">
+                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <BarChart3 className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-700">Task Breakdown</div>
+                        <div className="text-xs text-slate-500">Work distribution by type</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg">
+                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <Award className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-700">Skills & Certifications</div>
+                        <div className="text-xs text-slate-500">Competencies & qualifications</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg">
+                      <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                        <Activity className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-700">Work History</div>
+                        <div className="text-xs text-slate-500">Recent activities & tasks</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg">
+                      <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
+                        <Target className="h-4 w-4 text-teal-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-700">Asset Assignments</div>
+                        <div className="text-xs text-slate-500">Current responsibilities</div>
+                      </div>
+                    </div>
+
+                    {analytics && (
+                      <>
+                        <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div className="w-8 h-8 bg-green-200 rounded-lg flex items-center justify-center">
+                            <PieChart className="h-4 w-4 text-green-700" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-green-700">Analytics Charts</div>
+                            <div className="text-xs text-green-600">Visual data insights</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div className="w-8 h-8 bg-green-200 rounded-lg flex items-center justify-center">
+                            <Brain className="h-4 w-4 text-green-700" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-green-700">Trend Analysis</div>
+                            <div className="text-xs text-green-600">Performance patterns</div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 {analytics && (
-                  <>
-                    <li>Performance analytics charts</li>
-                    <li>Monthly activity trends</li>
-                    <li>Task distribution analysis</li>
-                    <li>Asset workload details</li>
-                  </>
+                  <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium text-green-700">Enhanced with real-time analytics data</span>
+                    </div>
+                  </div>
                 )}
-              </ul>
-              {analytics && (
-                <p className="mt-2 text-xs text-green-600 font-medium">
-                  ✨ Enhanced with analytics data and charts
-                </p>
-              )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end space-x-2 p-6 border-t">
-          <Button onClick={onClose} variant="outline">
-            Cancel
-          </Button>
-          <Button onClick={handleExportReport} disabled={isLoading}>
-            <Download className="mr-2 h-4 w-4" />
-            Generate Report
-          </Button>
+        <div className="bg-gray-50 px-6 py-4 border-t rounded-b-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Report will open in a new window</span>
+              <span className="block text-xs">Use the print button to save as PDF</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Button onClick={onClose} variant="outline" className="min-w-[100px]">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleExportReport} 
+                disabled={isLoading}
+                className="min-w-[140px] bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Generate Report
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

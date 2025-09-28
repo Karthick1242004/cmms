@@ -110,20 +110,39 @@ export async function PUT(
 // PATCH - Add work history entry or asset assignment
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { employeeId: string } }
+  { params }: { params: Promise<{ employeeId: string }> }
 ) {
   try {
     await connectDB();
     
     const user = await getUserContext(request);
-    const { employeeId } = params;
+    const { employeeId } = await params;
     const body = await request.json();
     const { action, data } = body;
     
+    console.log('🔧 PERFORMANCE API PATCH - Request received:', {
+      employeeId,
+      action,
+      dataType: data?.type,
+      dataTitle: data?.title,
+      dataStatus: data?.status,
+      hasData: !!data,
+      userInfo: { id: user?.id, name: user?.name }
+    });
+    
     // Find existing performance record
+    console.log('🔍 PERFORMANCE API PATCH - Searching for performance record with employeeId:', employeeId);
     const existingRecord = await PerformanceModel.findOne({ employeeId });
     
+    console.log('📊 PERFORMANCE API PATCH - Performance record search result:', {
+      found: !!existingRecord,
+      recordEmployeeId: existingRecord?.employeeId,
+      recordEmployeeName: existingRecord?.employeeName,
+      currentWorkHistoryCount: existingRecord?.workHistory?.length || 0
+    });
+    
     if (!existingRecord) {
+      console.log('❌ PERFORMANCE API PATCH - No performance record found for employeeId:', employeeId);
       return NextResponse.json({
         success: false,
         message: 'Performance record not found'
@@ -297,7 +316,15 @@ export async function PATCH(
         break;
         
       case 'add_work_history':
+        console.log('✅ PERFORMANCE API PATCH - Processing add_work_history action');
+        console.log('📋 PERFORMANCE API PATCH - Work history data received:', data);
+        
         if (!data || !data.type || !data.title) {
+          console.log('❌ PERFORMANCE API PATCH - Invalid work history data:', { 
+            hasData: !!data, 
+            hasType: !!data?.type, 
+            hasTitle: !!data?.title 
+          });
           return NextResponse.json({
             success: false,
             message: 'Work history entry must have type and title'
@@ -317,28 +344,36 @@ export async function PATCH(
           assignmentRole: data.assignmentRole
         };
         
+        console.log('📝 PERFORMANCE API PATCH - Work entry created:', workEntry);
+        
         updateOperation = {
           $push: { workHistory: workEntry },
           $set: { updatedAt: new Date() }
         };
         
         // Update performance metrics based on work type
+        console.log('🔍 PERFORMANCE API PATCH - Checking if should update metrics, status:', data.status);
         if (data.status === 'completed') {
+          console.log('✅ PERFORMANCE API PATCH - Status is completed, updating metrics...');
           const metricsUpdate: any = {
             'performanceMetrics.totalTasksCompleted': existingRecord.performanceMetrics.totalTasksCompleted + 1,
             'performanceMetrics.lastActivityDate': new Date().toISOString()
           };
           
+          console.log('🔍 PERFORMANCE API PATCH - Work type for metrics update:', data.type);
           switch (data.type) {
             case 'maintenance':
+              console.log('🔧 PERFORMANCE API PATCH - Updating maintenance metrics');
               metricsUpdate['performanceMetrics.maintenanceCompleted'] = 
                 existingRecord.performanceMetrics.maintenanceCompleted + 1;
               break;
             case 'safety-inspection':
+              console.log('🛡️ PERFORMANCE API PATCH - Updating safety inspection metrics');
               metricsUpdate['performanceMetrics.safetyInspectionsCompleted'] = 
                 existingRecord.performanceMetrics.safetyInspectionsCompleted + 1;
               break;
             case 'ticket':
+              console.log('🎫 PERFORMANCE API PATCH - Updating ticket metrics');
               metricsUpdate['performanceMetrics.ticketsResolved'] = 
                 existingRecord.performanceMetrics.ticketsResolved + 1;
               break;
@@ -397,11 +432,20 @@ export async function PATCH(
     }
     
     // Apply the update
+    console.log('💾 PERFORMANCE API PATCH - Applying database update with operation:', updateOperation);
     const updatedRecord = await PerformanceModel.findOneAndUpdate(
       { employeeId },
       updateOperation,
       { new: true, lean: true }
     );
+    
+    console.log('✅ PERFORMANCE API PATCH - Database update successful:', {
+      employeeId: updatedRecord?.employeeId,
+      employeeName: updatedRecord?.employeeName,
+      newWorkHistoryCount: updatedRecord?.workHistory?.length || 0,
+      totalTasksCompleted: updatedRecord?.performanceMetrics?.totalTasksCompleted || 0,
+      safetyInspectionsCompleted: updatedRecord?.performanceMetrics?.safetyInspectionsCompleted || 0
+    });
     
     return NextResponse.json({
       success: true,
@@ -421,13 +465,13 @@ export async function PATCH(
 // DELETE - Remove performance record
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { employeeId: string } }
+  { params }: { params: Promise<{ employeeId: string }> }
 ) {
   try {
     await connectDB();
     
     const user = await getUserContext(request);
-    const { employeeId } = params;
+    const { employeeId } = await params;
     
     // Check if user has permission to delete (super admin only)
     if (!user || user.accessLevel !== 'super_admin') {

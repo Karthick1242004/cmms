@@ -32,6 +32,44 @@ interface EmployeeAnalyticsChartsProps {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
+// Helper function to reorder data to place current month in the middle
+const reorderDataWithCurrentMonthInMiddle = <T extends { month: string }>(data: T[]): T[] => {
+  if (!data || data.length === 0) return data
+  
+  // Get current month and year for comparison (Sep '25 format)
+  const now = new Date()
+  const currentMonthYear = now.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).replace(' ', " '")
+  
+  // Find the index of current month or the most recent month
+  let targetIndex = data.findIndex(item => item.month === currentMonthYear)
+  
+  // If current month is not found, use the last month in the array (most recent)
+  if (targetIndex === -1) {
+    targetIndex = data.length - 1
+  }
+  
+  // Calculate target middle position
+  const targetMiddle = Math.floor(data.length / 2)
+  
+  // Calculate how many positions to shift
+  const shift = targetIndex - targetMiddle
+  
+  if (shift === 0) return data // Already in middle
+  
+  // Create new array with the target month in the middle
+  const reorderedData = [...data]
+  
+  // Rotate the array
+  if (shift > 0) {
+    // Current month is to the right of center, move data left
+    return [...reorderedData.slice(shift), ...reorderedData.slice(0, shift)]
+  } else {
+    // Current month is to the left of center, move data right
+    const absShift = Math.abs(shift)
+    return [...reorderedData.slice(-absShift), ...reorderedData.slice(0, -absShift)]
+  }
+}
+
 export function EmployeeAnalyticsCharts({ employeeId }: EmployeeAnalyticsChartsProps) {
   const [analytics, setAnalytics] = useState<EmployeeAnalytics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -171,12 +209,12 @@ export function EmployeeAnalyticsCharts({ employeeId }: EmployeeAnalyticsChartsP
           <CardHeader>
             <CardTitle>Monthly Activity Trend</CardTitle>
             <CardDescription>
-              Task completion patterns over the last 12 months
+              Task completion patterns over the last 12 months (current month centered)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={analytics.monthlyActivity}>
+              <AreaChart data={reorderDataWithCurrentMonthInMiddle(analytics.monthlyActivity)}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -263,12 +301,12 @@ export function EmployeeAnalyticsCharts({ employeeId }: EmployeeAnalyticsChartsP
           <CardHeader>
             <CardTitle>Performance Trends</CardTitle>
             <CardDescription>
-              Efficiency trends over the last 6 months
+              Efficiency trends over time (current month centered)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={analytics.performanceTrends}>
+              <LineChart data={reorderDataWithCurrentMonthInMiddle(analytics.performanceTrends)}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />

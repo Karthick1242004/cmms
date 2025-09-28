@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart, LineChart, PieChart, RefreshCw, BarChart3, Circle } from "lucide-react"
+import { BarChart, LineChart, PieChart, RefreshCw, BarChart3, Circle, Package, TrendingUp, DollarSign, AlertTriangle, CheckCircle, Clock, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 import { 
@@ -25,6 +25,7 @@ import {
   ComposedChart
 } from "recharts"
 import { useToast } from "@/hooks/use-toast"
+import ModernReportGenerator from "@/components/reports/modern-report-generator"
 
 export default function ReportsPage() {
   const [timeRange, setTimeRange] = useState("realtime")
@@ -38,6 +39,9 @@ export default function ReportsPage() {
   const [assetChartType, setAssetChartType] = useState<'pie' | 'bar' | 'donut'>('pie')
   const [metricsChartType, setMetricsChartType] = useState<'pie' | 'bar' | 'area'>('pie')
   const [inventoryChartType, setInventoryChartType] = useState<'donut' | 'pie' | 'bar'>('donut')
+  const [partsChartType, setPartsChartType] = useState<'bar' | 'pie' | 'line'>('bar')
+  const [transactionsChartType, setTransactionsChartType] = useState<'line' | 'bar' | 'area'>('line')
+  const [showModernReport, setShowModernReport] = useState(false)
 
   // Helper function to get auth headers (consistent with other API calls)
   const getAuthHeaders = () => {
@@ -215,6 +219,207 @@ export default function ReportsPage() {
     }
   })
 
+  // Sample data for parts and transactions
+  const partsStockTrendData = [
+    { month: "Apr", totalStock: 1205, lowStockItems: 15 },
+    { month: "May", totalStock: 1187, lowStockItems: 18 },
+    { month: "Jun", totalStock: 1234, lowStockItems: 12 },
+    { month: "Jul", totalStock: 1198, lowStockItems: 23 },
+    { month: "Aug", totalStock: 1267, lowStockItems: 19 },
+    { month: "Sep", totalStock: 1247, lowStockItems: 23 }
+  ]
+
+  const partsCategoryData = [
+    { category: "Mechanical", count: 456, percentage: 37 },
+    { category: "Electrical", count: 324, percentage: 26 },
+    { category: "Consumables", count: 267, percentage: 21 },
+    { category: "Safety", count: 123, percentage: 10 },
+    { category: "Tools", count: 77, percentage: 6 }
+  ]
+
+  const criticalPartsData = [
+    { partName: "Hydraulic Pump Seal", partNumber: "HP-001", currentStock: 2, minStock: 5 },
+    { partName: "Motor Bearing 6205", partNumber: "MB-6205", currentStock: 1, minStock: 3 },
+    { partName: "Safety Valve Spring", partNumber: "SV-SP-001", currentStock: 0, minStock: 2 },
+    { partName: "Control Panel Filter", partNumber: "CP-F-01", currentStock: 3, minStock: 8 },
+    { partName: "Pressure Sensor", partNumber: "PS-001", currentStock: 1, minStock: 4 }
+  ]
+
+  const transactionVolumeData = [
+    { month: "Apr", volume: 45, value: 12340 },
+    { month: "May", volume: 52, value: 15678 },
+    { month: "Jun", volume: 38, value: 9876 },
+    { month: "Jul", volume: 61, value: 18234 },
+    { month: "Aug", volume: 47, value: 13567 },
+    { month: "Sep", volume: 54, value: 16789 }
+  ]
+
+  const transactionTypeData = [
+    { type: "Receipt", count: 120, percentage: 35 },
+    { type: "Issue", count: 145, percentage: 42 },
+    { type: "Transfer", count: 52, percentage: 15 },
+    { type: "Adjustment", count: 25, percentage: 8 }
+  ]
+
+  const recentTransactionsData = [
+    { 
+      transactionNumber: "TXN-2025-001234", 
+      description: "Parts Receipt - Hydraulic Components",
+      type: "receipt",
+      amount: 2540,
+      date: "Sep 28, 2025"
+    },
+    { 
+      transactionNumber: "TXN-2025-001233", 
+      description: "Parts Issue - Maintenance WO-4567",
+      type: "issue",
+      amount: 890,
+      date: "Sep 27, 2025"
+    },
+    { 
+      transactionNumber: "TXN-2025-001232", 
+      description: "Inventory Transfer - Warehouse A to B",
+      type: "transfer",
+      amount: 1250,
+      date: "Sep 26, 2025"
+    },
+    { 
+      transactionNumber: "TXN-2025-001231", 
+      description: "Stock Adjustment - Physical Count",
+      type: "adjustment",
+      amount: 340,
+      date: "Sep 25, 2025"
+    }
+  ]
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
+
+  // Chart rendering functions
+  const renderPartsChart = (chartType: 'bar' | 'pie' | 'line') => {
+    const data = reportData?.parts?.byCategory || partsCategoryData
+
+    switch (chartType) {
+      case 'bar':
+        return (
+          <RechartsBarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="category" />
+            <YAxis />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+          </RechartsBarChart>
+        )
+      case 'pie':
+        return (
+          <RechartsPieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ category, percentage }) => `${category}: ${percentage}%`}
+              outerRadius={80}
+              fill="#8884d8"
+              dataKey="count"
+            >
+              {data.map((entry: any, index: number) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <ChartTooltip content={<ChartTooltipContent />} />
+          </RechartsPieChart>
+        )
+      default:
+        return (
+          <RechartsBarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="category" />
+            <YAxis />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+          </RechartsBarChart>
+        )
+    }
+  }
+
+  const renderTransactionsChart = (chartType: 'line' | 'bar' | 'area') => {
+    const data = reportData?.transactions?.volumeTrend || transactionVolumeData
+
+    switch (chartType) {
+      case 'line':
+        return (
+          <RechartsLineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartLegend content={<ChartLegendContent />} />
+            <Line 
+              type="monotone" 
+              dataKey="volume" 
+              stroke="#3b82f6" 
+              strokeWidth={2}
+              name="Volume"
+            />
+            <Line 
+              type="monotone" 
+              dataKey="value" 
+              stroke="#10b981" 
+              strokeWidth={2}
+              name="Value ($)"
+            />
+          </RechartsLineChart>
+        )
+      case 'bar':
+        return (
+          <RechartsBarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartLegend content={<ChartLegendContent />} />
+            <Bar dataKey="volume" fill="#3b82f6" name="Volume" />
+            <Bar dataKey="value" fill="#10b981" name="Value ($)" />
+          </RechartsBarChart>
+        )
+      case 'area':
+        return (
+          <AreaChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartLegend content={<ChartLegendContent />} />
+            <Area 
+              type="monotone" 
+              dataKey="volume" 
+              stackId="1"
+              stroke="#3b82f6" 
+              fill="#3b82f6"
+              name="Volume"
+            />
+            <Area 
+              type="monotone" 
+              dataKey="value" 
+              stackId="2"
+              stroke="#10b981" 
+              fill="#10b981"
+              name="Value ($)"
+            />
+          </AreaChart>
+        )
+      default:
+        return (
+          <RechartsLineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Line type="monotone" dataKey="volume" stroke="#3b82f6" strokeWidth={2} />
+          </RechartsLineChart>
+        )
+    }
+  }
 
     // Export functionality with chart image capture and real data
   const handleExportReport = async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -236,7 +441,9 @@ export default function ReportsPage() {
         await Promise.all([
           fetchTabData('assets'),
           fetchTabData('maintenance'),
-          fetchTabData('inventory')
+          fetchTabData('inventory'),
+          fetchTabData('parts'),
+          fetchTabData('transactions')
         ]);
       }
 
@@ -1770,8 +1977,13 @@ export default function ReportsPage() {
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={handleExportReport} disabled={!reportData}>
-            Export Report
+          <Button 
+            onClick={() => setShowModernReport(true)} 
+            disabled={!reportData}
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Generate Modern Report
           </Button>
         </div>
       </div>
@@ -1785,7 +1997,7 @@ export default function ReportsPage() {
           }
         }}
       >
-        <TabsList className="grid w-full grid-cols-4 mb-4">
+        <TabsList className="grid w-full grid-cols-6 mb-4">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart className="h-4 w-4" />
             Overview
@@ -1802,6 +2014,14 @@ export default function ReportsPage() {
             <BarChart className="h-4 w-4" />
             Inventory
           </TabsTrigger>
+          <TabsTrigger value="parts" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Parts
+          </TabsTrigger>
+          <TabsTrigger value="transactions" className="flex items-center gap-2">
+            <LineChart className="h-4 w-4" />
+            Transactions
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -1817,7 +2037,7 @@ export default function ReportsPage() {
                 <p className="text-xs text-muted-foreground">
                   <span className="text-green-600">+2.5%</span> from previous period
                 </p>
-                <div className="mt-4 h-32 w-full">
+                <div className="mt-4 h-32 w-full" data-chart-type="line" data-chart-name="costTrend">
                   <ChartContainer config={chartConfig} className="w-full h-full">
                     <RechartsLineChart data={costTrendData}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -1848,7 +2068,7 @@ export default function ReportsPage() {
                 <p className="text-xs text-muted-foreground">
                   <span className="text-red-600">-3.2%</span> from previous period
                 </p>
-                <div className="mt-4 h-32 w-full">
+                <div className="mt-4 h-32 w-full" data-chart-type="bar" data-chart-name="completionRate">
                   <ChartContainer config={chartConfig} className="w-full h-full">
                     <RechartsBarChart data={completionRateData}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -1877,7 +2097,7 @@ export default function ReportsPage() {
                 <p className="text-xs text-muted-foreground">
                   <span className="text-green-600">+1.7%</span> from previous period
                 </p>
-                <div className="mt-4 h-32 w-full">
+                <div className="mt-4 h-32 w-full" data-chart-type="area" data-chart-name="assetUptime">
                   <ChartContainer config={chartConfig} className="w-full h-full">
                     <AreaChart data={uptimeData}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -2094,7 +2314,374 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="parts" className="space-y-4">
+          {/* Parts Overview Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Package className="h-4 w-4 text-blue-600" />
+                  Total Parts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.parts?.totalParts || 1247}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+12</span> added this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  Total Value
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ${(reportData?.parts?.totalValue || 156780).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+5.2%</span> from last month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  Low Stock
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.parts?.lowStockCount || 23}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Parts below minimum level
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                  Turnover Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.parts?.turnoverRate || 4.2}x
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Annual inventory turnover
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Parts Analysis Charts */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Parts by Category</CardTitle>
+                    <CardDescription>Distribution of parts across categories</CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={partsChartType === 'bar' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPartsChartType('bar')}
+                      className="p-2"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={partsChartType === 'pie' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPartsChartType('pie')}
+                      className="p-2"
+                    >
+                      <PieChart className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 w-full" data-chart-type="mixed" data-chart-name="partsCategory">
+                  <ChartContainer config={chartConfig} className="w-full h-full">
+                    {renderPartsChart(partsChartType)}
+                  </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Stock Levels Trend</CardTitle>
+                <CardDescription>Inventory levels over the past 6 months</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 w-full" data-chart-type="line" data-chart-name="stockTrend">
+                  <ChartContainer config={chartConfig} className="w-full h-full">
+                    <RechartsLineChart data={reportData?.parts?.stockTrend || partsStockTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="totalStock" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        name="Total Stock"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="lowStockItems" 
+                        stroke="#f59e0b" 
+                        strokeWidth={2}
+                        name="Low Stock Items"
+                      />
+                    </RechartsLineChart>
+                  </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Critical Parts Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Critical Stock Alerts</CardTitle>
+              <CardDescription>Parts requiring immediate attention</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(reportData?.parts?.criticalParts || criticalPartsData).map((part: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="flex items-center space-x-3">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      <div>
+                        <div className="font-medium">{part.partName}</div>
+                        <div className="text-sm text-muted-foreground">{part.partNumber}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium text-orange-600">{part.currentStock} units</div>
+                      <div className="text-sm text-muted-foreground">Min: {part.minStock}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="transactions" className="space-y-4">
+          {/* Transaction Overview Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-blue-600" />
+                  Total Transactions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reportData?.transactions?.totalTransactions || 342}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+18</span> this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  Transaction Value
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ${(reportData?.transactions?.totalValue || 89450).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+12.3%</span> from last month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Completed
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {reportData?.transactions?.completedCount || 318}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  93% completion rate
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-orange-600" />
+                  Pending
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {reportData?.transactions?.pendingCount || 24}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Awaiting approval
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Transaction Analysis Charts */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Transaction Volume</CardTitle>
+                    <CardDescription>Monthly transaction trends</CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={transactionsChartType === 'line' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTransactionsChartType('line')}
+                      className="p-2"
+                    >
+                      <LineChart className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={transactionsChartType === 'bar' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTransactionsChartType('bar')}
+                      className="p-2"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={transactionsChartType === 'area' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTransactionsChartType('area')}
+                      className="p-2"
+                    >
+                      <BarChart className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 w-full" data-chart-type="mixed" data-chart-name="transactionVolume">
+                  <ChartContainer config={chartConfig} className="w-full h-full">
+                    {renderTransactionsChart(transactionsChartType)}
+                  </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Transaction Types</CardTitle>
+                <CardDescription>Breakdown by transaction type</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 w-full" data-chart-type="pie" data-chart-name="transactionTypes">
+                  <ChartContainer config={chartConfig} className="w-full h-full">
+                    <RechartsPieChart>
+                      <Pie
+                        data={reportData?.transactions?.byType || transactionTypeData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ type, percentage }) => `${type}: ${percentage}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="count"
+                      >
+                        {(reportData?.transactions?.byType || transactionTypeData).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </RechartsPieChart>
+                  </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recent Transactions Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Transactions</CardTitle>
+              <CardDescription>Latest stock movements and updates</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(reportData?.transactions?.recent || recentTransactionsData).map((transaction: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-2 h-2 rounded-full ${
+                        transaction.type === 'receipt' ? 'bg-green-500' :
+                        transaction.type === 'issue' ? 'bg-blue-500' :
+                        transaction.type === 'transfer' ? 'bg-purple-500' : 'bg-orange-500'
+                      }`} />
+                      <div>
+                        <div className="font-medium">{transaction.description}</div>
+                        <div className="text-sm text-muted-foreground">{transaction.transactionNumber}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">${transaction.amount?.toLocaleString() || '0'}</div>
+                      <div className="text-sm text-muted-foreground">{transaction.date}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Modern Report Generator Modal */}
+      {showModernReport && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-auto">
+            <ModernReportGenerator 
+              reportData={reportData}
+              timeRange={timeRange}
+              onClose={() => setShowModernReport(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

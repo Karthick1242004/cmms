@@ -178,8 +178,14 @@ export default function EmployeeDetailPage() {
             // Fall through to use calculated metrics from employee details API
           }
         }
-        } catch (performanceError) {
-          // Performance data not available - fall back to calculated metrics
+        } catch (performanceError: any) {
+          // Performance data not available - this is expected for new employees
+          console.log('ℹ️ Performance record not found for employee:', employeeId, '- This is normal for new employees');
+          
+          // If it's a 404 error, we'll create the performance record when we fetch employee details
+          if (performanceError?.message?.includes('Performance record not found')) {
+            console.log('📝 Will create performance record after fetching employee details');
+          }
         }
       }
       
@@ -189,6 +195,28 @@ export default function EmployeeDetailPage() {
       if (response.success) {
         setEmployee(response.data)
         setUsePerformanceData(false)
+        
+        // If we fetched employee details successfully but no performance record exists, create one
+        try {
+          const existingPerformance = await performanceApi.getByEmployeeId(employeeId);
+          console.log('✅ Performance record exists for employee');
+        } catch (performanceNotFoundError: any) {
+          if (performanceNotFoundError?.message?.includes('Performance record not found')) {
+            console.log('📝 Creating initial performance record for employee:', response.data.name);
+            try {
+              await performanceApi.initializeEmployeePerformance({
+                employeeId: employeeId,
+                employeeName: response.data.name,
+                employeeEmail: response.data.email || `${response.data.name.toLowerCase().replace(/\s+/g, '.')}@company.com`,
+                department: response.data.department || 'General',
+                role: response.data.role || 'Employee'
+              });
+              console.log('✅ Initial performance record created successfully');
+            } catch (createError) {
+              console.warn('⚠️ Failed to create initial performance record:', createError);
+            }
+          }
+        }
       } else {
         // If employee not found in main database, try shift details
         try {
