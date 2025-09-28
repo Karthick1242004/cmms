@@ -216,19 +216,35 @@ function updateScheduleStatus(schedule: SafetyInspectionSchedule): SafetyInspect
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user context for department filtering (with fallback for testing)
+    // Get user context for department filtering
     const user = await getUserContext(request)
     
-    // TEMPORARY: Allow access even without authentication for testing
+    // Require authentication for safety inspection schedules
     if (!user) {
-      // unauthenticated request; continue without department filter
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
     }
+
+    console.log('🔍 SAFETY INSPECTION SCHEDULES - User context:', {
+      id: user.id,
+      name: user.name,
+      department: user.department,
+      accessLevel: user.accessLevel
+    });
 
     const { searchParams } = new URL(request.url)
     
-    // Add department filter for non-admin users (only if user is authenticated)
-    if (user && user.accessLevel !== 'super_admin') {
-      searchParams.set('department', user.department)
+    // Add department filter for non-super-admin users
+    if (user.accessLevel !== 'super_admin') {
+      // If no department filter is provided in the query, use user's department
+      if (!searchParams.has('department')) {
+        searchParams.set('department', user.department);
+      }
+      console.log('🏢 SAFETY INSPECTION SCHEDULES - Applied department filter:', user.department);
+    } else {
+      console.log('👑 SAFETY INSPECTION SCHEDULES - Super admin access, no department filter applied');
     }
     
     // Forward all query parameters to the backend

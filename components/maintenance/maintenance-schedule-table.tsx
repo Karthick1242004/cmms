@@ -7,13 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Edit, Trash2, Calendar, User, Clock, AlertTriangle, CheckCircle2, Play, Eye } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, Calendar, User, Clock, AlertTriangle, CheckCircle2, Play, Eye, Copy } from "lucide-react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { useAuthStore } from "@/stores/auth-store"
 import { MaintenanceScheduleForm } from "./maintenance-schedule-form"
 import { MaintenanceRecordForm } from "./maintenance-record-form"
 import { MaintenanceScheduleDetail } from "./maintenance-schedule-detail"
+import { DuplicationDialog } from "@/components/common/duplication-dialog"
 import type { MaintenanceSchedule } from "@/types/maintenance"
 
 interface MaintenanceScheduleTableProps {
@@ -28,6 +29,10 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null)
   const [detailDialog, setDetailDialog] = useState<{ open: boolean; schedule: MaintenanceSchedule | null }>({
+    open: false,
+    schedule: null
+  })
+  const [duplicationDialog, setDuplicationDialog] = useState<{ open: boolean; schedule: MaintenanceSchedule | null }>({
     open: false,
     schedule: null
   })
@@ -66,6 +71,19 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
 
   const handleViewDetails = (schedule: MaintenanceSchedule) => {
     setDetailDialog({ open: true, schedule })
+  }
+
+  const handleDuplicateClick = (schedule: MaintenanceSchedule) => {
+    setDuplicationDialog({ open: true, schedule })
+  }
+
+  const handleDuplicationSuccess = (newSchedule: any) => {
+    setDuplicationDialog({ open: false, schedule: null })
+    // Refresh the schedules list to show the new duplicated schedule
+    if (typeof refreshSchedules === 'function') {
+      refreshSchedules()
+    }
+    // If refreshSchedules is not available, we could trigger a refetch through the store
   }
 
   const getPriorityColor = (priority: string) => {
@@ -312,6 +330,13 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
                               }
                             />
                             <DropdownMenuItem
+                              onClick={() => handleDuplicateClick(schedule)}
+                              className="text-blue-600"
+                            >
+                              <Copy className="mr-2 h-4 w-4" />
+                              Duplicate Schedule
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => handleDeleteClick(schedule.id)}
                             >
@@ -357,6 +382,25 @@ export function MaintenanceScheduleTable({ schedules, isLoading, isAdmin }: Main
         isOpen={detailDialog.open}
         onClose={() => setDetailDialog({ open: false, schedule: null })}
       />
+
+      {/* Duplication Dialog */}
+      {duplicationDialog.schedule && (
+        <DuplicationDialog
+          isOpen={duplicationDialog.open}
+          onClose={() => setDuplicationDialog({ open: false, schedule: null })}
+          onSuccess={handleDuplicationSuccess}
+          originalItem={{
+            id: duplicationDialog.schedule.id,
+            name: duplicationDialog.schedule.title || 'Unknown Schedule'
+          }}
+          moduleType="maintenance"
+          title="Duplicate Maintenance Schedule"
+          description={`Create a copy of "${duplicationDialog.schedule.title}" with a new title. All schedule data including checklist and parts will be copied except unique identifiers.`}
+          nameLabel="Schedule Title"
+          nameField="title"
+          apiEndpoint={`/api/maintenance/schedules/${duplicationDialog.schedule.id}/duplicate`}
+        />
+      )}
     </>
   )
 } 

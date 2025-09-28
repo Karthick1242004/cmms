@@ -238,6 +238,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log('🔍 SAFETY INSPECTION RECORDS - User context:', {
+      id: user.id,
+      name: user.name,
+      department: user.department,
+      accessLevel: user.accessLevel
+    });
+
     const { searchParams } = new URL(request.url)
     
     // Add department filter for non-super-admin users
@@ -246,6 +253,9 @@ export async function GET(request: NextRequest) {
       if (!searchParams.has('department')) {
         searchParams.set('department', user.department);
       }
+      console.log('🏢 SAFETY INSPECTION RECORDS - Applied department filter:', user.department);
+    } else {
+      console.log('👑 SAFETY INSPECTION RECORDS - Super admin access, no department filter applied');
     }
     
     // Forward all query parameters to the backend

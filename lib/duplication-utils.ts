@@ -230,6 +230,60 @@ export const SAFETY_INSPECTION_DUPLICATION_CONFIG: DuplicationConfig = {
 };
 
 /**
+ * Maintenance Schedule-specific duplication configuration
+ */
+export const MAINTENANCE_DUPLICATION_CONFIG: DuplicationConfig = {
+  nameField: 'title',
+  excludeFields: [
+    'scheduleId', // Schedule IDs should be unique
+    'nextDueDate', // Due dates should be recalculated
+    'lastCompletedDate', // Completion dates should be reset
+    'recordsCount', // Record counts should start at 0
+    'completionScore', // Scores should be reset
+    'lastMaintenanceDate', // Last maintenance should be reset
+    'status' // Status should be reset to active
+  ],
+  transformFields: {
+    // Reset status to active for new duplicated schedules
+    status: () => 'active',
+    // Reset completion tracking
+    lastCompletedDate: () => '',
+    lastMaintenanceDate: () => '',
+    recordsCount: () => 0,
+    completionScore: () => 0,
+    // Reset due dates - will be calculated by backend
+    nextDueDate: () => '',
+    // Update start date to today
+    startDate: () => new Date().toISOString().split('T')[0],
+    // Reset tracking fields
+    isOverdue: () => false,
+    maintenanceHistory: () => [], // Clear maintenance history
+    // Reset assignment fields
+    assignedUsers: () => [],
+    // Preserve checklist and parts but reset their status/completion
+    checklist: (checklist: any[]) => {
+      return checklist?.map(item => ({
+        ...item,
+        completed: false,
+        status: 'pending'
+      })) || [];
+    },
+    parts: (parts: any[]) => {
+      return parts?.map(part => ({
+        ...part,
+        status: 'available',
+        replaced: false,
+        condition: 'good'
+      })) || [];
+    }
+  },
+  generateSuffix: (originalName: string) => {
+    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `Copy_${timestamp}`;
+  }
+};
+
+/**
  * Asset-specific duplication configuration
  */
 export const ASSET_DUPLICATION_CONFIG: DuplicationConfig = {

@@ -13,7 +13,7 @@ import { Command, CommandEmpty, CommandInput, CommandItem } from "@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Trash2, Edit, Users, Check, X, ChevronsUpDown, Building2 } from "lucide-react"
+import { Plus, Trash2, Edit, Users, Check, X, ChevronsUpDown, Building2, Copy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMaintenanceStore } from "@/stores/maintenance-store"
 import { useAuthStore } from "@/stores/auth-store"
@@ -21,6 +21,7 @@ import { useAssets } from "@/hooks/use-assets"
 import { useLocations } from "@/hooks/use-locations"
 import { useEmployees } from "@/hooks/use-employees"
 import { useDepartments } from "@/hooks/use-departments"
+import { DuplicationDialog } from "@/components/common/duplication-dialog"
 import type { MaintenanceSchedule, MaintenancePart, MaintenanceChecklistItem } from "@/types/maintenance"
 import type { AssetDetail } from "@/types/asset"
 
@@ -48,6 +49,9 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   // State for assignment dropdowns
   const [openAssignedDepartment, setOpenAssignedDepartment] = useState(false)
   const [openAssignedUsers, setOpenAssignedUsers] = useState(false)
+
+  // State for duplication dialog
+  const [isDuplicationDialogOpen, setIsDuplicationDialogOpen] = useState(false)
 
   type FormData = {
     assetId: string
@@ -609,6 +613,12 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     setSelectedAssetParts([])
     setSelectedDepartment(isSuperAdmin ? "" : user?.department || "")
     setShowInspectorDropdown(false)
+  }
+
+  const handleDuplicationSuccess = (newSchedule: any) => {
+    setIsDuplicationDialogOpen(false)
+    // Refresh the schedules list to show the new duplicated schedule
+    // This will be handled by the parent component's refresh mechanism
   }
 
   return (
@@ -1356,12 +1366,42 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
             <Button type="button" variant="outline" onClick={() => setScheduleDialogOpen(false)}>
               Cancel
             </Button>
+            {schedule && (
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={() => setIsDuplicationDialogOpen(true)}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate Schedule
+              </Button>
+            )}
             <Button type="submit">
               {schedule ? "Update" : "Create"} Schedule
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Duplication Dialog */}
+      {schedule && (
+        <DuplicationDialog
+          isOpen={isDuplicationDialogOpen}
+          onClose={() => setIsDuplicationDialogOpen(false)}
+          onSuccess={handleDuplicationSuccess}
+          originalItem={{
+            id: schedule.id,
+            name: schedule.title || 'Unknown Schedule'
+          }}
+          moduleType="maintenance"
+          title="Duplicate Maintenance Schedule"
+          description={`Create a copy of "${schedule.title}" with a new title. All schedule data including checklist and parts will be copied except unique identifiers.`}
+          nameLabel="Schedule Title"
+          nameField="title"
+          apiEndpoint={`/api/maintenance/schedules/${schedule.id}/duplicate`}
+        />
+      )}
     </Dialog>
   )
 } 
