@@ -129,6 +129,76 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
       }
       return 'N/A';
     }
+
+    // Work Type Analysis (Planned vs Unplanned)
+    const plannedTickets = allTickets.filter(t => t.durationType === 'planned').length;
+    const unplannedTickets = allTickets.filter(t => t.durationType === 'unplanned').length;
+    const ticketsWithoutWorkType = allTickets.filter(t => !t.durationType).length;
+
+    // Duration Analysis
+    const ticketsWithDuration = allTickets.filter(t => {
+      // Has calculated duration
+      if (t.endTime && t.startTime) {
+        const calculatedDuration = calculateTicketDuration(t.startTime, t.endTime);
+        return calculatedDuration !== null && calculatedDuration > 0;
+      }
+      // Has stored duration
+      return t.duration !== null && t.duration !== undefined && t.duration > 0;
+    });
+
+    const totalDurationMinutes = ticketsWithDuration.reduce((total, ticket) => {
+      // Priority 1: Use calculated duration
+      if (ticket.endTime && ticket.startTime) {
+        const calculatedDuration = calculateTicketDuration(ticket.startTime, ticket.endTime);
+        if (calculatedDuration !== null) {
+          return total + calculatedDuration;
+        }
+      }
+      // Priority 2: Use stored duration
+      if (ticket.duration !== null && ticket.duration !== undefined) {
+        return total + ticket.duration;
+      }
+      return total;
+    }, 0);
+
+    const averageWorkDuration = ticketsWithDuration.length > 0 
+      ? Math.round(totalDurationMinutes / ticketsWithDuration.length) 
+      : 0;
+
+    // Planned vs Unplanned duration analysis
+    const plannedDurationMinutes = allTickets
+      .filter(t => t.durationType === 'planned')
+      .reduce((total, ticket) => {
+        if (ticket.endTime && ticket.startTime) {
+          const calculatedDuration = calculateTicketDuration(ticket.startTime, ticket.endTime);
+          if (calculatedDuration !== null) return total + calculatedDuration;
+        }
+        if (ticket.duration !== null && ticket.duration !== undefined) {
+          return total + ticket.duration;
+        }
+        return total;
+      }, 0);
+
+    const unplannedDurationMinutes = allTickets
+      .filter(t => t.durationType === 'unplanned')
+      .reduce((total, ticket) => {
+        if (ticket.endTime && ticket.startTime) {
+          const calculatedDuration = calculateTicketDuration(ticket.startTime, ticket.endTime);
+          if (calculatedDuration !== null) return total + calculatedDuration;
+        }
+        if (ticket.duration !== null && ticket.duration !== undefined) {
+          return total + ticket.duration;
+        }
+        return total;
+      }, 0);
+
+    const averagePlannedDuration = plannedTickets > 0 
+      ? Math.round(plannedDurationMinutes / plannedTickets) 
+      : 0;
+
+    const averageUnplannedDuration = unplannedTickets > 0 
+      ? Math.round(unplannedDurationMinutes / unplannedTickets) 
+      : 0;
     
     // Average resolution time (for completed tickets)
     const completedTicketsWithTime = allTickets.filter(t => 
@@ -332,7 +402,7 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
             background: #f9fafb;
           }
           .tickets-table .subject-col {
-            width: 20%;
+            width: 15%;
             word-wrap: break-word;
             word-break: break-word;
             white-space: normal;
@@ -340,30 +410,30 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
             max-height: none;
           }
           .tickets-table .ticket-id-col {
-            width: 10%;
+            width: 8%;
           }
           .tickets-table .department-col {
-            width: 8%;
+            width: 7%;
           }
           .tickets-table .priority-col {
-            width: 7%;
+            width: 6%;
           }
           .tickets-table .status-col {
-            width: 7%;
+            width: 6%;
           }
           .tickets-table .duration-col {
-            width: 8%;
+            width: 7%;
             font-size: 11px;
           }
           .tickets-table .work-type-col {
-            width: 8%;
+            width: 7%;
             font-size: 11px;
           }
           .tickets-table .date-col {
-            width: 9%;
+            width: 8%;
           }
           .tickets-table .user-col {
-            width: 8%;
+            width: 7%;
             font-size: 11px;
           }
           .badge {
@@ -484,6 +554,26 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
                   <span class="number">${averageResolutionTime}</span>
                   <span class="label">Avg Resolution (Hours)</span>
                 </div>
+                <div class="stat-item">
+                  <span class="number">${formatTicketDuration(totalDurationMinutes)}</span>
+                  <span class="label">Total Work Time</span>
+                </div>
+                <div class="stat-item">
+                  <span class="number">${formatTicketDuration(averageWorkDuration)}</span>
+                  <span class="label">Avg Work Duration</span>
+                </div>
+                <div class="stat-item">
+                  <span class="number">${plannedTickets}</span>
+                  <span class="label">Planned Work</span>
+                </div>
+                <div class="stat-item">
+                  <span class="number">${unplannedTickets}</span>
+                  <span class="label">Unplanned Work</span>
+                </div>
+                <div class="stat-item">
+                  <span class="number">${ticketsWithDuration.length}</span>
+                  <span class="label">With Duration Data</span>
+                </div>
               </div>
             </div>
 
@@ -558,6 +648,48 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
                     </div>
                   `).join('')}
                 </div>
+
+                <!-- Work Type Analysis -->
+                <div class="analysis-card">
+                  <h3>Work Type Distribution</h3>
+                  <div class="analysis-item">
+                    <span class="analysis-label">Planned Work</span>
+                    <span class="analysis-value">${plannedTickets} (${totalTickets > 0 ? Math.round((plannedTickets / totalTickets) * 100) : 0}%)</span>
+                  </div>
+                  <div class="analysis-item">
+                    <span class="analysis-label">Unplanned Work</span>
+                    <span class="analysis-value">${unplannedTickets} (${totalTickets > 0 ? Math.round((unplannedTickets / totalTickets) * 100) : 0}%)</span>
+                  </div>
+                  <div class="analysis-item">
+                    <span class="analysis-label">No Work Type</span>
+                    <span class="analysis-value">${ticketsWithoutWorkType} (${totalTickets > 0 ? Math.round((ticketsWithoutWorkType / totalTickets) * 100) : 0}%)</span>
+                  </div>
+                </div>
+
+                <!-- Duration Analysis -->
+                <div class="analysis-card">
+                  <h3>Duration Analysis</h3>
+                  <div class="analysis-item">
+                    <span class="analysis-label">Total Work Time</span>
+                    <span class="analysis-value">${formatTicketDuration(totalDurationMinutes)}</span>
+                  </div>
+                  <div class="analysis-item">
+                    <span class="analysis-label">Tickets with Duration</span>
+                    <span class="analysis-value">${ticketsWithDuration.length} (${totalTickets > 0 ? Math.round((ticketsWithDuration.length / totalTickets) * 100) : 0}%)</span>
+                  </div>
+                  <div class="analysis-item">
+                    <span class="analysis-label">Average Duration</span>
+                    <span class="analysis-value">${formatTicketDuration(averageWorkDuration)}</span>
+                  </div>
+                  <div class="analysis-item">
+                    <span class="analysis-label">Planned Avg Duration</span>
+                    <span class="analysis-value">${formatTicketDuration(averagePlannedDuration)}</span>
+                  </div>
+                  <div class="analysis-item">
+                    <span class="analysis-label">Unplanned Avg Duration</span>
+                    <span class="analysis-value">${formatTicketDuration(averageUnplannedDuration)}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -568,14 +700,17 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
                 <thead>
                   <tr>
                     <th class="ticket-id-col">Ticket ID</th>
-                    <th class="subject-col">Subject</th>
+                    <th class="subject-col">Subject/Problem</th>
+                    <th class="subject-col">Solution</th>
                     <th class="department-col">Department</th>
+                    <th class="department-col">Area</th>
                     <th class="priority-col">Priority</th>
                     <th class="status-col">Status</th>
                     <th class="duration-col">Duration</th>
                     <th class="work-type-col">Work Type</th>
                     <th class="date-col">Logged Date</th>
                     <th class="user-col">Logged By</th>
+                    <th class="user-col">In Charge</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -583,13 +718,16 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
                     <tr>
                       <td class="ticket-id-col"><strong>${ticket.ticketId}</strong></td>
                       <td class="subject-col">${ticket.subject}</td>
+                      <td class="subject-col">${ticket.solution || 'Pending'}</td>
                       <td class="department-col">${ticket.department}</td>
+                      <td class="department-col">${ticket.area}</td>
                       <td class="priority-col">${getPriorityBadge(ticket.priority)}</td>
                       <td class="status-col">${getStatusBadge(ticket.status)}</td>
                       <td class="duration-col">${getDurationDisplay(ticket)}</td>
                       <td class="work-type-col">${getWorkTypeDisplay(ticket)}</td>
                       <td class="date-col">${format(new Date(ticket.loggedDateTime), 'MMM dd, yyyy')}</td>
                       <td class="user-col">${ticket.loggedBy}</td>
+                      <td class="user-col">${ticket.inCharge}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -603,7 +741,8 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
                 <thead>
                   <tr>
                     <th class="ticket-id-col">Ticket ID</th>
-                    <th class="subject-col">Subject</th>
+                    <th class="subject-col">Subject/Problem</th>
+                    <th class="subject-col">Solution</th>
                     <th class="department-col">Department</th>
                     <th class="department-col">Area</th>
                     <th class="priority-col">Priority</th>
@@ -620,6 +759,7 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
                     <tr>
                       <td class="ticket-id-col"><strong>${ticket.ticketId}</strong></td>
                       <td class="subject-col">${ticket.subject}</td>
+                      <td class="subject-col">${ticket.solution || 'Pending'}</td>
                       <td class="department-col">${ticket.department}</td>
                       <td class="department-col">${ticket.area}</td>
                       <td class="priority-col">${getPriorityBadge(ticket.priority)}</td>
