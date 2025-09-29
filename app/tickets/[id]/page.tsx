@@ -33,15 +33,24 @@ import {
   ImageIcon,
   ZoomIn,
   Video,
-  Play
+  Play,
+  Timer
 } from "lucide-react"
 import { toast } from "sonner"
 import { ticketsApi } from "@/lib/tickets-api"
 import { TicketReport } from "@/components/ticket-report"
+import { TicketMaintenanceScheduleDialog } from "@/components/ticket/ticket-maintenance-schedule-dialog"
 import { useAuthStore } from "@/stores/auth-store"
 import { TicketImageUpload } from "@/components/ticket-image-upload"
 import { TicketVideoUpload } from "@/components/ticket-video-upload"
 import { uploadToCloudinary } from "@/lib/cloudinary-config"
+import { 
+  calculateTicketDuration, 
+  formatTicketDuration, 
+  getTicketDurationBadgeClasses, 
+  getTicketDurationTypeBadgeClasses, 
+  getTicketDurationTypeLabel 
+} from "@/lib/ticket-time-utils"
 import type { Ticket, ActivityLogEntry } from "@/types/ticket"
 
 export default function TicketDetailPage() {
@@ -53,6 +62,8 @@ export default function TicketDetailPage() {
 
   // Check if edit mode is requested via query parameter
   const editMode = searchParams.get('edit') === 'true'
+  // Check if start work mode is requested via query parameter
+  const startMode = searchParams.get('start') === 'true'
 
   const handleImageClick = (imageUrl: string) => {
     window.open(imageUrl, '_blank');
@@ -69,6 +80,7 @@ export default function TicketDetailPage() {
   const [newActivityRemark, setNewActivityRemark] = useState("")
   const [isAddingActivity, setIsAddingActivity] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [isMaintenanceScheduleDialogOpen, setIsMaintenanceScheduleDialogOpen] = useState(false)
 
   // Form state for editing
   const [formData, setFormData] = useState({
@@ -148,6 +160,17 @@ export default function TicketDetailPage() {
       setIsEditing(true)
     }
   }, [editMode, ticket])
+
+  // Auto-open start ticket dialog if requested via query parameter
+  useEffect(() => {
+    if (startMode && ticket && !isMaintenanceScheduleDialogOpen) {
+      setIsMaintenanceScheduleDialogOpen(true)
+      // Remove the start parameter from URL
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('start')
+      window.history.replaceState({}, '', newUrl.toString())
+    }
+  }, [startMode, ticket, isMaintenanceScheduleDialogOpen])
 
   // Handle form changes
   const handleFormChange = (field: string, value: any) => {
@@ -299,6 +322,78 @@ export default function TicketDetailPage() {
     }
   }
 
+  // Handle maintenance schedule creation
+  const handleMaintenanceSchedule = async (
+    ticketId: string,
+    maintenanceData: {
+      startTime: string;
+      endTime: string;
+      durationType: 'planned' | 'unplanned';
+      remarks: string;
+      status: string;
+      solution?: string;
+    }
+  ): Promise<boolean> => {
+    try {
+      // Ensure we have ticket data
+      if (!ticket) {
+        toast.error("Ticket data not available");
+        return false;
+      }
+
+      // Calculate duration if both times are provided
+      const duration = maintenanceData.endTime 
+        ? calculateTicketDuration(maintenanceData.startTime, maintenanceData.endTime)
+        : null;
+
+      // For now, we'll call the existing update endpoint
+      // TODO: Create a dedicated maintenance schedule endpoint
+      const response = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          // Include existing ticket data to satisfy API requirements
+          subject: ticket?.subject,
+          description: ticket?.description,
+          priority: ticket?.priority,
+          department: ticket?.department,
+          area: ticket?.area,
+          inCharge: ticket?.inCharge,
+          equipmentId: ticket?.equipmentId,
+          reportType: ticket?.reportType,
+          isOpenTicket: ticket?.isOpenTicket,
+          assignedDepartments: ticket?.assignedDepartments,
+          assignedUsers: ticket?.assignedUsers,
+          // Add the new maintenance data
+          ...maintenanceData,
+          ...(duration !== null && { duration }),
+          // Add activity log entry for work scheduling
+          activityLogEntry: {
+            action: 'Work Started',
+            remarks: `Work started - ${maintenanceData.remarks}`,
+            duration: duration || undefined,
+          }
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Work started successfully");
+        await fetchTicket(); // Refresh ticket data
+        return true;
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || "Failed to start work");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error starting work:", error);
+      toast.error("Error starting work");
+      return false;
+    }
+  }
+
   // Delete ticket
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this ticket? This action cannot be undone.")) {
@@ -443,7 +538,7 @@ export default function TicketDetailPage() {
                   {formatStatus(ticket.status)}
                 </Badge>
               </div>
-              <h2 className="text-xl font-semibold text-foreground">{ticket.subject}</h2>
+              <h2 className="text-xl font-semibold text-foreground whitespace-pre-wrap break-all">{ticket.subject}</h2>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Building className="h-4 w-4" />
@@ -479,6 +574,17 @@ export default function TicketDetailPage() {
                   </Button>
                 </>
               )}
+
+              {!isEditing && (
+                <Button 
+                  onClick={() => setIsMaintenanceScheduleDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Timer className="h-4 w-4" />
+                  Start Ticket
+                </Button>
+              )}
+
               <Button variant="outline" onClick={() => setIsReportDialogOpen(true)} className="flex items-center gap-2">
                 <FileDown className="h-4 w-4" />
                 Generate Report
@@ -527,7 +633,7 @@ export default function TicketDetailPage() {
                         />
                       ) : (
                         <div className="p-3 bg-muted/50 rounded-md border">
-                          <p className="text-sm font-medium">{ticket.subject}</p>
+                          <p className="text-sm font-medium break-words whitespace-pre-wrap">{ticket.subject}</p>
                         </div>
                       )}
                     </div>
@@ -598,6 +704,85 @@ export default function TicketDetailPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Time Tracking Information */}
+                    {(ticket.startTime || ticket.endTime || ticket.duration) && (
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
+                        <Label className="text-sm font-medium flex items-center gap-2 text-blue-900">
+                          <Timer className="h-4 w-4" />
+                          Time Tracking Information
+                        </Label>
+                        
+                        <div className="grid gap-4 md:grid-cols-3">
+                          {ticket.startTime && (
+                            <div className="space-y-1">
+                              <Label className="text-xs text-blue-700">Start Time</Label>
+                              <div className="text-sm font-medium">{ticket.startTime}</div>
+                            </div>
+                          )}
+                          
+                          {ticket.endTime && (
+                            <div className="space-y-1">
+                              <Label className="text-xs text-blue-700">End Time</Label>
+                              <div className="text-sm font-medium">{ticket.endTime}</div>
+                            </div>
+                          )}
+                          
+                          {(ticket.duration || (ticket.startTime && ticket.endTime)) && (
+                            <div className="space-y-1">
+                              <Label className="text-xs text-blue-700">Duration</Label>
+                              <div className="flex items-center gap-2">
+                                {(() => {
+                                  const duration = ticket.duration || 
+                                    (ticket.startTime && ticket.endTime ? 
+                                      calculateTicketDuration(ticket.startTime, ticket.endTime) : null);
+                                  if (duration) {
+                                    return (
+                                      <div className={`text-xs font-medium px-2 py-1 rounded-full ${getTicketDurationBadgeClasses(duration, ticket.durationType)}`}>
+                                        {formatTicketDuration(duration)}
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {ticket.durationType && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-blue-700">Work Type</Label>
+                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTicketDurationTypeBadgeClasses(ticket.durationType)}`}>
+                              {getTicketDurationTypeLabel(ticket.durationType)}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Work Remarks */}
+                        {ticket.activityLog && ticket.activityLog.length > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-xs text-blue-700">Work Remarks</Label>
+                            <div className="space-y-2 max-h-32 overflow-y-auto">
+                              {ticket.activityLog
+                                .filter(log => log.remarks && log.remarks.trim() !== '')
+                                .slice(-3) // Show last 3 work-related remarks
+                                .map((log, index) => (
+                                <div key={index} className="p-2 bg-white rounded border text-xs">
+                                  <div className="font-medium text-gray-700">{log.action}</div>
+                                  <div className="text-gray-600 mt-1">{log.remarks}</div>
+                                  {log.date && (
+                                    <div className="text-gray-400 mt-1 text-xs">
+                                      {new Date(log.date).toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="grid gap-6 md:grid-cols-2">
                       <div className="space-y-3">
@@ -1068,6 +1253,17 @@ export default function TicketDetailPage() {
             ticket={ticket}
             isOpen={isReportDialogOpen}
             onClose={() => setIsReportDialogOpen(false)}
+          />
+        )}
+
+        {/* Ticket Maintenance Schedule Dialog */}
+        {ticket && (
+          <TicketMaintenanceScheduleDialog
+            ticket={ticket}
+            isOpen={isMaintenanceScheduleDialogOpen}
+            onOpenChange={setIsMaintenanceScheduleDialogOpen}
+            onMaintenanceSchedule={handleMaintenanceSchedule}
+            userInfo={user}
           />
         )}
       </PageContent>

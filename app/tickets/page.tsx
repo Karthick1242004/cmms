@@ -183,6 +183,11 @@ export default function TicketsPage() {
     generateIndividualTicketReport({ ticket });
   }
 
+  const handleStartTicket = (ticket: Ticket) => {
+    // Navigate to ticket detail page to start work
+    window.location.href = `/tickets/${ticket.id}?start=true`
+  }
+
   const handleDeleteTicket = async (ticket: Ticket) => {
     if (!confirm(`Are you sure you want to delete ticket ${ticket.ticketId}? This action cannot be undone.`)) {
       return
@@ -562,12 +567,10 @@ export default function TicketsPage() {
                     onView={handleViewTicket}
                     onEdit={handleEditTicket}
                     onDelete={handleDeleteTicket}
-                    onStatusChange={handleUpdateStatus}
-                    onApproveStatus={handleApproveStatus}
+                    onStartTicket={handleStartTicket}
                     onGenerateReport={handleGenerateReport}
                     onVerify={handleVerifyTicket}
                     canModify={canModifyTickets}
-                    canApproveStatus={canApproveStatus}
                     canVerify={canVerifyTickets}
                     currentUser={user}
                   />

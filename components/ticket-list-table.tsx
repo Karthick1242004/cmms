@@ -22,22 +22,34 @@ import {
   Calendar,
   FileText,
   Shield,
-  Edit
+  Edit,
+  Timer
 } from "lucide-react"
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from "@/components/ui/tooltip"
 import { toast } from "sonner"
 import type { Ticket } from "@/types/ticket"
+import { 
+  calculateTicketDuration, 
+  formatTicketDuration, 
+  getTicketDurationBadgeClasses, 
+  getTicketDurationTypeBadgeClasses, 
+  getTicketDurationTypeLabel 
+} from "@/lib/ticket-time-utils"
 
 interface TicketListTableProps {
   tickets: Ticket[]
   onView?: (ticket: Ticket) => void
   onEdit?: (ticket: Ticket) => void
   onDelete?: (ticket: Ticket) => void
-  onStatusChange?: (ticketId: string, status: string) => void
-  onApproveStatus?: (ticketId: string, action: 'approve' | 'reject') => void
+  onStartTicket?: (ticket: Ticket) => void
   onGenerateReport?: (ticket: Ticket) => void
   onVerify?: (ticket: Ticket) => void
   canModify?: boolean
-  canApproveStatus?: boolean
   canVerify?: boolean
   currentUser?: any
 }
@@ -47,16 +59,13 @@ export function TicketListTable({
   onView, 
   onEdit,
   onDelete, 
-  onStatusChange, 
-  onApproveStatus,
+  onStartTicket,
   onGenerateReport,
   onVerify,
   canModify = true,
-  canApproveStatus = false,
   canVerify = false,
   currentUser
 }: TicketListTableProps) {
-  const [isUpdating, setIsUpdating] = useState<string | null>(null)
 
   const getStatusInfo = (status: string) => {
     switch (status) {
@@ -168,23 +177,6 @@ export function TicketListTable({
 
 
 
-  const handleStatusUpdate = async (ticketId: string, status: string) => {
-    setIsUpdating(ticketId)
-    try {
-      await onStatusChange?.(ticketId, status)
-    } finally {
-      setIsUpdating(null)
-    }
-  }
-
-  const handleApprove = async (ticketId: string, action: 'approve' | 'reject') => {
-    setIsUpdating(ticketId)
-    try {
-      await onApproveStatus?.(ticketId, action)
-    } finally {
-      setIsUpdating(null)
-    }
-  }
 
   return (
     <div className="border rounded-lg bg-background">
@@ -194,6 +186,8 @@ export function TicketListTable({
             <TableHead className="w-[140px]">Ticket ID</TableHead>
             <TableHead className="w-[100px]">Priority</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
+            <TableHead className="w-[200px]">Subject</TableHead>
+            <TableHead className="w-[140px]">Duration/Time</TableHead>
             <TableHead className="w-[100px]">Department</TableHead>
             <TableHead className="w-[140px]">Asset</TableHead>
             <TableHead className="w-[120px]">Logged By</TableHead>
@@ -205,7 +199,6 @@ export function TicketListTable({
         <TableBody>
           {tickets.map((ticket) => {
             const statusInfo = getStatusInfo(ticket.status)
-            const isUpdatingThis = isUpdating === ticket.id
             
             return (
               <TableRow key={ticket.id} className="hover:bg-muted/50">
@@ -243,6 +236,96 @@ export function TicketListTable({
                         Pending
                       </Badge>
                     )}
+                    {ticket.adminVerified && (
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                        <Shield className="h-2 w-2 mr-1" />
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                
+                <TableCell>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="max-w-[200px] truncate text-sm cursor-help">
+                          {ticket.subject}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[300px]">
+                        <p className="break-words whitespace-pre-wrap">{ticket.subject}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableCell>
+                
+                <TableCell>
+                  <div className="flex items-center space-x-1">
+                    <Timer className="h-3 w-3 text-muted-foreground" />
+                    <div className="flex flex-col space-y-1">
+                      {(() => {
+                        // Priority 1: Show calculated duration if both start and end times are available
+                        if (ticket.endTime && ticket.startTime) {
+                          const calculatedDuration = calculateTicketDuration(ticket.startTime, ticket.endTime);
+                          if (calculatedDuration !== null) {
+                            return (
+                              <>
+                                <div className={`text-xs font-medium px-2 py-1 rounded-full ${getTicketDurationBadgeClasses(calculatedDuration, ticket.durationType)}`}>
+                                  {formatTicketDuration(calculatedDuration)}
+                                </div>
+                                {ticket.durationType && (
+                                  <div className={`text-xs px-2 py-1 rounded-full ${getTicketDurationTypeBadgeClasses(ticket.durationType)}`}>
+                                    {getTicketDurationTypeLabel(ticket.durationType)}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          }
+                        }
+                        
+                        // Priority 2: Show stored duration if available
+                        if (ticket.duration !== null && ticket.duration !== undefined) {
+                          return (
+                            <>
+                              <div className={`text-xs font-medium px-2 py-1 rounded-full ${getTicketDurationBadgeClasses(ticket.duration, ticket.durationType)}`}>
+                                {formatTicketDuration(ticket.duration)}
+                              </div>
+                              {ticket.durationType && (
+                                <div className={`text-xs px-2 py-1 rounded-full ${getTicketDurationTypeBadgeClasses(ticket.durationType)}`}>
+                                  {getTicketDurationTypeLabel(ticket.durationType)}
+                                </div>
+                              )}
+                            </>
+                          );
+                        }
+                        
+                        // Priority 3: Show status-based info for completed tickets without time data
+                        if (ticket.status === 'completed' || ticket.status === 'verified') {
+                          return (
+                            <div className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-800 border border-green-200">
+                              Completed
+                            </div>
+                          );
+                        }
+                        
+                        // Priority 4: Show start time if available for in-progress tickets
+                        if (ticket.status === 'in-progress' && ticket.startTime) {
+                          return (
+                            <div className="text-xs text-muted-foreground">
+                              Started: {ticket.startTime}
+                            </div>
+                          );
+                        }
+                        
+                        // Priority 5: Show "No time tracking" for open tickets
+                        return (
+                          <div className="text-xs text-muted-foreground">
+                            No time tracking
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </TableCell>
                 
@@ -302,60 +385,10 @@ export function TicketListTable({
                 
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
-                    {/* Status change dropdown - only show if not cancelled, not verified, and not pending approval */}
-                    {ticket.status !== 'cancelled' && 
-                     ticket.status !== 'verified' &&
-                     (!(ticket as any)?.statusApproval?.pending || !canApproveStatus) && (
-                      <Select 
-                        value={ticket.status} 
-                        onValueChange={(status) => handleStatusUpdate(ticket.id, status)}
-                        disabled={isUpdatingThis}
-                      >
-                        <SelectTrigger className="w-auto h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="open">Open</SelectItem>
-                          <SelectItem value="in-progress">In Progress</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-
-                    {/* Approval buttons for department heads/admins when there's a pending request */}
-                    {canApproveStatus && 
-                     (ticket as any)?.statusApproval?.pending && 
-                     (currentUser?.accessLevel === 'super_admin' || ticket.department === currentUser?.department) && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleApprove(ticket.id, 'approve')}
-                          disabled={isUpdatingThis}
-                          className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          title={`Approve status change to ${(ticket as any)?.statusApproval?.requestedStatus}`}
-                        >
-                          <Check className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleApprove(ticket.id, 'reject')}
-                          disabled={isUpdatingThis}
-                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          title="Reject status change"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
-
                     {/* Actions dropdown menu */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-7 w-7 p-0" disabled={isUpdatingThis}>
+                        <Button variant="ghost" className="h-7 w-7 p-0">
                           <span className="sr-only">Open menu</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
@@ -364,6 +397,17 @@ export function TicketListTable({
                         <DropdownMenuItem onClick={() => onView?.(ticket)}>
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onStartTicket?.(ticket);
+                          }}
+                          className="text-blue-600"
+                        >
+                          <Timer className="mr-2 h-4 w-4" />
+                          Start Ticket
                         </DropdownMenuItem>
                         {canModify && (
                           <DropdownMenuItem onClick={() => onEdit?.(ticket)}>

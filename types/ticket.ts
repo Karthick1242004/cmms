@@ -10,6 +10,13 @@ export interface Ticket {
   area: string;
   inCharge: string;
   equipmentId?: string; // Asset ID (optional)
+  
+  // Time tracking fields (similar to daily activities)
+  startTime?: string; // HH:MM format - When work started on ticket
+  endTime?: string; // HH:MM format - When work ended on ticket  
+  duration?: number; // Calculated duration in minutes
+  durationType?: 'planned' | 'unplanned'; // Type of work - planned or unplanned
+  timeTrackingHistory?: TicketTimeTrackingEntry[]; // History of time tracking changes
   asset?: {
     id: string;
     name: string;
@@ -88,7 +95,7 @@ export interface ActivityLogEntry {
   duration?: number; // Duration in minutes
   loggedBy: string;
   remarks: string;
-  action: 'Created' | 'Updated' | 'Assigned' | 'Comment' | 'Status Change' | 'Closed';
+  action: 'Created' | 'Updated' | 'Assigned' | 'Comment' | 'Status Change' | 'Closed' | 'Work Started';
 }
 
 export interface TicketActivityHistoryEntry {
@@ -99,6 +106,20 @@ export interface TicketActivityHistoryEntry {
   details: string; // Description of what was changed
   previousValue?: any; // Previous value (for updates)
   newValue?: any; // New value (for updates)
+}
+
+export interface TicketTimeTrackingEntry {
+  timestamp: string; // ISO date string
+  action: 'time_started' | 'time_ended' | 'duration_updated' | 'type_changed';
+  performedBy: string; // Employee ID
+  performedByName: string; // Employee name
+  details: string; // Description of the time tracking change
+  startTime?: string; // HH:MM format
+  endTime?: string; // HH:MM format
+  duration?: number; // Duration in minutes
+  durationType?: 'planned' | 'unplanned';
+  statusChange?: string; // Related status change if any
+  remarks?: string; // Optional remarks for this time tracking entry
 }
 
 export interface TicketFormData {
@@ -123,6 +144,11 @@ export interface TicketFormData {
   subject: string;
   description: string;
   solution?: string;
+  
+  // Time tracking fields
+  startTime?: string; // HH:MM format
+  endTime?: string; // HH:MM format  
+  durationType?: 'planned' | 'unplanned';
   
   // Access control
   isOpenTicket: boolean;

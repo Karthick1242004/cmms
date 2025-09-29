@@ -213,17 +213,33 @@ export async function PUT(
       ticket.images = body.images;
     }
 
+    // Handle time tracking fields
+    if (body.startTime !== undefined) ticket.startTime = body.startTime;
+    if (body.endTime !== undefined) ticket.endTime = body.endTime;
+    if (body.duration !== undefined) ticket.duration = body.duration;
+    if (body.durationType !== undefined) ticket.durationType = body.durationType;
+
     // Ensure activityLog is initialized as an array (for legacy tickets)
     if (!ticket.activityLog || !Array.isArray(ticket.activityLog)) {
       ticket.activityLog = [];
     }
 
     // Add activity log entry for update
+    let activityRemarks = 'Ticket updated';
+    let activityAction = 'Updated';
+    
+    // If this is a time tracking update, use specific activity log entry
+    if (body.activityLogEntry) {
+      activityRemarks = body.activityLogEntry.remarks || activityRemarks;
+      activityAction = body.activityLogEntry.action || activityAction;
+    }
+    
     ticket.activityLog.push({
       date: new Date(),
+      duration: body.activityLogEntry?.duration || body.duration,
       loggedBy: user?.name || 'System',
-      remarks: 'Ticket updated',
-      action: 'Updated'
+      remarks: activityRemarks,
+      action: activityAction
     });
 
     // Save the updated ticket

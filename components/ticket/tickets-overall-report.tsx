@@ -7,6 +7,13 @@ import type { Ticket } from "@/types/ticket"
 import { format } from 'date-fns'
 import type { TicketFilters } from "@/types/ticket"
 import { ticketsApi } from "@/lib/tickets-api"
+import { 
+  calculateTicketDuration, 
+  formatTicketDuration, 
+  getTicketDurationBadgeClasses, 
+  getTicketDurationTypeBadgeClasses, 
+  getTicketDurationTypeLabel 
+} from "@/lib/ticket-time-utils"
 
 interface TicketsOverallReportProps {
   tickets: Ticket[]
@@ -95,6 +102,33 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
       })
       return acc
     }, {} as Record<string, number>)
+
+    // Helper function to get duration display for report
+    const getDurationDisplay = (ticket: Ticket) => {
+      // Priority 1: Show calculated duration if both start and end times are available
+      if (ticket.endTime && ticket.startTime) {
+        const calculatedDuration = calculateTicketDuration(ticket.startTime, ticket.endTime);
+        if (calculatedDuration !== null) {
+          return formatTicketDuration(calculatedDuration);
+        }
+      }
+      
+      // Priority 2: Show stored duration if available
+      if (ticket.duration !== null && ticket.duration !== undefined) {
+        return formatTicketDuration(ticket.duration);
+      }
+      
+      // Priority 3: Show "N/A" for tickets without duration data
+      return 'N/A';
+    }
+
+    // Helper function to get work type display
+    const getWorkTypeDisplay = (ticket: Ticket) => {
+      if (ticket.durationType) {
+        return getTicketDurationTypeLabel(ticket.durationType);
+      }
+      return 'N/A';
+    }
     
     // Average resolution time (for completed tickets)
     const completedTicketsWithTime = allTickets.filter(t => 
@@ -275,12 +309,14 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
+            table-layout: fixed;
           }
           .tickets-table th,
           .tickets-table td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
           }
           .tickets-table th {
             background: #f9fafb;
@@ -294,6 +330,41 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
           }
           .tickets-table tr:hover {
             background: #f9fafb;
+          }
+          .tickets-table .subject-col {
+            width: 20%;
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            line-height: 1.4;
+            max-height: none;
+          }
+          .tickets-table .ticket-id-col {
+            width: 10%;
+          }
+          .tickets-table .department-col {
+            width: 8%;
+          }
+          .tickets-table .priority-col {
+            width: 7%;
+          }
+          .tickets-table .status-col {
+            width: 7%;
+          }
+          .tickets-table .duration-col {
+            width: 8%;
+            font-size: 11px;
+          }
+          .tickets-table .work-type-col {
+            width: 8%;
+            font-size: 11px;
+          }
+          .tickets-table .date-col {
+            width: 9%;
+          }
+          .tickets-table .user-col {
+            width: 8%;
+            font-size: 11px;
           }
           .badge {
             display: inline-flex;
@@ -496,25 +567,29 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
               <table class="tickets-table">
                 <thead>
                   <tr>
-                    <th>Ticket ID</th>
-                    <th>Subject</th>
-                    <th>Department</th>
-                    <th>Priority</th>
-                    <th>Status</th>
-                    <th>Logged Date</th>
-                    <th>Logged By</th>
+                    <th class="ticket-id-col">Ticket ID</th>
+                    <th class="subject-col">Subject</th>
+                    <th class="department-col">Department</th>
+                    <th class="priority-col">Priority</th>
+                    <th class="status-col">Status</th>
+                    <th class="duration-col">Duration</th>
+                    <th class="work-type-col">Work Type</th>
+                    <th class="date-col">Logged Date</th>
+                    <th class="user-col">Logged By</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${recentTickets.map(ticket => `
                     <tr>
-                      <td><strong>${ticket.ticketId}</strong></td>
-                      <td>${ticket.subject}</td>
-                      <td>${ticket.department}</td>
-                      <td>${getPriorityBadge(ticket.priority)}</td>
-                      <td>${getStatusBadge(ticket.status)}</td>
-                      <td>${format(new Date(ticket.loggedDateTime), 'MMM dd, yyyy')}</td>
-                      <td>${ticket.loggedBy}</td>
+                      <td class="ticket-id-col"><strong>${ticket.ticketId}</strong></td>
+                      <td class="subject-col">${ticket.subject}</td>
+                      <td class="department-col">${ticket.department}</td>
+                      <td class="priority-col">${getPriorityBadge(ticket.priority)}</td>
+                      <td class="status-col">${getStatusBadge(ticket.status)}</td>
+                      <td class="duration-col">${getDurationDisplay(ticket)}</td>
+                      <td class="work-type-col">${getWorkTypeDisplay(ticket)}</td>
+                      <td class="date-col">${format(new Date(ticket.loggedDateTime), 'MMM dd, yyyy')}</td>
+                      <td class="user-col">${ticket.loggedBy}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -527,29 +602,33 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
               <table class="tickets-table">
                 <thead>
                   <tr>
-                    <th>Ticket ID</th>
-                    <th>Subject</th>
-                    <th>Department</th>
-                    <th>Area</th>
-                    <th>Priority</th>
-                    <th>Status</th>
-                    <th>Logged Date</th>
-                    <th>Logged By</th>
-                    <th>In Charge</th>
+                    <th class="ticket-id-col">Ticket ID</th>
+                    <th class="subject-col">Subject</th>
+                    <th class="department-col">Department</th>
+                    <th class="department-col">Area</th>
+                    <th class="priority-col">Priority</th>
+                    <th class="status-col">Status</th>
+                    <th class="duration-col">Duration</th>
+                    <th class="work-type-col">Work Type</th>
+                    <th class="date-col">Logged Date</th>
+                    <th class="user-col">Logged By</th>
+                    <th class="user-col">In Charge</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${allTickets.map(ticket => `
                     <tr>
-                      <td><strong>${ticket.ticketId}</strong></td>
-                      <td>${ticket.subject}</td>
-                      <td>${ticket.department}</td>
-                      <td>${ticket.area}</td>
-                      <td>${getPriorityBadge(ticket.priority)}</td>
-                      <td>${getStatusBadge(ticket.status)}</td>
-                      <td>${format(new Date(ticket.loggedDateTime), 'MMM dd, yyyy')}</td>
-                      <td>${ticket.loggedBy}</td>
-                      <td>${ticket.inCharge}</td>
+                      <td class="ticket-id-col"><strong>${ticket.ticketId}</strong></td>
+                      <td class="subject-col">${ticket.subject}</td>
+                      <td class="department-col">${ticket.department}</td>
+                      <td class="department-col">${ticket.area}</td>
+                      <td class="priority-col">${getPriorityBadge(ticket.priority)}</td>
+                      <td class="status-col">${getStatusBadge(ticket.status)}</td>
+                      <td class="duration-col">${getDurationDisplay(ticket)}</td>
+                      <td class="work-type-col">${getWorkTypeDisplay(ticket)}</td>
+                      <td class="date-col">${format(new Date(ticket.loggedDateTime), 'MMM dd, yyyy')}</td>
+                      <td class="user-col">${ticket.loggedBy}</td>
+                      <td class="user-col">${ticket.inCharge}</td>
                     </tr>
                   `).join('')}
                 </tbody>

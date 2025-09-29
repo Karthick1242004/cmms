@@ -14,10 +14,21 @@ export interface ITicket extends Document {
   ticketCloseDate?: Date
   totalTime?: number // Total time in hours
   
+  // Time tracking for work sessions
+  startTime?: string // HH:MM format
+  endTime?: string // HH:MM format
+  duration?: number // Duration in minutes
+  durationType?: 'planned' | 'unplanned' // Type of maintenance work
+  
   // User information
   loggedBy: string
   createdBy: string
   reviewedBy?: string
+  
+  // Admin verification
+  adminVerified?: boolean // Whether ticket has been admin verified
+  verifiedBy?: string // Admin who verified the ticket
+  verifiedAt?: Date // When ticket was verified
   
   // Company and location
   company: string
@@ -122,6 +133,23 @@ const TicketSchema = new Schema<ITicket>({
     type: Number,
     min: 0
   },
+  // Time tracking for work sessions
+  startTime: {
+    type: String,
+    trim: true
+  },
+  endTime: {
+    type: String,
+    trim: true
+  },
+  duration: {
+    type: Number,
+    min: 0
+  },
+  durationType: {
+    type: String,
+    enum: ['planned', 'unplanned']
+  },
   loggedBy: {
     type: String,
     required: true,
@@ -135,6 +163,18 @@ const TicketSchema = new Schema<ITicket>({
   reviewedBy: {
     type: String,
     trim: true
+  },
+  // Admin verification
+  adminVerified: {
+    type: Boolean,
+    default: false
+  },
+  verifiedBy: {
+    type: String,
+    trim: true
+  },
+  verifiedAt: {
+    type: Date
   },
   company: {
     type: String,
@@ -231,7 +271,7 @@ const TicketSchema = new Schema<ITicket>({
     },
     action: {
       type: String,
-      enum: ['Created', 'Updated', 'Assigned', 'Comment', 'Status Change', 'Closed'],
+      enum: ['Created', 'Updated', 'Assigned', 'Comment', 'Status Change', 'Closed', 'Work Started'],
       required: true
     }
   }]

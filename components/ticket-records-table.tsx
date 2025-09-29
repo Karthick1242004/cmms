@@ -366,7 +366,8 @@ export function TicketRecordsTable({ records, isLoading, isAdmin, onVerify }: Ti
                   <strong>In Charge:</strong> {selectedRecord.inCharge}
                 </div>
                 <div className="col-span-2">
-                  <strong>Subject:</strong> {selectedRecord.subject}
+                  <strong>Subject:</strong> 
+                  <div className="mt-1 break-words whitespace-pre-wrap">{selectedRecord.subject}</div>
                 </div>
                 <div className="col-span-2">
                   <strong>Description:</strong> {selectedRecord.description}

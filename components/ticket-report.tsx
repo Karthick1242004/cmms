@@ -17,6 +17,7 @@ import {
   Clock
 } from "lucide-react"
 import type { Ticket } from "@/types/ticket"
+import { calculateTicketDuration, formatTicketDuration } from "@/lib/ticket-time-utils"
 
 interface TicketReportProps {
   ticket: Ticket
@@ -637,14 +638,45 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
               <div class="content-text" style="margin-top: 4px;">${ticket.solution || 'No solution provided yet'}</div>
             </div>
             <div class="content-box">
-              <div class="info-label">TIMELINE</div>
+              <div class="info-label">WORK TIMELINE</div>
               <div style="margin-top: 4px; font-size: 11px;">
-                <div><strong>Total Time:</strong> ${ticket.totalTime ? `${ticket.totalTime} hours` : 'N/A'}</div>
+                ${ticket.startTime ? `<div><strong>Start Time:</strong> ${ticket.startTime}</div>` : ''}
+                ${ticket.endTime ? `<div style="margin-top: 2px;"><strong>End Time:</strong> ${ticket.endTime}</div>` : ''}
+                ${(() => {
+                  if (ticket.duration || (ticket.startTime && ticket.endTime)) {
+                    const duration = ticket.duration || (ticket.startTime && ticket.endTime ? 
+                      calculateTicketDuration(ticket.startTime, ticket.endTime) : null);
+                    if (duration) {
+                      return `<div style="margin-top: 2px;"><strong>Duration:</strong> ${formatTicketDuration(duration)}</div>`;
+                    }
+                  }
+                  return ticket.totalTime ? `<div><strong>Total Time:</strong> ${ticket.totalTime} hours</div>` : '<div><strong>Duration:</strong> N/A</div>';
+                })()}
+                ${ticket.durationType ? `<div style="margin-top: 2px;"><strong>Work Type:</strong> <span style="padding: 2px 8px; border-radius: 12px; font-size: 10px; background-color: ${ticket.durationType === 'planned' ? '#dbeafe' : '#fee2e2'}; color: ${ticket.durationType === 'planned' ? '#1e40af' : '#dc2626'};">${ticket.durationType === 'planned' ? 'Planned' : 'Unplanned'}</span></div>` : ''}
                 ${ticket.ticketCloseDate ? `<div style="margin-top: 2px;"><strong>Closed:</strong> ${formatDate(ticket.ticketCloseDate)}</div>` : ''}
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Work Remarks -->
+        ${ticket.activityLog && ticket.activityLog.filter(log => log.remarks && log.remarks.trim() !== '').length > 0 ? `
+        <div class="section">
+          <h2 class="section-title">🔧 Work Remarks</h2>
+          <div class="content-box">
+            ${ticket.activityLog
+              .filter(log => log.remarks && log.remarks.trim() !== '')
+              .slice(-5) // Show last 5 work-related remarks
+              .map(log => `
+                <div style="margin-bottom: 12px; padding: 8px; background: #f8fafc; border-left: 3px solid #3b82f6; border-radius: 4px;">
+                  <div style="font-weight: 600; font-size: 12px; color: #1e40af; margin-bottom: 4px;">${log.action}</div>
+                  <div style="font-size: 11px; color: #374151; line-height: 1.4;">${log.remarks || 'No remarks provided'}</div>
+                  ${log.date ? `<div style="font-size: 10px; color: #6b7280; margin-top: 4px;">${new Date(log.date).toLocaleString()}</div>` : ''}
+                </div>
+              `).join('')}
+          </div>
+        </div>
+        ` : ''}
 
         <!-- Ticket Images -->
         ${ticket.images && ticket.images.length > 0 ? `
@@ -778,7 +810,7 @@ export function TicketReport({ ticket, isOpen, onClose }: TicketReportProps) {
               </div>
               <div>
                 <h3 className="font-semibold text-blue-900">Ticket ID: {ticket.ticketId}</h3>
-                <p className="text-sm text-blue-700">{ticket.subject}</p>
+                <p className="text-sm text-blue-700 whitespace-pre-wrap break-all">{ticket.subject}</p>
                 <div className="flex items-center gap-4 mt-2 text-xs text-blue-600">
                   <span>Priority: {ticket.priority}</span>
                   <span>Status: {ticket.status}</span>
