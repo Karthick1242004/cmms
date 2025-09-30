@@ -572,8 +572,8 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       isOpenTicket: formData.isOpenTicket || false,
       assignedDepartment: formData.assignedDepartment || "",
       assignedUsers: formData.assignedUsers || [],
-      // Ensure department field is properly set - use assignedDepartment if available, fallback to form department
-      department: formData.assignedDepartment || formData.department,
+      // Use the selected department (either from selectedDepartment or formData.department)
+      department: selectedDepartment || formData.department,
       status: "active" as const,
       createdBy: user?.email || "admin",
       parts,
