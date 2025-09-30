@@ -173,7 +173,7 @@ export function DuplicationDialog({
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        console.error(`❌ [Duplication Dialog] - Error:`, result);
+        console.error(`❌ [DUPLICATION DIALOG] - ${moduleType.toUpperCase()} Error:`, result);
         
         if (result.missingFields) {
           throw new Error(`Missing required fields: ${result.missingFields.join(', ')}`);
@@ -182,13 +182,15 @@ export function DuplicationDialog({
         throw new Error(result.message || `Failed to duplicate ${moduleType.slice(0, -1)}`);
       }
 
-      console.log('✅ [Duplication Dialog] - Duplication successful');
-      console.log('✅ [Duplication Dialog] - New item:', result.data);
+      console.log(`✅ [DUPLICATION DIALOG] - ${moduleType.toUpperCase()} duplication successful`);
+      console.log(`✅ [DUPLICATION DIALOG] - ${moduleType.toUpperCase()} new item:`, result.data);
+      console.log(`🔄 [DUPLICATION DIALOG] - ${moduleType.toUpperCase()} calling onSuccess callback...`);
 
       toast.success(`${moduleType.slice(0, -1).toUpperCase()}${moduleType.slice(1, -1)} duplicated successfully`);
       
       // Call success callback with new item data
       onSuccess(result.data);
+      console.log(`✅ [DUPLICATION DIALOG] - ${moduleType.toUpperCase()} onSuccess callback completed`);
       
       // Close dialog
       handleClose();

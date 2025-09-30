@@ -28,6 +28,7 @@ import { useLocations } from "@/hooks/use-locations"
 import { useEmployees } from "@/hooks/use-employees"
 import { useDepartments } from "@/hooks/use-departments"
 import { DuplicationDialog } from "@/components/common/duplication-dialog"
+import { toast } from "sonner"
 import type { MaintenanceSchedule, MaintenancePart, MaintenanceChecklistItem } from "@/types/maintenance"
 import type { AssetDetail } from "@/types/asset"
 
@@ -37,13 +38,14 @@ interface MaintenanceScheduleFormProps {
 }
 
 export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceScheduleFormProps) {
-  const { addSchedule, updateSchedule, setScheduleDialogOpen, isScheduleDialogOpen } = useMaintenanceStore()
+  const { addSchedule, updateSchedule, setScheduleDialogOpen, isScheduleDialogOpen, fetchSchedules, fetchRecords, fetchStats, initialize } = useMaintenanceStore()
   const { user } = useAuthStore()
-
+  
   // Determine if user is super admin
   const isSuperAdmin = user?.accessLevel === 'super_admin'
   
-  // State for department selection
+  // State for duplication dialog
+  const [isDuplicationDialogOpen, setIsDuplicationDialogOpen] = useState(false)
   const [selectedDepartment, setSelectedDepartment] = useState(
     isSuperAdmin ? "" : user?.department || ""
   )
@@ -55,9 +57,6 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
   // State for assignment dropdowns
   const [openAssignedDepartment, setOpenAssignedDepartment] = useState(false)
   const [openAssignedUsers, setOpenAssignedUsers] = useState(false)
-
-  // State for duplication dialog
-  const [isDuplicationDialogOpen, setIsDuplicationDialogOpen] = useState(false)
 
   // State for duration input (separate from form data for better UX)
   const [durationInput, setDurationInput] = useState('')
@@ -581,20 +580,6 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       checklist,
     }
 
-    // Debug: Log what we're sending to API
-    console.log('🖊️ [FORM SUBMISSION] Form data before submission:', {
-      formData,
-      scheduleData,
-      isOpenTicket: formData.isOpenTicket,
-      assignedDepartment: formData.assignedDepartment,
-      department: formData.department,
-      isEditing: !!schedule,
-      scheduleId: schedule?.id
-    });
-    
-
-
-
     if (schedule) {
       updateSchedule(schedule.id, scheduleData)
     } else {
@@ -628,10 +613,29 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
     setShowInspectorDropdown(false)
   }
 
-  const handleDuplicationSuccess = (newSchedule: any) => {
-    setIsDuplicationDialogOpen(false)
-    // Refresh the schedules list to show the new duplicated schedule
-    // This will be handled by the parent component's refresh mechanism
+  const handleDuplicationSuccess = async (newScheduleData: any) => {
+    
+    const newScheduleName = newScheduleData.newSchedule?.title || newScheduleData.title || 'Unknown Schedule';
+    toast.success(`Maintenance Schedule "${newScheduleName}" created successfully!`);
+    
+    // Close the duplication dialog
+    setIsDuplicationDialogOpen(false);
+    
+    // Comprehensive refresh of all maintenance data
+    try {
+      await fetchSchedules();
+      await fetchRecords({ limit: 50, includeAllTime: true });
+      await fetchStats();
+      await initialize();
+      setTimeout(() => {
+        const currentState = useMaintenanceStore.getState();
+        
+      }, 1000);
+      
+    } catch (error) {
+      
+      toast.error('Duplication successful, but failed to refresh data. Please refresh the page.');
+    }
   }
 
   return (
@@ -1450,8 +1454,12 @@ export function MaintenanceScheduleForm({ trigger, schedule }: MaintenanceSchedu
       {schedule && (
         <DuplicationDialog
           isOpen={isDuplicationDialogOpen}
-          onClose={() => setIsDuplicationDialogOpen(false)}
-          onSuccess={handleDuplicationSuccess}
+          onClose={() => {
+            setIsDuplicationDialogOpen(false);
+          }}
+          onSuccess={(data: any) => {
+            handleDuplicationSuccess(data);
+          }}
           originalItem={{
             id: schedule.id,
             name: schedule.title || 'Unknown Schedule'
