@@ -216,25 +216,13 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
       : 0
 
     const getStatusBadge = (status: string) => {
-      const colors = {
-        'open': 'bg-red-100 text-red-800 border-red-200',
-        'in-progress': 'bg-blue-100 text-blue-800 border-blue-200',
-        'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        'completed': 'bg-green-100 text-green-800 border-green-200',
-        'verified': 'bg-green-100 text-green-800 border-green-200',
-        'cancelled': 'bg-gray-100 text-gray-800 border-gray-200'
-      }
-      return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200'}">${status.replace('-', ' ')}</span>`
+      const statusClass = `status-${status.replace('-', '-')}`;
+      return `<span class="badge ${statusClass}">${status.replace('-', ' ')}</span>`
     }
 
     const getPriorityBadge = (priority: string) => {
-      const colors = {
-        'critical': 'bg-red-100 text-red-800 border-red-200',
-        'high': 'bg-orange-100 text-orange-800 border-orange-200',
-        'medium': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        'low': 'bg-green-100 text-green-800 border-green-200'
-      }
-      return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[priority as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200'}">${priority}</span>`
+      const priorityClass = `priority-${priority}`;
+      return `<span class="badge ${priorityClass}">${priority}</span>`
     }
 
     return `
@@ -383,13 +371,13 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
           }
           .tickets-table th,
           .tickets-table td {
-            padding: 12px;
+            border: 1px solid #d1d5db;
+            padding: 8px 12px;
             text-align: left;
-            border-bottom: 1px solid #e5e7eb;
             vertical-align: top;
           }
           .tickets-table th {
-            background: #f9fafb;
+            background: #f3f4f6;
             font-weight: 600;
             color: #374151;
             font-size: 12px;
@@ -398,11 +386,11 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
             font-size: 12px;
             color: #111827;
           }
-          .tickets-table tr:hover {
+          .tickets-table tr:nth-child(even) {
             background: #f9fafb;
           }
           .tickets-table .subject-col {
-            width: 15%;
+            width: 18%;
             word-wrap: break-word;
             word-break: break-word;
             white-space: normal;
@@ -410,41 +398,54 @@ export function TicketsOverallReport({ tickets, isOpen, onClose, filters }: Tick
             max-height: none;
           }
           .tickets-table .ticket-id-col {
-            width: 8%;
+            width: 7%;
           }
           .tickets-table .department-col {
-            width: 7%;
+            width: 6%;
           }
           .tickets-table .priority-col {
-            width: 6%;
+            width: 7%;
           }
           .tickets-table .status-col {
-            width: 6%;
+            width: 10%;
           }
           .tickets-table .duration-col {
-            width: 7%;
+            width: 6%;
             font-size: 11px;
           }
           .tickets-table .work-type-col {
-            width: 7%;
+            width: 6%;
             font-size: 11px;
           }
           .tickets-table .date-col {
-            width: 8%;
+            width: 7%;
           }
           .tickets-table .user-col {
-            width: 7%;
+            width: 6%;
             font-size: 11px;
           }
           .badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 11px;
-            font-weight: 500;
-            border: 1px solid;
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            white-space: nowrap;
+            text-align: center;
           }
+          
+          .status-open { background: #fee2e2; color: #991b1b; }
+          .status-in-progress { background: #fef3c7; color: #92400e; }
+          .status-completed { background: #dbeafe; color: #1e40af; }
+          .status-pending { background: #fef3c7; color: #92400e; }
+          .status-verified { background: #dcfce7; color: #166534; }
+          .status-cancelled { background: #f3f4f6; color: #6b7280; }
+          
+          .priority-critical { background: #fee2e2; color: #991b1b; }
+          .priority-high { background: #fef3c7; color: #92400e; }
+          .priority-medium { background: #dbeafe; color: #1e40af; }
+          .priority-low { background: #f3f4f6; color: #6b7280; }
           .footer {
             background: #f9fafb;
             padding: 16px 20px;
