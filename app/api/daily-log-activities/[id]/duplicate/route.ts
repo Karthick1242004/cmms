@@ -301,6 +301,12 @@ export async function POST(
           metadata: {
             area: duplicatedActivityData.area,
             time: duplicatedActivityData.time,
+            startTime: duplicatedActivityData.startTime,
+            endTime: duplicatedActivityData.endTime,
+            downtime: duplicatedActivityData.downtime,
+            downtimeType: duplicatedActivityData.downtimeType,
+            natureOfProblem: duplicatedActivityData.natureOfProblem,
+            commentsOrSolution: duplicatedActivityData.commentsOrSolution,
             notes: duplicatedActivityData.commentsOrSolution,
             attendedBy: duplicatedActivityData.attendedByName,
             duplicatedFrom: originalActivityId

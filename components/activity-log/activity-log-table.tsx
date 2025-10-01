@@ -557,10 +557,10 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                       </TableCell>
                       
                       <TableCell>
-                        <div className="max-w-[200px] truncate" title={log.problem || ''}>
+                        <div className="max-w-[200px] truncate" title={log.problem || log.title|| log.metadata?.problem || ''}>
                           {(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
-                            log.problem ? (
-                              <span className="text-sm">{log.problem}</span>
+                            (log.problem || log.title || log.metadata?.natureOfProblem) ? (
+                              <span className="text-sm">{log.problem || log.title || log.metadata?.natureOfProblem}</span>
                             ) : (
                               <span className="text-sm text-gray-400 italic">No problem specified</span>
                             )
@@ -571,10 +571,10 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                       </TableCell>
                       
                       <TableCell>
-                        <div className="max-w-[200px] truncate" title={log.solution || ''}>
+                        <div className="max-w-[200px] truncate" title={log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes || ''}>
                           {(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
-                            log.solution ? (
-                              <span className="text-sm">{log.solution}</span>
+                            (log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes) ? (
+                              <span className="text-sm">{log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes}</span>
                             ) : (
                               <span className="text-sm text-gray-400 italic">No solution provided</span>
                             )

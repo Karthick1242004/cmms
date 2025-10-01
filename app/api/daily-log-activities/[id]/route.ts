@@ -367,6 +367,12 @@ export async function PUT(
           metadata: {
             area: result.area,
             time: result.time,
+            startTime: result.startTime,
+            endTime: result.endTime,
+            downtime: result.downtime,
+            downtimeType: result.downtimeType,
+            natureOfProblem: result.natureOfProblem,
+            commentsOrSolution: result.commentsOrSolution,
             previousStatus: existingActivity.status,
             newStatus: updates.status,
             notes: result.commentsOrSolution
@@ -429,10 +435,13 @@ export async function PUT(
             area: result.area,
             departmentName: result.departmentName,
             natureOfProblem: result.natureOfProblem,
+            commentsOrSolution: result.commentsOrSolution,
             status: result.status,
             priority: result.priority,
             attendedByName: result.attendedByName,
             assignedToName: result.assignedToName,
+            downtime: result.downtime,
+            downtimeType: result.downtimeType,
             hasStatusChange: updates.status && updates.status !== existingActivity.status
           }
         }, user, {
@@ -521,10 +530,13 @@ export async function DELETE(
           area: existingActivity.area,
           departmentName: existingActivity.departmentName,
           natureOfProblem: existingActivity.natureOfProblem,
+          commentsOrSolution: existingActivity.commentsOrSolution,
           status: existingActivity.status,
           priority: existingActivity.priority,
           attendedByName: existingActivity.attendedByName,
-          assignedToName: existingActivity.assignedToName
+          assignedToName: existingActivity.assignedToName,
+          downtime: existingActivity.downtime,
+          downtimeType: existingActivity.downtimeType
         }
       }, user, {
         ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',

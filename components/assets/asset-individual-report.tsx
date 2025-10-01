@@ -642,15 +642,16 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
           <table>
             <thead>
               <tr>
-                <th style="width: 15%;">Date</th>
-                <th style="width: 10%;">Module</th>
-                <th style="width: 8%;">Action</th>
-                <th style="width: 15%;">Activity</th>
-                <th style="width: 15%;">Problem</th>
-                <th style="width: 15%;">Solution</th>
-                <th style="width: 8%;">Priority</th>
-                <th style="width: 8%;">Status</th>
-                <th style="width: 6%;">Created By</th>
+                <th style="width: 12%;">Date</th>
+                <th style="width: 8%;">Module</th>
+                <th style="width: 7%;">Action</th>
+                <th style="width: 12%;">Activity</th>
+                <th style="width: 12%;">Problem</th>
+                <th style="width: 12%;">Solution</th>
+                <th style="width: 10%;">Downtime</th>
+                <th style="width: 7%;">Priority</th>
+                <th style="width: 7%;">Status</th>
+                <th style="width: 13%;">Created By</th>
               </tr>
             </thead>
             <tbody>
@@ -711,14 +712,22 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
                     <td>
                       <div style="max-width: 150px; font-size: 10px; line-height: 1.3;">
                         ${(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
-                          log.problem ? log.problem : '<em style="color: #9ca3af;">No problem specified</em>'
+                          (log.problem || log.title || log.metadata?.natureOfProblem) ? (log.problem || log.title|| log.metadata?.natureOfProblem) : '<em style="color: #9ca3af;">No problem specified</em>'
                         ) : '<span style="color: #9ca3af;">-</span>'}
                       </div>
                     </td>
                     <td>
                       <div style="max-width: 150px; font-size: 10px; line-height: 1.3;">
                         ${(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
-                          log.solution ? log.solution : '<em style="color: #9ca3af;">No solution provided</em>'
+                          (log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes) ? (log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes) : '<em style="color: #9ca3af;">No solution provided</em>'
+                        ) : '<span style="color: #9ca3af;">-</span>'}
+                      </div>
+                    </td>
+                    <td>
+                      <div style="font-size: 10px; line-height: 1.3;">
+                        ${log.metadata?.downtime !== undefined && log.metadata?.downtime !== null ? (
+                          `<div style="margin-bottom: 2px; font-weight: 600;">${Math.floor(log.metadata.downtime / 60)}h ${log.metadata.downtime % 60}m</div>` +
+                          (log.metadata.downtimeType ? `<span style="background: ${log.metadata.downtimeType === 'planned' ? '#dcfce7' : '#fef3c7'}; color: ${log.metadata.downtimeType === 'planned' ? '#166534' : '#92400e'}; padding: 1px 4px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: capitalize;">${log.metadata.downtimeType}</span>` : '')
                         ) : '<span style="color: #9ca3af;">-</span>'}
                       </div>
                     </td>

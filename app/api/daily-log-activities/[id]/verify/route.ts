@@ -161,8 +161,13 @@ export async function PATCH(
               verifiedBy: user.name,
               area: updatedActivity.area,
               time: updatedActivity.time,
-              notes: adminNotes || 'No additional notes',
-              commentsOrSolution: updatedActivity.commentsOrSolution
+              startTime: updatedActivity.startTime,
+              endTime: updatedActivity.endTime,
+              downtime: updatedActivity.downtime,
+              downtimeType: updatedActivity.downtimeType,
+              natureOfProblem: updatedActivity.natureOfProblem,
+              commentsOrSolution: updatedActivity.commentsOrSolution,
+              notes: adminNotes || 'No additional notes'
             }
           })
         });

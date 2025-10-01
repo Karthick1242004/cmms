@@ -337,6 +337,12 @@ export async function POST(request: NextRequest) {
             metadata: {
               area: body.area,
               time: body.time,
+              startTime: body.startTime,
+              endTime: body.endTime,
+              downtime: calculatedDowntime,
+              downtimeType: downtimeType,
+              natureOfProblem: body.natureOfProblem,
+              commentsOrSolution: body.commentsOrSolution,
               notes: body.commentsOrSolution,
               attendedBy: body.attendedByName
             }
@@ -363,6 +369,7 @@ export async function POST(request: NextRequest) {
             area: body.area,
             departmentName: body.departmentName,
             natureOfProblem: body.natureOfProblem,
+            commentsOrSolution: body.commentsOrSolution,
             status: body.status || 'open',
             priority: body.priority || 'medium',
             attendedByName: body.attendedByName,

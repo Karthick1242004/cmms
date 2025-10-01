@@ -194,6 +194,12 @@ export async function PATCH(
           metadata: {
             area: updatedActivity.area,
             time: updatedActivity.time,
+            startTime: updatedActivity.startTime,
+            endTime: updatedActivity.endTime,
+            downtime: updatedActivity.downtime,
+            downtimeType: updatedActivity.downtimeType,
+            natureOfProblem: updatedActivity.natureOfProblem,
+            commentsOrSolution: updatedActivity.commentsOrSolution,
             previousStatus: existingActivity.status,
             newStatus: finalStatus,
             notes: updatedActivity.commentsOrSolution,
