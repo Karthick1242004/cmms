@@ -114,6 +114,7 @@ export interface ActivityLogFilters {
 }
 
 export interface ActivityLogListResponse {
+  error?: string
   success: boolean
   data?: {
     logs: ActivityLogEntry[]

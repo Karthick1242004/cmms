@@ -24,10 +24,6 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
       try {
         setLoadingLogs(true)
         setLogError(null)
-        
-        console.log('🚀 [Asset Report] - Fetching activity logs for asset:', asset.id)
-        
-        // Fetch all activity logs for this asset (no pagination limit for report)
         const response = await activityLogApi.getAll({
           assetId: asset.id,
           limit: 1000 // Get all logs for the report
@@ -35,10 +31,9 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
         
         if (response.success && response.data) {
           setActivityLogs(response.data.logs || [])
-          console.log('✅ [Asset Report] - Activity logs fetched:', response.data.logs?.length || 0)
         } else {
-          setLogError(response.error || 'Failed to fetch activity logs')
-          console.error('❌ [Asset Report] - Failed to fetch activity logs:', response.error)
+          setLogError(response.error || 'Failed to fetch activity logs');
+          console.error('❌ [Asset Report] - Failed to fetch activity logs:', response.error);
         }
       } catch (error) {
         setLogError(error instanceof Error ? error.message : 'Unknown error')
@@ -760,11 +755,11 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
               </div>
               <div>
                 <span style="font-weight: 600;">Most Common Module:</span> ${(() => {
-                  const moduleCounts = activityLogs.reduce((acc, log) => {
+                  const moduleCounts: Record<string, number> = activityLogs.reduce((acc, log) => {
                     acc[log.module] = (acc[log.module] || 0) + 1
                     return acc
-                  }, {})
-                  const topModule = Object.entries(moduleCounts).sort((a, b) => b[1] - a[1])[0]
+                  }, {} as Record<string, number>)
+                  const topModule = Object.entries(moduleCounts).sort((a, b) => (b[1] as number) - (a[1] as number))[0]
                   return topModule ? topModule[0].replace('_', ' ') + ' (' + topModule[1] + ')' : 'None'
                 })()}
               </div>
