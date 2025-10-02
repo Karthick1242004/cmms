@@ -392,7 +392,7 @@ export async function POST(request: NextRequest) {
           // Make a call to our performance API to store the assignment
           await storeSafetyInspectionPerformanceData(body, result.data, user);
 
-          // Create unified activity log entry
+          // Create unified activity log entry (log tracking system)
           await createLogEntryServer({
             module: 'safety-inspection',
             entityId: result.data.id || result.data._id || 'unknown',
@@ -414,6 +414,54 @@ export async function POST(request: NextRequest) {
             ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
             userAgent: request.headers.get('user-agent') || ''
           });
+
+          // Create asset-specific activity log entry
+          const protocol = request.headers.get('x-forwarded-proto') || 'http';
+          const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+          const baseUrl = `${protocol}://${host}`;
+          
+          const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': request.headers.get('Authorization') || '',
+              'Cookie': request.headers.get('Cookie') || '',
+            },
+            body: JSON.stringify({
+              assetId: body.assetId,
+              assetName: body.assetName,
+              assetTag: body.assetTag,
+              module: 'safety_inspection',
+              action: 'created',
+              title: `Safety Inspection Schedule Created: ${body.title}`,
+              description: `${body.frequency} safety inspection schedule created${body.assignedInspector ? ` - Assigned to: ${body.assignedInspector}` : ''}`,
+              problem: body.description || body.title, // Use description as context
+              solution: '', // Will be filled when inspection is completed
+              assignedTo: body.assignedInspectorId,
+              assignedToName: body.assignedInspector,
+              priority: (body.priority || 'medium').toLowerCase() as any,
+              status: 'pending',
+              recordId: result.data.id || result.data._id,
+              recordType: 'safety_inspection_schedule',
+              metadata: {
+                frequency: body.frequency,
+                riskLevel: body.riskLevel,
+                estimatedDuration: body.estimatedDuration, // Keep original in hours for safety inspection records
+                duration: Math.round((body.estimatedDuration || 0) * 60), // Convert hours to minutes for activity log display consistency
+                nextDueDate: result.data.nextDueDate,
+                department: body.department,
+                safetyStandards: body.safetyStandards || [],
+                checklistCategoriesCount: body.checklistCategories?.length || 0,
+                notes: body.description
+              }
+            })
+          });
+          
+          if (activityLogResponse.ok) {
+            console.log('✅ [Safety Inspection Schedule] - Activity log created');
+          } else {
+            console.error('❌ [Safety Inspection Schedule] - Activity log creation failed:', await activityLogResponse.text());
+          }
         } catch (performanceError) {
           console.error('Error storing safety inspection performance data or activity log:', performanceError);
           // Don't fail the main request if performance tracking fails

@@ -308,18 +308,27 @@ export async function POST(request: NextRequest) {
             assetTag: body.assetTag,
             module: 'maintenance',
             action: 'completed',
-            title: 'Maintenance Completed',
+            title: `Maintenance Completed: ${body.maintenanceType || 'Maintenance Task'}`,
             description: `${body.maintenanceType || 'Maintenance'} completed by ${body.technician}`,
+            problem: body.problemDescription || body.findings || body.description || 'Routine maintenance', // Problem/issue description
+            solution: body.workPerformed || body.completionNotes || body.notes || 'Maintenance completed successfully', // Solution/work performed
             assignedTo: body.technicianId,
             assignedToName: body.technician,
             priority: (body.priority || 'medium').toLowerCase() as any,
             status: 'completed',
-            recordId: data.data.id,
+            recordId: data.data.id || data.data._id,
             recordType: 'maintenance_record',
             metadata: {
               cost: body.cost,
-              duration: body.actualDuration,
-              notes: body.description
+              duration: Math.round((body.actualDuration || 0) * 60), // Convert hours to minutes (actualDuration is in hours, but activity log expects minutes)
+              durationType: body.maintenanceType?.toLowerCase().includes('unplanned') || body.maintenanceType?.toLowerCase().includes('emergency') ? 'unplanned' : 'planned',
+              maintenanceType: body.maintenanceType,
+              department: body.department,
+              scheduleId: body.scheduleId,
+              completedDate: body.completedDate,
+              notes: body.description,
+              partsUsed: body.partsUsed?.length || 0,
+              checklistCompleted: body.checklist ? body.checklist.filter((item: any) => item.completed).length : 0
             }
           })
         });

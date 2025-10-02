@@ -60,7 +60,7 @@ import { cn } from "@/lib/utils";
 
 // Form validation schema with business rules
 const stockTransactionFormSchema = z.object({
-  transactionType: z.enum(['receipt', 'issue', 'transfer_in', 'transfer_out', 'adjustment', 'scrap'], {
+  transactionType: z.enum(['receipt', 'issue', 'transfer', 'adjustment', 'scrap'], {
     required_error: "Transaction type is required",
     invalid_type_error: "Please select a valid transaction type",
   }),
@@ -182,7 +182,7 @@ const stockTransactionFormSchema = z.object({
   path: ["recipient"],
 }).refine((data) => {
   // Business rule: Transfer transactions must have both source and destination
-  if ((data.transactionType === 'transfer_in' || data.transactionType === 'transfer_out') && 
+  if (data.transactionType === 'transfer' && 
       (!data.sourceLocation || !data.destinationLocation)) {
     return false;
   }
@@ -192,7 +192,7 @@ const stockTransactionFormSchema = z.object({
   path: ["destinationLocation"],
 }).refine((data) => {
   // Business rule: Source and destination cannot be the same for transfers
-  if ((data.transactionType === 'transfer_in' || data.transactionType === 'transfer_out') && 
+  if (data.transactionType === 'transfer' && 
       data.sourceLocation === data.destinationLocation) {
     return false;
   }
@@ -325,7 +325,8 @@ export function StockTransactionForm({
         }
       });
     }
-  }, [watchedTransactionType, watchedItems, parts, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedTransactionType, watchedItems]);
 
   // Add new item
   const addItem = () => {
@@ -383,8 +384,9 @@ export function StockTransactionForm({
     const partId = form.getValues(`items.${index}.partId`);
     const itemQuantity = quantity !== undefined ? quantity : form.getValues(`items.${index}.quantity`) || 0;
     
-    // Only validate for outbound transactions
-    if (!partId || !['issue', 'transfer_out', 'scrap'].includes(watchedTransactionType)) {
+    // Only validate for outbound transactions (issue, scrap)
+    // Note: 'transfer' is handled separately as it affects both source and destination
+    if (!partId || !['issue', 'scrap'].includes(watchedTransactionType)) {
       form.clearErrors(`items.${index}.quantity`);
       return;
     }
@@ -440,8 +442,9 @@ export function StockTransactionForm({
   const validateSubmission = (data: FormData): string[] => {
     const errors: string[] = [];
 
-    // Validate stock availability for issue transactions
-    if (['issue', 'transfer_out', 'scrap'].includes(data.transactionType)) {
+    // Validate stock availability for outbound transactions (issue, scrap)
+    // Transfer validation is handled separately in the backend
+    if (['issue', 'scrap'].includes(data.transactionType)) {
       data.items.forEach((item, index) => {
         const part = filteredParts.find(p => p.id === item.partId);
         if (part && part.quantity < item.quantity) {
@@ -459,12 +462,12 @@ export function StockTransactionForm({
       errors.push('Recipient or destination location is required for issue transactions');
     }
 
-    if ((data.transactionType === 'transfer_in' || data.transactionType === 'transfer_out') && 
+    if (data.transactionType === 'transfer' && 
         (!data.sourceLocation || !data.destinationLocation)) {
       errors.push('Both source and destination locations are required for transfer transactions');
     }
 
-    if ((data.transactionType === 'transfer_in' || data.transactionType === 'transfer_out') && 
+    if (data.transactionType === 'transfer' && 
         data.sourceLocation === data.destinationLocation) {
       errors.push('Source and destination locations must be different for transfers');
     }
@@ -478,8 +481,8 @@ export function StockTransactionForm({
         errors.push(`Item ${index + 1}: Unit cost cannot be negative`);
       }
       
-      // Validate stock availability for outbound transactions
-      if (['issue', 'transfer_out', 'scrap'].includes(data.transactionType)) {
+      // Validate stock availability for outbound transactions (issue, scrap)
+      if (['issue', 'scrap'].includes(data.transactionType)) {
         const part = parts.find(p => p.id === item.partId);
         if (part) {
           const availableStock = part.quantity || 0;
@@ -555,17 +558,10 @@ export function StockTransactionForm({
           showSupplier: false,
           showRecipient: true,
         };
-      case 'transfer_in':
+      case 'transfer':
         return {
-          sourceLabel: 'From Location',
-          destinationLabel: 'To Location',
-          showSupplier: false,
-          showRecipient: false,
-        };
-      case 'transfer_out':
-        return {
-          sourceLabel: 'From Location',
-          destinationLabel: 'To Location',
+          sourceLabel: 'From Location (Source Department)',
+          destinationLabel: 'To Location (Destination Department)',
           showSupplier: false,
           showRecipient: false,
         };
@@ -618,10 +614,9 @@ export function StockTransactionForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="receipt">Stock Receipt</SelectItem>
-                      <SelectItem value="issue">Stock Issue</SelectItem>
-                      <SelectItem value="transfer_in">Transfer In</SelectItem>
-                      <SelectItem value="transfer_out">Transfer Out</SelectItem>
+                      <SelectItem value="receipt">Stock Receipt (Procurement)</SelectItem>
+                      <SelectItem value="issue">Stock Issue (Asset Maintenance)</SelectItem>
+                      <SelectItem value="transfer">Transfer Parts (Dept-to-Dept)</SelectItem>
                       <SelectItem value="adjustment">Stock Adjustment</SelectItem>
                       <SelectItem value="scrap">Scrap/Disposal</SelectItem>
                     </SelectContent>
@@ -912,8 +907,8 @@ export function StockTransactionForm({
                               user?.accessLevel === 'super_admin' || 
                               location.department === user?.department
                             )
-                            .map((location) => (
-                            <SelectItem key={location.id} value={location.name}>
+                            .map((location, index) => (
+                            <SelectItem key={`${location.id}-${location.name}-${index}`} value={location.name}>
                               {location.name} ({location.code})
                             </SelectItem>
                           ))}
@@ -945,8 +940,8 @@ export function StockTransactionForm({
                           user?.accessLevel === 'super_admin' || 
                           location.department === user?.department
                         )
-                        .map((location) => (
-                        <SelectItem key={location.id} value={location.name}>
+                        .map((location, index) => (
+                        <SelectItem key={`${location.id}-${location.name}-dest-${index}`} value={location.name}>
                           {location.name} ({location.code})
                         </SelectItem>
                       ))}

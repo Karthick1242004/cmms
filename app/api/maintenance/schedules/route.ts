@@ -451,6 +451,62 @@ export async function POST(request: NextRequest) {
       })) || []
     });
 
+    // Create unified activity log entry for maintenance schedule creation
+    if (data.success && data.data && body.assetId) {
+      try {
+        console.log('🚀 [Maintenance Schedule] - Creating activity log');
+        
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
+        
+        const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': request.headers.get('Authorization') || '',
+            'Cookie': request.headers.get('Cookie') || '',
+          },
+          body: JSON.stringify({
+            assetId: body.assetId,
+            assetName: body.assetName,
+            assetTag: body.assetTag,
+            module: 'maintenance',
+            action: 'created',
+            title: `Maintenance Schedule Created: ${body.title}`,
+            description: `${body.frequency} maintenance schedule created${body.assignedTechnician ? ` - Assigned to: ${body.assignedTechnician}` : ''}`,
+            problem: body.description || body.title, // Use description as problem context
+            solution: '', // Will be filled when record is completed
+            assignedTo: body.assignedTechnicianId,
+            assignedToName: body.assignedTechnician,
+            priority: (body.priority || 'medium').toLowerCase() as any,
+            status: 'pending',
+            recordId: data.data.id || data.data._id,
+            recordType: 'maintenance_schedule',
+            metadata: {
+              frequency: body.frequency,
+              estimatedDuration: body.estimatedDuration, // Keep original in hours for maintenance records
+              duration: Math.round((body.estimatedDuration || 0) * 60), // Convert hours to minutes for activity log display consistency
+              nextDueDate: data.data.nextDueDate,
+              department: body.department,
+              partsCount: body.parts?.length || 0,
+              checklistItemsCount: body.checklist?.length || 0,
+              notes: body.notes
+            }
+          })
+        });
+        
+        if (activityLogResponse.ok) {
+          console.log('✅ [Maintenance Schedule] - Activity log created');
+        } else {
+          console.error('❌ [Maintenance Schedule] - Activity log creation failed:', await activityLogResponse.text());
+        }
+      } catch (activityLogError) {
+        console.error('❌ [Maintenance Schedule] - Error creating activity log:', activityLogError);
+        // Don't fail the main request if activity log fails
+      }
+    }
+
     // CRITICAL FIX: Transform response back to new frontend structure
     // Extract checklist from parts and return as separate field
     if (data.success && data.data) {

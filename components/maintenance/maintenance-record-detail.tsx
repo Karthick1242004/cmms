@@ -220,13 +220,37 @@ export function MaintenanceRecordDetail({
   const formatTime = (timeString: string) => {
     if (!timeString) return 'N/A'
     try {
+      // Handle HH:MM format (e.g., "14:30")
+      if (timeString.match(/^\d{1,2}:\d{2}$/)) {
+        return timeString
+      }
+      
+      // Handle ISO date string
       const date = new Date(timeString)
       if (isNaN(date.getTime())) {
         return 'Invalid time'
       }
-      return format(date, 'p')
+      return format(date, 'HH:mm')
     } catch (error) {
       return 'Invalid time'
+    }
+  }
+
+  const formatDuration = (durationInHours: number) => {
+    if (durationInHours === null || durationInHours === undefined || isNaN(durationInHours)) {
+      return 'N/A'
+    }
+    
+    // Convert to hours and minutes
+    const hours = Math.floor(durationInHours)
+    const minutes = Math.round((durationInHours - hours) * 60)
+    
+    if (hours === 0) {
+      return `${minutes}m`
+    } else if (minutes === 0) {
+      return `${hours}h`
+    } else {
+      return `${hours}h ${minutes}m`
     }
   }
 
@@ -372,7 +396,7 @@ export function MaintenanceRecordDetail({
             </div>
             <div class="info-item">
               <div class="info-label">Duration</div>
-              <div class="info-value">${record.actualDuration} hours</div>
+              <div class="info-value">${formatDuration(record.actualDuration)}</div>
             </div>
             <div class="info-item">
               <div class="info-label">Status</div>
@@ -557,7 +581,7 @@ export function MaintenanceRecordDetail({
               </div>
               <div style="text-align: right; font-size: 12px; color: #6b7280;">
                 <div><strong>Technician:</strong> ${historyRecord.technician}</div>
-                <div><strong>Duration:</strong> ${historyRecord.actualDuration}h</div>
+                <div><strong>Duration:</strong> ${formatDuration(historyRecord.actualDuration)}</div>
               </div>
             </div>
             
@@ -685,7 +709,7 @@ export function MaintenanceRecordDetail({
                     <CardTitle className="text-sm font-medium text-muted-foreground">Duration</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{record.actualDuration}h</div>
+                    <div className="text-2xl font-bold">{formatDuration(record.actualDuration)}</div>
                     <p className="text-xs text-muted-foreground">
                       {formatTime(record.startTime)} - {formatTime(record.endTime)}
                     </p>
@@ -725,7 +749,7 @@ export function MaintenanceRecordDetail({
                     <div className="flex items-center gap-2">
                       <Target className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Duration:</span>
-                      <span>{record.actualDuration} hours</span>
+                      <span>{formatDuration(record.actualDuration)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -960,7 +984,7 @@ export function MaintenanceRecordDetail({
                             >
                               {historyRecord.overallCondition}
                             </Badge>
-                            <span className="text-sm font-medium">{historyRecord.actualDuration}h duration</span>
+                            <span className="text-sm font-medium">{formatDuration(historyRecord.actualDuration)} duration</span>
                           </div>
                           <span className="text-sm text-muted-foreground">
                             {formatDateTime(historyRecord.completedDate)}

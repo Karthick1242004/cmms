@@ -465,18 +465,28 @@ export async function POST(request: NextRequest) {
             assetTag: body.assetTag,
             module: 'safety_inspection',
             action: 'completed',
-            title: `Safety Inspection Completed`,
-            description: `Safety inspection "${body.title}" completed by ${body.inspector}`,
+            title: `Safety Inspection Completed: ${body.title || 'Inspection'}`,
+            description: `Safety inspection completed by ${body.inspector}${body.complianceStatus ? ` - Status: ${body.complianceStatus}` : ''}`,
+            problem: body.findings || body.violations?.map((v: any) => v.description).join('; ') || body.notes || 'Safety inspection conducted', // Findings/violations as problem
+            solution: body.actionsTaken || body.recommendations || body.correctiveActions || 'Inspection completed, compliant', // Actions/recommendations as solution
             assignedTo: body.inspectorId,
             assignedToName: body.inspector,
-            priority: 'medium',
+            priority: body.complianceStatus === 'non_compliant' || (body.violations && body.violations.length > 0) ? 'high' as any : 'medium' as any,
             status: 'completed',
-            recordId: result.data.id,
-            recordType: 'inspection_record',
+            recordId: result.data.id || result.data._id,
+            recordType: 'safety_inspection_record',
             metadata: {
               complianceScore: body.overallComplianceScore,
+              complianceStatus: body.complianceStatus,
               violations: body.violations?.length || 0,
-              duration: body.actualDuration,
+              duration: Math.round((body.actualDuration || 0) * 60), // Convert hours to minutes (actualDuration is in hours, but activity log expects minutes)
+              durationType: body.inspectionType?.toLowerCase().includes('unplanned') || body.inspectionType?.toLowerCase().includes('emergency') ? 'unplanned' : 'planned',
+              inspectionType: body.inspectionType,
+              riskLevel: body.riskLevel,
+              department: body.department,
+              scheduleId: body.scheduleId,
+              completedDate: body.completedDate,
+              safetyStandards: body.safetyStandards || [],
               notes: body.inspectorNotes
             }
           })

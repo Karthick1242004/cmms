@@ -706,23 +706,23 @@ export function AssetIndividualReport({ asset, onClose }: AssetIndividualReportP
                     </td>
                     <td>
                       <div style="max-width: 150px; font-size: 10px; line-height: 1.3;">
-                        ${(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
-                          (log.problem || log.title || log.metadata?.natureOfProblem) ? (log.problem || log.title|| log.metadata?.natureOfProblem) : '<em style="color: #9ca3af;">No problem specified</em>'
+                        ${(log.module === 'daily_log_activity' || log.module === 'tickets' || log.module === 'maintenance' || log.module === 'safety_inspection') ? (
+                          (log.problem || log.title || log.metadata?.natureOfProblem) ? (log.problem || log.title || log.metadata?.natureOfProblem) : '<em style="color: #9ca3af;">No problem specified</em>'
                         ) : '<span style="color: #9ca3af;">-</span>'}
                       </div>
                     </td>
                     <td>
                       <div style="max-width: 150px; font-size: 10px; line-height: 1.3;">
-                        ${(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
+                        ${(log.module === 'daily_log_activity' || log.module === 'tickets' || log.module === 'maintenance' || log.module === 'safety_inspection') ? (
                           (log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes) ? (log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes) : '<em style="color: #9ca3af;">No solution provided</em>'
                         ) : '<span style="color: #9ca3af;">-</span>'}
                       </div>
                     </td>
                     <td>
                       <div style="font-size: 10px; line-height: 1.3;">
-                        ${log.metadata?.downtime !== undefined && log.metadata?.downtime !== null ? (
-                          `<div style="margin-bottom: 2px; font-weight: 600;">${Math.floor(log.metadata.downtime / 60)}h ${log.metadata.downtime % 60}m</div>` +
-                          (log.metadata.downtimeType ? `<span style="background: ${log.metadata.downtimeType === 'planned' ? '#dcfce7' : '#fef3c7'}; color: ${log.metadata.downtimeType === 'planned' ? '#166534' : '#92400e'}; padding: 1px 4px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: capitalize;">${log.metadata.downtimeType}</span>` : '')
+                        ${(log.metadata?.downtime !== undefined && log.metadata?.downtime !== null) || (log.metadata?.duration !== undefined && log.metadata?.duration !== null) ? (
+                          `<div style="margin-bottom: 2px; font-weight: 600;">${Math.floor((log.metadata.downtime || log.metadata.duration || 0) / 60)}h ${(log.metadata.downtime || log.metadata.duration || 0) % 60}m</div>` +
+                          ((log.metadata.downtimeType || log.metadata.durationType) ? `<span style="background: ${(log.metadata.downtimeType || log.metadata.durationType) === 'planned' ? '#dcfce7' : '#fef3c7'}; color: ${(log.metadata.downtimeType || log.metadata.durationType) === 'planned' ? '#166534' : '#92400e'}; padding: 1px 4px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: capitalize;">${log.metadata.downtimeType || log.metadata.durationType}</span>` : '')
                         ) : '<span style="color: #9ca3af;">-</span>'}
                       </div>
                     </td>

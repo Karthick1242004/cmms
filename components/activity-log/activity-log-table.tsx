@@ -557,8 +557,8 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                       </TableCell>
                       
                       <TableCell>
-                        <div className="max-w-[200px] truncate" title={log.problem || log.title|| log.metadata?.problem || ''}>
-                          {(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
+                        <div className="max-w-[200px] truncate" title={log.problem || log.title|| log.metadata?.problem || log.metadata?.natureOfProblem || ''}>
+                          {(log.module === 'daily_log_activity' || log.module === 'tickets' || log.module === 'maintenance' || log.module === 'safety_inspection') ? (
                             (log.problem || log.title || log.metadata?.natureOfProblem) ? (
                               <span className="text-sm">{log.problem || log.title || log.metadata?.natureOfProblem}</span>
                             ) : (
@@ -572,7 +572,7 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                       
                       <TableCell>
                         <div className="max-w-[200px] truncate" title={log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes || ''}>
-                          {(log.module === 'daily_log_activity' || log.module === 'tickets') ? (
+                          {(log.module === 'daily_log_activity' || log.module === 'tickets' || log.module === 'maintenance' || log.module === 'safety_inspection') ? (
                             (log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes) ? (
                               <span className="text-sm">{log.solution || log.metadata?.commentsOrSolution || log.metadata?.notes}</span>
                             ) : (
@@ -585,14 +585,31 @@ export function ActivityLogTable({ assetId, assetName }: ActivityLogTableProps) 
                       </TableCell>
                       
                       <TableCell>
-                        {log.metadata?.downtime !== undefined && log.metadata?.downtime !== null ? (
+                        {(log.metadata?.downtime !== undefined && log.metadata?.downtime !== null) || (log.metadata?.duration !== undefined && log.metadata?.duration !== null) ? (
                           <div className="space-y-1">
                             <div className="text-sm font-medium">
-                              {formatDowntime(log.metadata.downtime)}
+                              {(() => {
+                                // Handle downtime (already in minutes)
+                                if (log.metadata.downtime !== undefined && log.metadata.downtime !== null) {
+                                  return formatDowntime(log.metadata.downtime);
+                                }
+                                // Handle duration - convert from hours to minutes if it's a decimal (like 2.5 hours)
+                                // If duration is already a large number (>= 60), assume it's already in minutes
+                                if (log.metadata.duration !== undefined && log.metadata.duration !== null) {
+                                  const duration = log.metadata.duration;
+                                  // If duration is less than 60 and has decimals, it's likely in hours (e.g., 2.5 hours)
+                                  // If duration is >= 60 or is a whole number, it's likely already in minutes
+                                  const durationInMinutes = duration < 60 && duration % 1 !== 0 
+                                    ? duration * 60  // Convert hours to minutes
+                                    : duration;      // Already in minutes
+                                  return formatDowntime(durationInMinutes);
+                                }
+                                return formatDowntime(0);
+                              })()}
                             </div>
-                            {log.metadata.downtimeType && (
-                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getDowntimeTypeBadgeClasses(log.metadata.downtimeType)}`}>
-                                {getDowntimeTypeLabel(log.metadata.downtimeType)}
+                            {(log.metadata.downtimeType || log.metadata.durationType) && (
+                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getDowntimeTypeBadgeClasses(log.metadata.downtimeType || log.metadata.durationType)}`}>
+                                {getDowntimeTypeLabel(log.metadata.downtimeType || log.metadata.durationType)}
                               </div>
                             )}
                           </div>
