@@ -30,8 +30,9 @@ import { useEmployees } from "@/hooks/use-employees"
 import { useLocations } from "@/hooks/use-locations"
 import { useToast } from "@/hooks/use-toast"
 import type { ShiftDetail } from "@/types/shift-detail"
-import { EmployeeShiftHistoryDialog } from "@/components/shift-details/employee-shift-history-dialog"
 import { ShiftStatsWidget } from "@/components/shift-details/shift-stats-widget"
+import { ShiftDetailsReport } from "@/components/shift-details/shift-details-report"
+import { FileText } from "lucide-react"
 import { 
   Pagination,
   PaginationContent,
@@ -135,10 +136,8 @@ export default function ShiftDetailsPage() {
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [selectedShiftDetail, setSelectedShiftDetail] = useState<ShiftDetail | null>(null)
   
-  // Employee shift history dialog state
-  const [employeeHistoryDialogOpen, setEmployeeHistoryDialogOpen] = useState(false)
-  const [historyEmployeeId, setHistoryEmployeeId] = useState<string | null>(null)
-  const [historyEmployeeName, setHistoryEmployeeName] = useState<string>("")
+  // Shift details report dialog state
+  const [shiftReportDialogOpen, setShiftReportDialogOpen] = useState(false)
 
 
 
@@ -544,10 +543,11 @@ export default function ShiftDetailsPage() {
           variant: "default",
         })
         
-        // Optionally, we could show a basic info dialog here
-        setHistoryEmployeeId(shift.employeeId.toString())
-        setHistoryEmployeeName(shift.employeeName)
-        setEmployeeHistoryDialogOpen(true)
+        // Show shift details in the edit dialog instead
+        toast({
+          title: "Shift Details",
+          description: `${shift.employeeName} - ${shift.shiftType} shift (${shift.shiftStartTime} - ${shift.shiftEndTime})`
+        })
       } else {
         // Other error occurred
         throw new Error(`HTTP ${response.status}`)
@@ -562,13 +562,17 @@ export default function ShiftDetailsPage() {
     }
   }
 
-  // Handle employee history dialog close
-  const handleEmployeeHistoryDialogClose = (open: boolean) => {
-    if (!open) {
-      setHistoryEmployeeId(null)
-      setHistoryEmployeeName("")
+  // Handle shift report generation
+  const handleGenerateReport = () => {
+    if (!canManageShiftDetails) {
+      toast({
+        title: "Access Denied",
+        description: "Only super administrators and department administrators can generate shift reports.",
+        variant: "destructive"
+      })
+      return
     }
-    setEmployeeHistoryDialogOpen(open)
+    setShiftReportDialogOpen(true)
   }
 
   const handleWorkDayToggle = (day: string) => {
@@ -665,10 +669,16 @@ export default function ShiftDetailsPage() {
           </p>
         </div>
         {canManageShiftDetails && (
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Shift Detail
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleGenerateReport}>
+              <FileText className="mr-2 h-4 w-4" />
+              Generate Report
+            </Button>
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Shift Detail
+            </Button>
+          </div>
         )}
       </div>
 
@@ -1333,13 +1343,20 @@ export default function ShiftDetailsPage() {
       
 
 
-      {/* Employee Shift History Dialog */}
-      <EmployeeShiftHistoryDialog
-        open={employeeHistoryDialogOpen}
-        onOpenChange={handleEmployeeHistoryDialogClose}
-        employeeId={historyEmployeeId}
-        employeeName={historyEmployeeName}
-      />
+      {/* Shift Details Report Dialog - Admin Only */}
+      {canManageShiftDetails && (
+        <ShiftDetailsReport
+          shiftDetails={shiftDetails || []}
+          isOpen={shiftReportDialogOpen}
+          onClose={() => setShiftReportDialogOpen(false)}
+          filters={{
+            department: selectedDepartment !== 'all' ? selectedDepartment : undefined,
+            shiftType: selectedShiftType !== 'all' ? selectedShiftType : undefined,
+            location: selectedLocation !== 'all' ? selectedLocation : undefined,
+            status: selectedStatus !== 'all' ? selectedStatus : undefined
+          }}
+        />
+      )}
     </div>
   )
 } 
