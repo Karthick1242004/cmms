@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority');
     const department = searchParams.get('department');
     const reportType = searchParams.get('reportType');
+    const equipmentId = searchParams.get('equipmentId'); // Add equipmentId filter
     const isOpenTicket = searchParams.get('isOpenTicket') === 'true';
     const sortBy = searchParams.get('sortBy') || 'loggedDateTime';
     const sortOrder = searchParams.get('sortOrder') === 'asc' ? 1 : -1;
@@ -105,6 +106,10 @@ export async function GET(request: NextRequest) {
 
     if (reportType && reportType !== 'all') {
       filter[`reportType.${reportType}`] = true;
+    }
+
+    if (equipmentId && equipmentId !== 'all') {
+      filter.equipmentId = equipmentId;
     }
 
     if (isOpenTicket) {

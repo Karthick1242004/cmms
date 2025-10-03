@@ -50,6 +50,7 @@ import type { Part } from "@/types/part";
 import type { Location } from "@/types/location";
 import type { Asset } from "@/types/asset";
 import type { Employee } from "@/types/employee";
+import type { Ticket } from "@/types/ticket";
 
 import { usePartsStore } from "@/stores/parts-store";
 import { useLocationsStore } from "@/stores/locations-store";
@@ -57,6 +58,7 @@ import { useAssetsStore } from "@/stores/assets-store";
 import { useEmployeesStore } from "@/stores/employees-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
+import { ticketsApi } from "@/lib/tickets-api";
 
 // Form validation schema with business rules
 const stockTransactionFormSchema = z.object({
@@ -227,10 +229,16 @@ export function StockTransactionForm({
   const [partSearchOpen, setPartSearchOpen] = useState<{ [key: number]: boolean }>({});
   const [assetSearchOpen, setAssetSearchOpen] = useState(false);
   const [recipientSearchOpen, setRecipientSearchOpen] = useState(false);
+  const [ticketSearchOpen, setTicketSearchOpen] = useState(false);
   
   const [filteredParts, setFilteredParts] = useState<Part[]>([]);
   const [filteredAssets, setFilteredAssets] = useState<Asset[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
+  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+  
+  // Track if transaction-level fields have been auto-filled from first part (for issue transactions)
+  const [isAutoFilledFromPart, setIsAutoFilledFromPart] = useState(false);
   
   // Form setup
   const form = useForm<FormData>({
@@ -268,6 +276,7 @@ export function StockTransactionForm({
   const watchedTransactionType = form.watch("transactionType");
   const watchedRecipientType = form.watch("recipientType");
   const watchedItems = form.watch("items");
+  const watchedAssetId = form.watch("assetId");
 
   // Load initial data
   useEffect(() => {
@@ -289,9 +298,7 @@ export function StockTransactionForm({
 
   // Filter data based on user's access level
   useEffect(() => {
-    console.log('🔍 Filtering assets - Total assets:', assets.length);
-    console.log('🔍 Current user:', user?.name, 'Department:', user?.department, 'Access Level:', user?.accessLevel);
-    console.log('🔍 All assets:', assets.map(asset => ({ id: asset.id, name: asset.name, department: asset.department })));
+  
 
     if (user?.accessLevel === 'super_admin') {
       // Super admin can see all data
@@ -328,6 +335,57 @@ export function StockTransactionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedTransactionType, watchedItems]);
 
+  // Reset auto-fill flag when transaction type changes
+  useEffect(() => {
+    // Clear the auto-fill flag when transaction type changes to allow re-filling with new transaction type logic
+    setIsAutoFilledFromPart(false);
+    console.log('[AUTO-FILL] Transaction type changed to:', watchedTransactionType, '- Reset auto-fill flag');
+  }, [watchedTransactionType]);
+
+  // Fetch tickets dynamically based on asset selection and department
+  useEffect(() => {
+    const fetchTicketsForForm = async () => {
+      if (!user) return;
+
+      setIsLoadingTickets(true);
+      try {
+        const filters: any = {
+          limit: 100, // Get more tickets for selection
+          sortBy: 'loggedDateTime',
+          sortOrder: 'desc',
+        };
+
+        // If asset is selected, filter by that asset
+        if (watchedAssetId) {
+          console.log('[TICKETS] Fetching tickets for asset:', watchedAssetId);
+          filters.equipmentId = watchedAssetId;
+        } else {
+          // Otherwise, filter by user's department
+          console.log('[TICKETS] Fetching tickets for department:', user.department);
+          filters.department = user.department;
+        }
+
+        const response = await ticketsApi.getTickets(filters);
+        
+        if (response.success && response.data) {
+          const tickets = (response.data as any).tickets || [];
+          setFilteredTickets(tickets);
+          console.log('[TICKETS] Fetched tickets:', tickets.length, 'tickets');
+        } else {
+          console.error('[TICKETS] Failed to fetch tickets:', response.error);
+          setFilteredTickets([]);
+        }
+      } catch (error) {
+        console.error('[TICKETS] Error fetching tickets:', error);
+        setFilteredTickets([]);
+      } finally {
+        setIsLoadingTickets(false);
+      }
+    };
+
+    fetchTicketsForForm();
+  }, [watchedAssetId, user]);
+
   // Add new item
   const addItem = () => {
     append({
@@ -362,6 +420,47 @@ export function StockTransactionForm({
     // Validate stock availability after part selection
     validateStockAvailability(index, quantity);
     
+    // AUTO-FILL LOGIC FOR ISSUE TRANSACTIONS
+    // When first part is selected in an issue transaction, auto-fill procurement fields from part data
+    if (watchedTransactionType === 'issue' && !isAutoFilledFromPart) {
+      console.log('[AUTO-FILL] Issue transaction detected - auto-filling from part:', part.partNumber);
+      
+      // Auto-fill Material Code
+      if (part.materialCode) {
+        form.setValue('materialCode', part.materialCode);
+        console.log('[AUTO-FILL] Material Code:', part.materialCode);
+      }
+      
+      // Auto-fill Purchase Order Number
+      if (part.purchaseOrderNumber) {
+        form.setValue('purchaseOrderNumber', part.purchaseOrderNumber);
+        console.log('[AUTO-FILL] Purchase Order Number:', part.purchaseOrderNumber);
+      }
+      
+      // Auto-fill Vendor Name
+      if (part.vendorName) {
+        form.setValue('vendorName', part.vendorName);
+        console.log('[AUTO-FILL] Vendor Name:', part.vendorName);
+      }
+      
+      // Auto-fill Vendor Contact
+      if (part.vendorContact) {
+        form.setValue('vendorContact', part.vendorContact);
+        console.log('[AUTO-FILL] Vendor Contact:', part.vendorContact);
+      }
+      
+      // Auto-fill Supplier (from part's supplier field)
+      if (part.supplier) {
+        form.setValue('supplier', part.supplier);
+        console.log('[AUTO-FILL] Supplier:', part.supplier);
+      }
+      
+      // Mark as auto-filled to prevent re-filling when more items added
+      setIsAutoFilledFromPart(true);
+      
+      console.log('[AUTO-FILL] Transaction-level fields auto-filled successfully from part');
+    }
+    
     setPartSearchOpen(prev => ({ ...prev, [index]: false }));
   };
 
@@ -377,6 +476,14 @@ export function StockTransactionForm({
     form.setValue('recipient', recipient.name);
     form.setValue('recipientType', 'employee');
     setRecipientSearchOpen(false);
+  };
+
+  // Handle ticket selection
+  const handleTicketSelect = (ticket: Ticket) => {
+    form.setValue('workOrderId', ticket.id);
+    form.setValue('workOrderNumber', ticket.ticketId);
+    setTicketSearchOpen(false);
+    console.log('[TICKET SELECT] Selected ticket:', ticket.ticketId, '-', ticket.subject);
   };
 
   // Enhanced stock validation function
@@ -715,10 +822,22 @@ export function StockTransactionForm({
               name="materialCode"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Material Code (MC)</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Material Code (MC)
+                    {watchedTransactionType === 'issue' && isAutoFilledFromPart && field.value && (
+                      <Badge variant="secondary" className="text-xs">Auto-filled</Badge>
+                    )}
+                  </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter material code" {...field} />
+                    <Input 
+                      placeholder={watchedTransactionType === 'issue' ? "Will auto-fill from part" : "Enter material code"} 
+                      {...field}
+                      className={watchedTransactionType === 'issue' && isAutoFilledFromPart && field.value ? "bg-blue-50 dark:bg-blue-950" : ""}
+                    />
                   </FormControl>
+                  {watchedTransactionType === 'issue' && !isAutoFilledFromPart && (
+                    <p className="text-xs text-muted-foreground">💡 This will auto-fill when you select a part</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -730,10 +849,22 @@ export function StockTransactionForm({
               name="purchaseOrderNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Purchase Order Number (PO)</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Purchase Order Number (PO)
+                    {watchedTransactionType === 'issue' && isAutoFilledFromPart && field.value && (
+                      <Badge variant="secondary" className="text-xs">Auto-filled</Badge>
+                    )}
+                  </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter PO number" {...field} />
+                    <Input 
+                      placeholder={watchedTransactionType === 'issue' ? "Will auto-fill from part" : "Enter PO number"} 
+                      {...field}
+                      className={watchedTransactionType === 'issue' && isAutoFilledFromPart && field.value ? "bg-blue-50 dark:bg-blue-950" : ""}
+                    />
                   </FormControl>
+                  {watchedTransactionType === 'issue' && !isAutoFilledFromPart && (
+                    <p className="text-xs text-muted-foreground">💡 This will auto-fill when you select a part</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -745,10 +876,22 @@ export function StockTransactionForm({
               name="vendorName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Vendor Name</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Vendor Name
+                    {watchedTransactionType === 'issue' && isAutoFilledFromPart && field.value && (
+                      <Badge variant="secondary" className="text-xs">Auto-filled</Badge>
+                    )}
+                  </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter vendor name" {...field} />
+                    <Input 
+                      placeholder={watchedTransactionType === 'issue' ? "Will auto-fill from part" : "Enter vendor name"} 
+                      {...field}
+                      className={watchedTransactionType === 'issue' && isAutoFilledFromPart && field.value ? "bg-blue-50 dark:bg-blue-950" : ""}
+                    />
                   </FormControl>
+                  {watchedTransactionType === 'issue' && !isAutoFilledFromPart && (
+                    <p className="text-xs text-muted-foreground">💡 This will auto-fill when you select a part</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -760,10 +903,22 @@ export function StockTransactionForm({
               name="vendorContact"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Vendor Contact</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Vendor Contact
+                    {watchedTransactionType === 'issue' && isAutoFilledFromPart && field.value && (
+                      <Badge variant="secondary" className="text-xs">Auto-filled</Badge>
+                    )}
+                  </FormLabel>
                   <FormControl>
-                    <Input placeholder="Phone, email, or contact person" {...field} />
+                    <Input 
+                      placeholder={watchedTransactionType === 'issue' ? "Will auto-fill from part" : "Phone, email, or contact person"} 
+                      {...field}
+                      className={watchedTransactionType === 'issue' && isAutoFilledFromPart && field.value ? "bg-blue-50 dark:bg-blue-950" : ""}
+                    />
                   </FormControl>
+                  {watchedTransactionType === 'issue' && !isAutoFilledFromPart && (
+                    <p className="text-xs text-muted-foreground">💡 This will auto-fill when you select a part</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -1004,20 +1159,132 @@ export function StockTransactionForm({
                 </Popover>
               </div>
 
-              {/* Work Order */}
-              <FormField
-                control={form.control}
-                name="workOrderNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Work Order Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter work order number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              {/* Ticket/Work Order Selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  {watchedAssetId ? 'Related Ticket (Asset-Specific)' : 'Related Ticket (Department)'}
+                  {isLoadingTickets && (
+                    <Badge variant="outline" className="text-xs">
+                      <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading...
+                    </Badge>
+                  )}
+                </Label>
+                <Popover open={ticketSearchOpen} onOpenChange={setTicketSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className={cn(
+                        "w-full justify-between",
+                        !form.watch('workOrderNumber') && "text-muted-foreground"
+                      )}
+                      disabled={isLoadingTickets}
+                    >
+                      {form.watch('workOrderNumber') ? (
+                        <span className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {form.watch('workOrderNumber')}
+                          </Badge>
+                          {filteredTickets.find(t => t.ticketId === form.watch('workOrderNumber'))?.subject || 'Select ticket'}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          {watchedAssetId ? '🎯 Select ticket for this asset' : '📋 Select ticket from your department'}
+                        </span>
+                      )}
+                      <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[500px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search tickets by ID or subject..." />
+                      <CommandEmpty>
+                        {isLoadingTickets ? (
+                          <div className="py-6 text-center text-sm">
+                            <svg className="animate-spin h-5 w-5 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Loading tickets...
+                          </div>
+                        ) : watchedAssetId ? (
+                          <div className="py-6 text-center text-sm">
+                            <p className="text-muted-foreground mb-2">No tickets found for this asset</p>
+                            <p className="text-xs text-muted-foreground">Try selecting a different asset or leave blank</p>
+                          </div>
+                        ) : (
+                          <div className="py-6 text-center text-sm">
+                            <p className="text-muted-foreground mb-2">No tickets found in your department</p>
+                            <p className="text-xs text-muted-foreground">Create a ticket first or leave blank</p>
+                          </div>
+                        )}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        <ScrollArea className="h-[300px]">
+                          {filteredTickets.map((ticket) => (
+                            <CommandItem
+                              key={ticket.id}
+                              onSelect={() => handleTicketSelect(ticket)}
+                            >
+                              <div className="flex flex-col w-full gap-1">
+                                <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center gap-2">
+                                    <Badge 
+                                      variant={
+                                        ticket.status === 'completed' ? 'default' :
+                                        ticket.status === 'in-progress' ? 'secondary' :
+                                        ticket.status === 'open' ? 'outline' : 'destructive'
+                                      }
+                                      className="text-xs"
+                                    >
+                                      {ticket.ticketId}
+                                    </Badge>
+                                    <Badge 
+                                      variant={
+                                        ticket.priority === 'critical' ? 'destructive' :
+                                        ticket.priority === 'high' ? 'default' :
+                                        'outline'
+                                      }
+                                      className="text-xs"
+                                    >
+                                      {ticket.priority}
+                                    </Badge>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">
+                                    {ticket.status}
+                                  </Badge>
+                                </div>
+                                <span className="font-medium text-sm">{ticket.subject}</span>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>📅 {new Date(ticket.loggedDateTime).toLocaleDateString()}</span>
+                                  {ticket.asset && (
+                                    <span>• 🔧 {ticket.asset.name}</span>
+                                  )}
+                                  <span>• 🏢 {ticket.department}</span>
+                                </div>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </ScrollArea>
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {watchedAssetId && filteredTickets.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    ℹ️ Showing {filteredTickets.length} ticket(s) for the selected asset
+                  </p>
                 )}
-              />
+                {!watchedAssetId && filteredTickets.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    ℹ️ Showing {filteredTickets.length} ticket(s) from your department. Select an asset to filter tickets.
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -1032,6 +1299,38 @@ export function StockTransactionForm({
             </Button>
           </CardHeader>
           <CardContent>
+            {/* Info Banner for Issue Transactions */}
+            {watchedTransactionType === 'issue' && !isAutoFilledFromPart && (
+              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                      Smart Auto-Fill Enabled
+                    </h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      When you select your first part, procurement details (Material Code, PO Number, Vendor Name, and Vendor Contact) will automatically fill from the part's information. You can still edit these fields manually if needed.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {watchedTransactionType === 'issue' && isAutoFilledFromPart && (
+              <div className="mb-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-medium">Procurement fields auto-filled from part data</span>
+                </div>
+              </div>
+            )}
+            
             {fields.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No items added yet. Click "Add Item" to get started.</p>
