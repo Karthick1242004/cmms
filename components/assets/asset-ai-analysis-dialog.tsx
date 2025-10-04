@@ -24,11 +24,31 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { toast } from 'sonner'
 import type { AssetDetail } from '@/types/asset'
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface AssetAIAnalysisDialogProps {
   asset: AssetDetail
   isOpen: boolean
   onClose: () => void
+}
+
+interface AIMetrics {
+  uptimeScore: number
+  efficiencyScore: number
+  conditionScore: number
+  totalActivities: number
+  openTickets: number
+  maintenanceFrequency: number
+  downtimeHours: number
+  performance: {
+    reliability: number
+    availability: number
+    maintainability: number
+    efficiency: number
+    safetyScore: number
+  }
 }
 
 interface AnalysisData {
@@ -48,7 +68,8 @@ interface AnalysisData {
     maintenanceFrequency: number
     safetyComplianceScore: number
   }
-  source: 'ai' | 'fallback'
+  aiMetrics?: AIMetrics
+  source: 'ai' | 'fallback' | 'openrouter_ai'
   note: string
 }
 
@@ -913,17 +934,268 @@ export function AssetAIAnalysisDialog({ asset, isOpen, onClose }: AssetAIAnalysi
                   </div>
                 </div>
 
+                {/* AI Visual Dashboard */}
+                {analysisData.aiMetrics && (
+                  <Card className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-blue-600" />
+                        AI Performance Metrics Dashboard
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Circular Gauges for Key Metrics */}
+                      <div className="grid grid-cols-3 gap-6 mb-6">
+                        {/* Uptime Score */}
+                        <Card className="bg-gray-50 dark:bg-gray-900">
+                          <CardContent className="pt-6 pb-4">
+                            <div className="relative">
+                              <ResponsiveContainer width="100%" height={140}>
+                                <PieChart>
+                                  <Pie
+                                    data={[
+                                      { name: 'Score', value: analysisData.aiMetrics.uptimeScore, fill: analysisData.aiMetrics.uptimeScore >= 90 ? '#22c55e' : analysisData.aiMetrics.uptimeScore >= 70 ? '#f59e0b' : '#ef4444' },
+                                      { name: 'Remaining', value: 100 - analysisData.aiMetrics.uptimeScore, fill: '#1f2937' }
+                                    ]}
+                                    cx="50%"
+                                    cy="50%"
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    innerRadius={45}
+                                    outerRadius={60}
+                                    paddingAngle={0}
+                                    dataKey="value"
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <div className="text-3xl font-bold" style={{ 
+                                  color: analysisData.aiMetrics.uptimeScore >= 90 ? '#22c55e' : analysisData.aiMetrics.uptimeScore >= 70 ? '#f59e0b' : '#ef4444' 
+                                }}>
+                                  {analysisData.aiMetrics.uptimeScore}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Uptime</div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Efficiency Score */}
+                        <Card className="bg-gray-50 dark:bg-gray-900">
+                          <CardContent className="pt-6 pb-4">
+                            <div className="relative">
+                              <ResponsiveContainer width="100%" height={140}>
+                                <PieChart>
+                                  <Pie
+                                    data={[
+                                      { name: 'Score', value: analysisData.aiMetrics.efficiencyScore, fill: analysisData.aiMetrics.efficiencyScore >= 90 ? '#22c55e' : analysisData.aiMetrics.efficiencyScore >= 70 ? '#f59e0b' : '#ef4444' },
+                                      { name: 'Remaining', value: 100 - analysisData.aiMetrics.efficiencyScore, fill: '#1f2937' }
+                                    ]}
+                                    cx="50%"
+                                    cy="50%"
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    innerRadius={45}
+                                    outerRadius={60}
+                                    paddingAngle={0}
+                                    dataKey="value"
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <div className="text-3xl font-bold" style={{ 
+                                  color: analysisData.aiMetrics.efficiencyScore >= 90 ? '#22c55e' : analysisData.aiMetrics.efficiencyScore >= 70 ? '#f59e0b' : '#ef4444' 
+                                }}>
+                                  {analysisData.aiMetrics.efficiencyScore}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Efficiency</div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Condition Score */}
+                        <Card className="bg-gray-50 dark:bg-gray-900">
+                          <CardContent className="pt-6 pb-4">
+                            <div className="relative">
+                              <ResponsiveContainer width="100%" height={140}>
+                                <PieChart>
+                                  <Pie
+                                    data={[
+                                      { name: 'Score', value: analysisData.aiMetrics.conditionScore, fill: analysisData.aiMetrics.conditionScore >= 90 ? '#22c55e' : analysisData.aiMetrics.conditionScore >= 70 ? '#f59e0b' : '#ef4444' },
+                                      { name: 'Remaining', value: 100 - analysisData.aiMetrics.conditionScore, fill: '#1f2937' }
+                                    ]}
+                                    cx="50%"
+                                    cy="50%"
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    innerRadius={45}
+                                    outerRadius={60}
+                                    paddingAngle={0}
+                                    dataKey="value"
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <div className="text-3xl font-bold" style={{ 
+                                  color: analysisData.aiMetrics.conditionScore >= 90 ? '#22c55e' : analysisData.aiMetrics.conditionScore >= 70 ? '#f59e0b' : '#ef4444' 
+                                }}>
+                                  {analysisData.aiMetrics.conditionScore}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Condition</div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Performance Radar Chart */}
+                      <div className="grid grid-cols-2 gap-6">
+                        <Card className="bg-white dark:bg-gray-950">
+                          <CardHeader>
+                            <CardTitle className="text-sm">Performance Indicators</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <ResponsiveContainer width="100%" height={250}>
+                              <RadarChart data={[
+                                { metric: 'Reliability', value: analysisData.aiMetrics.performance.reliability },
+                                { metric: 'Availability', value: analysisData.aiMetrics.performance.availability },
+                                { metric: 'Maintainability', value: analysisData.aiMetrics.performance.maintainability },
+                                { metric: 'Efficiency', value: analysisData.aiMetrics.performance.efficiency },
+                                { metric: 'Safety', value: analysisData.aiMetrics.performance.safetyScore },
+                              ]}>
+                                <PolarGrid stroke="#e5e7eb" />
+                                <PolarAngleAxis 
+                                  dataKey="metric" 
+                                  tick={{ fill: '#6b7280', fontSize: 11 }}
+                                />
+                                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                                <Radar 
+                                  name="Performance" 
+                                  dataKey="value" 
+                                  stroke="#8b5cf6" 
+                                  fill="#8b5cf6" 
+                                  fillOpacity={0.6} 
+                                />
+                              </RadarChart>
+                            </ResponsiveContainer>
+                          </CardContent>
+                        </Card>
+
+                        {/* Activity Metrics Bar Chart */}
+                        <Card className="bg-white dark:bg-gray-950">
+                          <CardHeader>
+                            <CardTitle className="text-sm">Activity Metrics</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <ResponsiveContainer width="100%" height={250}>
+                              <BarChart 
+                                data={[
+                                  { metric: 'Activities', value: analysisData.aiMetrics.totalActivities, color: '#3b82f6' },
+                                  { metric: 'Maintenance', value: analysisData.aiMetrics.maintenanceFrequency, color: '#10b981' },
+                                  { metric: 'Open Tickets', value: analysisData.aiMetrics.openTickets, color: '#ef4444' },
+                                  { metric: 'Downtime (hrs)', value: analysisData.aiMetrics.downtimeHours, color: '#f59e0b' },
+                                ]}
+                                layout="vertical"
+                                margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                              >
+                                <XAxis type="number" />
+                                <YAxis dataKey="metric" type="category" tick={{ fontSize: 11 }} />
+                                <RechartsTooltip />
+                                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                                  {[
+                                    { metric: 'Activities', value: analysisData.aiMetrics.totalActivities, color: '#3b82f6' },
+                                    { metric: 'Maintenance', value: analysisData.aiMetrics.maintenanceFrequency, color: '#10b981' },
+                                    { metric: 'Open Tickets', value: analysisData.aiMetrics.openTickets, color: '#ef4444' },
+                                    { metric: 'Downtime (hrs)', value: analysisData.aiMetrics.downtimeHours, color: '#f59e0b' },
+                                  ].map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Quick Stats Grid */}
+                      <div className="grid grid-cols-4 gap-4 mt-6">
+                        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                          <CardContent className="pt-4 pb-4 text-center">
+                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{analysisData.aiMetrics.totalActivities}</div>
+                            <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">Total Activities</div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                          <CardContent className="pt-4 pb-4 text-center">
+                            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{analysisData.aiMetrics.maintenanceFrequency}</div>
+                            <div className="text-xs text-green-700 dark:text-green-300 mt-1">Maintenance Events</div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800">
+                          <CardContent className="pt-4 pb-4 text-center">
+                            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{analysisData.aiMetrics.openTickets}</div>
+                            <div className="text-xs text-red-700 dark:text-red-300 mt-1">Open Tickets</div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800">
+                          <CardContent className="pt-4 pb-4 text-center">
+                            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{analysisData.aiMetrics.downtimeHours}h</div>
+                            <div className="text-xs text-orange-700 dark:text-orange-300 mt-1">Total Downtime</div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Analysis Content */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Bot className="h-5 w-5" />
-                      Analysis Results
+                      AI Analysis Results
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="prose prose-sm max-w-none space-y-4">
-                      {renderMarkdownContent(analysisData.analysis)}
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: ({ children }) => <h1 className="text-2xl font-bold mt-6 mb-4 text-gray-900 dark:text-gray-100">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-xl font-semibold mt-5 mb-3 text-gray-800 dark:text-gray-200 border-b pb-2">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-lg font-medium mt-4 mb-2 text-gray-700 dark:text-gray-300">{children}</h3>,
+                          p: ({ children }) => <p className="mb-3 text-gray-600 dark:text-gray-400 leading-relaxed">{children}</p>,
+                          ul: ({ children }) => <ul className="mb-4 ml-4 space-y-1 list-disc">{children}</ul>,
+                          ol: ({ children }) => <ol className="mb-4 ml-4 space-y-1 list-decimal">{children}</ol>,
+                          li: ({ children }) => <li className="text-gray-600 dark:text-gray-400">{children}</li>,
+                          strong: ({ children }) => <strong className="font-semibold text-gray-800 dark:text-gray-200">{children}</strong>,
+                          code: ({ children }) => <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">{children}</code>,
+                          blockquote: ({ children }) => <blockquote className="border-l-4 border-blue-200 dark:border-blue-800 pl-4 italic text-gray-600 dark:text-gray-400 my-4">{children}</blockquote>,
+                          table: ({ children }) => (
+                            <div className="overflow-x-auto my-6">
+                              <table className="min-w-full border border-gray-300 dark:border-gray-700 rounded-lg">
+                                {children}
+                              </table>
+                            </div>
+                          ),
+                          thead: ({ children }) => <thead className="bg-gray-100 dark:bg-gray-800">{children}</thead>,
+                          tbody: ({ children }) => <tbody className="bg-white dark:bg-gray-950 divide-y divide-gray-200 dark:divide-gray-800">{children}</tbody>,
+                          tr: ({ children }) => <tr className="border-b border-gray-200 dark:border-gray-700">{children}</tr>,
+                          th: ({ children }) => (
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 last:border-r-0">
+                              {children}
+                            </th>
+                          ),
+                          td: ({ children }) => (
+                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 last:border-r-0">
+                              {children}
+                            </td>
+                          ),
+                        }}
+                      >
+                        {analysisData.analysis}
+                      </ReactMarkdown>
                     </div>
                   </CardContent>
                 </Card>

@@ -1,0 +1,296 @@
+{
+  "timestamp": "2025-10-04T08:26:47.600Z",
+  "modules": [
+    {
+      "moduleName": "Tickets",
+      "collectionName": "tickets",
+      "totalRecords": 57,
+      "estimatedSizePerRecord": 3503,
+      "totalSizeKB": 199671,
+      "totalSizeMB": 194.9912109375,
+      "totalSizeGB": 0.19042110443115234,
+      "breakdown": {
+        "textData": 114,
+        "images": 57000,
+        "videos": 142500,
+        "metadata": 57
+      },
+      "notes": [
+        "Avg 2 images/record @ 500KB each",
+        "Avg 0.5 videos/record @ 5000KB each"
+      ]
+    },
+    {
+      "moduleName": "Assets",
+      "collectionName": "assets",
+      "totalRecords": 55,
+      "estimatedSizePerRecord": 604,
+      "totalSizeKB": 33220,
+      "totalSizeMB": 32.44140625,
+      "totalSizeGB": 0.031681060791015625,
+      "breakdown": {
+        "textData": 165,
+        "images": 33000,
+        "videos": 0,
+        "metadata": 55
+      },
+      "notes": [
+        "Avg 1.5 images/record @ 400KB each"
+      ]
+    },
+    {
+      "moduleName": "Asset Activity Logs",
+      "collectionName": "asset activity logs",
+      "totalRecords": 0,
+      "estimatedSizePerRecord": 0,
+      "totalSizeKB": 0,
+      "totalSizeMB": 0,
+      "totalSizeGB": 0,
+      "breakdown": {
+        "textData": 0,
+        "images": 0,
+        "videos": 0,
+        "metadata": 0
+      },
+      "notes": []
+    },
+    {
+      "moduleName": "Daily Log Activities",
+      "collectionName": "daily log activities",
+      "totalRecords": 206,
+      "estimatedSizePerRecord": 753,
+      "totalSizeKB": 155118,
+      "totalSizeMB": 151.482421875,
+      "totalSizeGB": 0.1479320526123047,
+      "breakdown": {
+        "textData": 412,
+        "images": 154500,
+        "videos": 0,
+        "metadata": 206
+      },
+      "notes": [
+        "Avg 1.5 images/record @ 500KB each"
+      ]
+    },
+    {
+      "moduleName": "Maintenance (Schedules + Records)",
+      "collectionName": "maintenance (schedules + records)",
+      "totalRecords": 101,
+      "estimatedSizePerRecord": 803.5,
+      "totalSizeKB": 81153.5,
+      "totalSizeMB": 79.25146484375,
+      "totalSizeGB": 0.07739400863647461,
+      "breakdown": {
+        "textData": 252.5,
+        "images": 80800,
+        "videos": 0,
+        "metadata": 101
+      },
+      "notes": [
+        "Avg 2 images/record @ 400KB each"
+      ]
+    },
+    {
+      "moduleName": "Safety Inspection (Schedules + Records)",
+      "collectionName": "safety inspection (schedules + records)",
+      "totalRecords": 9,
+      "estimatedSizePerRecord": 1004,
+      "totalSizeKB": 9036,
+      "totalSizeMB": 8.82421875,
+      "totalSizeGB": 0.008617401123046875,
+      "breakdown": {
+        "textData": 27,
+        "images": 9000,
+        "videos": 0,
+        "metadata": 9
+      },
+      "notes": [
+        "Avg 2.5 images/record @ 400KB each"
+      ]
+    },
+    {
+      "moduleName": "Parts Inventory",
+      "collectionName": "parts inventory",
+      "totalRecords": 14,
+      "estimatedSizePerRecord": 243.00000000000003,
+      "totalSizeKB": 3402.0000000000005,
+      "totalSizeMB": 3.3222656250000004,
+      "totalSizeGB": 0.003244400024414063,
+      "breakdown": {
+        "textData": 28,
+        "images": 3360.0000000000005,
+        "videos": 0,
+        "metadata": 14
+      },
+      "notes": [
+        "Avg 0.8 images/record @ 300KB each"
+      ]
+    },
+    {
+      "moduleName": "Stock Transactions",
+      "collectionName": "stock transactions",
+      "totalRecords": 84,
+      "estimatedSizePerRecord": 3,
+      "totalSizeKB": 252,
+      "totalSizeMB": 0.24609375,
+      "totalSizeGB": 0.000240325927734375,
+      "breakdown": {
+        "textData": 168,
+        "images": 0,
+        "videos": 0,
+        "metadata": 84
+      },
+      "notes": []
+    },
+    {
+      "moduleName": "Employees",
+      "collectionName": "employees",
+      "totalRecords": 19,
+      "estimatedSizePerRecord": 107.49999999999999,
+      "totalSizeKB": 2042.4999999999998,
+      "totalSizeMB": 1.9946289062499998,
+      "totalSizeGB": 0.0019478797912597654,
+      "breakdown": {
+        "textData": 38,
+        "images": 1994.9999999999998,
+        "videos": 0,
+        "metadata": 9.5
+      },
+      "notes": [
+        "Avg 0.7 images/record @ 150KB each"
+      ]
+    },
+    {
+      "moduleName": "Shift Details",
+      "collectionName": "shift details",
+      "totalRecords": 19,
+      "estimatedSizePerRecord": 1.5,
+      "totalSizeKB": 28.5,
+      "totalSizeMB": 0.02783203125,
+      "totalSizeGB": 0.000027179718017578125,
+      "breakdown": {
+        "textData": 19,
+        "images": 0,
+        "videos": 0,
+        "metadata": 9.5
+      },
+      "notes": []
+    },
+    {
+      "moduleName": "Locations",
+      "collectionName": "locations",
+      "totalRecords": 16,
+      "estimatedSizePerRecord": 1.5,
+      "totalSizeKB": 24,
+      "totalSizeMB": 0.0234375,
+      "totalSizeGB": 0.00002288818359375,
+      "breakdown": {
+        "textData": 16,
+        "images": 0,
+        "videos": 0,
+        "metadata": 8
+      },
+      "notes": []
+    },
+    {
+      "moduleName": "Departments",
+      "collectionName": "departments",
+      "totalRecords": 2,
+      "estimatedSizePerRecord": 1.5,
+      "totalSizeKB": 3,
+      "totalSizeMB": 0.0029296875,
+      "totalSizeGB": 0.00000286102294921875,
+      "breakdown": {
+        "textData": 2,
+        "images": 0,
+        "videos": 0,
+        "metadata": 1
+      },
+      "notes": []
+    },
+    {
+      "moduleName": "Meeting Minutes",
+      "collectionName": "meeting minutes",
+      "totalRecords": 12,
+      "estimatedSizePerRecord": 406,
+      "totalSizeKB": 4872,
+      "totalSizeMB": 4.7578125,
+      "totalSizeGB": 0.00464630126953125,
+      "breakdown": {
+        "textData": 60,
+        "images": 4800,
+        "videos": 0,
+        "metadata": 12
+      },
+      "notes": [
+        "Avg 1 images/record @ 400KB each"
+      ]
+    },
+    {
+      "moduleName": "Notice Board",
+      "collectionName": "notice board",
+      "totalRecords": 0,
+      "estimatedSizePerRecord": 0,
+      "totalSizeKB": 0,
+      "totalSizeMB": 0,
+      "totalSizeGB": 0,
+      "breakdown": {
+        "textData": 0,
+        "images": 0,
+        "videos": 0,
+        "metadata": 0
+      },
+      "notes": [
+        "Avg 0.5 images/record @ 400KB each"
+      ]
+    },
+    {
+      "moduleName": "Log Tracking",
+      "collectionName": "log tracking",
+      "totalRecords": 410,
+      "estimatedSizePerRecord": 1.5,
+      "totalSizeKB": 615,
+      "totalSizeMB": 0.6005859375,
+      "totalSizeGB": 0.0005865097045898438,
+      "breakdown": {
+        "textData": 410,
+        "images": 0,
+        "videos": 0,
+        "metadata": 205
+      },
+      "notes": []
+    }
+  ],
+  "totalStorageGB": 0.466763973236084,
+  "totalMediaGB": 0.46439647674560547,
+  "costEstimate": {
+    "totalStorageGB": 0.466763973236084,
+    "totalStorageTB": 0.00045582419261336327,
+    "documentDB": {
+      "storageGB": 0.0023674964904785156,
+      "storageCostPerMonth": 0.00023674964904785156,
+      "instanceType": "db.t3.medium",
+      "instanceCostPerMonth": 87.6,
+      "backupStorageGB": 0.0035512447357177734,
+      "backupCostPerMonth": 0.00007102489471435548,
+      "totalMonthly": 87.60030777454375
+    },
+    "s3Storage": {
+      "storageGB": 0.46439647674560547,
+      "storageCostPerMonth": 0.010681118965148926,
+      "requestsCost": 10,
+      "dataTransferCost": 15,
+      "totalMonthly": 25.01068111896515
+    },
+    "cloudFront": {
+      "dataTransferGB": 0.04643964767456055,
+      "costPerMonth": 0.003947370052337647
+    },
+    "backup": {
+      "storageGB": 0.233381986618042,
+      "costPerMonth": 0.00466763973236084
+    },
+    "totalMonthlyCost": 112.61960390329361,
+    "totalYearlyCost": 1351.4352468395232
+  }
+}
