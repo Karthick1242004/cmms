@@ -218,6 +218,7 @@ export async function PUT(
     if (body.endTime !== undefined) ticket.endTime = body.endTime;
     if (body.duration !== undefined) ticket.duration = body.duration;
     if (body.durationType !== undefined) ticket.durationType = body.durationType;
+    if (body.attendingDate !== undefined) ticket.attendingDate = body.attendingDate;
 
     // Ensure activityLog is initialized as an array (for legacy tickets)
     if (!ticket.activityLog || !Array.isArray(ticket.activityLog)) {

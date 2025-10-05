@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useAuthStore } from "@/stores/auth-store"
 import { useNotificationStore } from "@/stores/notification-store"
 import { TrialStatusIndicator } from "@/components/trial-banner"
+import { TrialWarningDialog } from "@/components/trial-warning-dialog"
 import type { NavigationItem, NavigationState } from "@/types/navigation"
 import Logo from '@/public/vonelogo.png'
 import Image from "next/image"
@@ -40,6 +41,16 @@ const truncateText = (text: string, maxLength: number) => {
   return text.substring(0, maxLength) + "..."
 }
 
+// Trial end date constant
+const TRIAL_END_DATE = '2025-10-03T23:59:59'
+
+// Helper function to check if trial has ended
+const isTrialEnded = () => {
+  const now = new Date()
+  const trialEndDate = new Date(TRIAL_END_DATE)
+  return now >= trialEndDate
+}
+
 export const AppSidebar = memo(function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
@@ -47,12 +58,23 @@ export const AppSidebar = memo(function AppSidebar() {
   const { getFullNavigation } = useNavigationStore()
   const { user, logout } = useAuthStore()
   const { notifications, unreadCount, markAsRead, loadCriticalNotifications } = useNotificationStore()
+  const [showTrialWarning, setShowTrialWarning] = useState(false)
 
   // Get navigation including custom features
   const navigation = getFullNavigation()
 
   const handleNavigation = (href: string) => {
+    // First navigate to the page
     navigate(href)
+    
+    // Then show trial warning popup if trial has ended
+    // This allows users to view existing data while being notified
+    if (isTrialEnded()) {
+      // Small delay to ensure navigation completes first
+      setTimeout(() => {
+        setShowTrialWarning(true)
+      }, 300)
+    }
   }
 
   // Load notifications on component mount if user is authenticated
@@ -417,6 +439,12 @@ export const AppSidebar = memo(function AppSidebar() {
           </div>
         </SidebarFooter>
       </div>
+
+      {/* Trial Warning Dialog */}
+      <TrialWarningDialog 
+        isOpen={showTrialWarning} 
+        onClose={() => setShowTrialWarning(false)} 
+      />
     </TooltipProvider>
   )
 })

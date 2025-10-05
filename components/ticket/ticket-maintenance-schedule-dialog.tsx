@@ -16,6 +16,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { 
   AlertTriangle, 
   Clock, 
@@ -28,6 +34,8 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import type { Ticket } from '@/types/ticket';
 import { 
   isValidTimeFormat, 
@@ -49,6 +57,7 @@ interface TicketMaintenanceScheduleDialogProps {
       remarks: string;
       status: string;
       solution?: string;
+      attendingDate?: string;
     }
   ) => Promise<boolean>;
   userInfo?: any;
@@ -94,6 +103,7 @@ export function TicketMaintenanceScheduleDialog({
   const [selectedStatus, setSelectedStatus] = useState('in-progress');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [attendingDate, setAttendingDate] = useState<Date | undefined>(new Date());
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -107,6 +117,8 @@ export function TicketMaintenanceScheduleDialog({
       setSolution(ticket.solution || '');
       setSelectedStatus('in-progress');
       setErrors({});
+      // Set attending date to ticket's existing date or today
+      setAttendingDate(ticket.attendingDate ? new Date(ticket.attendingDate) : new Date());
     } else {
       // Reset form
       setStartTime('');
@@ -116,6 +128,7 @@ export function TicketMaintenanceScheduleDialog({
       setSolution('');
       setSelectedStatus('in-progress');
       setErrors({});
+      setAttendingDate(new Date());
     }
   }, [isOpen, ticket]);
 
@@ -128,6 +141,11 @@ export function TicketMaintenanceScheduleDialog({
 
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
+
+    // Attending date validation
+    if (!attendingDate) {
+      newErrors.attendingDate = 'Date of attending ticket is required';
+    }
 
     // Start time validation
     if (!startTime) {
@@ -178,6 +196,7 @@ export function TicketMaintenanceScheduleDialog({
         remarks: remarks.trim(),
         status: selectedStatus,
         solution: solution.trim() || undefined,
+        attendingDate: attendingDate ? attendingDate.toISOString() : undefined,
       };
 
       const success = await onMaintenanceSchedule(ticket.id, maintenanceData);
@@ -253,6 +272,44 @@ export function TicketMaintenanceScheduleDialog({
             <div className="flex items-center gap-2">
               <Timer className="h-5 w-5 text-primary" />
               <Label className="text-base font-semibold">Work Details</Label>
+            </div>
+
+            {/* Date of Attending Ticket */}
+            <div className="space-y-2">
+              <Label htmlFor="attendingDate" className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Date of Attending Ticket <span className="text-red-500">*</span>
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="attendingDate"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !attendingDate && "text-muted-foreground",
+                      errors.attendingDate && "border-red-500"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {attendingDate ? format(attendingDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarComponent
+                    mode="single"
+                    selected={attendingDate}
+                    onSelect={setAttendingDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.attendingDate && (
+                <p className="text-xs text-red-600">{errors.attendingDate}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Select the date when you are attending/attended this ticket
+              </p>
             </div>
 
             {/* Time Fields */}

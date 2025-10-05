@@ -191,6 +191,7 @@ export function TrialBanner({ className, variant = 'banner' }: TrialBannerProps)
 // Trial status indicator for sidebar or other components
 export function TrialStatusIndicator() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0 })
+  const [isTrialEnded, setIsTrialEnded] = useState(false)
 
   useEffect(() => {
     // Trial period: August 30, 2025 to October 3, 2025 (34 days)
@@ -204,9 +205,11 @@ export function TrialStatusIndicator() {
         const days = Math.floor(difference / (1000 * 60 * 60 * 24))
         const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
         setTimeLeft({ days, hours })
+        setIsTrialEnded(false)
       } else {
         // Trial has ended
         setTimeLeft({ days: 0, hours: 0 })
+        setIsTrialEnded(true)
       }
     }
 
@@ -216,19 +219,37 @@ export function TrialStatusIndicator() {
     return () => clearInterval(interval)
   }, [])
 
+  // Show "Trial Ended" message
+  if (isTrialEnded) {
+    return (
+      <div className="p-3 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/50 dark:to-red-900/50 border border-red-300 dark:border-red-700 rounded-lg">
+        <div className="flex items-center gap-2 mb-2">
+          <Clock className="h-4 w-4 text-red-600 dark:text-red-400" />
+          <span className="text-sm font-semibold text-red-900 dark:text-red-100">Trial Status</span>
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs font-bold text-red-800 dark:text-red-200">
+            Trial Ended
+          </div>
+          <div className="text-xs text-red-700 dark:text-red-300">
+            For further details, contact sales
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show remaining time
   return (
-    <div className="p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
+    <div className="p-3 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/50 dark:to-red-950/50 border border-orange-200 dark:border-orange-700 rounded-lg">
       <div className="flex items-center gap-2 mb-2">
-        <Clock className="h-4 w-4 text-orange-600" />
-        <span className="text-sm font-medium text-orange-900">Trial Status</span>
+        <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+        <span className="text-sm font-medium text-orange-900 dark:text-orange-100">Trial Status</span>
       </div>
       <div className="space-y-1">
-        <div className="text-xs text-orange-700">
+        <div className="text-xs text-orange-700 dark:text-orange-300">
           <strong>{timeLeft.days} days, {timeLeft.hours} hours</strong> remaining
         </div>
-        {/* <div className="text-xs text-orange-600">
-          All features active during trial
-        </div> */}
       </div>
     </div>
   )

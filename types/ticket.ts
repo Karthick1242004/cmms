@@ -16,6 +16,7 @@ export interface Ticket {
   endTime?: string; // HH:MM format - When work ended on ticket  
   duration?: number; // Calculated duration in minutes
   durationType?: 'planned' | 'unplanned'; // Type of work - planned or unplanned
+  attendingDate?: string; // ISO date string - The date when the ticket is/was attended
   timeTrackingHistory?: TicketTimeTrackingEntry[]; // History of time tracking changes
   asset?: {
     id: string;

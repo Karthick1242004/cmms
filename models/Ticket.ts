@@ -19,6 +19,7 @@ export interface ITicket extends Document {
   endTime?: string // HH:MM format
   duration?: number // Duration in minutes
   durationType?: 'planned' | 'unplanned' // Type of maintenance work
+  attendingDate?: Date // Date when the ticket is/was attended
   
   // User information
   loggedBy: string
@@ -149,6 +150,9 @@ const TicketSchema = new Schema<ITicket>({
   durationType: {
     type: String,
     enum: ['planned', 'unplanned']
+  },
+  attendingDate: {
+    type: Date
   },
   loggedBy: {
     type: String,
