@@ -480,7 +480,7 @@ export async function POST(request: NextRequest) {
               complianceStatus: body.complianceStatus,
               violations: body.violations?.length || 0,
               duration: Math.round((body.actualDuration || 0) * 60), // Convert hours to minutes (actualDuration is in hours, but activity log expects minutes)
-              durationType: body.inspectionType?.toLowerCase().includes('unplanned') || body.inspectionType?.toLowerCase().includes('emergency') ? 'unplanned' : 'planned',
+              durationType: 'planned', // Safety inspections are always planned
               inspectionType: body.inspectionType,
               riskLevel: body.riskLevel,
               department: body.department,

@@ -321,7 +321,7 @@ export async function POST(request: NextRequest) {
             metadata: {
               cost: body.cost,
               duration: Math.round((body.actualDuration || 0) * 60), // Convert hours to minutes (actualDuration is in hours, but activity log expects minutes)
-              durationType: body.maintenanceType?.toLowerCase().includes('unplanned') || body.maintenanceType?.toLowerCase().includes('emergency') ? 'unplanned' : 'planned',
+              durationType: 'planned', // Maintenance is always planned
               maintenanceType: body.maintenanceType,
               department: body.department,
               scheduleId: body.scheduleId,

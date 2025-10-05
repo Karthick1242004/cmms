@@ -179,7 +179,9 @@ export async function PATCH(
               verifiedBy: user.name,
               verifiedAt: new Date().toISOString(),
               adminNotes: adminNotes,
-              department: updatedTicket.department
+              department: updatedTicket.department,
+              duration: updatedTicket.duration || 0, // Duration in minutes from ticket
+              durationType: updatedTicket.durationType || 'unplanned' // Tickets are typically unplanned unless specified
             }
           })
         })

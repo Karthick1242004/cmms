@@ -297,7 +297,9 @@ export async function PUT(
               area: updatedTicket.area,
               inCharge: updatedTicket.inCharge,
               ticketStatus: updatedTicket.status,
-              updateType: 'details_modified'
+              updateType: 'details_modified',
+              duration: updatedTicket.duration || 0, // Duration in minutes from ticket
+              durationType: updatedTicket.durationType || 'unplanned' // Tickets are typically unplanned unless specified
             }
           })
         });

@@ -338,48 +338,12 @@ export async function POST(request: NextRequest) {
         }
       }
         
-        const activityLogResponse = await fetch(`${baseUrl}/api/activity-logs`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': request.headers.get('Authorization') || '',
-            'Cookie': request.headers.get('Cookie') || '',
-          },
-          body: JSON.stringify({
-            assetId: assetId,
-            assetName: assetName,
-            assetTag: assetTag,
-            module: 'tickets',
-            action: 'created',
-            title: `Ticket Created - ${savedTicket.ticketId}`,
-            description: `Ticket created: ${savedTicket.title || savedTicket.subject}`,
-            problem: savedTicket.description,
-            solution: savedTicket.solution || '',
-            assignedTo: user?.id || '',
-            assignedToName: user?.name || savedTicket.loggedBy || 'Unknown User',
-            priority: savedTicket.priority.toLowerCase() as any,
-            status: 'pending',
-            recordId: savedTicket._id.toString(),
-            recordType: 'ticket',
-            metadata: {
-              ticketId: savedTicket.ticketId,
-              department: savedTicket.department,
-              area: savedTicket.area,
-              inCharge: savedTicket.inCharge,
-              reportType: savedTicket.category || 'general',
-              ticketStatus: savedTicket.status
-            }
-          })
-        });
-        
-        if (activityLogResponse.ok) {
-          console.log('✅ [Ticket] - Activity log created for ticket creation');
-        } else {
-          console.error('❌ [Ticket] - Activity log creation failed:', await activityLogResponse.text());
-        }
+        // NOTE: No asset activity log is created for ticket creation (only for completion/verification)
+        // This prevents showing duration and affecting downtime calculations before work actually starts
+        console.log('ℹ️ [Ticket] - Ticket created, asset activity log will be created on completion/verification');
     } catch (error) {
-      console.error('❌ [Ticket] - Failed to create activity log:', error);
-      // Don't fail the main operation if activity log creation fails
+      console.error('❌ [Ticket] - Error in ticket creation process:', error);
+      // Don't fail the main operation
     }
 
     // Transform the response to match frontend expectations

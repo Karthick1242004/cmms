@@ -224,7 +224,9 @@ export async function PATCH(
               remarks: body.remarks || null,
               isPending: updatedTicket.statusApproval?.pending || false,
               requestedBy: updatedTicket.statusApproval?.requestedBy || null,
-              verifiedBy: updatedTicket.statusApproval?.verifiedBy || null
+              verifiedBy: updatedTicket.statusApproval?.verifiedBy || null,
+              duration: updatedTicket.duration || 0, // Duration in minutes from ticket
+              durationType: updatedTicket.durationType || 'unplanned' // Tickets are typically unplanned unless specified
             }
           })
         });

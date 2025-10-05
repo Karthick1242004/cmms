@@ -138,7 +138,8 @@ export async function PATCH(
             verifiedBy: user.name,
             complianceScore: record.overallComplianceScore,
             violations: record.violations?.length || 0,
-            duration: record.actualDuration,
+            duration: Math.round((record.actualDuration || 0) * 60), // Convert hours to minutes for consistency
+            durationType: 'planned', // Safety inspections are always planned
             notes: adminNotes || 'No additional notes'
           }
         })
