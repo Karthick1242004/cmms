@@ -7,6 +7,11 @@ export const navigation: NavigationItem[] = [
     iconName: "Home",
   },
   {
+    name: "Feedback",
+    href: "/feedback",
+    iconName: "MessageSquare",
+  },
+  {
     name: "Departments",
     href: "/departments",
     iconName: "Building2",
