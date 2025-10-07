@@ -132,14 +132,14 @@ export const AppSidebar = memo(function AppSidebar() {
         <div className="flex flex-col space-y-2">
           <div className="flex items-center justify-between">
             <Image src={Logo} alt="FMMS 360" width={30} height={36} />
-            <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+            <h2 className="text-1.5xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
               FMMS 360
             </h2>
             <Badge
               variant="outline"
               className="animate-pulse bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300"
             >
-              v1.0
+              v0.001
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">Maintenance Management</p>
