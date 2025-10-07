@@ -42,7 +42,8 @@ const truncateText = (text: string, maxLength: number) => {
 }
 
 // Trial end date constant
-const TRIAL_END_DATE = '2025-10-03T23:59:59'
+// Extended by 17 more days: October 3, 2025 → October 20, 2025
+const TRIAL_END_DATE = '2025-10-20T23:59:59'
 
 // Helper function to check if trial has ended
 const isTrialEnded = () => {
@@ -67,14 +68,15 @@ export const AppSidebar = memo(function AppSidebar() {
     // First navigate to the page
     navigate(href)
     
+    // COMMENTED OUT: Trial warning dialog (Trial extended by 14 days)
     // Then show trial warning popup if trial has ended
     // This allows users to view existing data while being notified
-    if (isTrialEnded()) {
-      // Small delay to ensure navigation completes first
-      setTimeout(() => {
-        setShowTrialWarning(true)
-      }, 300)
-    }
+    // if (isTrialEnded()) {
+    //   // Small delay to ensure navigation completes first
+    //   setTimeout(() => {
+    //     setShowTrialWarning(true)
+    //   }, 300)
+    // }
   }
 
   // Load notifications on component mount if user is authenticated
@@ -440,11 +442,11 @@ export const AppSidebar = memo(function AppSidebar() {
         </SidebarFooter>
       </div>
 
-      {/* Trial Warning Dialog */}
-      <TrialWarningDialog 
+      {/* COMMENTED OUT: Trial Warning Dialog (Trial extended by 14 days) */}
+      {/* <TrialWarningDialog 
         isOpen={showTrialWarning} 
         onClose={() => setShowTrialWarning(false)} 
-      />
+      /> */}
     </TooltipProvider>
   )
 })
