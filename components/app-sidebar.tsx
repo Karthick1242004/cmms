@@ -139,7 +139,7 @@ export const AppSidebar = memo(function AppSidebar() {
               variant="outline"
               className="animate-pulse bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300"
             >
-              v0.001
+              v0.013
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">Maintenance Management</p>
