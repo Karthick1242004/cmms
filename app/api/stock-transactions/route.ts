@@ -31,11 +31,6 @@ const StockTransactionSchema = new mongoose.Schema({
       message: 'Transaction date cannot be in the future'
     }
   },
-  referenceNumber: { 
-    type: String,
-    maxlength: [50, 'Reference number cannot exceed 50 characters'],
-    trim: true
-  },
   description: { 
     type: String, 
     required: [true, 'Description is required'],

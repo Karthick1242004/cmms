@@ -465,9 +465,26 @@ export function EmployeeShiftHistoryDialog({
                     <TableRow key={`${shift.id}-${index}`} className="hover:bg-muted/50">
                       <TableCell>
                         <div className="space-y-2">
-                          <Badge className={getShiftTypeColor(shift.shiftType)}>
-                            {shift.shiftType.charAt(0).toUpperCase() + shift.shiftType.slice(1)}
-                          </Badge>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className={getShiftTypeColor(shift.shiftType)}>
+                              {shift.shiftType.charAt(0).toUpperCase() + shift.shiftType.slice(1)}
+                            </Badge>
+                            {(() => {
+                              const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+                              const isWorkingToday = shift.workDays?.includes(today);
+                              return (
+                                <Badge 
+                                  variant={isWorkingToday ? "default" : "destructive"}
+                                  className={isWorkingToday 
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300" 
+                                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 border-red-300"
+                                  }
+                                >
+                                  {isWorkingToday ? "Present" : "Off"}
+                                </Badge>
+                              );
+                            })()}
+                          </div>
                           <div className="text-sm text-muted-foreground">
                             {shift.role}
                           </div>

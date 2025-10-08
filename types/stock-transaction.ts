@@ -16,7 +16,6 @@ export interface StockTransaction {
   transactionType: 'receipt' | 'issue' | 'transfer' | 'adjustment' | 'scrap';
   transactionTypeDisplay?: string;
   transactionDate: string | Date;
-  referenceNumber?: string;
   description: string;
   
   // Enhanced procurement tracking for 'receipt' type
@@ -139,7 +138,6 @@ export interface StockTransactionFormData {
   destinationDepartment?: string;
   transferNotes?: string;
   transactionDate: string;
-  referenceNumber?: string;
   description: string;
   
   // New vendor and procurement fields

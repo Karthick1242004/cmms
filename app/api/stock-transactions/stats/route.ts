@@ -8,7 +8,6 @@ const StockTransactionSchema = new mongoose.Schema({
   transactionNumber: { type: String },
   transactionType: { type: String },
   transactionDate: { type: Date },
-  referenceNumber: { type: String },
   description: { type: String },
   sourceLocation: { type: String },
   destinationLocation: { type: String },

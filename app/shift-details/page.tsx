@@ -1237,9 +1237,26 @@ export default function ShiftDetailsPage() {
                 </TableCell>
                 <TableCell>
                   <div className="space-y-2">
-                    <Badge className={getShiftTypeColor(shift.shiftType)}>
-                      {shift.shiftType.charAt(0).toUpperCase() + shift.shiftType.slice(1)}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getShiftTypeColor(shift.shiftType)}>
+                        {shift.shiftType.charAt(0).toUpperCase() + shift.shiftType.slice(1)}
+                      </Badge>
+                      {(() => {
+                        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+                        const isWorkingToday = shift.workDays.includes(today);
+                        return (
+                          <Badge 
+                            variant={isWorkingToday ? "default" : "destructive"}
+                            className={isWorkingToday 
+                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300" 
+                              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 border-red-300"
+                            }
+                          >
+                            {isWorkingToday ? "Present" : "Off"}
+                          </Badge>
+                        );
+                      })()}
+                    </div>
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Clock className="mr-1 h-3 w-3" />
                       {formatTime(shift.shiftStartTime)} - {formatTime(shift.shiftEndTime)}

@@ -13,7 +13,6 @@ const StockTransactionSchema = new mongoose.Schema({
     enum: ['receipt', 'issue', 'transfer_in', 'transfer_out', 'adjustment', 'scrap']
   },
   transactionDate: { type: Date, required: true },
-  referenceNumber: { type: String },
   description: { type: String, required: true },
   
   // Source/Destination Information

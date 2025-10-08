@@ -63,6 +63,18 @@ export const AppSidebar = memo(function AppSidebar() {
 
   // Get navigation including custom features
   const navigation = getFullNavigation()
+  
+  // Filter navigation based on user permissions
+  // Feedback module is only visible to tyjdemo@tyjfood.com
+  const FEEDBACK_ADMIN_EMAIL = 'tyjdemo@tyjfood.com'
+  const filteredNavigation = navigation.filter((item: NavigationItem) => {
+    // Show Feedback only to the designated admin
+    if (item.name === 'Feedback' || item.href === '/feedback') {
+      return user?.email === FEEDBACK_ADMIN_EMAIL
+    }
+    // Show all other items to everyone
+    return true
+  })
 
   const handleNavigation = (href: string) => {
     // First navigate to the page
@@ -152,7 +164,7 @@ export const AppSidebar = memo(function AppSidebar() {
             <div className="px-2 py-1">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Navigation</h3>
             </div>
-            {navigation.map((item: NavigationItem) => {
+            {filteredNavigation.map((item: NavigationItem) => {
               const IconComponent = getIcon(item.iconName)
               const isParentActive = item.subItems ? pathname.startsWith(item.href) : pathname === item.href
               const isParentLoading = item.subItems

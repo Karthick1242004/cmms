@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,7 +35,7 @@ import { useAuthStore } from "@/stores/auth-store"
 import { useRouter } from "next/navigation"
 import type { FeedbackFormData } from "@/types/feedback"
 
-// Hardcoded admin email
+// Hardcoded admin email - Only this user can access feedback module
 const ADMIN_EMAIL = 'tyjdemo@tyjfood.com'
 
 export default function FeedbackPage() {
@@ -45,6 +45,16 @@ export default function FeedbackPage() {
   
   // Check if current user is admin
   const isAdmin = user?.email === ADMIN_EMAIL
+  
+  // Redirect unauthorized users
+  useEffect(() => {
+    if (user && !isAdmin) {
+      toast.error('Access Denied', {
+        description: 'You do not have permission to access this page.'
+      })
+      router.push('/')
+    }
+  }, [user, isAdmin, router])
 
   // Form state
   const [formData, setFormData] = useState<Partial<FeedbackFormData>>({
@@ -291,7 +301,7 @@ export default function FeedbackPage() {
         })
         // Redirect to dashboard after successful submission
         setTimeout(() => {
-          router.push('/dashboard')
+          router.push('/')
         }, 1500)
       } else {
         toast.error(result.message || 'Failed to submit feedback')

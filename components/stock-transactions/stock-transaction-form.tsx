@@ -72,9 +72,6 @@ const stockTransactionFormSchema = z.object({
   }).refine((date) => date <= new Date(), {
     message: "Transaction date cannot be in the future",
   }),
-  referenceNumber: z.string()
-    .max(50, "Reference number cannot exceed 50 characters")
-    .optional(),
   description: z.string()
     .min(1, "Description is required")
     .min(10, "Description must be at least 10 characters")
@@ -246,7 +243,6 @@ export function StockTransactionForm({
     defaultValues: {
       transactionType: initialData?.transactionType || 'receipt',
       transactionDate: initialData?.transactionDate ? new Date(initialData.transactionDate) : new Date(),
-      referenceNumber: initialData?.referenceNumber || '',
       description: initialData?.description || '',
       materialCode: initialData?.materialCode || '',
       purchaseOrderNumber: initialData?.purchaseOrderNumber || '',
@@ -701,10 +697,11 @@ export function StockTransactionForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* Header Information */}
+        {/* Basic Transaction Info */}
         <Card>
           <CardHeader>
-            <CardTitle>Transaction Details</CardTitle>
+            <CardTitle>Create Stock Transaction</CardTitle>
+            <p className="text-sm text-muted-foreground">Record a new inventory movement or stock operation.</p>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Transaction Type */}
@@ -801,21 +798,238 @@ export function StockTransactionForm({
               )}
             />
 
-            {/* Reference Number */}
+          </CardContent>
+        </Card>
+
+        {/* Items Section - Moved to top for better UX */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Items</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">Select parts for this transaction</p>
+            </div>
+            <Button type="button" onClick={addItem} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Item
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {/* Info Banner for Issue Transactions */}
+            {watchedTransactionType === 'issue' && !isAutoFilledFromPart && (
+              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                      Smart Auto-Fill Enabled
+                    </h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      When you select your first part, procurement details (Material Code, PO Number, Vendor Name, and Vendor Contact) will automatically fill from the part's information. You can still edit these fields manually if needed.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {watchedTransactionType === 'issue' && isAutoFilledFromPart && (
+              <div className="mb-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-medium">Procurement fields auto-filled from part data</span>
+                </div>
+              </div>
+            )}
+            
+            {fields.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No items added yet. Click "Add Item" to get started.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {fields.map((field, index) => (
+                  <Card key={field.id} className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Part Selection */}
+                      <div className="lg:col-span-2">
+                        <Label>Part *</Label>
+                        <Popover 
+                          open={partSearchOpen[index] || false} 
+                          onOpenChange={(open) => setPartSearchOpen(prev => ({ ...prev, [index]: open }))}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between",
+                                !form.watch(`items.${index}.partName`) && "text-muted-foreground"
+                              )}
+                            >
+                              {form.watch(`items.${index}.partName`) || "Select part"}
+                              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0">
+                            <Command>
+                              <CommandInput placeholder="Search parts..." />
+                              <CommandEmpty>No parts found.</CommandEmpty>
+                              <CommandGroup>
+                                <ScrollArea className="h-[200px]">
+                                  {filteredParts.map((part) => (
+                                    <CommandItem
+                                      key={part.id}
+                                      onSelect={() => handlePartSelect(index, part)}
+                                    >
+                                      <div className="flex flex-col w-full">
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-medium">{part.name}</span>
+                                          <Badge variant={part.stockStatus === 'in_stock' ? 'default' : 'destructive'}>
+                                            {part.quantity} in stock
+                                          </Badge>
+                                        </div>
+                                        <span className="text-sm text-muted-foreground">
+                                          {part.partNumber} - {part.category}
+                                        </span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </ScrollArea>
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      {/* Quantity */}
             <FormField
               control={form.control}
-              name="referenceNumber"
+                        name={`items.${index}.quantity`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reference Number</FormLabel>
+                            <FormLabel>Quantity *</FormLabel>
                   <FormControl>
-                    <Input placeholder="PO#, WO#, etc." {...field} />
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="0"
+                                value={field.value === 0 ? '' : field.value?.toString() || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                                  field.onChange(value);
+                                  handleQuantityChange(index, value);
+                                }}
+                                onBlur={(e) => {
+                                  if (e.target.value === '') {
+                                    field.onChange(0);
+                                  }
+                                  field.onBlur();
+                                }}
+                              />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+                      {/* Unit Cost */}
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.unitCost`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Unit Cost</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                value={field.value === 0 ? '' : field.value?.toString() || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                                  field.onChange(value);
+                                  handleUnitCostChange(index, value);
+                                }}
+                                onBlur={(e) => {
+                                  if (e.target.value === '') {
+                                    field.onChange(0);
+                                  }
+                                  field.onBlur();
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Notes */}
+                      <div className="lg:col-span-3">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.notes`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Notes</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Item-specific notes" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {/* Remove Button */}
+                      <div className="flex items-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeItem(index)}
+                          className="w-full"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Total Cost Display */}
+                    <div className="mt-2 text-right">
+                      <span className="text-sm text-muted-foreground">
+                        Total: ${((form.watch(`items.${index}.quantity`) || 0) * (form.watch(`items.${index}.unitCost`) || 0)).toFixed(2)}
+                      </span>
+                    </div>
+                  </Card>
+                ))}
+
+                {/* Grand Total */}
+                <div className="flex justify-end">
+                  <Card className="p-4">
+                    <div className="text-lg font-semibold">
+                      Grand Total: ${totalAmount.toFixed(2)}
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Transaction Details - Auto-filled fields */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Transaction Details</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Material Code */}
             <FormField
               control={form.control}
@@ -1174,12 +1388,12 @@ export function StockTransactionForm({
                   )}
                 </Label>
                 <Popover open={ticketSearchOpen} onOpenChange={setTicketSearchOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      className={cn(
-                        "w-full justify-between",
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between",
                         !form.watch('workOrderNumber') && "text-muted-foreground"
                       )}
                       disabled={isLoadingTickets}
@@ -1196,11 +1410,11 @@ export function StockTransactionForm({
                           {watchedAssetId ? '🎯 Select ticket for this asset' : '📋 Select ticket from your department'}
                         </span>
                       )}
-                      <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
+                              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
                   <PopoverContent className="w-[500px] p-0">
-                    <Command>
+                            <Command>
                       <CommandInput placeholder="Search tickets by ID or subject..." />
                       <CommandEmpty>
                         {isLoadingTickets ? (
@@ -1223,10 +1437,10 @@ export function StockTransactionForm({
                           </div>
                         )}
                       </CommandEmpty>
-                      <CommandGroup>
+                              <CommandGroup>
                         <ScrollArea className="h-[300px]">
                           {filteredTickets.map((ticket) => (
-                            <CommandItem
+                                    <CommandItem
                               key={ticket.id}
                               onSelect={() => handleTicketSelect(ticket)}
                             >
@@ -1252,8 +1466,8 @@ export function StockTransactionForm({
                                       className="text-xs"
                                     >
                                       {ticket.priority}
-                                    </Badge>
-                                  </div>
+                                          </Badge>
+                                        </div>
                                   <Badge variant="outline" className="text-xs">
                                     {ticket.status}
                                   </Badge>
@@ -1266,14 +1480,14 @@ export function StockTransactionForm({
                                   )}
                                   <span>• 🏢 {ticket.department}</span>
                                 </div>
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </ScrollArea>
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </ScrollArea>
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                 {watchedAssetId && filteredTickets.length > 0 && (
                   <p className="text-xs text-muted-foreground">
                     ℹ️ Showing {filteredTickets.length} ticket(s) for the selected asset
@@ -1284,230 +1498,10 @@ export function StockTransactionForm({
                     ℹ️ Showing {filteredTickets.length} ticket(s) from your department. Select an asset to filter tickets.
                   </p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Items */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Items</CardTitle>
-            <Button type="button" onClick={addItem} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {/* Info Banner for Issue Transactions */}
-            {watchedTransactionType === 'issue' && !isAutoFilledFromPart && (
-              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                      Smart Auto-Fill Enabled
-                    </h4>
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                      When you select your first part, procurement details (Material Code, PO Number, Vendor Name, and Vendor Contact) will automatically fill from the part's information. You can still edit these fields manually if needed.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {watchedTransactionType === 'issue' && isAutoFilledFromPart && (
-              <div className="mb-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-medium">Procurement fields auto-filled from part data</span>
-                </div>
-              </div>
-            )}
-            
-            {fields.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No items added yet. Click "Add Item" to get started.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {fields.map((field, index) => (
-                  <Card key={field.id} className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Part Selection */}
-                      <div className="lg:col-span-2">
-                        <Label>Part *</Label>
-                        <Popover 
-                          open={partSearchOpen[index] || false} 
-                          onOpenChange={(open) => setPartSearchOpen(prev => ({ ...prev, [index]: open }))}
-                        >
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between",
-                                !form.watch(`items.${index}.partName`) && "text-muted-foreground"
-                              )}
-                            >
-                              {form.watch(`items.${index}.partName`) || "Select part"}
-                              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0">
-                            <Command>
-                              <CommandInput placeholder="Search parts..." />
-                              <CommandEmpty>No parts found.</CommandEmpty>
-                              <CommandGroup>
-                                <ScrollArea className="h-[200px]">
-                                  {filteredParts.map((part) => (
-                                    <CommandItem
-                                      key={part.id}
-                                      onSelect={() => handlePartSelect(index, part)}
-                                    >
-                                      <div className="flex flex-col w-full">
-                                        <div className="flex items-center justify-between">
-                                          <span className="font-medium">{part.name}</span>
-                                          <Badge variant={part.stockStatus === 'in_stock' ? 'default' : 'destructive'}>
-                                            {part.quantity} in stock
-                                          </Badge>
-                                        </div>
-                                        <span className="text-sm text-muted-foreground">
-                                          {part.partNumber} - {part.category}
-                                        </span>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </ScrollArea>
-                              </CommandGroup>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
                       </div>
-
-                      {/* Quantity */}
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.quantity`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Quantity *</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0.01"
-                                placeholder="0"
-                                value={field.value === 0 ? '' : field.value?.toString() || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                                  field.onChange(value);
-                                  handleQuantityChange(index, value);
-                                }}
-                                onBlur={(e) => {
-                                  if (e.target.value === '') {
-                                    field.onChange(0);
-                                  }
-                                  field.onBlur();
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Unit Cost */}
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.unitCost`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Unit Cost</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                placeholder="0.00"
-                                value={field.value === 0 ? '' : field.value?.toString() || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                                  field.onChange(value);
-                                  handleUnitCostChange(index, value);
-                                }}
-                                onBlur={(e) => {
-                                  if (e.target.value === '') {
-                                    field.onChange(0);
-                                  }
-                                  field.onBlur();
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Notes */}
-                      <div className="lg:col-span-3">
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.notes`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Notes</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Item-specific notes" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      {/* Remove Button */}
-                      <div className="flex items-end">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeItem(index)}
-                          className="w-full"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Total Cost Display */}
-                    <div className="mt-2 text-right">
-                      <span className="text-sm text-muted-foreground">
-                        Total: ${((form.watch(`items.${index}.quantity`) || 0) * (form.watch(`items.${index}.unitCost`) || 0)).toFixed(2)}
-                      </span>
-                    </div>
-                  </Card>
-                ))}
-
-                {/* Grand Total */}
-                <div className="flex justify-end">
-                  <Card className="p-4">
-                    <div className="text-lg font-semibold">
-                      Grand Total: ${totalAmount.toFixed(2)}
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
+        )}
 
         {/* Description and Notes */}
         <Card>
