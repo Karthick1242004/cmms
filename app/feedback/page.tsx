@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
@@ -438,7 +439,7 @@ export default function FeedbackPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="numberOfEmployees">Number of employees</Label>
+                  <Label htmlFor="numberOfEmployees">Number of employee access:</Label>
                   <Input
                     id="numberOfEmployees"
                     value={formData.numberOfEmployees || ''}
@@ -531,7 +532,7 @@ export default function FeedbackPage() {
                     onCheckedChange={(checked) => handleCheckboxChange('realTimeNotifications', checked as boolean)}
                   />
                   <Label htmlFor="realTimeNotifications" className="cursor-pointer">
-                    Real-time notifications for tasks?
+                  Critical web notifications for tasks?
                   </Label>
                 </div>
 
@@ -587,6 +588,18 @@ export default function FeedbackPage() {
                   </div>
                 </div>
               )}
+
+              {/* Other Comments for Section 2 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section2OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section2OtherComments"
+                  value={formData.section2OtherComments || ''}
+                  onChange={(e) => handleInputChange('section2OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Daily Activities..."
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -640,9 +653,21 @@ export default function FeedbackPage() {
                     onCheckedChange={(checked) => handleCheckboxChange('alertsForMeetings', checked as boolean)}
                   />
                   <Label htmlFor="alertsForMeetings" className="cursor-pointer">
-                    Alerts/notifications for meetings?
+                  Web alerts/notifications for meetings?
                   </Label>
                 </div>
+              </div>
+
+              {/* Other Comments for Section 3 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section3OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section3OtherComments"
+                  value={formData.section3OtherComments || ''}
+                  onChange={(e) => handleInputChange('section3OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Meeting & Communication..."
+                  rows={3}
+                />
               </div>
             </CardContent>
           </Card>
@@ -722,6 +747,18 @@ export default function FeedbackPage() {
                   />
                 </div>
               </div>
+
+              {/* Other Comments for Section 4 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section4OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section4OtherComments"
+                  value={formData.section4OtherComments || ''}
+                  onChange={(e) => handleInputChange('section4OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Asset Management..."
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -753,7 +790,7 @@ export default function FeedbackPage() {
                     onCheckedChange={(checked) => handleCheckboxChange('autoRemindersForPM', checked as boolean)}
                   />
                   <Label htmlFor="autoRemindersForPM" className="cursor-pointer">
-                    Auto reminders & alerts for PM tasks?
+                  Auto web reminders & alerts for PM tasks?
                   </Label>
                 </div>
 
@@ -789,6 +826,18 @@ export default function FeedbackPage() {
                   />
                 </div>
               </div>
+
+              {/* Other Comments for Section 5 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section5OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section5OtherComments"
+                  value={formData.section5OtherComments || ''}
+                  onChange={(e) => handleInputChange('section5OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Preventive Maintenance..."
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -809,7 +858,7 @@ export default function FeedbackPage() {
                     onCheckedChange={(checked) => handleCheckboxChange('safetyInspectionChecklists', checked as boolean)}
                   />
                   <Label htmlFor="safetyInspectionChecklists" className="cursor-pointer">
-                    Safety inspection checklists?
+                  Safety inspection scheduling?
                   </Label>
                 </div>
 
@@ -820,7 +869,7 @@ export default function FeedbackPage() {
                     onCheckedChange={(checked) => handleCheckboxChange('incidentReportingFollowUp', checked as boolean)}
                   />
                   <Label htmlFor="incidentReportingFollowUp" className="cursor-pointer">
-                    Incident reporting & follow-up?
+                  Checklists follow-up
                   </Label>
                 </div>
 
@@ -845,6 +894,18 @@ export default function FeedbackPage() {
                     Corrective & preventive actions (CAPA)?
                   </Label>
                 </div>
+              </div>
+
+              {/* Other Comments for Section 6 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section6OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section6OtherComments"
+                  value={formData.section6OtherComments || ''}
+                  onChange={(e) => handleInputChange('section6OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Safety & Compliance..."
+                  rows={3}
+                />
               </div>
             </CardContent>
           </Card>
@@ -877,7 +938,7 @@ export default function FeedbackPage() {
                     onCheckedChange={(checked) => handleCheckboxChange('stockLevelsReorderAlerts', checked as boolean)}
                   />
                   <Label htmlFor="stockLevelsReorderAlerts" className="cursor-pointer">
-                    Stock levels & reorder alerts?
+                  Stock levels web alerts?
                   </Label>
                 </div>
 
@@ -924,6 +985,18 @@ export default function FeedbackPage() {
                   />
                 </div>
               </div>
+
+              {/* Other Comments for Section 7 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section7OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section7OtherComments"
+                  value={formData.section7OtherComments || ''}
+                  onChange={(e) => handleInputChange('section7OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Spare Parts & Inventory..."
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -969,6 +1042,18 @@ export default function FeedbackPage() {
                     User roles & permissions?
                   </Label>
                 </div>
+              </div>
+
+              {/* Other Comments for Section 8 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section8OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section8OtherComments"
+                  value={formData.section8OtherComments || ''}
+                  onChange={(e) => handleInputChange('section8OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Employee / Staff Management..."
+                  rows={3}
+                />
               </div>
             </CardContent>
           </Card>
@@ -1060,6 +1145,18 @@ export default function FeedbackPage() {
                   </Label>
                 </div>
               </div>
+
+              {/* Other Comments for Section 9 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section9OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section9OtherComments"
+                  value={formData.section9OtherComments || ''}
+                  onChange={(e) => handleInputChange('section9OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Reporting & Analytics..."
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -1150,6 +1247,18 @@ export default function FeedbackPage() {
                   />
                 </div>
               </div>
+
+              {/* Other Comments for Section 10 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section10OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section10OtherComments"
+                  value={formData.section10OtherComments || ''}
+                  onChange={(e) => handleInputChange('section10OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Notifications & Alerts..."
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -1206,6 +1315,18 @@ export default function FeedbackPage() {
                     Dashboard for management overview?
                   </Label>
                 </div>
+              </div>
+
+              {/* Other Comments for Section 11 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section11OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section11OtherComments"
+                  value={formData.section11OtherComments || ''}
+                  onChange={(e) => handleInputChange('section11OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Visual / Display Features..."
+                  rows={3}
+                />
               </div>
             </CardContent>
           </Card>
@@ -1274,6 +1395,18 @@ export default function FeedbackPage() {
                     Audit logs for compliance?
                   </Label>
                 </div>
+              </div>
+
+              {/* Other Comments for Section 12 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section12OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section12OtherComments"
+                  value={formData.section12OtherComments || ''}
+                  onChange={(e) => handleInputChange('section12OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Historical Data & Audit..."
+                  rows={3}
+                />
               </div>
             </CardContent>
           </Card>
@@ -1379,6 +1512,18 @@ export default function FeedbackPage() {
                   />
                 </div>
               </div>
+
+              {/* Other Comments for Section 13 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section13OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section13OtherComments"
+                  value={formData.section13OtherComments || ''}
+                  onChange={(e) => handleInputChange('section13OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Cloud Deployment Details..."
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -1397,9 +1542,9 @@ export default function FeedbackPage() {
                   {[
                     { value: 'ownCloud', label: 'Own Cloud Hosting & Storage' },
                     { value: 'provideCloud', label: 'Provide Cloud Hosting & Storage setup' },
-                    { value: 'fmmsSoftware', label: 'FMMS Software One-Time License + Setup' },
-                    { value: 'amcCloud', label: 'AMC + Cloud management' },
-                    { value: 'subscription', label: 'FMMS user and asset-based subscription' }
+                    // { value: 'fmmsSoftware', label: 'FMMS Software One-Time License + Setup' },
+                    // { value: 'amcCloud', label: 'AMC + Cloud management' },
+                    // { value: 'subscription', label: 'FMMS user and asset-based subscription' }
                   ].map(option => (
                     <div key={option.value} className="flex items-center space-x-2">
                       <Checkbox
@@ -1429,6 +1574,18 @@ export default function FeedbackPage() {
                   type="date"
                   value={formData.expectedGoLiveDate || ''}
                   onChange={(e) => handleInputChange('expectedGoLiveDate', e.target.value)}
+                />
+              </div>
+
+              {/* Other Comments for Section 14 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section14OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section14OtherComments"
+                  value={formData.section14OtherComments || ''}
+                  onChange={(e) => handleInputChange('section14OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for Deployment Preference & Go-Live..."
+                  rows={3}
                 />
               </div>
             </CardContent>
@@ -1522,6 +1679,44 @@ export default function FeedbackPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Other Comments for Section 15 */}
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="section15OtherComments">Other Comments (Optional)</Label>
+                <Textarea
+                  id="section15OtherComments"
+                  value={formData.section15OtherComments || ''}
+                  onChange={(e) => handleInputChange('section15OtherComments', e.target.value)}
+                  placeholder="Any other requirements or comments for File Upload / Asset & Spare Parts Details..."
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 16: New Requirements */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Section 16: New Requirements
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="newRequirements">Any additional requirements or features you need (Optional)</Label>
+                <Textarea
+                  id="newRequirements"
+                  value={formData.newRequirements || ''}
+                  onChange={(e) => handleInputChange('newRequirements', e.target.value)}
+                  placeholder="Please describe any additional features, customizations, or requirements that were not covered in the previous sections..."
+                  rows={6}
+                  className="resize-y"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use this space to provide any other information that you think would be helpful for us to know.
+                </p>
               </div>
             </CardContent>
           </Card>

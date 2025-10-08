@@ -102,6 +102,18 @@ export function StockTransactionList({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isReportOpen, setIsReportOpen] = useState(false);
 
+  // Debug: Log user data when component mounts or user changes
+  useEffect(() => {
+    console.log('👤 [StockTransactionList] User data from auth store:', {
+      email: user?.email,
+      name: user?.name,
+      role: user?.role,
+      accessLevel: user?.accessLevel,
+      department: user?.department,
+      fullUser: user
+    });
+  }, [user]);
+
   // Load transactions on component mount
   useEffect(() => {
     fetchTransactions();
@@ -264,12 +276,27 @@ export function StockTransactionList({
   };
 
   const canDelete = (transaction: StockTransaction) => {
+    // Debug logging
+    console.log('🗑️ [canDelete] Checking delete permission:', {
+      userEmail: user?.email,
+      userAccessLevel: user?.accessLevel,
+      transactionStatus: transaction.status,
+      transactionId: transaction.id
+    });
+
     // Only super_admin can delete transactions
     if (user?.accessLevel === 'super_admin') {
       // Can delete draft and pending transactions (before they affect inventory)
-      return transaction.status === 'draft' || transaction.status === 'pending';
+      const canDeleteStatus = transaction.status === 'draft' || transaction.status === 'pending';
+      console.log('🗑️ [canDelete] Super admin check:', {
+        canDeleteStatus,
+        status: transaction.status,
+        allowedStatuses: ['draft', 'pending']
+      });
+      return canDeleteStatus;
     }
     
+    console.log('🗑️ [canDelete] Not super admin, cannot delete');
     return false;
   };
 

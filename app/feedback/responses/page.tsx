@@ -370,6 +370,12 @@ export default function FeedbackResponsesPage() {
                         {selectedFeedback.avgSizePerVideo && <InfoItem label="Video Size" value={selectedFeedback.avgSizePerVideo} />}
                       </div>
                     )}
+                    {selectedFeedback.section2OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section2OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -388,6 +394,12 @@ export default function FeedbackResponsesPage() {
                       <BooleanItem label="Action items assignment" value={selectedFeedback.actionItemsAssignment} />
                       <BooleanItem label="Alerts/notifications for meetings" value={selectedFeedback.alertsForMeetings} />
                     </div>
+                    {selectedFeedback.section3OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section3OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -410,6 +422,12 @@ export default function FeedbackResponsesPage() {
                         <InfoItem label="Approximate number of assets" value={selectedFeedback.approximateNumberOfAssets} />
                       )}
                     </div>
+                    {selectedFeedback.section4OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section4OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -431,6 +449,12 @@ export default function FeedbackResponsesPage() {
                         <InfoItem label="Number of PM tasks per month" value={selectedFeedback.numberOfPMTasksPerMonth} />
                       )}
                     </div>
+                    {selectedFeedback.section5OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section5OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -449,6 +473,12 @@ export default function FeedbackResponsesPage() {
                       <BooleanItem label="Compliance audit logs" value={selectedFeedback.complianceAuditLogs} />
                       <BooleanItem label="Corrective & preventive actions (CAPA)" value={selectedFeedback.correctivePreventiveActions} />
                     </div>
+                    {selectedFeedback.section6OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section6OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -471,6 +501,12 @@ export default function FeedbackResponsesPage() {
                         <InfoItem label="Approximate number of spare items" value={selectedFeedback.approximateNumberOfSpareItems} />
                       )}
                     </div>
+                    {selectedFeedback.section7OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section7OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -488,6 +524,12 @@ export default function FeedbackResponsesPage() {
                       <BooleanItem label="Technician assignment & performance tracking" value={selectedFeedback.technicianAssignmentPerformance} />
                       <BooleanItem label="User roles & permissions" value={selectedFeedback.userRolesPermissions} />
                     </div>
+                    {selectedFeedback.section8OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section8OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -509,6 +551,12 @@ export default function FeedbackResponsesPage() {
                       <BooleanItem label="Custom dashboards & KPIs" value={selectedFeedback.customDashboardsKPIs} />
                       <BooleanItem label="Export reports to Excel/PDF" value={selectedFeedback.exportReports} />
                     </div>
+                    {selectedFeedback.section9OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section9OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -534,6 +582,12 @@ export default function FeedbackResponsesPage() {
                         <InfoItem label="Approximate notifications per user per day" value={selectedFeedback.approximateNotificationsPerDay} />
                       )}
                     </div>
+                    {selectedFeedback.section10OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section10OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -552,6 +606,12 @@ export default function FeedbackResponsesPage() {
                       <BooleanItem label="Graphs & charts for KPIs" value={selectedFeedback.graphsChartsKPIs} />
                       <BooleanItem label="Dashboard for management overview" value={selectedFeedback.dashboardManagementOverview} />
                     </div>
+                    {selectedFeedback.section11OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section11OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -571,6 +631,12 @@ export default function FeedbackResponsesPage() {
                       <BooleanItem label="Parts transaction history" value={selectedFeedback.partsTransactionHistory} />
                       <BooleanItem label="Audit logs for compliance" value={selectedFeedback.auditLogsCompliance} />
                     </div>
+                    {selectedFeedback.section12OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section12OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -607,6 +673,12 @@ export default function FeedbackResponsesPage() {
                         <InfoItem label="Expected annual growth in users/assets (%)" value={selectedFeedback.expectedAnnualGrowth} />
                       )}
                     </div>
+                    {selectedFeedback.section13OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section13OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -642,6 +714,12 @@ export default function FeedbackResponsesPage() {
                         <InfoItem label="Expected go-live date" value={format(new Date(selectedFeedback.expectedGoLiveDate), 'MMMM dd, yyyy')} />
                       )}
                     </div>
+                    {selectedFeedback.section14OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section14OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -675,8 +753,29 @@ export default function FeedbackResponsesPage() {
                         </div>
                       </div>
                     </div>
+                    {selectedFeedback.section15OtherComments && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Other Comments:</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedFeedback.section15OtherComments}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
+
+                {/* Section 16: New Requirements */}
+                {selectedFeedback.newRequirements && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        New Requirements
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm whitespace-pre-wrap">{selectedFeedback.newRequirements}</p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Confirmation Status */}
                 <Card className="border-2 border-green-500/20 bg-green-50 dark:bg-green-950/20">

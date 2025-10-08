@@ -23,12 +23,14 @@ export interface FeedbackFormData {
   avgVideosPerWorkOrder?: string;
   avgSizePerImage?: string;
   avgSizePerVideo?: string;
+  section2OtherComments?: string;
 
   // Section 3: Meeting & Communication
   logMeetingMinutes: boolean;
   teamDiscussionThreads: boolean;
   actionItemsAssignment: boolean;
   alertsForMeetings: boolean;
+  section3OtherComments?: string;
 
   // Section 4: Asset Management
   maintainAssetRegister: boolean;
@@ -37,6 +39,7 @@ export interface FeedbackFormData {
   assetLifecycleTracking: boolean;
   assetCategorization: boolean;
   approximateNumberOfAssets?: string;
+  section4OtherComments?: string;
 
   // Section 5: Preventive Maintenance (PM)
   pmScheduling: boolean;
@@ -44,12 +47,14 @@ export interface FeedbackFormData {
   pmChecklistsTemplates: boolean;
   pmReportsCompliance: boolean;
   numberOfPMTasksPerMonth?: string;
+  section5OtherComments?: string;
 
   // Section 6: Safety & Compliance
   safetyInspectionChecklists: boolean;
   incidentReportingFollowUp: boolean;
   complianceAuditLogs: boolean;
   correctivePreventiveActions: boolean;
+  section6OtherComments?: string;
 
   // Section 7: Spare Parts & Inventory
   sparePartMasterList: boolean;
@@ -58,11 +63,13 @@ export interface FeedbackFormData {
   supplierVendorTracking: boolean;
   barcodeQRCodeIntegration: boolean;
   approximateNumberOfSpareItems?: string;
+  section7OtherComments?: string;
 
   // Section 8: Employee / Staff Management
   employeeShiftsRoster: boolean;
   technicianAssignmentPerformance: boolean;
   userRolesPermissions: boolean;
+  section8OtherComments?: string;
 
   // Section 9: Reporting & Analytics
   downtimeAnalysis: boolean;
@@ -72,6 +79,7 @@ export interface FeedbackFormData {
   sparePartUsageReports: boolean;
   customDashboardsKPIs: boolean;
   exportReports: boolean;
+  section9OtherComments?: string;
 
   // Section 10: Notifications & Alerts
   workOrderStatusUpdates: boolean;
@@ -81,12 +89,14 @@ export interface FeedbackFormData {
   pushNotifications: boolean;
   pushNotificationsType?: string;
   approximateNotificationsPerDay?: string;
+  section10OtherComments?: string;
 
   // Section 11: Visual / Display Features
   bannerDisplay: boolean;
   noticeBoard: boolean;
   graphsChartsKPIs: boolean;
   dashboardManagementOverview: boolean;
+  section11OtherComments?: string;
 
   // Section 12: Historical Data & Audit
   assetMaintenanceHistory: boolean;
@@ -94,6 +104,7 @@ export interface FeedbackFormData {
   pmCompletionHistory: boolean;
   partsTransactionHistory: boolean;
   auditLogsCompliance: boolean;
+  section12OtherComments?: string;
 
   // Section 13: Cloud Deployment Details
   usersUploadingDaily?: string;
@@ -104,10 +115,12 @@ export interface FeedbackFormData {
   backupRetentionPeriod?: string;
   disasterRecoveryRequired: boolean;
   expectedAnnualGrowth?: string;
+  section13OtherComments?: string;
 
   // Section 14: Deployment Preference & Go-Live
   deploymentType: string[];
   expectedGoLiveDate?: string;
+  section14OtherComments?: string;
 
   // Section 15: File Upload / Asset & Spare Parts Details
   maintainAssetList: boolean;
@@ -116,6 +129,10 @@ export interface FeedbackFormData {
   approximateSparePartsCount?: string;
   canProvideSparePartsList: boolean;
   haveBarcodeQRInfo: boolean;
+  section15OtherComments?: string;
+
+  // Section 16: New Requirements
+  newRequirements?: string;
 
   // Confirmation
   confirmInformation: boolean;

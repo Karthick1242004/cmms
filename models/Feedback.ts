@@ -25,12 +25,14 @@ export interface IFeedback extends Document {
   avgVideosPerWorkOrder?: string;
   avgSizePerImage?: string;
   avgSizePerVideo?: string;
+  section2OtherComments?: string;
 
   // Section 3: Meeting & Communication
   logMeetingMinutes: boolean;
   teamDiscussionThreads: boolean;
   actionItemsAssignment: boolean;
   alertsForMeetings: boolean;
+  section3OtherComments?: string;
 
   // Section 4: Asset Management
   maintainAssetRegister: boolean;
@@ -39,6 +41,7 @@ export interface IFeedback extends Document {
   assetLifecycleTracking: boolean;
   assetCategorization: boolean;
   approximateNumberOfAssets?: string;
+  section4OtherComments?: string;
 
   // Section 5: Preventive Maintenance
   pmScheduling: boolean;
@@ -46,12 +49,14 @@ export interface IFeedback extends Document {
   pmChecklistsTemplates: boolean;
   pmReportsCompliance: boolean;
   numberOfPMTasksPerMonth?: string;
+  section5OtherComments?: string;
 
   // Section 6: Safety & Compliance
   safetyInspectionChecklists: boolean;
   incidentReportingFollowUp: boolean;
   complianceAuditLogs: boolean;
   correctivePreventiveActions: boolean;
+  section6OtherComments?: string;
 
   // Section 7: Spare Parts & Inventory
   sparePartMasterList: boolean;
@@ -60,11 +65,13 @@ export interface IFeedback extends Document {
   supplierVendorTracking: boolean;
   barcodeQRCodeIntegration: boolean;
   approximateNumberOfSpareItems?: string;
+  section7OtherComments?: string;
 
   // Section 8: Employee Management
   employeeShiftsRoster: boolean;
   technicianAssignmentPerformance: boolean;
   userRolesPermissions: boolean;
+  section8OtherComments?: string;
 
   // Section 9: Reporting & Analytics
   downtimeAnalysis: boolean;
@@ -74,6 +81,7 @@ export interface IFeedback extends Document {
   sparePartUsageReports: boolean;
   customDashboardsKPIs: boolean;
   exportReports: boolean;
+  section9OtherComments?: string;
 
   // Section 10: Notifications & Alerts
   workOrderStatusUpdates: boolean;
@@ -83,12 +91,14 @@ export interface IFeedback extends Document {
   pushNotifications: boolean;
   pushNotificationsType?: string;
   approximateNotificationsPerDay?: string;
+  section10OtherComments?: string;
 
   // Section 11: Visual Features
   bannerDisplay: boolean;
   noticeBoard: boolean;
   graphsChartsKPIs: boolean;
   dashboardManagementOverview: boolean;
+  section11OtherComments?: string;
 
   // Section 12: Historical Data
   assetMaintenanceHistory: boolean;
@@ -96,6 +106,7 @@ export interface IFeedback extends Document {
   pmCompletionHistory: boolean;
   partsTransactionHistory: boolean;
   auditLogsCompliance: boolean;
+  section12OtherComments?: string;
 
   // Section 13: Cloud Deployment
   usersUploadingDaily?: string;
@@ -106,10 +117,12 @@ export interface IFeedback extends Document {
   backupRetentionPeriod?: string;
   disasterRecoveryRequired: boolean;
   expectedAnnualGrowth?: string;
+  section13OtherComments?: string;
 
   // Section 14: Deployment Preference
   deploymentType: string[];
   expectedGoLiveDate?: string;
+  section14OtherComments?: string;
 
   // Section 15: File Upload Details
   maintainAssetList: boolean;
@@ -118,6 +131,10 @@ export interface IFeedback extends Document {
   approximateSparePartsCount?: string;
   canProvideSparePartsList: boolean;
   haveBarcodeQRInfo: boolean;
+  section15OtherComments?: string;
+
+  // Section 16: New Requirements
+  newRequirements?: string;
 
   // Confirmation
   confirmInformation: boolean;
@@ -157,12 +174,14 @@ const FeedbackSchema = new Schema<IFeedback>({
   avgVideosPerWorkOrder: { type: String, trim: true },
   avgSizePerImage: { type: String, trim: true },
   avgSizePerVideo: { type: String, trim: true },
+  section2OtherComments: { type: String, trim: true },
 
   // Section 3
   logMeetingMinutes: { type: Boolean, default: false },
   teamDiscussionThreads: { type: Boolean, default: false },
   actionItemsAssignment: { type: Boolean, default: false },
   alertsForMeetings: { type: Boolean, default: false },
+  section3OtherComments: { type: String, trim: true },
 
   // Section 4
   maintainAssetRegister: { type: Boolean, default: false },
@@ -171,6 +190,7 @@ const FeedbackSchema = new Schema<IFeedback>({
   assetLifecycleTracking: { type: Boolean, default: false },
   assetCategorization: { type: Boolean, default: false },
   approximateNumberOfAssets: { type: String, trim: true },
+  section4OtherComments: { type: String, trim: true },
 
   // Section 5
   pmScheduling: { type: Boolean, default: false },
@@ -178,12 +198,14 @@ const FeedbackSchema = new Schema<IFeedback>({
   pmChecklistsTemplates: { type: Boolean, default: false },
   pmReportsCompliance: { type: Boolean, default: false },
   numberOfPMTasksPerMonth: { type: String, trim: true },
+  section5OtherComments: { type: String, trim: true },
 
   // Section 6
   safetyInspectionChecklists: { type: Boolean, default: false },
   incidentReportingFollowUp: { type: Boolean, default: false },
   complianceAuditLogs: { type: Boolean, default: false },
   correctivePreventiveActions: { type: Boolean, default: false },
+  section6OtherComments: { type: String, trim: true },
 
   // Section 7
   sparePartMasterList: { type: Boolean, default: false },
@@ -192,11 +214,13 @@ const FeedbackSchema = new Schema<IFeedback>({
   supplierVendorTracking: { type: Boolean, default: false },
   barcodeQRCodeIntegration: { type: Boolean, default: false },
   approximateNumberOfSpareItems: { type: String, trim: true },
+  section7OtherComments: { type: String, trim: true },
 
   // Section 8
   employeeShiftsRoster: { type: Boolean, default: false },
   technicianAssignmentPerformance: { type: Boolean, default: false },
   userRolesPermissions: { type: Boolean, default: false },
+  section8OtherComments: { type: String, trim: true },
 
   // Section 9
   downtimeAnalysis: { type: Boolean, default: false },
@@ -206,6 +230,7 @@ const FeedbackSchema = new Schema<IFeedback>({
   sparePartUsageReports: { type: Boolean, default: false },
   customDashboardsKPIs: { type: Boolean, default: false },
   exportReports: { type: Boolean, default: false },
+  section9OtherComments: { type: String, trim: true },
 
   // Section 10
   workOrderStatusUpdates: { type: Boolean, default: false },
@@ -215,12 +240,14 @@ const FeedbackSchema = new Schema<IFeedback>({
   pushNotifications: { type: Boolean, default: false },
   pushNotificationsType: { type: String, trim: true },
   approximateNotificationsPerDay: { type: String, trim: true },
+  section10OtherComments: { type: String, trim: true },
 
   // Section 11
   bannerDisplay: { type: Boolean, default: false },
   noticeBoard: { type: Boolean, default: false },
   graphsChartsKPIs: { type: Boolean, default: false },
   dashboardManagementOverview: { type: Boolean, default: false },
+  section11OtherComments: { type: String, trim: true },
 
   // Section 12
   assetMaintenanceHistory: { type: Boolean, default: false },
@@ -228,6 +255,7 @@ const FeedbackSchema = new Schema<IFeedback>({
   pmCompletionHistory: { type: Boolean, default: false },
   partsTransactionHistory: { type: Boolean, default: false },
   auditLogsCompliance: { type: Boolean, default: false },
+  section12OtherComments: { type: String, trim: true },
 
   // Section 13
   usersUploadingDaily: { type: String, trim: true },
@@ -238,10 +266,12 @@ const FeedbackSchema = new Schema<IFeedback>({
   backupRetentionPeriod: { type: String, trim: true },
   disasterRecoveryRequired: { type: Boolean, default: false },
   expectedAnnualGrowth: { type: String, trim: true },
+  section13OtherComments: { type: String, trim: true },
 
   // Section 14
   deploymentType: [{ type: String }],
   expectedGoLiveDate: { type: String, trim: true },
+  section14OtherComments: { type: String, trim: true },
 
   // Section 15
   maintainAssetList: { type: Boolean, default: false },
@@ -250,6 +280,10 @@ const FeedbackSchema = new Schema<IFeedback>({
   approximateSparePartsCount: { type: String, trim: true },
   canProvideSparePartsList: { type: Boolean, default: false },
   haveBarcodeQRInfo: { type: Boolean, default: false },
+  section15OtherComments: { type: String, trim: true },
+
+  // Section 16
+  newRequirements: { type: String, trim: true },
 
   // Confirmation
   confirmInformation: { type: Boolean, required: true, default: false },
