@@ -240,32 +240,22 @@ export async function DELETE(
     let canDelete = false;
     
     if (user.accessLevel === 'super_admin') {
-      // Super admin can delete draft and pending transactions (before they affect inventory)
-      canDelete = transaction.status === 'draft' || transaction.status === 'pending';
+      // Super admin can delete any transaction (full control)
+      canDelete = true;
     }
     // Only super admin can delete transactions (no department admin access)
 
     if (!canDelete) {
-      let message = 'Unauthorized - Only super administrators can delete transactions';
-      
-      if (user.accessLevel !== 'super_admin') {
-        message = 'Unauthorized - Only super administrators can delete transactions';
-      } else if (transaction.status !== 'draft' && transaction.status !== 'pending') {
-        message = 'Cannot delete transaction - Only draft and pending transactions can be deleted';
-      }
-      
       return NextResponse.json(
-        { success: false, message },
+        { success: false, message: 'Unauthorized - Only super administrators can delete transactions' },
         { status: 403 }
       );
     }
 
-    // Additional safety check: Prevent deletion if transaction has been completed and affected inventory
-    if (transaction.status === 'completed') {
-      return NextResponse.json(
-        { success: false, message: 'Cannot delete completed transaction - Transaction has already affected inventory' },
-        { status: 400 }
-      );
+    // Warning: Deleting approved/completed transactions may affect inventory consistency
+    // But super admin has full control and responsibility
+    if (transaction.status === 'completed' || transaction.status === 'approved') {
+      console.warn(`⚠️ [DELETE] Super admin deleting ${transaction.status} transaction ${id} - this may affect inventory consistency`);
     }
 
     // Store transaction details before deletion for logging

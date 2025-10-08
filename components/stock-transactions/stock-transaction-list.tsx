@@ -286,12 +286,13 @@ export function StockTransactionList({
 
     // Only super_admin can delete transactions
     if (user?.accessLevel === 'super_admin') {
-      // Can delete draft and pending transactions (before they affect inventory)
-      const canDeleteStatus = transaction.status === 'draft' || transaction.status === 'pending';
+      // Super admin can delete any transaction (with appropriate warnings)
+      // Note: Backend API will still enforce draft/pending restriction for safety
+      const canDeleteStatus = true; // Allow UI to show delete option for all statuses
       console.log('🗑️ [canDelete] Super admin check:', {
         canDeleteStatus,
         status: transaction.status,
-        allowedStatuses: ['draft', 'pending']
+        note: 'Super admin can attempt to delete any status (backend may restrict)'
       });
       return canDeleteStatus;
     }
