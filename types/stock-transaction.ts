@@ -1,5 +1,5 @@
 export interface StockTransactionItem {
-  partId: string;
+  partId?: string; // Made optional for new parts in receipt transactions
   partNumber: string;
   partName: string;
   quantity: number;
@@ -8,6 +8,14 @@ export interface StockTransactionItem {
   fromLocation?: string;
   toLocation?: string;
   notes?: string;
+  
+  // Fields for new part creation (receipt transactions)
+  category?: string;
+  department?: string;
+  supplier?: string;
+  description?: string;
+  sku?: string;
+  materialCode?: string;
 }
 
 export interface StockTransaction {

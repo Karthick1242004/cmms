@@ -115,7 +115,7 @@ const stockTransactionFormSchema = z.object({
     .max(50, "Work order number cannot exceed 50 characters")
     .optional(),
   items: z.array(z.object({
-    partId: z.string().min(1, "Part is required"),
+    partId: z.string().optional(), // Made optional for new parts in receipt transactions
     partNumber: z.string()
       .min(1, "Part number is required")
       .max(50, "Part number cannot exceed 50 characters"),
@@ -148,6 +148,25 @@ const stockTransactionFormSchema = z.object({
     notes: z.string()
       .max(500, "Notes cannot exceed 500 characters")
       .optional(),
+    // Fields for new part creation (receipt transactions)
+    category: z.string()
+      .max(100, "Category cannot exceed 100 characters")
+      .optional(),
+    department: z.string()
+      .max(100, "Department cannot exceed 100 characters")
+      .optional(),
+    supplier: z.string()
+      .max(200, "Supplier cannot exceed 200 characters")
+      .optional(),
+    description: z.string()
+      .max(500, "Description cannot exceed 500 characters")
+      .optional(),
+    sku: z.string()
+      .max(50, "SKU cannot exceed 50 characters")
+      .optional(),
+    materialCode: z.string()
+      .max(50, "Material code cannot exceed 50 characters")
+      .optional(),
   }))
     .min(1, "At least one item is required")
     .max(50, "Cannot exceed 50 items per transaction"),
@@ -170,6 +189,37 @@ const stockTransactionFormSchema = z.object({
 }, {
   message: "Supplier is required for receipt transactions",
   path: ["supplier"],
+}).refine((data) => {
+  // Business rule: For receipt transactions, each item must have either partId (existing part) OR complete new part info
+  if (data.transactionType === 'receipt') {
+    for (let i = 0; i < data.items.length; i++) {
+      const item = data.items[i];
+      const hasExistingPart = item.partId && item.partId.trim().length > 0;
+      const hasNewPartInfo = item.category && item.sku && item.description;
+      
+      if (!hasExistingPart && !hasNewPartInfo) {
+        return false;
+      }
+    }
+  }
+  return true;
+}, {
+  message: "For receipt transactions, each item must either be an existing part or have complete new part information (category, SKU, description)",
+  path: ["items"],
+}).refine((data) => {
+  // Business rule: For non-receipt transactions, each item must have partId (existing part)
+  if (data.transactionType !== 'receipt') {
+    for (let i = 0; i < data.items.length; i++) {
+      const item = data.items[i];
+      if (!item.partId || item.partId.trim().length === 0) {
+        return false;
+      }
+    }
+  }
+  return true;
+}, {
+  message: "For non-receipt transactions, you must select existing parts from inventory",
+  path: ["items"],
 }).refine((data) => {
   // Business rule: Issue transactions must have a recipient or destination
   if (data.transactionType === 'issue' && !data.recipient && !data.destinationLocation) {
@@ -228,6 +278,13 @@ export function StockTransactionForm({
   const [recipientSearchOpen, setRecipientSearchOpen] = useState(false);
   const [ticketSearchOpen, setTicketSearchOpen] = useState(false);
   
+  // State to track whether each item is a new part (for receipt) or existing part selection
+  const [isNewPart, setIsNewPart] = useState<{ [key: number]: boolean }>({});
+  
+  // State for category management
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState<{ [key: number]: boolean }>({});
+  const [newlyAddedCategories, setNewlyAddedCategories] = useState<string[]>([]);
+  
   const [filteredParts, setFilteredParts] = useState<Part[]>([]);
   const [filteredAssets, setFilteredAssets] = useState<Asset[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
@@ -257,7 +314,16 @@ export function StockTransactionForm({
       assetName: initialData?.assetName || '',
       workOrderId: initialData?.workOrderId || '',
       workOrderNumber: initialData?.workOrderNumber || '',
-      items: initialData?.items || [],
+      items: initialData?.items?.map(item => ({
+        ...item,
+        // Add new fields with defaults for existing data
+        category: (item as any).category || '',
+        department: (item as any).department || user?.department || '',
+        supplier: (item as any).supplier || '',
+        description: (item as any).description || '',
+        sku: (item as any).sku || '',
+        materialCode: (item as any).materialCode || '',
+      })) || [],
       priority: initialData?.priority || 'normal',
       notes: initialData?.notes || '',
       internalNotes: initialData?.internalNotes || '',
@@ -394,12 +460,69 @@ export function StockTransactionForm({
       fromLocation: '',
       toLocation: '',
       notes: '',
+      // Fields for new part creation (receipt transactions)
+      category: '',
+      department: user?.department || '',
+      supplier: '',
+      description: '',
+      sku: '',
+      materialCode: '',
     });
   };
 
   // Remove item
   const removeItem = (index: number) => {
     remove(index);
+    // Clean up the isNewPart state
+    setIsNewPart(prev => {
+      const newState = { ...prev };
+      delete newState[index];
+      // Reindex the remaining items
+      const reindexed: { [key: number]: boolean } = {};
+      Object.entries(newState).forEach(([key, value]) => {
+        const keyNum = parseInt(key);
+        if (keyNum > index) {
+          reindexed[keyNum - 1] = value;
+        } else {
+          reindexed[keyNum] = value;
+        }
+      });
+      return reindexed;
+    });
+  };
+
+  // Toggle between new part creation and existing part selection for receipt transactions
+  const togglePartMode = (index: number) => {
+    setIsNewPart(prev => ({ ...prev, [index]: !prev[index] }));
+    
+    // Clear part-related fields when switching modes
+    form.setValue(`items.${index}.partId`, '');
+    form.setValue(`items.${index}.partNumber`, '');
+    form.setValue(`items.${index}.partName`, '');
+    form.setValue(`items.${index}.category`, '');
+    form.setValue(`items.${index}.description`, '');
+    form.setValue(`items.${index}.sku`, '');
+    form.setValue(`items.${index}.materialCode`, '');
+  };
+
+  // Handle adding new category
+  const handleAddNewCategory = (index: number, categoryName: string) => {
+    if (categoryName.trim() && !existingCategories.includes(categoryName.trim())) {
+      setNewlyAddedCategories(prev => [...prev, categoryName.trim()]);
+      form.setValue(`items.${index}.category`, categoryName.trim());
+      setShowNewCategoryInput(prev => ({ ...prev, [index]: false }));
+    }
+  };
+
+  // Calculate existing categories from parts
+  const existingCategories = [...new Set([
+    ...filteredParts.map(part => part.category).filter(Boolean), 
+    ...newlyAddedCategories
+  ])];
+
+  // Toggle new category input
+  const toggleNewCategoryInput = (index: number) => {
+    setShowNewCategoryInput(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
   // Handle part selection
@@ -575,7 +698,7 @@ export function StockTransactionForm({
       errors.push('Source and destination locations must be different for transfers');
     }
 
-    // Validate item quantities and stock availability
+    // Validate item-specific requirements
     data.items.forEach((item, index) => {
       if (item.quantity <= 0) {
         errors.push(`Item ${index + 1}: Quantity must be greater than 0`);
@@ -584,8 +707,22 @@ export function StockTransactionForm({
         errors.push(`Item ${index + 1}: Unit cost cannot be negative`);
       }
       
-      // Validate stock availability for outbound transactions (issue, scrap)
-      if (['issue', 'scrap'].includes(data.transactionType)) {
+      // For receipt transactions, validate based on mode
+      if (data.transactionType === 'receipt') {
+        const hasExistingPart = item.partId && item.partId.trim().length > 0;
+        const hasNewPartInfo = item.category && item.sku && item.description;
+        
+        if (!hasExistingPart && !hasNewPartInfo) {
+          errors.push(`Item ${index + 1}: Must either select an existing part or provide complete new part information (category, SKU, description)`);
+        }
+      } else {
+        // For non-receipt transactions, must have existing part
+        if (!item.partId || item.partId.trim().length === 0) {
+          errors.push(`Item ${index + 1}: Must select an existing part from inventory`);
+        }
+        
+        // Validate stock availability for outbound transactions (issue, scrap)
+        if (['issue', 'scrap'].includes(data.transactionType)) {
         const part = parts.find(p => p.id === item.partId);
         if (part) {
           const availableStock = part.quantity || 0;
@@ -596,6 +733,7 @@ export function StockTransactionForm({
           }
         } else if (item.partId) {
           errors.push(`${item.partName}: Part not found in inventory`);
+          }
         }
       }
     });
@@ -630,6 +768,8 @@ export function StockTransactionForm({
         items: data.items.map(item => ({
           ...item,
           totalCost: item.quantity * (item.unitCost || 0),
+          // Ensure partId is either a valid string or omitted for new parts
+          ...(item.partId ? { partId: item.partId } : {}),
         })),
       };
 
@@ -814,6 +954,27 @@ export function StockTransactionForm({
             </Button>
           </CardHeader>
           <CardContent>
+            {/* Info Banner for Receipt Transactions */}
+            {watchedTransactionType === 'receipt' && (
+              <div className="mb-4 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-green-900 dark:text-green-100 mb-1">
+                      Receipt Transaction Mode
+                    </h4>
+                    <p className="text-sm text-green-800 dark:text-green-200">
+                      For receipt transactions, you can either <strong>add new parts</strong> (that don't exist in your inventory yet) or <strong>select existing parts</strong> to increase their stock. Use the toggle button on each item to switch between modes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Info Banner for Issue Transactions */}
             {watchedTransactionType === 'issue' && !isAutoFilledFromPart && (
               <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -854,57 +1015,252 @@ export function StockTransactionForm({
               <div className="space-y-4">
                 {fields.map((field, index) => (
                   <Card key={field.id} className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Part Selection */}
-                      <div className="lg:col-span-2">
-                        <Label>Part *</Label>
-                        <Popover 
-                          open={partSearchOpen[index] || false} 
-                          onOpenChange={(open) => setPartSearchOpen(prev => ({ ...prev, [index]: open }))}
-                        >
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between",
-                                !form.watch(`items.${index}.partName`) && "text-muted-foreground"
-                              )}
-                            >
-                              {form.watch(`items.${index}.partName`) || "Select part"}
-                              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0">
-                            <Command>
-                              <CommandInput placeholder="Search parts..." />
-                              <CommandEmpty>No parts found.</CommandEmpty>
-                              <CommandGroup>
-                                <ScrollArea className="h-[200px]">
-                                  {filteredParts.map((part) => (
-                                    <CommandItem
-                                      key={part.id}
-                                      onSelect={() => handlePartSelect(index, part)}
-                                    >
-                                      <div className="flex flex-col w-full">
-                                        <div className="flex items-center justify-between">
-                                          <span className="font-medium">{part.name}</span>
-                                          <Badge variant={part.stockStatus === 'in_stock' ? 'default' : 'destructive'}>
-                                            {part.quantity} in stock
-                                          </Badge>
-                                        </div>
-                                        <span className="text-sm text-muted-foreground">
-                                          {part.partNumber} - {part.category}
-                                        </span>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </ScrollArea>
-                              </CommandGroup>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                    {/* Header with toggle for receipt transactions */}
+                    {watchedTransactionType === 'receipt' && (
+                      <div className="flex items-center justify-between mb-4 pb-2 border-b">
+                        <span className="text-sm font-medium">Item #{index + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {isNewPart[index] ? 'Adding New Part' : 'Selecting Existing Part'}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => togglePartMode(index)}
+                            className="text-xs"
+                          >
+                            {isNewPart[index] ? '📦 Switch to Existing' : '➕ Switch to New'}
+                          </Button>
+                        </div>
                       </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Conditional Part Selection/Creation */}
+                      {watchedTransactionType === 'receipt' && isNewPart[index] ? (
+                        // NEW PART CREATION FIELDS FOR RECEIPT TRANSACTIONS
+                        <>
+                          {/* Part Number */}
+            <FormField
+              control={form.control}
+                            name={`items.${index}.partNumber`}
+              render={({ field }) => (
+                <FormItem>
+                                <FormLabel>Part Number *</FormLabel>
+                  <FormControl>
+                                  <Input placeholder="Enter part number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+                          {/* Part Name */}
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.partName`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Part Name *</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter part name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* SKU */}
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.sku`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>SKU *</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter SKU code" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Category */}
+                          <div className="space-y-2">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.category`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Category *</FormLabel>
+                                  <div className="flex gap-2">
+                                    <Select onValueChange={field.onChange} value={field.value || undefined}>
+                                      <FormControl>
+                                        <SelectTrigger className="flex-1">
+                                          <SelectValue placeholder="Select category" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {existingCategories.length > 0 ? (
+                                          existingCategories.map((category) => (
+                                            <SelectItem key={category} value={category}>
+                                              {category}
+                                            </SelectItem>
+                                          ))
+                                        ) : (
+                                          <div className="py-6 text-center text-sm text-muted-foreground">
+                                            No categories found. Click + to add one.
+                                          </div>
+                                        )}
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => toggleNewCategoryInput(index)}
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            {showNewCategoryInput[index] && (
+                              <div className="flex gap-2">
+                                <Input
+                                  id={`new-category-input-${index}`}
+                                  placeholder="Enter new category name"
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      const target = e.target as HTMLInputElement;
+                                      if (target.value.trim()) {
+                                        handleAddNewCategory(index, target.value);
+                                        target.value = '';
+                                      }
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const input = document.getElementById(`new-category-input-${index}`) as HTMLInputElement;
+                                    if (input && input.value.trim()) {
+                                      handleAddNewCategory(index, input.value);
+                                      input.value = '';
+                                    }
+                                  }}
+                                >
+                                  Add
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Description */}
+                          <div className="lg:col-span-2">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.description`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Description *</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Enter part description" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+            {/* Material Code */}
+            <FormField
+              control={form.control}
+                            name={`items.${index}.materialCode`}
+              render={({ field }) => (
+                <FormItem>
+                                <FormLabel>Material Code</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter material code" {...field} />
+                  </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Supplier */}
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.supplier`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Supplier</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter supplier name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      ) : (
+                        // EXISTING PART SELECTION (FOR ALL OTHER TRANSACTIONS OR RECEIPT WITH EXISTING PARTS)
+                        <div className="lg:col-span-2">
+                          <Label>Part *</Label>
+                          <Popover 
+                            open={partSearchOpen[index] || false} 
+                            onOpenChange={(open) => setPartSearchOpen(prev => ({ ...prev, [index]: open }))}
+                          >
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !form.watch(`items.${index}.partName`) && "text-muted-foreground"
+                                )}
+                              >
+                                {form.watch(`items.${index}.partName`) || "Select part"}
+                                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0">
+                              <Command>
+                                <CommandInput placeholder="Search parts..." />
+                                <CommandEmpty>No parts found.</CommandEmpty>
+                                <CommandGroup>
+                                  <ScrollArea className="h-[200px]">
+                                    {filteredParts.map((part) => (
+                                      <CommandItem
+                                        key={part.id}
+                                        onSelect={() => handlePartSelect(index, part)}
+                                      >
+                                        <div className="flex flex-col w-full">
+                                          <div className="flex items-center justify-between">
+                                            <span className="font-medium">{part.name}</span>
+                                            <Badge variant={part.stockStatus === 'in_stock' ? 'default' : 'destructive'}>
+                                              {part.quantity} in stock
+                                            </Badge>
+                                          </div>
+                                          <span className="text-sm text-muted-foreground">
+                                            {part.partNumber} - {part.category}
+                                          </span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </ScrollArea>
+                                </CommandGroup>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      )}
 
                       {/* Quantity */}
             <FormField
