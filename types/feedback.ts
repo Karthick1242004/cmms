@@ -149,6 +149,15 @@ export interface Feedback extends FeedbackFormData {
   id: string;
   createdAt: string;
   updatedAt: string;
+  
+  // E-Signature & Approval fields
+  isApproved?: boolean;
+  approvedBy?: string;
+  approvedByName?: string;
+  approvedByEmail?: string;
+  approvedAt?: string;
+  signatureData?: string; // Base64 signature image data
+  approvalComments?: string;
 }
 
 export interface FeedbacksResponse {

@@ -147,6 +147,15 @@ export interface IFeedback extends Document {
   submittedAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  
+  // E-Signature & Approval fields
+  isApproved?: boolean;
+  approvedBy?: string;
+  approvedByName?: string;
+  approvedByEmail?: string;
+  approvedAt?: Date;
+  signatureData?: string;
+  approvalComments?: string;
 }
 
 const FeedbackSchema = new Schema<IFeedback>({
@@ -294,6 +303,15 @@ const FeedbackSchema = new Schema<IFeedback>({
   submittedByEmail: { type: String, required: true, trim: true },
   submittedByDepartment: { type: String, trim: true },
   submittedAt: { type: Date, required: true, default: Date.now },
+  
+  // E-Signature & Approval fields
+  isApproved: { type: Boolean, default: false },
+  approvedBy: { type: String },
+  approvedByName: { type: String },
+  approvedByEmail: { type: String },
+  approvedAt: { type: Date },
+  signatureData: { type: String }, // Base64 encoded signature image
+  approvalComments: { type: String, trim: true },
 }, {
   timestamps: true
 });

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { 
   FileText, 
   Search, 
@@ -39,13 +41,20 @@ import {
   Clock,
   Download,
   Filter,
-  ArrowLeft
+  ArrowLeft,
+  FileDown,
+  PenTool,
+  Trash2,
+  Check
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuthStore } from "@/stores/auth-store"
 import { useRouter } from "next/navigation"
 import type { Feedback } from "@/types/feedback"
 import { format } from "date-fns"
+import SignatureCanvas from "react-signature-canvas"
+import jsPDF from "jspdf"
+import html2canvas from "html2canvas"
 
 // Hardcoded admin email
 const ADMIN_EMAIL = 'tyjdemo@tyjfood.com'
@@ -58,6 +67,14 @@ export default function FeedbackResponsesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  
+  // E-Signature states
+  const [showSignaturePad, setShowSignaturePad] = useState(false)
+  const [approvalComments, setApprovalComments] = useState('')
+  const [isApproving, setIsApproving] = useState(false)
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
+  const signaturePadRef = useRef<SignatureCanvas>(null)
+  const feedbackContentRef = useRef<HTMLDivElement>(null)
 
   // Check if user is admin
   useEffect(() => {
@@ -123,6 +140,187 @@ export default function FeedbackResponsesPage() {
   const handleViewDetails = (feedback: Feedback) => {
     setSelectedFeedback(feedback)
     setIsDetailDialogOpen(true)
+    setShowSignaturePad(false)
+    setApprovalComments('')
+  }
+
+  const clearSignature = () => {
+    signaturePadRef.current?.clear()
+  }
+
+  const handleApprove = async () => {
+    if (!selectedFeedback) return
+
+    if (!signaturePadRef.current || signaturePadRef.current.isEmpty()) {
+      toast.error('Please provide your signature')
+      return
+    }
+
+    setIsApproving(true)
+    try {
+      const token = localStorage.getItem('auth-token')
+      if (!token) {
+        toast.error('Authentication required')
+        router.push('/login')
+        return
+      }
+
+      const signatureData = signaturePadRef.current.toDataURL()
+      
+      console.log('✅ [FRONTEND] Sending signature:', {
+        signatureLength: signatureData.length,
+        signaturePreview: signatureData.substring(0, 50) + '...'
+      })
+
+      const response = await fetch(`/api/feedback/${selectedFeedback.id}/approve`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          signatureData,
+          approvalComments,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to approve feedback')
+      }
+
+      if (result.success) {
+        console.log('✅ [FRONTEND] Approval response:', {
+          hasSignature: !!result.data.signatureData,
+          signatureLength: result.data.signatureData?.length || 0,
+          isApproved: result.data.isApproved,
+          approvedByName: result.data.approvedByName
+        })
+        
+        toast.success('Feedback approved successfully')
+        
+        // Transform the response data to match our Feedback type
+        const updatedFeedback = {
+          ...selectedFeedback,
+          ...result.data,
+          id: selectedFeedback.id, // Keep the original id
+          _id: undefined, // Remove MongoDB _id
+          isApproved: result.data.isApproved || true,
+          approvedBy: result.data.approvedBy,
+          approvedByName: result.data.approvedByName,
+          approvedByEmail: result.data.approvedByEmail,
+          approvedAt: result.data.approvedAt,
+          signatureData: result.data.signatureData,
+          approvalComments: result.data.approvalComments,
+        }
+        
+        console.log('✅ [FRONTEND] Updated feedback:', {
+          hasSignature: !!updatedFeedback.signatureData,
+          isApproved: updatedFeedback.isApproved
+        })
+        
+        // Update the feedback in the list
+        setFeedbacks(prev => prev.map(fb => 
+          fb.id === selectedFeedback.id ? updatedFeedback : fb
+        ))
+        
+        // Update selected feedback
+        setSelectedFeedback(updatedFeedback)
+        
+        setShowSignaturePad(false)
+        setApprovalComments('')
+        clearSignature()
+      }
+    } catch (error) {
+      console.error('Error approving feedback:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to approve feedback')
+    } finally {
+      setIsApproving(false)
+    }
+  }
+
+  const handleExportPDF = async () => {
+    if (!selectedFeedback || !feedbackContentRef.current) return
+
+    setIsExportingPDF(true)
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 15
+
+      // Add header
+      pdf.setFontSize(20)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('Client Feedback Report', pageWidth / 2, 20, { align: 'center' })
+
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'normal')
+      pdf.text(`Company: ${selectedFeedback.companyName}`, margin, 30)
+      pdf.text(`Generated: ${format(new Date(), 'MMMM dd, yyyy hh:mm a')}`, margin, 36)
+
+      // Capture the content
+      const canvas = await html2canvas(feedbackContentRef.current, {
+        useCORS: true,
+        logging: false,
+      } as any)
+
+      const imgData = canvas.toDataURL('image/png')
+      const imgWidth = pageWidth - (margin * 2)
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      let heightLeft = imgHeight
+      let position = 45
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight)
+      heightLeft -= (pageHeight - position - margin)
+
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + margin
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight)
+        heightLeft -= (pageHeight - margin * 2)
+      }
+
+      // Add signature if approved
+      if (selectedFeedback.isApproved && selectedFeedback.signatureData) {
+        pdf.addPage()
+        pdf.setFontSize(16)
+        pdf.setFont('helvetica', 'bold')
+        pdf.text('Approval Information', margin, 20)
+
+        pdf.setFontSize(12)
+        pdf.setFont('helvetica', 'normal')
+        pdf.text(`Approved By: ${selectedFeedback.approvedByName}`, margin, 35)
+        pdf.text(`Approved Date: ${format(new Date(selectedFeedback.approvedAt!), 'MMMM dd, yyyy hh:mm a')}`, margin, 42)
+
+        if (selectedFeedback.approvalComments) {
+          pdf.text('Comments:', margin, 49)
+          const comments = pdf.splitTextToSize(selectedFeedback.approvalComments, pageWidth - margin * 2)
+          pdf.text(comments, margin, 56)
+        }
+
+        // Add signature image
+        const signatureY = selectedFeedback.approvalComments ? 70 + (pdf.splitTextToSize(selectedFeedback.approvalComments, pageWidth - margin * 2).length * 7) : 56
+        pdf.text('Signature:', margin, signatureY)
+        pdf.addImage(selectedFeedback.signatureData, 'PNG', margin, signatureY + 5, 60, 30)
+      }
+
+      // Save PDF
+      const fileName = `Feedback_${selectedFeedback.companyName.replace(/[^a-z0-9]/gi, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`
+      pdf.save(fileName)
+
+      toast.success('PDF exported successfully')
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      toast.error('Failed to export PDF')
+    } finally {
+      setIsExportingPDF(false)
+    }
   }
 
   const filteredFeedbacks = feedbacks.filter(fb =>
@@ -210,6 +408,7 @@ export default function FeedbackResponsesPage() {
                       <TableHead>Industry</TableHead>
                       <TableHead>Submitted By</TableHead>
                       <TableHead>Submitted At</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -247,6 +446,19 @@ export default function FeedbackResponsesPage() {
                             </div>
                           </div>
                         </TableCell>
+                        <TableCell>
+                          {feedback.isApproved ? (
+                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300">
+                              <CheckCircle2 className="mr-1 h-3 w-3" />
+                              Approved
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">
+                              <Clock className="mr-1 h-3 w-3" />
+                              Pending
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="outline"
@@ -269,17 +481,47 @@ export default function FeedbackResponsesPage() {
 
       {/* Detail Dialog */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-6xl max-h-[95vh]">
           <DialogHeader>
-            <DialogTitle>Feedback Details</DialogTitle>
-            <DialogDescription>
-              Comprehensive feedback submission from {selectedFeedback?.companyName}
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Feedback Details</DialogTitle>
+                <DialogDescription>
+                  Comprehensive feedback submission from {selectedFeedback?.companyName}
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedFeedback?.isApproved && (
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-300">
+                    <CheckCircle2 className="mr-1 h-4 w-4" />
+                    Approved
+                  </Badge>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportPDF}
+                  disabled={isExportingPDF}
+                >
+                  {isExportingPDF ? (
+                    <>
+                      <Clock className="mr-2 h-4 w-4 animate-spin" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Export PDF
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </DialogHeader>
 
           <ScrollArea className="h-[70vh] pr-4">
             {selectedFeedback && (
-              <div className="space-y-6">
+              <div ref={feedbackContentRef} className="space-y-6">
                 {/* Metadata */}
                 <Card>
                   <CardHeader>
@@ -807,6 +1049,142 @@ export default function FeedbackResponsesPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Approval Section */}
+                {selectedFeedback.isApproved ? (
+                  <Card className="border-2 border-blue-500/20 bg-blue-50 dark:bg-blue-950/20">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                        <PenTool className="h-5 w-5" />
+                        Approval Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <InfoItem label="Approved By" value={selectedFeedback.approvedByName || 'N/A'} />
+                        <InfoItem label="Approved Date" value={selectedFeedback.approvedAt ? format(new Date(selectedFeedback.approvedAt), 'MMMM dd, yyyy hh:mm a') : 'N/A'} />
+                      </div>
+                      {selectedFeedback.approvalComments && (
+                        <div>
+                          <Label className="text-sm font-medium">Comments:</Label>
+                          <p className="text-sm mt-1 p-3 bg-background rounded-lg">{selectedFeedback.approvalComments}</p>
+                        </div>
+                      )}
+                      {selectedFeedback.signatureData && (
+                        <div>
+                          <Label className="text-sm font-medium">Signature:</Label>
+                          <div className="mt-2 p-4 bg-background rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                            <img 
+                              src={selectedFeedback.signatureData} 
+                              alt="Approval Signature" 
+                              className="max-w-xs h-auto"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="border-2 border-yellow-500/20 bg-yellow-50 dark:bg-yellow-950/20">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+                        <PenTool className="h-5 w-5" />
+                        Client Approval
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {!showSignaturePad ? (
+                        <div className="text-center py-6">
+                          <p className="text-sm text-muted-foreground mb-4">
+                            This feedback has not been approved yet. Click below to add your signature and approve.
+                          </p>
+                          <Button
+                            onClick={() => setShowSignaturePad(true)}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            <PenTool className="mr-2 h-4 w-4" />
+                            Add Signature & Approve
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="approvalComments">Approval Comments (Optional)</Label>
+                            <Textarea
+                              id="approvalComments"
+                              placeholder="Add any comments or notes about this feedback..."
+                              value={approvalComments}
+                              onChange={(e) => setApprovalComments(e.target.value)}
+                              rows={3}
+                              className="mt-1"
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Signature *</Label>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              Please sign in the box below to approve this feedback
+                            </p>
+                            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900">
+                              <SignatureCanvas
+                                ref={signaturePadRef}
+                                canvasProps={{
+                                  className: 'w-full h-48 cursor-crosshair',
+                                }}
+                                backgroundColor="transparent"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={clearSignature}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Clear Signature
+                              </Button>
+                              <p className="text-xs text-muted-foreground">
+                                Your signature will be saved with this approval
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-4">
+                            <Button
+                              onClick={handleApprove}
+                              disabled={isApproving}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              {isApproving ? (
+                                <>
+                                  <Clock className="mr-2 h-4 w-4 animate-spin" />
+                                  Approving...
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="mr-2 h-4 w-4" />
+                                  Approve Feedback
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setShowSignaturePad(false)
+                                setApprovalComments('')
+                                clearSignature()
+                              }}
+                              disabled={isApproving}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
               </div>
             )}
