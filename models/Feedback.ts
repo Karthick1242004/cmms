@@ -155,6 +155,7 @@ export interface IFeedback extends Document {
   approvedByEmail?: string;
   approvedAt?: Date;
   signatureData?: string;
+  signatureType?: 'text' | 'image';
   approvalComments?: string;
 }
 
@@ -310,7 +311,8 @@ const FeedbackSchema = new Schema<IFeedback>({
   approvedByName: { type: String },
   approvedByEmail: { type: String },
   approvedAt: { type: Date },
-  signatureData: { type: String }, // Base64 encoded signature image
+  signatureData: { type: String }, // Base64 encoded signature image or text
+  signatureType: { type: String, enum: ['text', 'image'] },
   approvalComments: { type: String, trim: true },
 }, {
   timestamps: true

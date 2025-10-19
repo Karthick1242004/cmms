@@ -32,11 +32,18 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const { signatureData, approvalComments } = body;
+    const { signatureData, signatureType, approvalComments } = body;
 
     if (!signatureData) {
       return NextResponse.json(
         { success: false, message: 'Signature is required for approval' },
+        { status: 400 }
+      );
+    }
+
+    if (!signatureType || !['text', 'image'].includes(signatureType)) {
+      return NextResponse.json(
+        { success: false, message: 'Valid signature type (text or image) is required' },
         { status: 400 }
       );
     }
@@ -58,6 +65,7 @@ export async function PATCH(
     feedback.approvedByEmail = user.email || '';
     feedback.approvedAt = new Date();
     feedback.signatureData = signatureData;
+    feedback.signatureType = signatureType;
     feedback.approvalComments = approvalComments || '';
 
     await feedback.save();
@@ -81,6 +89,7 @@ export async function PATCH(
       approvedByEmail: feedbackData.approvedByEmail,
       approvedAt: feedbackData.approvedAt,
       signatureData: feedbackData.signatureData,
+      signatureType: feedbackData.signatureType,
       approvalComments: feedbackData.approvalComments,
     };
 

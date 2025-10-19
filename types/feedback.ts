@@ -156,7 +156,8 @@ export interface Feedback extends FeedbackFormData {
   approvedByName?: string;
   approvedByEmail?: string;
   approvedAt?: string;
-  signatureData?: string; // Base64 signature image data
+  signatureData?: string; // Base64 signature image data or text
+  signatureType?: 'text' | 'image'; // Type of signature
   approvalComments?: string;
 }
 
