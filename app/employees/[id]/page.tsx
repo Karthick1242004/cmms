@@ -243,12 +243,14 @@ export default function EmployeeDetailPage() {
                 assetAssignments: [],
                 currentAssignments: [],
                 performanceMetrics: {
-                  completedTasks: 0,
-                  pendingTasks: 0,
-                  averageCompletionTime: 0,
-                  qualityScore: 0,
-                  attendanceRate: 0,
-                  safetyIncidents: 0
+                  totalTasksCompleted: 0,
+                  ticketsResolved: 0,
+                  maintenanceCompleted: 0,
+                  safetyInspectionsCompleted: 0,
+                  dailyLogEntries: 0,
+                  efficiency: 0,
+                  rating: 0,
+                  averageCompletionTime: 0
                 },
                 totalWorkHours: 0,
                 productivityScore: 0,

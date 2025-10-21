@@ -83,12 +83,12 @@ export const AppSidebar = memo(function AppSidebar() {
     // COMMENTED OUT: Trial warning dialog (Trial extended by 14 days)
     // Then show trial warning popup if trial has ended
     // This allows users to view existing data while being notified
-    // if (isTrialEnded()) {
-    //   // Small delay to ensure navigation completes first
-    //   setTimeout(() => {
-    //     setShowTrialWarning(true)
-    //   }, 300)
-    // }
+    if (isTrialEnded()) {
+      // Small delay to ensure navigation completes first
+      setTimeout(() => {
+        setShowTrialWarning(true)
+      }, 300)
+    }
   }
 
   // Load notifications on component mount if user is authenticated
@@ -455,10 +455,10 @@ export const AppSidebar = memo(function AppSidebar() {
       </div>
 
       {/* COMMENTED OUT: Trial Warning Dialog (Trial extended by 14 days) */}
-      {/* <TrialWarningDialog 
+      <TrialWarningDialog 
         isOpen={showTrialWarning} 
         onClose={() => setShowTrialWarning(false)} 
-      /> */}
+      />
     </TooltipProvider>
   )
 })
