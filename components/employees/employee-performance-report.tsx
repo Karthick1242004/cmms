@@ -16,9 +16,25 @@ import {
   Brain,
   Loader2
 } from "lucide-react"
+import { 
+  AreaChart, 
+  Area, 
+  PieChart as RechartsPie, 
+  Pie, 
+  Cell, 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts'
 import type { EmployeeDetail, EmployeeAnalytics } from "@/types/employee"
 import { employeesApi } from "@/lib/employees-api"
 import { useToast } from "@/hooks/use-toast"
+import { captureAllCharts } from "@/lib/chart-to-image"
 
 interface EmployeePerformanceReportProps {
   employee: EmployeeDetail
@@ -67,219 +83,50 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
     }
   }
 
-  // Function to capture chart images as base64
+  // Function to capture chart images as high-quality SVG
   const captureChartImages = async (): Promise<Record<string, string>> => {
-    const chartImages: Record<string, string> = {};
-    
     try {
-      const canvasWidth = 500;
-      const canvasHeight = 300;
-
-      // Generate Monthly Activity Chart (Area Chart)
-      if (analytics?.monthlyActivity) {
-        const activityCanvas = document.createElement('canvas');
-        activityCanvas.width = canvasWidth;
-        activityCanvas.height = canvasHeight;
-        const activityCtx = activityCanvas.getContext('2d');
-        if (activityCtx) {
-          drawAreaChart(activityCtx, analytics.monthlyActivity, canvasWidth, canvasHeight, 'Monthly Activity Trend');
-          chartImages.monthlyActivity = activityCanvas.toDataURL();
-        }
+      // Wait for charts to render, then capture them as SVG
+      const chartIds = ['monthly-activity-chart', 'task-distribution-chart', 'performance-trends-chart']
+      const chartImages = await captureAllCharts(chartIds)
+      
+      return {
+        monthlyActivity: chartImages['monthly-activity-chart'] || '',
+        taskDistribution: chartImages['task-distribution-chart'] || '',
+        performanceTrends: chartImages['performance-trends-chart'] || ''
       }
-
-      // Generate Task Distribution Chart (Pie Chart)
-      if (analytics?.taskDistribution) {
-        const taskCanvas = document.createElement('canvas');
-        taskCanvas.width = canvasWidth;
-        taskCanvas.height = canvasHeight;
-        const taskCtx = taskCanvas.getContext('2d');
-        if (taskCtx) {
-          drawPieChart(taskCtx, analytics.taskDistribution, canvasWidth, canvasHeight, 'Task Distribution');
-          chartImages.taskDistribution = taskCanvas.toDataURL();
-        }
-      }
-
-      // Generate Performance Trends Chart (Line Chart)
-      if (analytics?.performanceTrends) {
-        const performanceCanvas = document.createElement('canvas');
-        performanceCanvas.width = canvasWidth;
-        performanceCanvas.height = canvasHeight;
-        const performanceCtx = performanceCanvas.getContext('2d');
-        if (performanceCtx) {
-          drawLineChart(performanceCtx, analytics.performanceTrends, canvasWidth, canvasHeight, 'Performance Trends');
-          chartImages.performanceTrends = performanceCanvas.toDataURL();
-        }
-      }
-
     } catch (error) {
-      console.error('Error capturing chart images:', error);
-    }
-
-    return chartImages;
-  }
-
-  // Helper function to draw area chart
-  const drawAreaChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number, title: string) => {
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-    
-    const padding = 60;
-    const chartWidth = width - 2 * padding;
-    const chartHeight = height - 2 * padding - 40; // Extra space for title
-    
-    const maxValue = Math.max(...data.map(d => d.count || 0));
-    
-    // Draw title
-    ctx.fillStyle = '#1e293b';
-    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(title, width / 2, 25);
-    
-    // Draw axes
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding, padding + 20);
-    ctx.lineTo(padding, height - padding);
-    ctx.lineTo(width - padding, height - padding);
-    ctx.stroke();
-    
-    // Draw area
-    if (data.length > 0) {
-      ctx.fillStyle = '#8884d8' + '30'; // Add transparency
-      ctx.beginPath();
-      ctx.moveTo(padding, height - padding);
-      
-      data.forEach((item, index) => {
-        const x = padding + (index / (data.length - 1)) * chartWidth;
-        const y = height - padding - ((item.count || 0) / maxValue) * chartHeight;
-        ctx.lineTo(x, y);
-      });
-      
-      ctx.lineTo(width - padding, height - padding);
-      ctx.closePath();
-      ctx.fill();
-      
-      // Draw line
-      ctx.strokeStyle = '#8884d8';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      
-      data.forEach((item, index) => {
-        const x = padding + (index / (data.length - 1)) * chartWidth;
-        const y = height - padding - ((item.count || 0) / maxValue) * chartHeight;
-        
-        if (index === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
-      ctx.stroke();
+      console.error('Error capturing chart images:', error)
+      return {}
     }
   }
 
-  // Helper function to draw line chart
-  const drawLineChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number, title: string) => {
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-    
-    const padding = 60;
-    const chartWidth = width - 2 * padding;
-    const chartHeight = height - 2 * padding - 40;
-    
-    const maxValue = Math.max(...data.map(d => Math.max(d.efficiency || 0, d.totalTasks || 0, d.completedTasks || 0)));
-    
-    // Draw title
-    ctx.fillStyle = '#1e293b';
-    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(title, width / 2, 25);
-    
-    // Draw axes
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding, padding + 20);
-    ctx.lineTo(padding, height - padding);
-    ctx.lineTo(width - padding, height - padding);
-    ctx.stroke();
-    
-    // Draw efficiency line
-    if (data.length > 0) {
-      ctx.strokeStyle = '#8884d8';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      
-      data.forEach((item, index) => {
-        const x = padding + (index / (data.length - 1)) * chartWidth;
-        const y = height - padding - ((item.efficiency || 0) / maxValue) * chartHeight;
-        
-        if (index === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
-      ctx.stroke();
-    }
+  // Prepare data for charts
+  const getMonthlyActivityData = () => {
+    if (!analytics?.monthlyActivity) return []
+    return analytics.monthlyActivity.map(item => ({
+      month: new Date(item.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      count: item.count || 0
+    }))
   }
 
-  // Helper function to draw pie chart
-  const drawPieChart = (ctx: CanvasRenderingContext2D, data: any[], width: number, height: number, title: string) => {
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-    
-    const centerX = width / 2;
-    const centerY = height / 2 + 10;
-    const radius = Math.min(width, height) / 2 - 80;
-    
-    // Draw title
-    ctx.fillStyle = '#1e293b';
-    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(title, centerX, 25);
-    
-    const total = data.reduce((sum, item) => sum + (item.count || 0), 0);
-    let currentAngle = -Math.PI / 2;
-    
-    const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
-    
-    // Draw pie slices
-    data.forEach((item, index) => {
-      const sliceAngle = ((item.count || 0) / total) * 2 * Math.PI;
-      
-      ctx.fillStyle = colors[index % colors.length];
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
-      ctx.closePath();
-      ctx.fill();
-      
-      currentAngle += sliceAngle;
-    });
-    
-    // Add labels
-    currentAngle = -Math.PI / 2;
-    ctx.fillStyle = '#1e293b';
-    ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    
-    data.forEach((item) => {
-      const sliceAngle = ((item.count || 0) / total) * 2 * Math.PI;
-      const labelAngle = currentAngle + sliceAngle / 2;
-      const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
-      const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
-      
-      const percentage = (((item.count || 0) / total) * 100).toFixed(0);
-      ctx.fillText(`${item.type}: ${percentage}%`, labelX, labelY);
-      
-      currentAngle += sliceAngle;
-    });
+  const getTaskDistributionData = () => {
+    if (!analytics?.taskDistribution) return []
+    return analytics.taskDistribution.map(item => ({
+      name: item.type,
+      value: item.count || 0
+    }))
   }
+
+  const getPerformanceTrendsData = () => {
+    if (!analytics?.performanceTrends) return []
+    return analytics.performanceTrends.map(item => ({
+      month: new Date(item.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      efficiency: item.efficiency || 0
+    }))
+  }
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
   const generateReportHTML = async () => {
     const currentDate = new Date().toLocaleDateString('en-US', { 
@@ -1164,6 +1011,130 @@ export function EmployeePerformanceReport({ employee, onClose }: EmployeePerform
               </Button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Hidden high-resolution charts for report generation */}
+      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1200px', height: '600px' }}>
+        {/* Monthly Activity Chart */}
+        <div id="monthly-activity-chart" style={{ width: '1200px', height: '600px', background: 'white' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={getMonthlyActivityData()} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <defs>
+                <linearGradient id="colorActivity" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis 
+                dataKey="month" 
+                stroke="#64748b" 
+                style={{ fontSize: '14px', fontFamily: 'system-ui' }}
+              />
+              <YAxis 
+                stroke="#64748b" 
+                style={{ fontSize: '14px', fontFamily: 'system-ui' }}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  background: 'white', 
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              />
+              <Legend 
+                wrapperStyle={{ fontSize: '14px', fontFamily: 'system-ui' }}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="count" 
+                stroke="#8884d8" 
+                strokeWidth={3}
+                fillOpacity={1} 
+                fill="url(#colorActivity)" 
+                name="Task Count"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Task Distribution Chart */}
+        <div id="task-distribution-chart" style={{ width: '1200px', height: '600px', background: 'white' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPie margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <Pie
+                data={getTaskDistributionData()}
+                cx="50%"
+                cy="50%"
+                labelLine={true}
+                label={(entry) => `${entry.name}: ${entry.value}`}
+                outerRadius={200}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {getTaskDistributionData().map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ 
+                  background: 'white', 
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              />
+              <Legend 
+                wrapperStyle={{ fontSize: '16px', fontFamily: 'system-ui' }}
+              />
+            </RechartsPie>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Performance Trends Chart */}
+        <div id="performance-trends-chart" style={{ width: '1200px', height: '600px', background: 'white' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={getPerformanceTrendsData()} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <defs>
+                <linearGradient id="colorEfficiency" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis 
+                dataKey="month" 
+                stroke="#64748b" 
+                style={{ fontSize: '14px', fontFamily: 'system-ui' }}
+              />
+              <YAxis 
+                stroke="#64748b" 
+                style={{ fontSize: '14px', fontFamily: 'system-ui' }}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  background: 'white', 
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              />
+              <Legend 
+                wrapperStyle={{ fontSize: '14px', fontFamily: 'system-ui' }}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="efficiency" 
+                stroke="#8884d8" 
+                strokeWidth={3}
+                fillOpacity={1} 
+                fill="url(#colorEfficiency)" 
+                name="Efficiency (%)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>
