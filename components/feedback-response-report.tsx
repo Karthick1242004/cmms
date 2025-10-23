@@ -136,8 +136,8 @@ export function FeedbackResponseReport({
           
           body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
+            line-height: 1.4;
+            color: #000;
             background: #fff;
             padding: 20px;
             max-width: 1200px;
@@ -147,168 +147,143 @@ export function FeedbackResponseReport({
           .header {
             text-align: center;
             margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #000;
           }
           
           .header h1 {
-            font-size: 28px;
-            color: #1e40af;
+            font-size: 24px;
+            color: #000;
             margin-bottom: 8px;
             text-transform: uppercase;
+            font-weight: bold;
           }
           
           .header .subtitle {
-            font-size: 16px;
-            color: #6b7280;
+            font-size: 14px;
+            color: #000;
             margin-bottom: 4px;
           }
           
           .header .date {
             font-size: 12px;
-            color: #9ca3af;
+            color: #000;
           }
           
           .section {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             page-break-inside: avoid;
           }
           
           .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1e40af;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e5e7eb;
+            font-size: 16px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #000;
             text-transform: uppercase;
           }
           
-          .info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
+          .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
           }
           
-          .info-item {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px;
+          .info-table th,
+          .info-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border: 1px solid #000;
+            font-size: 12px;
           }
           
-          .info-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: #64748b;
+          .info-table th {
+            background: #f0f0f0;
+            font-weight: bold;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
           }
           
-          .info-value {
-            font-size: 14px;
-            font-weight: 500;
-            color: #1e293b;
-          }
-          
-          .content-box {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px;
-            min-height: 40px;
+          .info-table td {
+            background: #fff;
           }
           
           .content-text {
             white-space: pre-wrap;
             word-wrap: break-word;
-            font-size: 13px;
+            font-size: 12px;
+            padding: 8px;
+            border: 1px solid #000;
+            background: #fff;
+            margin-top: 5px;
           }
           
-          table {
+          .checkbox-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-          }
-          
-          th, td {
-            padding: 10px;
-            text-align: left;
-            border: 1px solid #e5e7eb;
-          }
-          
-          th {
-            background: #f1f5f9;
-            font-weight: 600;
-            color: #374151;
-            font-size: 12px;
-            text-transform: uppercase;
-          }
-          
-          td {
-            font-size: 13px;
-            background: #fff;
-          }
-          
-          .checkbox-section {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
             margin-top: 8px;
           }
           
+          .checkbox-table th,
+          .checkbox-table td {
+            padding: 6px 8px;
+            text-align: left;
+            border: 1px solid #000;
+            font-size: 11px;
+          }
+          
+          .checkbox-table th {
+            background: #f0f0f0;
+            font-weight: bold;
+          }
+          
+          .checkbox-table td {
+            background: #fff;
+          }
+          
           .checkbox-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            background: #dbeafe;
-            border-radius: 6px;
-            font-size: 12px;
-            color: #1e40af;
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 5px;
+            font-size: 11px;
           }
           
           .approval-section {
-            margin-top: 40px;
-            padding: 20px;
-            background: #f0f9ff;
-            border: 2px solid #3b82f6;
-            border-radius: 12px;
+            margin-top: 30px;
+            padding: 15px;
+            border: 2px solid #000;
             page-break-before: always;
           }
           
           .approval-title {
-            font-size: 22px;
-            font-weight: 700;
-            color: #1e40af;
-            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 15px;
             text-align: center;
+            text-transform: uppercase;
           }
           
           .signature-box {
             margin-top: 15px;
-            padding: 20px;
-            background: white;
-            border: 2px solid #3b82f6;
-            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #000;
             text-align: center;
           }
           
           .signature-text {
-            font-family: 'Brush Script MT', cursive;
-            font-size: 32px;
-            color: #1e40af;
+            font-family: 'Times New Roman', serif;
+            font-size: 24px;
+            color: #000;
             font-weight: bold;
-            padding: 20px;
+            padding: 10px;
           }
           
           .signature-image {
-            max-width: 400px;
-            max-height: 150px;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
+            max-width: 300px;
+            max-height: 100px;
+            border: 1px solid #000;
           }
           
           .controls {
@@ -322,39 +297,33 @@ export function FeedbackResponseReport({
           
           .btn {
             padding: 8px 16px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+            border: 1px solid #000;
             background: #fff;
-            color: #374151;
-            font-size: 14px;
+            color: #000;
+            font-size: 12px;
             cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            font-family: 'Times New Roman', serif;
           }
           
           .btn:hover {
-            background: #f9fafb;
-            border-color: #9ca3af;
+            background: #f0f0f0;
           }
           
           .btn-primary {
-            background: #3b82f6;
+            background: #000;
             color: #fff;
-            border-color: #3b82f6;
           }
           
           .btn-primary:hover {
-            background: #2563eb;
+            background: #333;
           }
           
           @media print {
             .controls { display: none; }
             body { padding: 10px; }
-            .header h1 { font-size: 22px; }
+            .header h1 { font-size: 20px; }
             .section-title { font-size: 14px; }
-            .info-grid { gap: 8px; }
-            .info-item { padding: 8px; }
-            .signature-text { font-size: 28px; }
+            .signature-text { font-size: 20px; }
           }
         </style>
       </head>
@@ -365,64 +334,106 @@ export function FeedbackResponseReport({
         </div>
 
         <div class="header">
-          <h1>📋 Client Feedback Report</h1>
+          <h1>CLIENT FEEDBACK REPORT</h1>
           <p class="subtitle">${feedback.companyName}</p>
           <p class="date">Generated on ${currentDate}</p>
         </div>
 
         <!-- Section 1: Client Information -->
         <div class="section">
-          <div class="section-title">📌 Section 1: Client Information</div>
-          <div class="info-grid">
-            <div class="info-item">
-              <div class="info-label">Company Name</div>
-              <div class="info-value">${feedback.companyName || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Contact Person</div>
-              <div class="info-value">${feedback.contactPerson || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Email</div>
-              <div class="info-value">${feedback.email || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Phone</div>
-              <div class="info-value">${feedback.phone || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Date of Visit/Service</div>
-              <div class="info-value">${feedback.dateOfService ? format(new Date(feedback.dateOfService), 'MMMM dd, yyyy') : 'N/A'}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Feedback Date</div>
-              <div class="info-value">${format(new Date(feedback.submittedAt), 'MMMM dd, yyyy')}</div>
-            </div>
-          </div>
+          <div class="section-title">Section 1: Client Information</div>
+          <table class="info-table">
+            <tr>
+              <th style="width: 30%;">Field</th>
+              <th style="width: 70%;">Value</th>
+            </tr>
+            <tr>
+              <td><strong>Company Name</strong></td>
+              <td>${feedback.companyName || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Contact Person</strong></td>
+              <td>${feedback.contactPersonName || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Email</strong></td>
+              <td>${feedback.emailId || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Phone</strong></td>
+              <td>${feedback.phoneNumber || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Designation</strong></td>
+              <td>${feedback.designation || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Industry Type</strong></td>
+              <td>${feedback.industryType?.join(', ') || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Number of Employees</strong></td>
+              <td>${feedback.numberOfEmployees || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Number of FMMS Users</strong></td>
+              <td>${feedback.numberOfFMMSUsers || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Peak Concurrent Users</strong></td>
+              <td>${feedback.peakConcurrentUsers || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Feedback Date</strong></td>
+              <td>${format(new Date(feedback.submittedAt), 'MMMM dd, yyyy')}</td>
+            </tr>
+          </table>
         </div>
 
         <!-- Section 2: Daily Activities & Work Order/Ticket Management -->
         <div class="section">
-          <div class="section-title">📋 Section 2: Daily Activities & Work Order/Ticket Management</div>
-          <div class="checkbox-section">
-            ${feedback.logDailyMaintenanceTasks ? '<div class="checkbox-item">✓ Log daily maintenance tasks</div>' : ''}
-            ${feedback.workOrderCreationTracking ? '<div class="checkbox-item">✓ Work order creation & tracking</div>' : ''}
-            ${feedback.taskAssignmentToTechnicians ? '<div class="checkbox-item">✓ Task assignment to technicians</div>' : ''}
-            ${feedback.taskStatusUpdates ? '<div class="checkbox-item">✓ Task status updates</div>' : ''}
-            ${feedback.realTimeNotifications ? '<div class="checkbox-item">✓ Real-time notifications</div>' : ''}
-            ${feedback.attachImagesVideos ? '<div class="checkbox-item">✓ Attach images/videos</div>' : ''}
-          </div>
-          ${feedback.avgImagesPerWorkOrder || feedback.avgVideosPerWorkOrder || feedback.avgSizePerImage || feedback.avgSizePerVideo ? `
-          <div class="info-grid" style="margin-top: 15px;">
-            ${feedback.avgImagesPerWorkOrder ? `<div class="info-item"><div class="info-label">Avg Images/Work Order</div><div class="info-value">${feedback.avgImagesPerWorkOrder}</div></div>` : ''}
-            ${feedback.avgVideosPerWorkOrder ? `<div class="info-item"><div class="info-label">Avg Videos/Work Order</div><div class="info-value">${feedback.avgVideosPerWorkOrder}</div></div>` : ''}
-            ${feedback.avgSizePerImage ? `<div class="info-item"><div class="info-label">Avg Size/Image</div><div class="info-value">${feedback.avgSizePerImage}</div></div>` : ''}
-            ${feedback.avgSizePerVideo ? `<div class="info-item"><div class="info-label">Avg Size/Video</div><div class="info-value">${feedback.avgSizePerVideo}</div></div>` : ''}
-          </div>
-          ` : ''}
+          <div class="section-title">Section 2: Daily Activities & Work Order/Ticket Management</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Log daily maintenance tasks</td>
+              <td>${feedback.logDailyMaintenanceTasks ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Work order creation & tracking</td>
+              <td>${feedback.workOrderCreationTracking ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Task assignment to technicians</td>
+              <td>${feedback.taskAssignmentToTechnicians ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Task status updates</td>
+              <td>${feedback.taskStatusUpdates ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Real-time notifications</td>
+              <td>${feedback.realTimeNotifications ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Attach images/videos</td>
+              <td>${feedback.attachImagesVideos ? '✓ Yes' : '✗ No'}</td>
+              <td>${feedback.avgImagesPerWorkOrder || feedback.avgVideosPerWorkOrder || feedback.avgSizePerImage || feedback.avgSizePerVideo ? 
+                `Images: ${feedback.avgImagesPerWorkOrder || 'N/A'}, Videos: ${feedback.avgVideosPerWorkOrder || 'N/A'}` : '-'}</td>
+            </tr>
+          </table>
           ${feedback.section2OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section2OtherComments}</div>
           </div>
           ` : ''}
@@ -430,16 +441,37 @@ export function FeedbackResponseReport({
 
         <!-- Section 3: Meeting & Communication -->
         <div class="section">
-          <div class="section-title">💬 Section 3: Meeting & Communication</div>
-          <div class="checkbox-section">
-            ${feedback.logMeetingMinutes ? '<div class="checkbox-item">✓ Log meeting minutes</div>' : ''}
-            ${feedback.teamDiscussionThreads ? '<div class="checkbox-item">✓ Team discussion threads</div>' : ''}
-            ${feedback.actionItemsAssignment ? '<div class="checkbox-item">✓ Action items assignment</div>' : ''}
-            ${feedback.alertsForMeetings ? '<div class="checkbox-item">✓ Alerts for meetings</div>' : ''}
-          </div>
+          <div class="section-title">Section 3: Meeting & Communication</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Log meeting minutes</td>
+              <td>${feedback.logMeetingMinutes ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Team discussion threads</td>
+              <td>${feedback.teamDiscussionThreads ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Action items assignment</td>
+              <td>${feedback.actionItemsAssignment ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Alerts for meetings</td>
+              <td>${feedback.alertsForMeetings ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+          </table>
           ${feedback.section3OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section3OtherComments}</div>
           </div>
           ` : ''}
@@ -447,23 +479,42 @@ export function FeedbackResponseReport({
 
         <!-- Section 4: Asset Management -->
         <div class="section">
-          <div class="section-title">📦 Section 4: Asset Management</div>
-          <div class="checkbox-section">
-            ${feedback.maintainAssetRegister ? '<div class="checkbox-item">✓ Maintain asset register</div>' : ''}
-            ${feedback.assetLocationTracking ? '<div class="checkbox-item">✓ Asset location tracking</div>' : ''}
-            ${feedback.assetHistoryLogs ? '<div class="checkbox-item">✓ Asset history logs</div>' : ''}
-            ${feedback.assetLifecycleTracking ? '<div class="checkbox-item">✓ Asset lifecycle tracking</div>' : ''}
-            ${feedback.assetCategorization ? '<div class="checkbox-item">✓ Asset categorization</div>' : ''}
-          </div>
-          ${feedback.approximateNumberOfAssets ? `
-          <div class="info-item" style="margin-top: 10px;">
-            <div class="info-label">Approximate Number of Assets</div>
-            <div class="info-value">${feedback.approximateNumberOfAssets}</div>
-          </div>
-          ` : ''}
+          <div class="section-title">Section 4: Asset Management</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Maintain asset register</td>
+              <td>${feedback.maintainAssetRegister ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Asset location tracking</td>
+              <td>${feedback.assetLocationTracking ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Asset history logs</td>
+              <td>${feedback.assetHistoryLogs ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Asset lifecycle tracking</td>
+              <td>${feedback.assetLifecycleTracking ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Asset categorization</td>
+              <td>${feedback.assetCategorization ? '✓ Yes' : '✗ No'}</td>
+              <td>${feedback.approximateNumberOfAssets ? `Assets: ${feedback.approximateNumberOfAssets}` : '-'}</td>
+            </tr>
+          </table>
           ${feedback.section4OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section4OtherComments}</div>
           </div>
           ` : ''}
@@ -471,22 +522,37 @@ export function FeedbackResponseReport({
 
         <!-- Section 5: Preventive Maintenance (PM) -->
         <div class="section">
-          <div class="section-title">🔧 Section 5: Preventive Maintenance (PM)</div>
-          <div class="checkbox-section">
-            ${feedback.pmScheduling ? '<div class="checkbox-item">✓ PM scheduling</div>' : ''}
-            ${feedback.autoRemindersForPM ? '<div class="checkbox-item">✓ Auto reminders for PM</div>' : ''}
-            ${feedback.pmChecklistsTemplates ? '<div class="checkbox-item">✓ PM checklists/templates</div>' : ''}
-            ${feedback.pmReportsCompliance ? '<div class="checkbox-item">✓ PM reports & compliance</div>' : ''}
-          </div>
-          ${feedback.numberOfPMTasksPerMonth ? `
-          <div class="info-item" style="margin-top: 10px;">
-            <div class="info-label">PM Tasks per Month</div>
-            <div class="info-value">${feedback.numberOfPMTasksPerMonth}</div>
-          </div>
-          ` : ''}
+          <div class="section-title">Section 5: Preventive Maintenance (PM)</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>PM scheduling</td>
+              <td>${feedback.pmScheduling ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Auto reminders for PM</td>
+              <td>${feedback.autoRemindersForPM ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>PM checklists/templates</td>
+              <td>${feedback.pmChecklistsTemplates ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>PM reports & compliance</td>
+              <td>${feedback.pmReportsCompliance ? '✓ Yes' : '✗ No'}</td>
+              <td>${feedback.numberOfPMTasksPerMonth ? `Tasks/Month: ${feedback.numberOfPMTasksPerMonth}` : '-'}</td>
+            </tr>
+          </table>
           ${feedback.section5OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section5OtherComments}</div>
           </div>
           ` : ''}
@@ -494,16 +560,37 @@ export function FeedbackResponseReport({
 
         <!-- Section 6: Safety & Compliance -->
         <div class="section">
-          <div class="section-title">🛡️ Section 6: Safety & Compliance</div>
-          <div class="checkbox-section">
-            ${feedback.safetyInspectionChecklists ? '<div class="checkbox-item">✓ Safety inspection checklists</div>' : ''}
-            ${feedback.incidentReportingFollowUp ? '<div class="checkbox-item">✓ Incident reporting & follow-up</div>' : ''}
-            ${feedback.complianceAuditLogs ? '<div class="checkbox-item">✓ Compliance audit logs</div>' : ''}
-            ${feedback.correctivePreventiveActions ? '<div class="checkbox-item">✓ Corrective/preventive actions</div>' : ''}
-          </div>
+          <div class="section-title">Section 6: Safety & Compliance</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Safety inspection checklists</td>
+              <td>${feedback.safetyInspectionChecklists ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Incident reporting & follow-up</td>
+              <td>${feedback.incidentReportingFollowUp ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Compliance audit logs</td>
+              <td>${feedback.complianceAuditLogs ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Corrective/preventive actions</td>
+              <td>${feedback.correctivePreventiveActions ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+          </table>
           ${feedback.section6OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section6OtherComments}</div>
           </div>
           ` : ''}
@@ -511,23 +598,42 @@ export function FeedbackResponseReport({
 
         <!-- Section 7: Spare Parts & Inventory -->
         <div class="section">
-          <div class="section-title">📦 Section 7: Spare Parts & Inventory</div>
-          <div class="checkbox-section">
-            ${feedback.sparePartMasterList ? '<div class="checkbox-item">✓ Spare part master list</div>' : ''}
-            ${feedback.stockLevelsReorderAlerts ? '<div class="checkbox-item">✓ Stock levels & reorder alerts</div>' : ''}
-            ${feedback.partsTransactionLogs ? '<div class="checkbox-item">✓ Parts transaction logs</div>' : ''}
-            ${feedback.supplierVendorTracking ? '<div class="checkbox-item">✓ Supplier/vendor tracking</div>' : ''}
-            ${feedback.barcodeQRCodeIntegration ? '<div class="checkbox-item">✓ Barcode/QR code integration</div>' : ''}
-          </div>
-          ${feedback.approximateNumberOfSpareItems ? `
-          <div class="info-item" style="margin-top: 10px;">
-            <div class="info-label">Approximate Spare Items</div>
-            <div class="info-value">${feedback.approximateNumberOfSpareItems}</div>
-          </div>
-          ` : ''}
+          <div class="section-title">Section 7: Spare Parts & Inventory</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Spare part master list</td>
+              <td>${feedback.sparePartMasterList ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Stock levels & reorder alerts</td>
+              <td>${feedback.stockLevelsReorderAlerts ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Parts transaction logs</td>
+              <td>${feedback.partsTransactionLogs ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Supplier/vendor tracking</td>
+              <td>${feedback.supplierVendorTracking ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Barcode/QR code integration</td>
+              <td>${feedback.barcodeQRCodeIntegration ? '✓ Yes' : '✗ No'}</td>
+              <td>${feedback.approximateNumberOfSpareItems ? `Items: ${feedback.approximateNumberOfSpareItems}` : '-'}</td>
+            </tr>
+          </table>
           ${feedback.section7OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section7OtherComments}</div>
           </div>
           ` : ''}
@@ -535,15 +641,32 @@ export function FeedbackResponseReport({
 
         <!-- Section 8: Employee / Staff Management -->
         <div class="section">
-          <div class="section-title">👥 Section 8: Employee / Staff Management</div>
-          <div class="checkbox-section">
-            ${feedback.employeeShiftsRoster ? '<div class="checkbox-item">✓ Employee shifts & roster</div>' : ''}
-            ${feedback.technicianAssignmentPerformance ? '<div class="checkbox-item">✓ Technician assignment & performance</div>' : ''}
-            ${feedback.userRolesPermissions ? '<div class="checkbox-item">✓ User roles & permissions</div>' : ''}
-          </div>
+          <div class="section-title">Section 8: Employee / Staff Management</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Employee shifts & roster</td>
+              <td>${feedback.employeeShiftsRoster ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Technician assignment & performance</td>
+              <td>${feedback.technicianAssignmentPerformance ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>User roles & permissions</td>
+              <td>${feedback.userRolesPermissions ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+          </table>
           ${feedback.section8OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section8OtherComments}</div>
           </div>
           ` : ''}
@@ -551,19 +674,52 @@ export function FeedbackResponseReport({
 
         <!-- Section 9: Reporting & Analytics -->
         <div class="section">
-          <div class="section-title">📊 Section 9: Reporting & Analytics</div>
-          <div class="checkbox-section">
-            ${feedback.downtimeAnalysis ? '<div class="checkbox-item">✓ Downtime analysis</div>' : ''}
-            ${feedback.breakdownHistory ? '<div class="checkbox-item">✓ Breakdown history</div>' : ''}
-            ${feedback.costTracking ? '<div class="checkbox-item">✓ Cost tracking</div>' : ''}
-            ${feedback.technicianPerformanceReports ? '<div class="checkbox-item">✓ Technician performance reports</div>' : ''}
-            ${feedback.sparePartUsageReports ? '<div class="checkbox-item">✓ Spare part usage reports</div>' : ''}
-            ${feedback.customDashboardsKPIs ? '<div class="checkbox-item">✓ Custom dashboards & KPIs</div>' : ''}
-            ${feedback.exportReports ? '<div class="checkbox-item">✓ Export reports</div>' : ''}
-          </div>
+          <div class="section-title">Section 9: Reporting & Analytics</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Downtime analysis</td>
+              <td>${feedback.downtimeAnalysis ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Breakdown history</td>
+              <td>${feedback.breakdownHistory ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Cost tracking</td>
+              <td>${feedback.costTracking ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Technician performance reports</td>
+              <td>${feedback.technicianPerformanceReports ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Spare part usage reports</td>
+              <td>${feedback.sparePartUsageReports ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Custom dashboards & KPIs</td>
+              <td>${feedback.customDashboardsKPIs ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Export reports</td>
+              <td>${feedback.exportReports ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+          </table>
           ${feedback.section9OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section9OtherComments}</div>
           </div>
           ` : ''}
@@ -571,23 +727,43 @@ export function FeedbackResponseReport({
 
         <!-- Section 10: Notifications & Alerts -->
         <div class="section">
-          <div class="section-title">🔔 Section 10: Notifications & Alerts</div>
-          <div class="checkbox-section">
-            ${feedback.workOrderStatusUpdates ? '<div class="checkbox-item">✓ Work order status updates</div>' : ''}
-            ${feedback.pmReminders ? '<div class="checkbox-item">✓ PM reminders</div>' : ''}
-            ${feedback.safetyInspectionAlerts ? '<div class="checkbox-item">✓ Safety inspection alerts</div>' : ''}
-            ${feedback.stockReorderAlerts ? '<div class="checkbox-item">✓ Stock reorder alerts</div>' : ''}
-            ${feedback.pushNotifications ? '<div class="checkbox-item">✓ Push notifications</div>' : ''}
-          </div>
-          ${feedback.pushNotificationsType || feedback.approximateNotificationsPerDay ? `
-          <div class="info-grid" style="margin-top: 10px;">
-            ${feedback.pushNotificationsType ? `<div class="info-item"><div class="info-label">Notification Type</div><div class="info-value">${feedback.pushNotificationsType}</div></div>` : ''}
-            ${feedback.approximateNotificationsPerDay ? `<div class="info-item"><div class="info-label">Notifications/Day</div><div class="info-value">${feedback.approximateNotificationsPerDay}</div></div>` : ''}
-          </div>
-          ` : ''}
+          <div class="section-title">Section 10: Notifications & Alerts</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Work order status updates</td>
+              <td>${feedback.workOrderStatusUpdates ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>PM reminders</td>
+              <td>${feedback.pmReminders ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Safety inspection alerts</td>
+              <td>${feedback.safetyInspectionAlerts ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Stock reorder alerts</td>
+              <td>${feedback.stockReorderAlerts ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Push notifications</td>
+              <td>${feedback.pushNotifications ? '✓ Yes' : '✗ No'}</td>
+              <td>${feedback.pushNotificationsType || feedback.approximateNotificationsPerDay ? 
+                `Type: ${feedback.pushNotificationsType || 'N/A'}, Per Day: ${feedback.approximateNotificationsPerDay || 'N/A'}` : '-'}</td>
+            </tr>
+          </table>
           ${feedback.section10OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section10OtherComments}</div>
           </div>
           ` : ''}
@@ -595,16 +771,37 @@ export function FeedbackResponseReport({
 
         <!-- Section 11: Visual / Display Features -->
         <div class="section">
-          <div class="section-title">👁️ Section 11: Visual / Display Features</div>
-          <div class="checkbox-section">
-            ${feedback.bannerDisplay ? '<div class="checkbox-item">✓ Banner display</div>' : ''}
-            ${feedback.noticeBoard ? '<div class="checkbox-item">✓ Notice board</div>' : ''}
-            ${feedback.graphsChartsKPIs ? '<div class="checkbox-item">✓ Graphs, charts & KPIs</div>' : ''}
-            ${feedback.dashboardManagementOverview ? '<div class="checkbox-item">✓ Dashboard management overview</div>' : ''}
-          </div>
+          <div class="section-title">Section 11: Visual / Display Features</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Banner display</td>
+              <td>${feedback.bannerDisplay ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Notice board</td>
+              <td>${feedback.noticeBoard ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Graphs, charts & KPIs</td>
+              <td>${feedback.graphsChartsKPIs ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Dashboard management overview</td>
+              <td>${feedback.dashboardManagementOverview ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+          </table>
           ${feedback.section11OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section11OtherComments}</div>
           </div>
           ` : ''}
@@ -612,17 +809,42 @@ export function FeedbackResponseReport({
 
         <!-- Section 12: Historical Data & Audit -->
         <div class="section">
-          <div class="section-title">📜 Section 12: Historical Data & Audit</div>
-          <div class="checkbox-section">
-            ${feedback.assetMaintenanceHistory ? '<div class="checkbox-item">✓ Asset maintenance history</div>' : ''}
-            ${feedback.workOrderLogsHistory ? '<div class="checkbox-item">✓ Work order logs & history</div>' : ''}
-            ${feedback.pmCompletionHistory ? '<div class="checkbox-item">✓ PM completion history</div>' : ''}
-            ${feedback.partsTransactionHistory ? '<div class="checkbox-item">✓ Parts transaction history</div>' : ''}
-            ${feedback.auditLogsCompliance ? '<div class="checkbox-item">✓ Audit logs & compliance</div>' : ''}
-          </div>
+          <div class="section-title">Section 12: Historical Data & Audit</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Asset maintenance history</td>
+              <td>${feedback.assetMaintenanceHistory ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Work order logs & history</td>
+              <td>${feedback.workOrderLogsHistory ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>PM completion history</td>
+              <td>${feedback.pmCompletionHistory ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Parts transaction history</td>
+              <td>${feedback.partsTransactionHistory ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Audit logs & compliance</td>
+              <td>${feedback.auditLogsCompliance ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+          </table>
           ${feedback.section12OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section12OtherComments}</div>
           </div>
           ` : ''}
@@ -630,23 +852,48 @@ export function FeedbackResponseReport({
 
         <!-- Section 13: Cloud Deployment Details -->
         <div class="section">
-          <div class="section-title">☁️ Section 13: Cloud Deployment Details</div>
-          <div class="info-grid">
-            ${feedback.usersUploadingDaily ? `<div class="info-item"><div class="info-label">Users Uploading Daily</div><div class="info-value">${feedback.usersUploadingDaily}</div></div>` : ''}
-            ${feedback.retentionPeriod ? `<div class="info-item"><div class="info-label">Retention Period</div><div class="info-value">${feedback.retentionPeriod}</div></div>` : ''}
-            ${feedback.dailyBandwidthPerUser ? `<div class="info-item"><div class="info-label">Daily Bandwidth/User</div><div class="info-value">${feedback.dailyBandwidthPerUser}</div></div>` : ''}
-            ${feedback.peakConcurrentUploads ? `<div class="info-item"><div class="info-label">Peak Concurrent Uploads</div><div class="info-value">${feedback.peakConcurrentUploads}</div></div>` : ''}
-            ${feedback.backupFrequency ? `<div class="info-item"><div class="info-label">Backup Frequency</div><div class="info-value">${feedback.backupFrequency}</div></div>` : ''}
-            ${feedback.backupRetentionPeriod ? `<div class="info-item"><div class="info-label">Backup Retention</div><div class="info-value">${feedback.backupRetentionPeriod}</div></div>` : ''}
-            ${feedback.expectedAnnualGrowth ? `<div class="info-item"><div class="info-label">Expected Annual Growth</div><div class="info-value">${feedback.expectedAnnualGrowth}</div></div>` : ''}
-          </div>
-          <div class="info-item" style="margin-top: 10px;">
-            <div class="info-label">Disaster Recovery Required</div>
-            <div class="info-value">${feedback.disasterRecoveryRequired ? 'Yes' : 'No'}</div>
-          </div>
+          <div class="section-title">Section 13: Cloud Deployment Details</div>
+          <table class="info-table">
+            <tr>
+              <th style="width: 30%;">Field</th>
+              <th style="width: 70%;">Value</th>
+            </tr>
+            <tr>
+              <td><strong>Users Uploading Daily</strong></td>
+              <td>${feedback.usersUploadingDaily || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Retention Period</strong></td>
+              <td>${feedback.retentionPeriod || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Daily Bandwidth/User</strong></td>
+              <td>${feedback.dailyBandwidthPerUser || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Peak Concurrent Uploads</strong></td>
+              <td>${feedback.peakConcurrentUploads || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Backup Frequency</strong></td>
+              <td>${feedback.backupFrequency || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Backup Retention</strong></td>
+              <td>${feedback.backupRetentionPeriod || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Expected Annual Growth</strong></td>
+              <td>${feedback.expectedAnnualGrowth || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Disaster Recovery Required</strong></td>
+              <td>${feedback.disasterRecoveryRequired ? 'Yes' : 'No'}</td>
+            </tr>
+          </table>
           ${feedback.section13OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section13OtherComments}</div>
           </div>
           ` : ''}
@@ -654,24 +901,24 @@ export function FeedbackResponseReport({
 
         <!-- Section 14: Deployment Preference & Go-Live -->
         <div class="section">
-          <div class="section-title">🚀 Section 14: Deployment Preference & Go-Live</div>
-          ${feedback.deploymentType && feedback.deploymentType.length > 0 ? `
-          <div class="info-item">
-            <div class="info-label">Deployment Type</div>
-            <div class="checkbox-section">
-              ${feedback.deploymentType.map(type => `<div class="checkbox-item">✓ ${type}</div>`).join('')}
-            </div>
-          </div>
-          ` : ''}
-          ${feedback.expectedGoLiveDate ? `
-          <div class="info-item" style="margin-top: 10px;">
-            <div class="info-label">Expected Go-Live Date</div>
-            <div class="info-value">${feedback.expectedGoLiveDate}</div>
-          </div>
-          ` : ''}
+          <div class="section-title">Section 14: Deployment Preference & Go-Live</div>
+          <table class="info-table">
+            <tr>
+              <th style="width: 30%;">Field</th>
+              <th style="width: 70%;">Value</th>
+            </tr>
+            <tr>
+              <td><strong>Deployment Type</strong></td>
+              <td>${feedback.deploymentType && feedback.deploymentType.length > 0 ? feedback.deploymentType.join(', ') : 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Expected Go-Live Date</strong></td>
+              <td>${feedback.expectedGoLiveDate || 'N/A'}</td>
+            </tr>
+          </table>
           ${feedback.section14OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section14OtherComments}</div>
           </div>
           ` : ''}
@@ -679,23 +926,42 @@ export function FeedbackResponseReport({
 
         <!-- Section 15: File Upload / Asset & Spare Parts Details -->
         <div class="section">
-          <div class="section-title">📁 Section 15: File Upload / Asset & Spare Parts Details</div>
-          <div class="checkbox-section">
-            ${feedback.maintainAssetList ? '<div class="checkbox-item">✓ Maintain asset list</div>' : ''}
-            ${feedback.canProvideAssetList ? '<div class="checkbox-item">✓ Can provide asset list</div>' : ''}
-            ${feedback.maintainSparePartsList ? '<div class="checkbox-item">✓ Maintain spare parts list</div>' : ''}
-            ${feedback.canProvideSparePartsList ? '<div class="checkbox-item">✓ Can provide spare parts list</div>' : ''}
-            ${feedback.haveBarcodeQRInfo ? '<div class="checkbox-item">✓ Have barcode/QR info</div>' : ''}
-          </div>
-          ${feedback.approximateSparePartsCount ? `
-          <div class="info-item" style="margin-top: 10px;">
-            <div class="info-label">Approximate Spare Parts Count</div>
-            <div class="info-value">${feedback.approximateSparePartsCount}</div>
-          </div>
-          ` : ''}
+          <div class="section-title">Section 15: File Upload / Asset & Spare Parts Details</div>
+          <table class="checkbox-table">
+            <tr>
+              <th style="width: 60%;">Feature</th>
+              <th style="width: 20%;">Required</th>
+              <th style="width: 20%;">Details</th>
+            </tr>
+            <tr>
+              <td>Maintain asset list</td>
+              <td>${feedback.maintainAssetList ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Can provide asset list</td>
+              <td>${feedback.canProvideAssetList ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Maintain spare parts list</td>
+              <td>${feedback.maintainSparePartsList ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Can provide spare parts list</td>
+              <td>${feedback.canProvideSparePartsList ? '✓ Yes' : '✗ No'}</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Have barcode/QR info</td>
+              <td>${feedback.haveBarcodeQRInfo ? '✓ Yes' : '✗ No'}</td>
+              <td>${feedback.approximateSparePartsCount ? `Count: ${feedback.approximateSparePartsCount}` : '-'}</td>
+            </tr>
+          </table>
           ${feedback.section15OtherComments ? `
-          <div class="content-box" style="margin-top: 10px;">
-            <div class="info-label">Other Comments</div>
+          <div style="margin-top: 10px;">
+            <strong>Other Comments:</strong>
             <div class="content-text">${feedback.section15OtherComments}</div>
           </div>
           ` : ''}
@@ -703,71 +969,83 @@ export function FeedbackResponseReport({
 
         <!-- Section 16: New Requirements -->
         <div class="section">
-          <div class="section-title">✨ Section 16: New Requirements</div>
+          <div class="section-title">Section 16: New Requirements</div>
           ${feedback.newRequirements ? `
-            <div class="content-box">
-              <div class="content-text">${feedback.newRequirements}</div>
-            </div>
+            <div class="content-text">${feedback.newRequirements}</div>
           ` : '<p>No new requirements provided</p>'}
         </div>
 
         <!-- Confirmation -->
         <div class="section">
-          <div class="section-title">✅ Confirmation</div>
-          <div class="info-item">
-            <div class="info-label">Information Confirmed</div>
-            <div class="info-value">${feedback.confirmInformation ? '✓ Yes' : '✗ No'}</div>
-          </div>
+          <div class="section-title">Confirmation</div>
+          <table class="info-table">
+            <tr>
+              <th style="width: 30%;">Field</th>
+              <th style="width: 70%;">Value</th>
+            </tr>
+            <tr>
+              <td><strong>Information Confirmed</strong></td>
+              <td>${feedback.confirmInformation ? '✓ Yes' : '✗ No'}</td>
+            </tr>
+          </table>
         </div>
 
         <!-- Submission Information -->
         <div class="section">
-          <div class="section-title">📤 Submission Information</div>
-          <div class="info-grid">
-            <div class="info-item">
-              <div class="info-label">Submitted By</div>
-              <div class="info-value">${feedback.submittedByName}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Email</div>
-              <div class="info-value">${feedback.submittedByEmail}</div>
-            </div>
+          <div class="section-title">Submission Information</div>
+          <table class="info-table">
+            <tr>
+              <th style="width: 30%;">Field</th>
+              <th style="width: 70%;">Value</th>
+            </tr>
+            <tr>
+              <td><strong>Submitted By</strong></td>
+              <td>${feedback.submittedByName}</td>
+            </tr>
+            <tr>
+              <td><strong>Email</strong></td>
+              <td>${feedback.submittedByEmail}</td>
+            </tr>
             ${feedback.submittedByDepartment ? `
-            <div class="info-item">
-              <div class="info-label">Department</div>
-              <div class="info-value">${feedback.submittedByDepartment}</div>
-            </div>
+            <tr>
+              <td><strong>Department</strong></td>
+              <td>${feedback.submittedByDepartment}</td>
+            </tr>
             ` : ''}
-            <div class="info-item">
-              <div class="info-label">Submission Date & Time</div>
-              <div class="info-value">${format(new Date(feedback.submittedAt), 'MMMM dd, yyyy • h:mm a')}</div>
-            </div>
-          </div>
+            <tr>
+              <td><strong>Submission Date & Time</strong></td>
+              <td>${format(new Date(feedback.submittedAt), 'MMMM dd, yyyy • h:mm a')}</td>
+            </tr>
+          </table>
         </div>
 
         ${feedback.isApproved ? `
         <!-- Approval Section -->
         <div class="approval-section">
-          <div class="approval-title">✅ APPROVAL INFORMATION</div>
-          <div class="info-grid">
-            <div class="info-item">
-              <div class="info-label">Approved By</div>
-              <div class="info-value">${feedback.approvedByName || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Approval Date & Time</div>
-              <div class="info-value">${feedback.approvedAt ? format(new Date(feedback.approvedAt), 'MMMM dd, yyyy • h:mm a') : 'N/A'}</div>
-            </div>
-          </div>
+          <div class="approval-title">APPROVAL INFORMATION</div>
+          <table class="info-table">
+            <tr>
+              <th style="width: 30%;">Field</th>
+              <th style="width: 70%;">Value</th>
+            </tr>
+            <tr>
+              <td><strong>Approved By</strong></td>
+              <td>${feedback.approvedByName || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Approval Date & Time</strong></td>
+              <td>${feedback.approvedAt ? format(new Date(feedback.approvedAt), 'MMMM dd, yyyy • h:mm a') : 'N/A'}</td>
+            </tr>
+          </table>
           ${feedback.approvalComments ? `
-          <div class="content-box" style="margin-top: 15px;">
-            <div class="info-label">Approval Comments</div>
+          <div style="margin-top: 15px;">
+            <strong>Approval Comments:</strong>
             <div class="content-text">${feedback.approvalComments}</div>
           </div>
           ` : ''}
           ${feedback.signatureData ? `
           <div class="signature-box">
-            <div class="info-label" style="margin-bottom: 10px;">Digital Signature</div>
+            <div style="margin-bottom: 10px; font-weight: bold;">Digital Signature</div>
             ${feedback.signatureType === 'text' ? `
               <div class="signature-text">${feedback.signatureData}</div>
             ` : `

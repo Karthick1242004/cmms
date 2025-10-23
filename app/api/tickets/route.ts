@@ -17,8 +17,6 @@ async function fetchAssetDetails(assetId: string) {
     }
     
     const asset = await db.collection('assets').findOne({ _id: new ObjectId(assetId) });
-    console.log('Asset found:', !!asset);
-    
     if (asset) {
       const assetDetails = {
         id: asset._id.toString(),

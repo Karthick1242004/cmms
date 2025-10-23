@@ -58,7 +58,6 @@ export async function GET(
           console.error('Invalid ObjectId format:', ticket.equipmentId);
         } else {
           const assetDoc = await db.collection('assets').findOne({ _id: new ObjectId(ticket.equipmentId) });
-          console.log('Asset found:', !!assetDoc);
           
           if (assetDoc) {
             asset = {
