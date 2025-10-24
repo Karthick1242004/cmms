@@ -431,7 +431,7 @@ export default function DepartmentsPage() {
 
       {isSuperAdmin && (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto glass-dialog">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingDepartment ? "Edit" : "Add New"} Department</DialogTitle>
               <DialogDescription>
