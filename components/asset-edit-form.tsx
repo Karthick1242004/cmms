@@ -112,6 +112,9 @@ interface AssetFormData {
     description?: string
     type: 'document' | 'manual' | 'specification' | 'image' | 'other'
   }>
+  
+  // Log property for compatibility
+  log?: any
 }
 
 interface AssetEditFormProps {
@@ -583,8 +586,8 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
 
   const handleSubmit = async () => {
     // Validate form before submission
-    const formErrors = validateForm(formData)
-    setErrors(formErrors)
+    const formErrors = validateForm(formData as any)
+    setErrors(formErrors as Record<string, string>)
     
     if (!isFormValid(formErrors)) {
       toast.error('Please fix the validation errors before submitting')
@@ -828,7 +831,7 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
       </div>
 
       {Object.keys(errors).length > 0 && (
-        <ValidationSummary errors={errors} />
+        <ValidationSummary errors={errors} touched={touched} />
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -914,7 +917,7 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[200px]">
                       {user?.accessLevel === 'super_admin' 
                         ? departments.map((dept) => (
                             <SelectItem key={dept.id} value={dept.name}>
@@ -941,7 +944,7 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
                     <SelectTrigger>
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[200px]">
                       <SelectItem value="none">No location assigned</SelectItem>
                       {locations
                         .filter(location => 
@@ -1098,10 +1101,10 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
           </Card>
 
           <AssetImageUpload
-            formData={formData}
+            formData={formData as any}
             errors={errors}
             touched={touched}
-            onChange={handleInputChange}
+            onChange={handleInputChange as any}
             onBlur={handleBlur}
           />
         </TabsContent>
@@ -1499,8 +1502,8 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
 
         <TabsContent value="parts" className="space-y-6">
           <PartsBOMTab 
-            formData={formData}
-            onChange={handleInputChange}
+            formData={formData as any}
+            onChange={handleInputChange as any}
             errors={errors}
             touched={touched}
             onBlur={handleBlur}
@@ -1749,11 +1752,11 @@ export function AssetEditForm({ asset, onSuccess, onCancel }: AssetEditFormProps
         onSuccess={handleDuplicationSuccess}
         originalItem={{
           id: asset.id,
-          name: formData.assetName || asset.assetName || 'Unknown Asset'
+          name: formData.assetName || (asset as any).assetName || 'Unknown Asset'
         }}
         moduleType="assets"
         title="Duplicate Asset"
-        description={`Create a copy of "${formData.assetName || asset.assetName}" with a new name. All asset data will be copied except unique identifiers.`}
+        description={`Create a copy of "${formData.assetName || (asset as any).assetName}" with a new name. All asset data will be copied except unique identifiers.`}
         nameLabel="Asset Name"
         nameField="assetName"
       />
