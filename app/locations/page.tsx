@@ -81,6 +81,7 @@ export default function LocationsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSearching, setIsSearching] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
@@ -110,8 +111,8 @@ export default function LocationsPage() {
   const { data: departmentsData } = useDepartments()
   const departments = departmentsData?.data?.departments || []
 
-  // Debounced search term
-  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  // Debounced search term - reduced delay for better responsiveness
+  const debouncedSearchTerm = useDebounce(searchTerm, 200)
 
   // Fetch all locations for comprehensive report
   const fetchAllLocationsForReport = async () => {
@@ -167,9 +168,13 @@ export default function LocationsPage() {
   }
 
   // Fetch locations from API with pagination
-  const fetchLocations = async (page = 1) => {
+  const fetchLocations = async (page = 1, isSearch = false) => {
     try {
-      setIsLoading(true)
+      if (isSearch) {
+        setIsSearching(true)
+      } else {
+        setIsLoading(true)
+      }
       const token = localStorage.getItem('auth-token')
       
       // Build query parameters
@@ -214,6 +219,7 @@ export default function LocationsPage() {
       toast.error('Error loading locations')
     } finally {
       setIsLoading(false)
+      setIsSearching(false)
     }
   }
 
@@ -224,11 +230,10 @@ export default function LocationsPage() {
   
   // Fetch locations when search or filters change (reset to page 1)
   useEffect(() => {
-    if (currentPage === 1) {
-      fetchLocations(1)
-    } else {
-      setCurrentPage(1) // This will trigger the previous useEffect
-    }
+    // Reset to page 1 when search or filters change
+    setCurrentPage(1)
+    // Fetch new data immediately with search loading state
+    fetchLocations(1, true)
   }, [debouncedSearchTerm, selectedType, selectedStatus])
   
   // Auto-update asset counts in the background for super admins
@@ -778,12 +783,17 @@ export default function LocationsPage() {
         {/* Search Bar */}
         <div className="flex items-center space-x-2">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            {isSearching ? (
+              <Loader2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            )}
             <Input
               placeholder="Search locations..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
+              disabled={isSearching}
             />
           </div>
           <Button
@@ -968,7 +978,16 @@ export default function LocationsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLocations.length === 0 ? (
+            {isSearching ? (
+              <TableRow>
+                <TableCell colSpan={canEdit ? 8 : 7} className="text-center py-8">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Searching locations...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : filteredLocations.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={canEdit ? 8 : 7} className="text-center py-8">
                   <div className="flex flex-col items-center space-y-2">
