@@ -687,7 +687,7 @@ export default function ShiftDetailsPage() {
 
                       {canManageShiftDetails && (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto glass-dialog">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto ">
             <DialogHeader>
               <DialogTitle>{selectedShiftDetail ? "Edit" : "Add New"} Shift Detail</DialogTitle>
               <DialogDescription>
