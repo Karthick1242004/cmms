@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout"
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { TicketCreationForm } from "@/components/ticket-creation-form"
 import { TicketsOverallReport } from "@/components/ticket/tickets-overall-report"
 import { generateIndividualTicketReport } from "@/components/ticket/ticket-individual-report"
@@ -46,6 +47,13 @@ export default function TicketsPage() {
   const [adminNotes, setAdminNotes] = useState('')
   const [isOverallReportOpen, setIsOverallReportOpen] = useState(false)
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [hasNext, setHasNext] = useState(false)
+  const [hasPrevious, setHasPrevious] = useState(false)
+  
   const { user } = useAuthStore()
   
   // Fetch departments for the dropdown
@@ -53,7 +61,7 @@ export default function TicketsPage() {
   const departments = departmentsData?.data?.departments || []
 
   // Fetch tickets
-  const fetchTickets = async () => {
+  const fetchTickets = async (page: number = currentPage) => {
     setIsLoading(true)
     try {
       const filters: TicketFilters = {
@@ -65,7 +73,8 @@ export default function TicketsPage() {
         isOpenTicket: showOpenTickets || undefined,
         sortBy: 'loggedDateTime',
         sortOrder: 'desc',
-        limit: 50
+        page: page,
+        limit: 20
       }
 
       // For non-super_admin users, automatically filter by their department unless viewing open tickets
@@ -86,6 +95,16 @@ export default function TicketsPage() {
       if (result.success && result.data) {
         setTickets(result.data.tickets || [])
         setFilteredTickets(result.data.tickets || [])
+        
+        // Update pagination state
+        const pagination = result.data.pagination
+        if (pagination) {
+          setCurrentPage(pagination.currentPage)
+          setTotalPages(pagination.totalPages)
+          setTotalCount(pagination.totalCount)
+          setHasNext(pagination.hasNext)
+          setHasPrevious(pagination.hasPrevious)
+        }
       } else {
         console.error('Failed to fetch tickets:', result.error)
         toast.error('Failed to fetch tickets')
@@ -141,8 +160,8 @@ export default function TicketsPage() {
   }
 
   useEffect(() => {
-    fetchTickets()
-  }, [statusFilter, priorityFilter, departmentFilter, reportTypeFilter, showOpenTickets, user])
+    fetchTickets(currentPage)
+  }, [statusFilter, priorityFilter, departmentFilter, reportTypeFilter, showOpenTickets, user, currentPage])
 
   // Auto-select department for non-super_admin users
   useEffect(() => {
@@ -150,6 +169,11 @@ export default function TicketsPage() {
       setDepartmentFilter(user.department)
     }
   }, [user, departmentFilter])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, priorityFilter, departmentFilter, reportTypeFilter, showOpenTickets])
 
   useEffect(() => {
     filterTickets()
@@ -164,6 +188,23 @@ export default function TicketsPage() {
   // Check if department filter should be disabled
   const isDepartmentFilterDisabled = () => {
     return user?.accessLevel !== 'super_admin'
+  }
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handlePreviousPage = () => {
+    if (hasPrevious) {
+      setCurrentPage(prev => prev - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (hasNext) {
+      setCurrentPage(prev => prev + 1)
+    }
   }
 
 
@@ -529,6 +570,11 @@ export default function TicketsPage() {
                   ? 'Showing tickets from all departments' 
                   : `Showing tickets for ${user?.department || 'your department'}`
               }
+              {totalCount > 0 && (
+                <span className="block mt-1 text-xs text-muted-foreground">
+                  Showing {((currentPage - 1) * 20) + 1}-{Math.min(currentPage * 20, totalCount)} of {totalCount} tickets
+                </span>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -547,51 +593,191 @@ export default function TicketsPage() {
               </div>
 
               <TabsContent value="activities" className="mt-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-muted-foreground">Loading tickets...</div>
-              </div>
-            ) : filteredTickets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No tickets found</h3>
-                <p className="text-muted-foreground mb-4">Try adjusting your filters or create a new ticket</p>
-                <Button onClick={() => setIsDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create First Ticket
-                </Button>
-              </div>
-            ) : (
-                  <TicketListTable
-                    tickets={filteredTickets}
-                    onView={handleViewTicket}
-                    onEdit={handleEditTicket}
-                    onDelete={handleDeleteTicket}
-                    onStartTicket={handleStartTicket}
-                    onGenerateReport={handleGenerateReport}
-                    onVerify={handleVerifyTicket}
-                    canModify={canModifyTickets}
-                    canVerify={canVerifyTickets}
-                    currentUser={user}
-                  />
-                )}
+                <div className="space-y-4">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-muted-foreground">Loading tickets...</div>
+                    </div>
+                  ) : filteredTickets.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No tickets found</h3>
+                      <p className="text-muted-foreground mb-4">Try adjusting your filters or create a new ticket</p>
+                      <Button onClick={() => setIsDialogOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create First Ticket
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <TicketListTable
+                        tickets={filteredTickets}
+                        onView={handleViewTicket}
+                        onEdit={handleEditTicket}
+                        onDelete={handleDeleteTicket}
+                        onStartTicket={handleStartTicket}
+                        onGenerateReport={handleGenerateReport}
+                        onVerify={handleVerifyTicket}
+                        canModify={canModifyTickets}
+                        canVerify={canVerifyTickets}
+                        currentUser={user}
+                      />
+                      
+                      {/* Pagination for Activities */}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center mt-6 px-6 pb-6">
+                          <Pagination>
+                            <PaginationContent>
+                              <PaginationItem>
+                                <PaginationPrevious 
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    handlePreviousPage()
+                                  }}
+                                  className={!hasPrevious ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                />
+                              </PaginationItem>
+                              
+                              {/* Page numbers */}
+                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1
+                                } else if (currentPage <= 3) {
+                                  pageNum = i + 1
+                                } else if (currentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i
+                                } else {
+                                  pageNum = currentPage - 2 + i
+                                }
+                                
+                                return (
+                                  <PaginationItem key={pageNum}>
+                                    <PaginationLink
+                                      href="#"
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        handlePageChange(pageNum)
+                                      }}
+                                      isActive={currentPage === pageNum}
+                                      className="cursor-pointer"
+                                    >
+                                      {pageNum}
+                                    </PaginationLink>
+                                  </PaginationItem>
+                                )
+                              })}
+                              
+                              {totalPages > 5 && currentPage < totalPages - 2 && (
+                                <PaginationItem>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              )}
+                              
+                              <PaginationItem>
+                                <PaginationNext 
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    handleNextPage()
+                                  }}
+                                  className={!hasNext ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                />
+                              </PaginationItem>
+                            </PaginationContent>
+                          </Pagination>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </TabsContent>
 
               <TabsContent value="records" className="mt-0">
-                <TicketRecordsTable
-                  records={getRecordsTickets()}
-                  isLoading={isLoading}
-                  isAdmin={canVerifyTickets}
-                  onVerify={async (ticketId: string, adminNotes?: string) => {
-                    const ticket = tickets.find(t => t.id === ticketId)
-                    if (ticket) {
-                      setTicketToVerify(ticket)
-                      setAdminNotes(adminNotes || '')
-                      return await handleVerifyConfirm()
-                    }
-                    return false
-                  }}
-                />
+                <div className="space-y-4">
+                  <TicketRecordsTable
+                    records={getRecordsTickets()}
+                    isLoading={isLoading}
+                    isAdmin={canVerifyTickets}
+                    onVerify={async (ticketId: string, adminNotes?: string) => {
+                      const ticket = tickets.find(t => t.id === ticketId)
+                      if (ticket) {
+                        setTicketToVerify(ticket)
+                        setAdminNotes(adminNotes || '')
+                        return await handleVerifyConfirm()
+                      }
+                      return false
+                    }}
+                  />
+                  
+                  {/* Pagination for Records */}
+                  {totalPages > 1 && getRecordsTickets().length > 0 && (
+                    <div className="flex justify-center mt-6 px-6 pb-6">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handlePreviousPage()
+                              }}
+                              className={!hasPrevious ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          
+                          {/* Page numbers */}
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum
+                            if (totalPages <= 5) {
+                              pageNum = i + 1
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i
+                            } else {
+                              pageNum = currentPage - 2 + i
+                            }
+                            
+                            return (
+                              <PaginationItem key={pageNum}>
+                                <PaginationLink
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    handlePageChange(pageNum)
+                                  }}
+                                  isActive={currentPage === pageNum}
+                                  className="cursor-pointer"
+                                >
+                                  {pageNum}
+                                </PaginationLink>
+                              </PaginationItem>
+                            )
+                          })}
+                          
+                          {totalPages > 5 && currentPage < totalPages - 2 && (
+                            <PaginationItem>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          )}
+                          
+                          <PaginationItem>
+                            <PaginationNext 
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleNextPage()
+                              }}
+                              className={!hasNext ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>
